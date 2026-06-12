@@ -30,8 +30,10 @@ interface WllamaInstance {
     hf: { repo: string; file?: string },
     params?: {
       progressCallback?: (opts: { loaded: number; total: number }) => void;
+      useCache?: boolean;
     },
   ): Promise<unknown>;
+  loadModel(blobs: Blob[]): Promise<unknown>;
   createChatCompletion(opts: {
     messages: { role: string; content: string }[];
     max_tokens?: number;
@@ -40,14 +42,37 @@ interface WllamaInstance {
 }
 
 interface WllamaModule {
-  Wllama: new (config: {
-    default: string;
-    'single-thread/wllama.wasm'?: string;
-    'multi-thread/wllama.wasm'?: string;
-  }) => WllamaInstance;
+  Wllama: new (config: { default: string }) => WllamaInstance;
 }
 
-const CDN = 'https://cdn.jsdelivr.net/npm/@wllama/wllama@3.4.1/esm';
+// wllama v3 ships a single wasm at esm/wasm/wllama.wasm; serve it from the CDN
+// so we don't have to wire the binary through Vite. (Vendoring is a future step.)
+const WASM_URL =
+  'https://cdn.jsdelivr.net/npm/@wllama/wllama@3.4.1/esm/wasm/wllama.wasm';
+
+/** Stream a GGUF from Hugging Face into an in-memory Blob (no OPFS). */
+async function fetchGguf(
+  model: CatalogModel,
+  onProgress?: (loaded: number, total: number) => void,
+): Promise<Blob> {
+  const url = `https://huggingface.co/${model.repo}/resolve/main/${model.file}`;
+  const response = await fetch(url);
+  if (!response.ok || !response.body) {
+    throw new Error(`Model download failed (${response.status})`);
+  }
+  const total = Number(response.headers.get('content-length') ?? 0);
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let loaded = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.byteLength;
+    onProgress?.(loaded, total);
+  }
+  return new Blob(chunks as BlobPart[]);
+}
 
 /**
  * Real engine backed by @wllama/wllama, loaded lazily (so it never enters the
@@ -65,27 +90,49 @@ export function createWllamaEngine(): WllamaEngine {
     // be type-checked under our strict config). Typed via WllamaModule above.
     const mod =
       (await import('@wllama/wllama/esm/index.js')) as unknown as WllamaModule;
-    instance = new mod.Wllama({
-      default: `${CDN}/single-thread/wllama.wasm`,
-      'single-thread/wllama.wasm': `${CDN}/single-thread/wllama.wasm`,
-      'multi-thread/wllama.wasm': `${CDN}/multi-thread/wllama.wasm`,
-    });
+    instance = new mod.Wllama({ default: WASM_URL });
     return instance;
   }
 
+  // Load from HF, caching the model in OPFS. Some browsers (notably Firefox in
+  // automation) reject OPFS sync-access writes with "No modification allowed";
+  // fall back to an in-memory (uncached) load so browser-local models still run.
+  async function loadFromHF(
+    model: CatalogModel,
+    onProgress?: (loaded: number, total: number) => void,
+  ): Promise<void> {
+    const wllama = await getInstance();
+    const progress = onProgress
+      ? {
+          progressCallback: (opts: { loaded: number; total: number }) =>
+            onProgress(opts.loaded, opts.total),
+        }
+      : {};
+    const hf = { repo: model.repo, file: model.file };
+    try {
+      await wllama.loadModelFromHF(hf, { ...progress, useCache: true });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        /modification allowed/i.test(error.message)
+      ) {
+        // OPFS is unavailable (e.g. Firefox automation): fetch the GGUF into
+        // memory ourselves and load it directly, bypassing the cache.
+        const blob = await fetchGguf(model, onProgress);
+        await wllama.loadModel([blob]);
+      } else {
+        throw error;
+      }
+    }
+    loaded = model.id;
+  }
+
   return {
-    async download(model, onProgress) {
-      const wllama = await getInstance();
-      await wllama.loadModelFromHF(
-        { repo: model.repo, file: model.file },
-        { progressCallback: ({ loaded: l, total }) => onProgress(l, total) },
-      );
-      loaded = model.id;
+    download(model, onProgress) {
+      return loadFromHF(model, onProgress);
     },
-    async load(model) {
-      const wllama = await getInstance();
-      await wllama.loadModelFromHF({ repo: model.repo, file: model.file });
-      loaded = model.id;
+    load(model) {
+      return loadFromHF(model);
     },
     async unload() {
       if (instance) await instance.exit();

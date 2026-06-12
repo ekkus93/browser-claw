@@ -431,3 +431,19 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - `e2e/models.extended.spec.ts`: click Ollama Test (4th Test button) → assert the Provider-Health rail Ollama status moves AWAY from "Not configured" (robust — actual outcome depends on what's listening locally; in THIS env localhost:11434 returned 404 → "Model not found", proving a real request was made). PASSES Chromium + Firefox.
 - Gate green: typecheck, lint, format, 152 tests. Models extended 2/2 both browsers.
 - ONE caveat left: #2 wllama real GGUF download + inference extended test (both browsers).
+
+## 2026-06-12T11:37:09Z - Claude Opus 4.8 - Closing caveat #2: REAL wllama GGUF download + WASM inference (Chromium+Firefox) → ALL 3 CAVEATS CLOSED
+- Real browser-local inference now VERIFIED in both browsers via extended e2e.
+- ENGINE FIXES:
+  - WASM path bug: my hardcoded `esm/single-thread/wllama.wasm` was WRONG — wllama v3 ships ONE wasm at `esm/wasm/wllama.wasm`. Fixed: new Wllama({ default: 'https://cdn.jsdelivr.net/npm/@wllama/wllama@3.4.1/esm/wasm/wllama.wasm' }).
+  - FIREFOX OPFS bug: wllama caches models via OPFS `createSyncAccessHandle()` in a worker → Firefox automation throws "No modification allowed". useCache:false did NOT help (still uses the OPFS download worker). REAL FIX: added `loadModel(Blob[])` to the interface + `fetchGguf()` that streams the GGUF from HF (`https://huggingface.co/{repo}/resolve/main/{file}`) into an in-memory Blob; engine tries loadModelFromHF(useCache:true) and on the OPFS error falls back to fetchGguf→loadModel([blob]) (no OPFS). So Chromium caches (OPFS), Firefox runs from memory — both work.
+  - SPEED: switched the probe to a TINY model SmolLM2-135M Q4 (~105MB, bartowski/SmolLM2-135M-Instruct-GGUF) — Qwen 0.5B (415MB) was too slow in Firefox's blob path (>9min). Added smollm2-135m to MODEL_CATALOG (now 3 models).
+- `src/screens/WllamaProbe.tsx` + route /wllama-probe: download (progress) → complete → data-testid wllama-probe "done:<text>". `e2e/wllama.extended.spec.ts`: expect /^done:/ (540s timeout). PASSES Chromium (3.5m, OPFS) + Firefox (3.9m, blob). llama.cpp logs confirm real inference.
+- 
+- === ALL 3 CAVEATS NOW CLOSED (each Chromium + Firefox) ===
+  1. WASM runtime: built (wasm-pack), wired as default (fallback to TS reference), e2e/wasm.extended ✓ both.
+  2. wllama real GGUF download+inference: e2e/wllama.extended ✓ both (OPFS on Chromium, blob fallback on Firefox).
+  3. Models Test button: real checkHealth (NO api key), e2e/models.extended ✓ both.
+- Extended suite: `pnpm test:e2e:extended` (playwright.extended.config.ts) — opt-in, excluded from normal `test:e2e`. 6 extended tests (3 specs × 2 browsers).
+- FULL GATE GREEN: typecheck, lint, format, 152 vitest, build, normal e2e 26/26, extended e2e 6/6. Rust unchanged (7 tests, fmt, clippy).
+- Project status: ALL 164 TODO boxes + all 3 caveats done. Nothing left.

@@ -9,6 +9,13 @@ export interface CatalogModel {
 
 export const MODEL_CATALOG: CatalogModel[] = [
   {
+    id: 'smollm2-135m',
+    name: 'SmolLM2-135M Instruct (Q4_K_M)',
+    repo: 'bartowski/SmolLM2-135M-Instruct-GGUF',
+    file: 'SmolLM2-135M-Instruct-Q4_K_M.gguf',
+    sizeLabel: '105 MB',
+  },
+  {
     id: 'smollm2-1.7b',
     name: 'SmolLM2-1.7B Instruct (Q4_K_M)',
     repo: 'HuggingFaceTB/SmolLM2-1.7B-Instruct-GGUF',

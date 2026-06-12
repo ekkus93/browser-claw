@@ -5,6 +5,7 @@ import { PlaceholderScreen } from './screens/PlaceholderScreen.tsx';
 import ComponentGallery from './screens/ComponentGallery.tsx';
 import OnboardingScreen from './screens/OnboardingScreen.tsx';
 import WasmProbe from './screens/WasmProbe.tsx';
+import WllamaProbe from './screens/WllamaProbe.tsx';
 import ChatScreen from './screens/ChatScreen.tsx';
 import ModelsScreen from './screens/ModelsScreen.tsx';
 import StorageScreen from './screens/StorageScreen.tsx';
@@ -34,6 +35,7 @@ const SCREEN_OVERRIDES: Record<string, ReactNode> = {
 export const router = createBrowserRouter([
   { path: '/onboarding', element: <OnboardingScreen /> },
   { path: '/wasm-probe', element: <WasmProbe /> },
+  { path: '/wllama-probe', element: <WllamaProbe /> },
   {
     path: '/',
     element: <AppLayout />,

@@ -331,29 +331,29 @@
 
 ### 7.2 Skill Filesystem Safety
 
-- [ ] Ensure package files are read-only.
-- [ ] Ensure mutable state is private per skill.
-- [ ] Move permissions out of mutable skill state.
-- [ ] Add reserved state keys:
-  - [ ] `__permissions__`;
-  - [ ] `__manifest__`;
-  - [ ] `__system__`;
-  - [ ] `__audit__`;
-  - [ ] `__secrets__`.
-- [ ] Reject writes to reserved keys.
-- [ ] Harden path validation:
-  - [ ] reject `..`;
-  - [ ] reject encoded traversal;
-  - [ ] reject absolute paths;
-  - [ ] reject null bytes;
-  - [ ] reject backslash traversal;
-  - [ ] normalize paths before checking.
-- [ ] Tests:
-  - [ ] traversal rejected;
-  - [ ] encoded traversal rejected;
-  - [ ] absolute path rejected;
-  - [ ] reserved key write rejected;
-  - [ ] skill cannot mutate permissions.
+- [ ] Ensure package files are read-only. <!-- needs a package-file flag; later -->
+- [x] Ensure mutable state is private per skill.
+- [x] Move permissions out of mutable skill state.
+- [x] Add reserved state keys:
+  - [x] `__permissions__`;
+  - [x] `__manifest__`;
+  - [x] `__system__`;
+  - [x] `__audit__`;
+  - [x] `__secrets__`.
+- [x] Reject writes to reserved keys.
+- [x] Harden path validation:
+  - [x] reject `..`;
+  - [x] reject encoded traversal;
+  - [x] reject absolute paths;
+  - [x] reject null bytes;
+  - [x] reject backslash traversal;
+  - [x] normalize paths before checking.
+- [x] Tests:
+  - [x] traversal rejected;
+  - [x] encoded traversal rejected;
+  - [x] absolute path rejected;
+  - [x] reserved key write rejected;
+  - [x] skill cannot mutate permissions.
 
 ### 7.3 Skill Install/Reinstall/Enable
 

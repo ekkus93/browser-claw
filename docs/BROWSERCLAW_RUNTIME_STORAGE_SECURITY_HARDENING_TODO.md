@@ -357,16 +357,16 @@
 
 ### 7.3 Skill Install/Reinstall/Enable
 
-- [ ] On reinstall, remove stale package files.
-- [ ] Ask whether to preserve or clear skill state on reinstall.
-- [ ] Enable/disable must fail if skill does not exist.
-- [ ] Audit only successful enable/disable as success.
-- [ ] Audit failures as failures.
-- [ ] Tests:
-  - [ ] stale files removed on reinstall;
-  - [ ] missing skill enable fails;
-  - [ ] missing skill disable fails;
-  - [ ] failed enable does not audit success.
+- [x] On reinstall, remove stale package files.
+- [x] Ask whether to preserve or clear skill state on reinstall. <!-- install() takes { clearState? }; default preserves, refreshes __permissions__. UI surfacing of the choice deferred until a reinstall flow exists. -->
+- [x] Enable/disable must fail if skill does not exist.
+- [x] Audit only successful enable/disable as success.
+- [x] Audit failures as failures.
+- [x] Tests:
+  - [x] stale files removed on reinstall;
+  - [x] missing skill enable fails;
+  - [x] missing skill disable fails;
+  - [x] failed enable does not audit success.
 
 ### 7.4 Runtime Permission Enforcement
 

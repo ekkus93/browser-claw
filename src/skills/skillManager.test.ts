@@ -81,4 +81,106 @@ describe('createSkillManager', () => {
       'skill_uninstalled',
     );
   });
+
+  it('removes stale package files on reinstall', async () => {
+    await db.open();
+    const store = configureStore({ reducer: { audit: auditReducer } });
+    const manager = createSkillManager({ db, dispatch: store.dispatch });
+
+    const v1 = [
+      '---',
+      'name: stale-files',
+      'version: 1.0.0',
+      'description: v1',
+      '---',
+      'v1',
+    ].join('\n');
+    const id = await manager.install(
+      {
+        ...parseSkillMd(v1),
+        files: { 'old.txt': 'gone', 'keep.txt': 'a' },
+      },
+      'skill_md',
+    );
+    expect(
+      await db.skill_files.where('skillId').equals(id).count(),
+    ).toBe(2);
+
+    const v2 = [
+      '---',
+      'name: stale-files',
+      'version: 2.0.0',
+      'description: v2',
+      '---',
+      'v2',
+    ].join('\n');
+    await manager.install(
+      {
+        ...parseSkillMd(v2),
+        files: { 'keep.txt': 'b' },
+      },
+      'skill_md',
+    );
+
+    const paths = (
+      await db.skill_files.where('skillId').equals(id).toArray()
+    ).map((f) => f.path);
+    expect(paths).toEqual(['keep.txt']);
+    expect((await db.skills.get(id))?.version).toBe('2.0.0');
+    expect(store.getState().audit.recent.map((e) => e.type)).toContain(
+      'skill_reinstalled',
+    );
+  });
+
+  it('preserves skill state on reinstall by default, clears it on request', async () => {
+    await db.open();
+    const store = configureStore({ reducer: { audit: auditReducer } });
+    const manager = createSkillManager({ db, dispatch: store.dispatch });
+
+    const md = [
+      '---',
+      'name: stateful',
+      'version: 1.0.0',
+      'description: keeps state',
+      '---',
+      'go',
+    ].join('\n');
+    const id = await manager.install(parseSkillMd(md), 'skill_md');
+    const fs = await manager.fsFor(id);
+    await fs.setState('count', 7);
+
+    // Default reinstall preserves user state.
+    await manager.install(parseSkillMd(md), 'skill_md');
+    expect(await (await manager.fsFor(id)).getState('count')).toBe(7);
+
+    // Explicit clear wipes it.
+    await manager.install(parseSkillMd(md), 'skill_md', { clearState: true });
+    expect(await (await manager.fsFor(id)).getState('count')).toBeUndefined();
+  });
+
+  it('fails (and audits failure) when enabling a missing skill', async () => {
+    await db.open();
+    const store = configureStore({ reducer: { audit: auditReducer } });
+    const manager = createSkillManager({ db, dispatch: store.dispatch });
+
+    await expect(manager.setEnabled('ghost', true)).rejects.toThrow(
+      /not installed/,
+    );
+    const types = store.getState().audit.recent.map((e) => e.type);
+    expect(types).toContain('skill_enable_failed');
+    expect(types).not.toContain('skill_enabled');
+  });
+
+  it('fails (and audits failure) when disabling a missing skill', async () => {
+    await db.open();
+    const store = configureStore({ reducer: { audit: auditReducer } });
+    const manager = createSkillManager({ db, dispatch: store.dispatch });
+
+    await expect(manager.setEnabled('ghost', false)).rejects.toThrow(
+      /not installed/,
+    );
+    const types = store.getState().audit.recent.map((e) => e.type);
+    expect(types).toContain('skill_disable_failed');
+    expect(types).not.toContain('skill_disabled');
+  });
 });

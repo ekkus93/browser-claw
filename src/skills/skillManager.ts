@@ -1,6 +1,6 @@
 import type { BrowserClawDB } from '../db/db.ts';
 import type { AppDispatch } from '../store/store.ts';
-import type { SkillSource } from '../db/types.ts';
+import type { AuditRiskLevel, AuditStatus, SkillSource } from '../db/types.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { SkillFs } from './skillFs.ts';
 import { emptyPermissions, type ParsedSkill } from './skillTypes.ts';
@@ -14,7 +14,22 @@ export interface SkillManagerDeps {
   now?: () => number;
 }
 
-function audit(deps: SkillManagerDeps, type: string, summary: string): void {
+/** Options for (re)installing a skill. */
+export interface InstallOptions {
+  /**
+   * On reinstall, clear the skill's persisted state instead of preserving it.
+   * Defaults to preserving so a version bump keeps the user's accumulated data.
+   * Either way the `__permissions__` record is refreshed from the new manifest.
+   */
+  clearState?: boolean;
+}
+
+function audit(
+  deps: SkillManagerDeps,
+  type: string,
+  summary: string,
+  opts: { risk?: AuditRiskLevel; status?: AuditStatus; skillId?: string } = {},
+): void {
   const now = deps.now ?? Date.now;
   // Durable + live tail. Redux dispatch is synchronous inside recordAudit, so
   // the durable write can be fire-and-forget here.
@@ -22,8 +37,10 @@ function audit(deps: SkillManagerDeps, type: string, summary: string): void {
     type,
     summary,
     source: 'skill',
-    risk: 'info',
+    risk: opts.risk ?? 'info',
+    status: opts.status ?? 'success',
     at: now(),
+    ...(opts.skillId !== undefined ? { skillId: opts.skillId } : {}),
   });
 }
 
@@ -35,7 +52,11 @@ export function createSkillManager(deps: SkillManagerDeps) {
   const { db } = deps;
 
   return {
-    async install(parsed: ParsedSkill, source: SkillSource): Promise<string> {
+    async install(
+      parsed: ParsedSkill,
+      source: SkillSource,
+      options: InstallOptions = {},
+    ): Promise<string> {
       // Strict gate: reject before persisting anything. Imported skills also
       // start disabled (below) until the user enables them.
       const validation = validateSkillImport(parsed);
@@ -54,37 +75,70 @@ export function createSkillManager(deps: SkillManagerDeps) {
       }
       const id = parsed.manifest.name;
       const now = deps.now ?? Date.now;
+      const existing = await db.skills.get(id);
+      const isReinstall = existing !== undefined;
       await db.skills.put({
         id,
         name: parsed.manifest.name,
         version: parsed.manifest.version,
         description: parsed.manifest.description,
         source,
-        enabled: false,
+        // A reinstall keeps the prior enabled state; a fresh install starts
+        // disabled until the user enables it.
+        enabled: existing?.enabled ?? false,
         installedAt: now(),
       });
+      // On reinstall, remove stale package files so a file dropped from the new
+      // package can't linger and be read by the skill.
+      if (isReinstall) {
+        await db.skill_files.where('skillId').equals(id).delete();
+        if (options.clearState) {
+          await db.skill_state.where('skillId').equals(id).delete();
+        }
+      }
       const files = Object.entries(parsed.files).map(([path, content]) => ({
         skillId: id,
         path,
         content,
       }));
       if (files.length > 0) await db.skill_files.bulkPut(files);
-      // Persist declared permissions in private skill state.
+      // Persist declared permissions in private skill state (always refreshed
+      // from the new manifest, even when other state is preserved).
       await db.skill_state.put({
         skillId: id,
         key: PERMISSIONS_KEY,
         value: parsed.manifest.permissions,
       });
-      audit(deps, 'skill_installed', `Installed skill ${id}`);
+      audit(
+        deps,
+        isReinstall ? 'skill_reinstalled' : 'skill_installed',
+        `${isReinstall ? 'Reinstalled' : 'Installed'} skill ${id}`,
+        { skillId: id },
+      );
       return id;
     },
 
     async setEnabled(id: string, enabled: boolean): Promise<void> {
-      await db.skills.update(id, { enabled });
+      // Enable/disable must act on a real skill. `db.skills.update` silently
+      // no-ops on a missing id, which would let a stale UI claim a phantom
+      // skill was toggled — fail closed and audit the failure instead.
+      const updated = await db.skills.update(id, { enabled });
+      if (updated === 0) {
+        audit(
+          deps,
+          enabled ? 'skill_enable_failed' : 'skill_disable_failed',
+          `Cannot ${enabled ? 'enable' : 'disable'} unknown skill ${id}`,
+          { risk: 'medium', status: 'failure', skillId: id },
+        );
+        throw new Error(
+          `Cannot ${enabled ? 'enable' : 'disable'} skill: ${id} is not installed`,
+        );
+      }
       audit(
         deps,
         enabled ? 'skill_enabled' : 'skill_disabled',
         `${enabled ? 'Enabled' : 'Disabled'} skill ${id}`,
+        { skillId: id },
       );
     },
 
@@ -92,7 +146,9 @@ export function createSkillManager(deps: SkillManagerDeps) {
       await db.skills.delete(id);
       await db.skill_files.where('skillId').equals(id).delete();
       await db.skill_state.where('skillId').equals(id).delete();
-      audit(deps, 'skill_uninstalled', `Uninstalled skill ${id}`);
+      audit(deps, 'skill_uninstalled', `Uninstalled skill ${id}`, {
+        skillId: id,
+      });
     },
 
     async fsFor(id: string): Promise<SkillFs> {

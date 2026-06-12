@@ -1,0 +1,92 @@
+//! Shared schema for the BrowserClaw deterministic runtime: the effects the
+//! runtime emits, the commands the host sends in, and the serializable runtime
+//! state used for snapshots. These types are the contract between the
+//! Rust/WASM core and the TypeScript host.
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::BTreeMap;
+
+/// A side effect the runtime asks the host to perform. The runtime never
+/// performs I/O itself — it only describes effects. Decrypted secrets never
+/// appear in any effect payload.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Effect {
+    LlmRequest {
+        id: String,
+        conversation_id: String,
+        prompt: String,
+    },
+    StorageGet {
+        id: String,
+        store: String,
+        key: String,
+    },
+    StoragePut {
+        id: String,
+        store: String,
+        key: String,
+        value: Value,
+    },
+    StorageSearch {
+        id: String,
+        store: String,
+        query: String,
+    },
+    ToolCallProposal {
+        id: String,
+        name: String,
+        args: Value,
+        risk: String,
+    },
+    SkillFsReadText {
+        id: String,
+        skill_id: String,
+        path: String,
+    },
+    SkillStateGet {
+        id: String,
+        skill_id: String,
+        key: String,
+    },
+    SkillStatePut {
+        id: String,
+        skill_id: String,
+        key: String,
+        value: Value,
+    },
+    AuditAppend {
+        id: String,
+        event_type: String,
+        summary: String,
+        risk: String,
+    },
+    RuntimeSnapshotSave {
+        id: String,
+        snapshot: Value,
+    },
+}
+
+/// A command the host sends into the runtime.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Command {
+    SubmitUserMessage {
+        conversation_id: String,
+        text: String,
+    },
+    /// Deliver the result of a previously emitted effect back to the runtime.
+    ResolveEffect { id: String, result: Value },
+}
+
+/// Serializable runtime state. Deterministic — no clocks, randomness, or I/O.
+/// Effect ids come from a monotonic counter so a given command sequence always
+/// produces identical effects (a core acceptance property).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct RuntimeState {
+    pub next_effect_id: u64,
+    pub message_count: u64,
+    /// Outstanding effect id -> effect kind awaiting resolution.
+    pub pending: BTreeMap<String, String>,
+}

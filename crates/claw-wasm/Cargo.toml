@@ -1,0 +1,14 @@
+[package]
+name = "claw-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+claw-core = { path = "../claw-core" }
+claw-schema = { path = "../claw-schema" }
+serde_json = { workspace = true }
+wasm-bindgen = "0.2"

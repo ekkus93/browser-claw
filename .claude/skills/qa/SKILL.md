@@ -19,6 +19,16 @@ Run these in order and report results. If a script doesn't exist yet (greenfield
    - `console.log`/`console.*` of secret values
    - secrets included in audit event payloads
 
+## Rust (when crates/ changed)
+
+If the change touches the Rust workspace (`crates/`, `Cargo.toml`), also run — zero-tolerance, same as the JS lint:
+
+5. **Rust tests** — `cargo test --workspace`.
+6. **Rust format** — `cargo fmt --all --check`.
+7. **Rust lint** — `cargo clippy --workspace --all-targets -- -D warnings` (warnings are failures).
+
+Note: the wasm32 browser build (`wasm-pack`/`wasm32-unknown-unknown` target) is separate and may not be installed; native `cargo test` covers the runtime logic.
+
 ## Reporting
 
 - Report each step as pass / fail / skipped, with the relevant output for failures.

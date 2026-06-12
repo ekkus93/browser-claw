@@ -1,0 +1,10 @@
+[package]
+name = "claw-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+claw-schema = { path = "../claw-schema" }
+serde = { workspace = true }
+serde_json = { workspace = true }

@@ -91,23 +91,23 @@
 
 ## Phase 5 — Rust/WASM Runtime Stub
 
-- [ ] Create Rust workspace.
-- [ ] Add `claw-core`.
-- [ ] Add `claw-wasm`.
-- [ ] Add `claw-schema`.
-- [ ] Add `claw-testkit`.
-- [ ] Implement wasm-bindgen API.
-- [ ] Implement effect model:
-  - [ ] llm_request
-  - [ ] storage_get
-  - [ ] storage_put
-  - [ ] storage_search
-  - [ ] tool_call_proposal
-  - [ ] skill_fs_read_text
-  - [ ] skill_state_get
-  - [ ] skill_state_put
-  - [ ] audit_append
-  - [ ] runtime_snapshot_save
+- [x] Create Rust workspace.
+- [x] Add `claw-core`.
+- [x] Add `claw-wasm`.
+- [x] Add `claw-schema`.
+- [x] Add `claw-testkit`.
+- [x] Implement wasm-bindgen API.
+- [x] Implement effect model:
+  - [x] llm_request
+  - [x] storage_get
+  - [x] storage_put
+  - [x] storage_search
+  - [x] tool_call_proposal
+  - [x] skill_fs_read_text
+  - [x] skill_state_get
+  - [x] skill_state_put
+  - [x] audit_append
+  - [x] runtime_snapshot_save
 - [ ] Wire effects to Redux listener middleware.
 - [ ] Persist snapshots.
 

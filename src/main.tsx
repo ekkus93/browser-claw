@@ -23,6 +23,7 @@ import {
   resolveProvider,
   defaultActiveProviderId,
 } from './providers/registry.ts';
+import { getActiveProviderProfile } from './providers/providerProfiles.ts';
 import { activeProviderSet } from './store/slices/providersSlice.ts';
 import { appConfig } from './config/appConfig.ts';
 import {
@@ -160,10 +161,14 @@ async function bootRuntime(): Promise<void> {
       db,
       dispatch: store.dispatch,
       getProvider: () => {
-        const resolved = resolveProvider(
-          store.getState().providers.activeProviderId,
-          appConfig,
-        );
+        const { activeProviderId, activeProviderBaseUrl, activeProviderModel } =
+          store.getState().providers;
+        // Use the persisted profile's base URL/model so the runtime calls
+        // exactly what the user saved on the Models screen.
+        const resolved = resolveProvider(activeProviderId, appConfig, {
+          ...(activeProviderBaseUrl ? { baseUrl: activeProviderBaseUrl } : {}),
+          ...(activeProviderModel ? { model: activeProviderModel } : {}),
+        });
         // The chat UI blocks sending unless a provider is configured, so this
         // is a defensive guard, not the user-facing path.
         if (!resolved.ok) {
@@ -181,18 +186,35 @@ bootRuntime().catch((error: unknown) => {
   console.error('Runtime boot failed', error);
 });
 
-// Pre-select a default provider. Fails closed: in a normal build none is
-// selected (chat shows a setup CTA); only when the mock is explicitly allowed
-// (demo/dev) is it pre-selected so the console works behind the safety banner.
-const defaultProviderId = defaultActiveProviderId(appConfig);
-if (
-  defaultProviderId !== null &&
-  store.getState().providers.activeProviderId === null
-) {
-  store.dispatch(
-    activeProviderSet({ id: defaultProviderId, label: 'Mock (dev)' }),
-  );
+// Restore the persisted active provider so its base URL/model drive real calls
+// and the status bar shows it after reload. Fails closed: if nothing was saved,
+// only the explicitly-allowed mock is pre-selected (demo/dev); otherwise chat
+// shows a setup CTA.
+async function restoreActiveProvider(): Promise<void> {
+  const profile = await getActiveProviderProfile(db);
+  if (profile) {
+    store.dispatch(
+      activeProviderSet({
+        id: profile.id,
+        label: profile.label,
+        ...(profile.model ? { model: profile.model } : {}),
+        ...(profile.baseUrl ? { baseUrl: profile.baseUrl } : {}),
+      }),
+    );
+    return;
+  }
+  const defaultProviderId = defaultActiveProviderId(appConfig);
+  if (
+    defaultProviderId !== null &&
+    store.getState().providers.activeProviderId === null
+  ) {
+    store.dispatch(
+      activeProviderSet({ id: defaultProviderId, label: 'Mock (dev)' }),
+    );
+  }
 }
+
+void restoreActiveProvider();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

@@ -10,21 +10,32 @@ describe('providersSlice', () => {
     expect(state).toEqual({
       activeProviderId: null,
       activeProviderLabel: null,
+      activeProviderModel: null,
+      activeProviderBaseUrl: null,
       health: {},
     });
   });
 
-  it('sets and clears the active provider', () => {
+  it('sets and clears the active provider, including model/base URL', () => {
     let state = providersReducer(
       undefined,
-      activeProviderSet({ id: 'anthropic', label: 'Anthropic' }),
+      activeProviderSet({
+        id: 'anthropic',
+        label: 'Anthropic',
+        model: 'claude-opus-4-8',
+        baseUrl: 'https://api.anthropic.com',
+      }),
     );
     expect(state.activeProviderId).toBe('anthropic');
     expect(state.activeProviderLabel).toBe('Anthropic');
+    expect(state.activeProviderModel).toBe('claude-opus-4-8');
+    expect(state.activeProviderBaseUrl).toBe('https://api.anthropic.com');
 
     state = providersReducer(state, activeProviderSet(null));
     expect(state.activeProviderId).toBeNull();
     expect(state.activeProviderLabel).toBeNull();
+    expect(state.activeProviderModel).toBeNull();
+    expect(state.activeProviderBaseUrl).toBeNull();
   });
 
   it('records per-provider health', () => {

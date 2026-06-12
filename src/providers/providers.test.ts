@@ -141,6 +141,28 @@ describe('registry — fails closed', () => {
     const allowed = resolveProvider('mock', mockOn);
     expect(allowed.ok && allowed.provider.id).toBe('mock');
   });
+
+  it('applies persisted base URL/model overrides to the resolved provider', async () => {
+    // The Models screen passes the saved profile values through; a health check
+    // must hit exactly that base URL — proving the test uses persisted values.
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(jsonResponse({ choices: [{ message: { content: 'ok' } }] })),
+    );
+    vi.stubGlobal('fetch', fetchImpl);
+    try {
+      const resolved = resolveProvider('compatible', mockOff, {
+        baseUrl: 'https://saved.example/v1',
+        model: 'saved-model',
+      });
+      expect(resolved.ok).toBe(true);
+      if (!resolved.ok) return;
+      expect(await resolved.provider.checkHealth()).toBe('connected');
+      const [url] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(url).toBe('https://saved.example/v1/chat/completions');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 describe('provider configuration helpers', () => {

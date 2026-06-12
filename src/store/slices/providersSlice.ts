@@ -19,12 +19,17 @@ export type ProviderHealth =
 export interface ProvidersState {
   activeProviderId: string | null;
   activeProviderLabel: string | null;
+  /** The active provider's persisted model/base URL, for the runtime + status bar. */
+  activeProviderModel: string | null;
+  activeProviderBaseUrl: string | null;
   health: Record<string, ProviderHealth>;
 }
 
 const initialState: ProvidersState = {
   activeProviderId: null,
   activeProviderLabel: null,
+  activeProviderModel: null,
+  activeProviderBaseUrl: null,
   health: {},
 };
 
@@ -34,10 +39,17 @@ const providersSlice = createSlice({
   reducers: {
     activeProviderSet(
       state,
-      action: PayloadAction<{ id: string; label: string } | null>,
+      action: PayloadAction<{
+        id: string;
+        label: string;
+        model?: string;
+        baseUrl?: string;
+      } | null>,
     ) {
       state.activeProviderId = action.payload?.id ?? null;
       state.activeProviderLabel = action.payload?.label ?? null;
+      state.activeProviderModel = action.payload?.model ?? null;
+      state.activeProviderBaseUrl = action.payload?.baseUrl ?? null;
     },
     providerHealthSet(
       state,

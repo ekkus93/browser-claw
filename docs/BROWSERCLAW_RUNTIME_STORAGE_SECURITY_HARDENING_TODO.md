@@ -67,23 +67,23 @@
 
 ### 2.1 Provider Profiles
 
-- [ ] Define durable `ProviderProfile` type.
-- [ ] Store provider profiles in IndexedDB.
-- [ ] Add profile CRUD service:
-  - [ ] create;
-  - [ ] update;
-  - [ ] delete;
-  - [ ] list;
-  - [ ] set active;
-  - [ ] get active.
-- [ ] Make Models screen read provider profiles from IndexedDB.
-- [ ] Make Models screen edits persist to IndexedDB.
-- [ ] Make provider tests use persisted profile values.
-- [ ] Update top status bar to show actual active provider/model.
-- [ ] Tests:
-  - [ ] edited base URL persists after reload;
-  - [ ] edited model persists after reload;
-  - [ ] provider test uses edited values.
+- [x] Define durable `ProviderProfile` type.
+- [x] Store provider profiles in IndexedDB.
+- [x] Add profile CRUD service:
+  - [x] create;
+  - [x] update;
+  - [x] delete;
+  - [x] list;
+  - [x] set active;
+  - [x] get active.
+- [x] Make Models screen read provider profiles from IndexedDB.
+- [x] Make Models screen edits persist to IndexedDB.
+- [x] Make provider tests use persisted profile values.
+- [x] Update top status bar to show actual active provider/model.
+- [x] Tests:
+  - [x] edited base URL persists after reload;
+  - [x] edited model persists after reload;
+  - [x] provider test uses edited values.
 
 ### 2.2 Remove Implicit Mock Provider
 

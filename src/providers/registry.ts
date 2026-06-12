@@ -5,8 +5,10 @@ import {
   createOpenAIProvider,
   createOllamaProvider,
   createLlamaServerProvider,
+  type PresetOptions,
 } from './presets.ts';
 import { createAnthropicProvider } from './anthropic.ts';
+import { createOpenAICompatibleProvider } from './openAiCompatible.ts';
 import { createWllamaProvider } from './wllamaProvider.ts';
 import { getWllamaEngine } from '../wllama/engine.ts';
 
@@ -14,10 +16,28 @@ import { getWllamaEngine } from '../wllama/engine.ts';
 const REAL_PROVIDER_IDS = new Set([
   'openai',
   'anthropic',
+  'compatible',
   'ollama',
   'llama-server',
   'wllama',
 ]);
+
+/**
+ * Persisted profile values (base URL, model) used to configure the resolved
+ * provider, so provider tests and the runtime hit exactly what the user saved.
+ */
+export interface ProviderOverrides {
+  baseUrl?: string;
+  model?: string;
+}
+
+/** Build preset options from a profile, ignoring blank fields (use defaults). */
+function presetOptions(overrides?: ProviderOverrides): PresetOptions {
+  return {
+    ...(overrides?.baseUrl ? { baseUrl: overrides.baseUrl } : {}),
+    ...(overrides?.model ? { model: overrides.model } : {}),
+  };
+}
 
 export type ResolvedProvider =
   | { ok: true; provider: LlmProvider }
@@ -60,16 +80,35 @@ export function defaultActiveProviderId(
 export function resolveProvider(
   activeProviderId: string | null,
   config: Pick<AppConfig, 'isMockProviderAllowed'>,
+  overrides?: ProviderOverrides,
 ): ResolvedProvider {
   switch (activeProviderId) {
     case 'openai':
-      return { ok: true, provider: createOpenAIProvider() };
+      return { ok: true, provider: createOpenAIProvider(presetOptions(overrides)) };
     case 'anthropic':
-      return { ok: true, provider: createAnthropicProvider() };
+      return {
+        ok: true,
+        provider: createAnthropicProvider(presetOptions(overrides)),
+      };
+    case 'compatible':
+      return {
+        ok: true,
+        provider: createOpenAICompatibleProvider({
+          id: 'compatible',
+          baseUrl: overrides?.baseUrl ?? '',
+          model: overrides?.model ?? '',
+        }),
+      };
     case 'ollama':
-      return { ok: true, provider: createOllamaProvider() };
+      return {
+        ok: true,
+        provider: createOllamaProvider(presetOptions(overrides)),
+      };
     case 'llama-server':
-      return { ok: true, provider: createLlamaServerProvider() };
+      return {
+        ok: true,
+        provider: createLlamaServerProvider(presetOptions(overrides)),
+      };
     case 'wllama':
       return { ok: true, provider: createWllamaProvider(getWllamaEngine()) };
     case 'mock':

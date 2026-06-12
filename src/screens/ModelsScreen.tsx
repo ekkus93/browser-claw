@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import {
   activeProviderSet,
   providerHealthSet,
@@ -7,7 +8,15 @@ import {
 } from '../store/slices/providersSlice.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
 import { resolveProvider } from '../providers/registry.ts';
+import {
+  listProviderProfiles,
+  mergeProviderProfiles,
+  saveProviderProfile,
+  setActiveProviderId,
+} from '../providers/providerProfiles.ts';
 import { appConfig } from '../config/appConfig.ts';
+import { db } from '../db/db.ts';
+import type { ProviderProfileRow } from '../db/types.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Badge, type BadgeTone } from '../components/ui/Badge.tsx';
 import { Input } from '../components/ui/Input.tsx';
@@ -17,43 +26,6 @@ import { useToast } from '../components/ui/toastContext.ts';
 import { MODEL_CATALOG } from '../wllama/catalog.ts';
 import { isWllamaSupported, getWllamaEngine } from '../wllama/engine.ts';
 import { createModelManager } from '../wllama/modelManager.ts';
-
-interface RemoteProvider {
-  id: string;
-  label: string;
-  baseUrl: string;
-  model: string;
-}
-
-const REMOTE_PROVIDERS: RemoteProvider[] = [
-  {
-    id: 'openai',
-    label: 'OpenAI',
-    baseUrl: 'https://api.openai.com/v1',
-    model: 'gpt-4o',
-  },
-  {
-    id: 'anthropic',
-    label: 'Anthropic',
-    baseUrl: 'https://api.anthropic.com',
-    model: 'claude-opus-4-8',
-  },
-  {
-    id: 'compatible',
-    label: 'OpenAI-compatible',
-    baseUrl: '',
-    model: '',
-  },
-];
-
-const LOCAL_ENDPOINTS = [
-  { id: 'ollama', label: 'Ollama', baseUrl: 'http://localhost:11434' },
-  {
-    id: 'llama-server',
-    label: 'llama-server',
-    baseUrl: 'http://localhost:8080',
-  },
-];
 
 const HEALTH_META: Record<ProviderHealth, { label: string; tone: BadgeTone }> =
   {
@@ -65,11 +37,160 @@ const HEALTH_META: Record<ProviderHealth, { label: string; tone: BadgeTone }> =
     unreachable: { label: 'Unreachable', tone: 'danger' },
   };
 
-const ALL_PROVIDERS = [
-  ...REMOTE_PROVIDERS.map((p) => p.label),
-  ...LOCAL_ENDPOINTS.map((p) => p.label),
-  'wllama',
-];
+const LOCAL_KINDS = new Set(['ollama', 'llama_server']);
+
+/**
+ * One provider's editable, persisted profile. Form state is controlled and
+ * seeded from the persisted row; Save writes back to IndexedDB and Test runs a
+ * real health check against the *current* (saved) values via the registry, so
+ * what you test is what you saved. Edits survive reload because they're durable.
+ */
+function ProviderCard({
+  profile,
+  variant,
+}: {
+  profile: ProviderProfileRow;
+  variant: 'remote' | 'local';
+}) {
+  const dispatch = useAppDispatch();
+  const { toast } = useToast();
+  const health = useAppSelector(
+    (state) => state.providers.health[profile.id] ?? 'unconfigured',
+  );
+  const meta = HEALTH_META[health];
+
+  const [baseUrl, setBaseUrl] = useState(profile.baseUrl ?? '');
+  const [model, setModel] = useState(profile.model ?? '');
+  const [apiKeyMode, setApiKeyMode] = useState(profile.apiKeyMode);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  function buildRow(): ProviderProfileRow {
+    return {
+      id: profile.id,
+      kind: profile.kind,
+      label: profile.label,
+      baseUrl,
+      model: variant === 'remote' ? model : (profile.model ?? ''),
+      apiKeyMode: variant === 'remote' ? apiKeyMode : profile.apiKeyMode,
+      // Preserve any existing secret reference (set later, in Phase 2.3).
+      ...(profile.encryptedSecretId
+        ? { encryptedSecretId: profile.encryptedSecretId }
+        : {}),
+    };
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await saveProviderProfile(db, buildRow());
+      toast({
+        tone: 'success',
+        title: 'Saved',
+        description: `${profile.label} settings saved.`,
+      });
+    } catch {
+      toast({
+        tone: 'danger',
+        title: 'Save failed',
+        description: `Could not save ${profile.label}.`,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleTest() {
+    setTesting(true);
+    try {
+      const resolved = resolveProvider(profile.id, appConfig, {
+        baseUrl,
+        ...(variant === 'remote' ? { model } : {}),
+      });
+      if (!resolved.ok) {
+        dispatch(
+          providerHealthSet({ providerId: profile.id, health: 'unreachable' }),
+        );
+        return;
+      }
+      const result = await resolved.provider.checkHealth();
+      dispatch(providerHealthSet({ providerId: profile.id, health: result }));
+      if (result === 'connected') {
+        dispatch(
+          activeProviderSet({
+            id: profile.id,
+            label: profile.label,
+            baseUrl,
+            ...(variant === 'remote' ? { model } : {}),
+          }),
+        );
+        await setActiveProviderId(db, profile.id);
+      }
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-text">{profile.label}</h3>
+        <Badge tone={meta.tone} dot>
+          {meta.label}
+        </Badge>
+      </div>
+      <Input
+        label={variant === 'remote' ? 'Base URL' : 'Endpoint URL'}
+        value={baseUrl}
+        onChange={(event) => setBaseUrl(event.target.value)}
+        placeholder="https://…"
+      />
+      {variant === 'remote' && (
+        <>
+          <Input
+            label="Model"
+            value={model}
+            onChange={(event) => setModel(event.target.value)}
+            placeholder="model id"
+          />
+          <Select
+            label="API key mode"
+            value={apiKeyMode}
+            onChange={(event) =>
+              setApiKeyMode(event.target.value as ProviderProfileRow['apiKeyMode'])
+            }
+          >
+            <option value="none">No key</option>
+            <option value="session">Session only</option>
+            <option value="encrypted">Encrypted</option>
+          </Select>
+        </>
+      )}
+      <div className="flex gap-2">
+        <Button
+          variant="primary"
+          size="sm"
+          loading={saving}
+          onClick={() => {
+            void handleSave();
+          }}
+        >
+          Save
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          loading={testing}
+          onClick={() => {
+            void handleTest();
+          }}
+        >
+          Test
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function ModelsScreen() {
   const dispatch = useAppDispatch();
@@ -83,32 +204,20 @@ export default function ModelsScreen() {
     [dispatch],
   );
 
-  const [testingIds, setTestingIds] = useState<readonly string[]>([]);
+  // Wait for the persisted profiles before rendering the editable cards so each
+  // card's controlled state seeds from the saved values (not a default template).
+  const persisted = useLiveQuery(() => listProviderProfiles(db));
+  const profiles = persisted ? mergeProviderProfiles(persisted) : undefined;
+  const remoteProfiles = profiles?.filter((p) => !LOCAL_KINDS.has(p.kind));
+  const localProfiles = profiles?.filter((p) => LOCAL_KINDS.has(p.kind));
+
+  const healthEntries = [
+    ...(profiles ?? []).map((p) => ({ id: p.id, label: p.label })),
+    { id: 'wllama', label: 'wllama' },
+  ];
 
   function statusOf(id: string): ProviderHealth {
     return health[id] ?? 'unconfigured';
-  }
-
-  /**
-   * Run a real reachability/health check against the provider. No API key is
-   * needed — an unauthenticated request still tells us if the endpoint is
-   * reachable (and a 401 means "reachable, needs auth"); local endpoints need
-   * no key at all.
-   */
-  async function testProvider(id: string, label: string) {
-    setTestingIds((prev) => [...prev, id]);
-    try {
-      const resolved = resolveProvider(id, appConfig);
-      if (!resolved.ok) {
-        dispatch(providerHealthSet({ providerId: id, health: 'unreachable' }));
-        return;
-      }
-      const result = await resolved.provider.checkHealth();
-      dispatch(providerHealthSet({ providerId: id, health: result }));
-      if (result === 'connected') dispatch(activeProviderSet({ id, label }));
-    } finally {
-      setTestingIds((prev) => prev.filter((value) => value !== id));
-    }
   }
 
   function runModelAction(action: Promise<void>, failure: string) {
@@ -132,91 +241,38 @@ export default function ModelsScreen() {
             <h2 className="mb-3 text-sm font-semibold text-text">
               Remote Providers
             </h2>
-            <div className="grid gap-4 md:grid-cols-3">
-              {REMOTE_PROVIDERS.map((provider) => {
-                const meta = HEALTH_META[statusOf(provider.id)];
-                return (
-                  <div
-                    key={provider.id}
-                    className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-text">
-                        {provider.label}
-                      </h3>
-                      <Badge tone={meta.tone} dot>
-                        {meta.label}
-                      </Badge>
-                    </div>
-                    <Input
-                      label="Base URL"
-                      defaultValue={provider.baseUrl}
-                      placeholder="https://…"
-                    />
-                    <Input
-                      label="Model"
-                      defaultValue={provider.model}
-                      placeholder="model id"
-                    />
-                    <Select label="API key mode" defaultValue="encrypted">
-                      <option value="none">No key</option>
-                      <option value="session">Session only</option>
-                      <option value="encrypted">Encrypted</option>
-                    </Select>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      loading={testingIds.includes(provider.id)}
-                      onClick={() => {
-                        void testProvider(provider.id, provider.label);
-                      }}
-                    >
-                      Test
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
+            {remoteProfiles ? (
+              <div className="grid gap-4 md:grid-cols-3">
+                {remoteProfiles.map((profile) => (
+                  <ProviderCard
+                    key={profile.id}
+                    profile={profile}
+                    variant="remote"
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted">Loading providers…</p>
+            )}
           </section>
 
           <section>
             <h2 className="mb-3 text-sm font-semibold text-text">
               Local Endpoints
             </h2>
-            <div className="grid gap-4 md:grid-cols-2">
-              {LOCAL_ENDPOINTS.map((endpoint) => {
-                const meta = HEALTH_META[statusOf(endpoint.id)];
-                return (
-                  <div
-                    key={endpoint.id}
-                    className="flex flex-col gap-3 rounded-card border border-border bg-surface p-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm font-semibold text-text">
-                        {endpoint.label}
-                      </h3>
-                      <Badge tone={meta.tone} dot>
-                        {meta.label}
-                      </Badge>
-                    </div>
-                    <Input
-                      label="Endpoint URL"
-                      defaultValue={endpoint.baseUrl}
-                    />
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      loading={testingIds.includes(endpoint.id)}
-                      onClick={() => {
-                        void testProvider(endpoint.id, endpoint.label);
-                      }}
-                    >
-                      Test
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
+            {localProfiles ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                {localProfiles.map((profile) => (
+                  <ProviderCard
+                    key={profile.id}
+                    profile={profile}
+                    variant="local"
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted">Loading endpoints…</p>
+            )}
           </section>
 
           <section>
@@ -329,12 +385,14 @@ export default function ModelsScreen() {
               Provider Health
             </h2>
             <ul className="flex flex-col gap-2 text-sm">
-              {ALL_PROVIDERS.map((label) => {
-                const id = label.toLowerCase().replace(/[^a-z]/g, '');
-                const meta = HEALTH_META[statusOf(id)];
+              {healthEntries.map((entry) => {
+                const meta = HEALTH_META[statusOf(entry.id)];
                 return (
-                  <li key={label} className="flex items-center justify-between">
-                    <span className="text-muted">{label}</span>
+                  <li
+                    key={entry.id}
+                    className="flex items-center justify-between"
+                  >
+                    <span className="text-muted">{entry.label}</span>
                     <Badge tone={meta.tone} dot>
                       {meta.label}
                     </Badge>

@@ -20,7 +20,14 @@ export default function AppLayout() {
   const providerLabel = useAppSelector(
     (state) => state.providers.activeProviderLabel,
   );
-  const modelLabel = useAppSelector((state) => state.models.activeModelLabel);
+  const localModelLabel = useAppSelector(
+    (state) => state.models.activeModelLabel,
+  );
+  const providerModel = useAppSelector(
+    (state) => state.providers.activeProviderModel,
+  );
+  // Prefer the active remote provider's model; fall back to a loaded local model.
+  const modelLabel = providerModel ?? localModelLabel;
   const storageUsedBytes = useAppSelector((state) => state.storage.usedBytes);
   const storageTotalBytes = useAppSelector((state) => state.storage.quotaBytes);
 

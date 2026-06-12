@@ -1,6 +1,8 @@
 import type { BrowserClawDB } from '../db/db.ts';
 import { DB_VERSION } from '../db/db.ts';
 import { APP_VERSION } from '../lib/appMeta.ts';
+import type { AppDispatch } from '../store/store.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 
 /**
  * `.clawbackup` export/import over Dexie. The backup contains durable user data
@@ -362,4 +364,75 @@ export async function recordBackupHistory(
     sizeBytes,
     manifestVersion: `v${backup.manifest.schemaVersion}`,
   });
+}
+
+const BACKUP_FILENAME = 'browserclaw-backup.clawbackup';
+
+export interface BackupExportDeps {
+  db: BrowserClawDB;
+  dispatch: AppDispatch;
+  /**
+   * Perform the actual file download. MUST throw if the browser can't produce
+   * the file — that throw is how we learn the export didn't really happen.
+   */
+  download: (filename: string, json: string) => void;
+  includeSecrets?: boolean;
+  now?: () => number;
+}
+
+export interface BackupExportResult {
+  ok: boolean;
+  sizeBytes?: number;
+  error?: string;
+}
+
+/**
+ * Export a backup honestly: build + serialize, attempt the download, and only
+ * record history + a success audit AFTER the download actually succeeds. If the
+ * download throws (e.g. no `createObjectURL`), audit a failure and record
+ * NOTHING — the user must never see a "saved" backup that was never written.
+ * (Hardening TODO 6.3.)
+ */
+export async function runBackupExport(
+  deps: BackupExportDeps,
+): Promise<BackupExportResult> {
+  const now = deps.now ?? Date.now;
+  const backup = await exportBackup(deps.db, {
+    ...(deps.includeSecrets !== undefined
+      ? { includeSecrets: deps.includeSecrets }
+      : {}),
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const json = serializeBackup(backup);
+  const sizeBytes = new Blob([json]).size;
+  const plaintext = !backup.manifest.includesSecrets;
+
+  try {
+    deps.download(BACKUP_FILENAME, json);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    void recordAudit(deps.db, deps.dispatch, {
+      type: 'backup.export_failed',
+      summary: `Backup export failed: ${message}`,
+      source: 'backup',
+      risk: 'low',
+      status: 'failure',
+      at: now(),
+    });
+    return { ok: false, error: message };
+  }
+
+  // Download succeeded — now (and only now) it's a real backup.
+  await recordBackupHistory(deps.db, backup, sizeBytes);
+  void recordAudit(deps.db, deps.dispatch, {
+    type: 'backup.exported',
+    summary: `Backup exported (${sizeBytes} bytes, ${
+      plaintext ? 'plaintext' : 'includes encrypted secrets'
+    })`,
+    source: 'backup',
+    risk: plaintext ? 'low' : 'medium',
+    status: 'success',
+    at: now(),
+  });
+  return { ok: true, sizeBytes };
 }

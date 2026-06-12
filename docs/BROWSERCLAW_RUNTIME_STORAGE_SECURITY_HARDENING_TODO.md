@@ -296,17 +296,18 @@
 
 ### 6.3 Backup Export Accuracy
 
-- [ ] Record backup history only after export actually succeeds.
-- [ ] If browser download/createObjectURL fails:
-  - [ ] show error;
-  - [ ] audit failure;
-  - [ ] do not record success.
-- [ ] Label plaintext exports clearly.
-- [ ] Add optional encrypted backup export if claiming encryption.
-- [ ] Tests:
-  - [ ] export success records history;
-  - [ ] export failure does not record success;
-  - [ ] encrypted export can be imported if implemented.
+- [x] Record backup history only after export actually succeeds. <!-- runBackupExport records history + success audit ONLY after deps.download() returns; StorageScreen throws if createObjectURL is missing. -->
+- [x] If browser download/createObjectURL fails:
+  - [x] show error;
+  - [x] audit failure;
+  - [x] do not record success.
+- [x] Label plaintext exports clearly. <!-- warning line on StorageScreen + audit summary says "plaintext" vs "includes encrypted secrets". -->
+- [ ] Add optional encrypted backup export if claiming encryption. <!-- DEFERRED: current export is labeled plaintext (not claiming encryption); a fully-encrypted .clawbackup needs a passphrase-KDF flow — separate task. -->
+- [x] Tests:
+  - [x] export success records history;
+  - [x] export failure does not record success;
+  - [ ] encrypted export can be imported if implemented. <!-- deferred with encrypted export above -->
+
 
 ## Phase 7 — Skills and Skill Filesystem Hardening
 

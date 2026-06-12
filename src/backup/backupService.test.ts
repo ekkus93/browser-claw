@@ -1,5 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterAll, describe, expect, it } from 'vitest';
+import { configureStore } from '@reduxjs/toolkit';
+import auditReducer from '../store/slices/auditSlice.ts';
 import { BrowserClawDB } from '../db/db.ts';
 import {
   exportBackup,
@@ -8,7 +10,9 @@ import {
   validateBackup,
   importBackup,
   recordBackupHistory,
+  runBackupExport,
 } from './backupService.ts';
+import type { AppDispatch } from '../store/store.ts';
 
 const db = new BrowserClawDB();
 
@@ -102,6 +106,53 @@ describe('backupService', () => {
     await recordBackupHistory(db, backup, 2048);
     const history = await db.backup_history.toArray();
     expect(history.at(-1)?.sizeBytes).toBe(2048);
+  });
+});
+
+describe('runBackupExport', () => {
+  it('records history + a success audit only after the download succeeds', async () => {
+    await db.open();
+    await db.backup_history.clear();
+    const store = configureStore({ reducer: { audit: auditReducer } });
+    const downloaded: string[] = [];
+
+    const result = await runBackupExport({
+      db,
+      dispatch: store.dispatch as unknown as AppDispatch,
+      download: (filename) => {
+        downloaded.push(filename);
+      },
+      now: () => 100,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(downloaded).toEqual(['browserclaw-backup.clawbackup']);
+    expect(await db.backup_history.count()).toBe(1);
+    expect(store.getState().audit.recent.map((e) => e.type)).toContain(
+      'backup.exported',
+    );
+  });
+
+  it('does NOT record history or success when the download fails', async () => {
+    await db.open();
+    await db.backup_history.clear();
+    const store = configureStore({ reducer: { audit: auditReducer } });
+
+    const result = await runBackupExport({
+      db,
+      dispatch: store.dispatch as unknown as AppDispatch,
+      download: () => {
+        throw new Error('Downloads are not supported in this browser.');
+      },
+      now: () => 100,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toMatch(/not supported/i);
+    expect(await db.backup_history.count()).toBe(0);
+    const types = store.getState().audit.recent.map((e) => e.type);
+    expect(types).toContain('backup.export_failed');
+    expect(types).not.toContain('backup.exported');
   });
 });
 

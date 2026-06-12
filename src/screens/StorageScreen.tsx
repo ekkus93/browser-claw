@@ -9,12 +9,10 @@ import {
   assessStorageHealth,
 } from '../services/storageService.ts';
 import {
-  exportBackup,
-  serializeBackup,
   parseBackup,
   validateBackup,
   importBackup,
-  recordBackupHistory,
+  runBackupExport,
   type ValidationResult,
 } from '../backup/backupService.ts';
 import { Button } from '../components/ui/Button.tsx';
@@ -95,20 +93,34 @@ export default function StorageScreen() {
       : 0;
 
   async function handleExport() {
-    const backup = await exportBackup(db);
-    const json = serializeBackup(backup);
-    await recordBackupHistory(db, backup, new Blob([json]).size);
-    if (typeof URL.createObjectURL === 'function') {
-      const url = URL.createObjectURL(
-        new Blob([json], { type: 'application/json' }),
-      );
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = 'browserclaw-backup.clawbackup';
-      anchor.click();
-      URL.revokeObjectURL(url);
+    const result = await runBackupExport({
+      db,
+      dispatch,
+      download: (filename, json) => {
+        // Throw (don't silently skip) so runBackupExport records a failure and
+        // never logs a "saved" backup the user never actually downloaded.
+        if (typeof URL.createObjectURL !== 'function') {
+          throw new Error('Downloads are not supported in this browser.');
+        }
+        const url = URL.createObjectURL(
+          new Blob([json], { type: 'application/json' }),
+        );
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = filename;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      },
+    });
+    if (result.ok) {
+      toast({ tone: 'success', title: 'Backup exported' });
+    } else {
+      toast({
+        tone: 'danger',
+        title: 'Export failed',
+        description: result.error ?? 'The backup could not be downloaded.',
+      });
     }
-    toast({ tone: 'success', title: 'Backup exported' });
   }
 
   async function handleFile(file: File) {
@@ -223,6 +235,11 @@ export default function StorageScreen() {
                 }}
               />
             </div>
+
+            <p className="mt-2 text-xs text-warning">
+              Exported backups are unencrypted plaintext JSON (any included
+              secrets stay encrypted). Store the file somewhere safe.
+            </p>
 
             <h3 className="mb-2 mt-4 text-sm font-medium text-text">
               What&apos;s included in backups

@@ -16,7 +16,10 @@ export default defineConfig({
     baseURL: BASE_URL,
     screenshot: 'only-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+  ],
   webServer: {
     command: `pnpm dev --port ${PORT}`,
     url: BASE_URL,

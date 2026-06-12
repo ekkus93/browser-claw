@@ -13,7 +13,7 @@ const ROUTES = [
 ];
 
 for (const route of ROUTES) {
-  test(`renders ${route.name}`, async ({ page }) => {
+  test(`renders ${route.name}`, async ({ page }, testInfo) => {
     await page.goto(route.path, { waitUntil: 'domcontentloaded' });
     // Wait for the React app to mount something into #root.
     await expect(page.locator('#root *').first()).toBeVisible({
@@ -22,7 +22,7 @@ for (const route of ROUTES) {
     // Let fonts/layout settle before capturing.
     await page.waitForTimeout(400);
     await page.screenshot({
-      path: `e2e/screenshots/${route.name}.png`,
+      path: `e2e/screenshots/${testInfo.project.name}/${route.name}.png`,
       fullPage: true,
     });
   });

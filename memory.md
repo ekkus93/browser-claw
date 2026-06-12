@@ -204,3 +204,19 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Test `OnboardingScreen.test.tsx`: full 4-step walk → finishes into /chat + onboardingComplete=true; Back disabled on step 1. Now **29 files / 104 tests**.
 - Gate green: typecheck, lint, format, 104/104, build (456 kB).
 - NEXT (iteration 19): `/chat` screen (02_chat_workbench.svg) — primary surface: message thread, composer (attach + slash hint), inline approval cards (approve/edit/reject + risk + exact data, from approvals slice), tool-call status, runtime footer. Inspector already shown on /chat via AppLayout. Wire composer submit → dispatch(userMessageSubmitted) (runtime listener already handles it). Replace the /chat PlaceholderScreen.
+
+## 2026-06-12T03:29:01Z - Claude Opus 4.8 - Playwright visual verification set up + UI VERIFIED IN REAL BROWSER
+- User asked to set up Playwright + drive a real browser. DONE and working.
+- Added `@playwright/test` (1.60) + installed Chromium binary (`pnpm exec playwright install chromium`) — Chromium launches headless fine, NO missing system libs in this env.
+- `playwright.config.ts`: testDir e2e/, chromium project, webServer runs `pnpm dev --port 4321` (reuseExistingServer), baseURL localhost:4321. `e2e/visual.spec.ts`: loads /onboarding,/chat,/models,/storage,/showcase → full-page screenshots to e2e/screenshots/<name>.png. Script `pnpm test:e2e` = `playwright test`.
+- IMPORTANT runner separation: Vitest `include: ['src/**/*.test.{ts,tsx}']` (vite.config.ts) so it does NOT pick up Playwright's e2e/*.spec.ts. Vitest=src/*.test, Playwright=e2e/*.spec. gitignored: test-results, playwright-report, /playwright/.cache, e2e/screenshots.
+- **VISUAL VERIFICATION RESULT (read the PNGs): UI looks great + on-spec.** showcase/component gallery: AppShell + sidebar + topbar all render; the honest empty states WORK ("No model selected", "Storage not measured"); runtime footer shows "starting…" (correct — runtime initial status 'initializing'); v0.7.0; claw BrandMark renders; all 12 components correct (button variants incl loading spinner, 6 badge tones w/ dots, input error state, select, toggle on, card). onboarding: matches mockup — 3 mode cards (wllama selected w/ primary ring + Recommended badge), feature checks, privacy note, Back(disabled)/Continue, right-panel StepRail (step 1 active). Inter font + tokens + spacing all polished.
+- HOW TO VERIFY A SCREEN GOING FORWARD: add its route to e2e/visual.spec.ts ROUTES, run `pnpm exec playwright test`, then Read e2e/screenshots/<name>.png. (chat/models/storage currently still placeholders in the screenshots since those screens aren't built yet — chat shows the placeholder via AppShell.)
+- Gate green: typecheck, lint (e2e + playwright.config lint clean), format, 104/104, build. Visual-verification debt CLEARED for what's built so far.
+- NEXT: resume Phase 6 iteration 19 = /chat workbench (now I can screenshot-verify it). Then models/storage/skills/memories/audit/settings/workflow.
+
+## 2026-06-12T05:58:48Z - Claude Opus 4.8 - Added Firefox to Playwright (both browsers verified)
+- User OK'd testing with both Chromium AND Firefox. Installed Firefox binary (`pnpm exec playwright install firefox`, v150) + added a `firefox` project to playwright.config.ts (alongside chromium).
+- e2e/visual.spec.ts now writes per-browser: `e2e/screenshots/<project>/<name>.png` (uses testInfo.project.name) so chromium/firefox captures don't overwrite.
+- `pnpm test:e2e` runs 10 tests (5 routes × 2 browsers) — all pass. Read firefox/onboarding.png: renders IDENTICALLY to chromium (clean cross-browser parity).
+- Note: prior commit eca9d88 accidentally missed this memory file's Playwright entry (cat append happened after git add); folding it in now.

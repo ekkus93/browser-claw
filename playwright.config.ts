@@ -28,5 +28,9 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: true,
     timeout: 60_000,
+    // E2E exercises the chat path, which now fails closed without a configured
+    // provider. Enable the mock provider (it auto-selects behind the safety
+    // banner) so the end-to-end chat spec has a provider to talk to.
+    env: { VITE_ALLOW_MOCK_PROVIDER: 'true' },
   },
 });

@@ -7,6 +7,7 @@ import {
 } from '../store/slices/providersSlice.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
 import { resolveProvider } from '../providers/registry.ts';
+import { appConfig } from '../config/appConfig.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Badge, type BadgeTone } from '../components/ui/Badge.tsx';
 import { Input } from '../components/ui/Input.tsx';
@@ -97,7 +98,12 @@ export default function ModelsScreen() {
   async function testProvider(id: string, label: string) {
     setTestingIds((prev) => [...prev, id]);
     try {
-      const result = await resolveProvider(id).checkHealth();
+      const resolved = resolveProvider(id, appConfig);
+      if (!resolved.ok) {
+        dispatch(providerHealthSet({ providerId: id, health: 'unreachable' }));
+        return;
+      }
+      const result = await resolved.provider.checkHealth();
       dispatch(providerHealthSet({ providerId: id, health: result }));
       if (result === 'connected') dispatch(activeProviderSet({ id, label }));
     } finally {

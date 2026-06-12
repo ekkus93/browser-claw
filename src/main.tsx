@@ -15,7 +15,11 @@ import type { EffectContext } from './runtime/effectExecutor.ts';
 import { createReferenceRuntime } from './runtime/referenceRuntime.ts';
 import { createWasmRuntime } from './runtime/wasmRuntime.ts';
 import { loadRuntimePort } from './runtime/runtimeBoot.ts';
-import { resolveProvider } from './providers/registry.ts';
+import {
+  resolveProvider,
+  defaultActiveProviderId,
+} from './providers/registry.ts';
+import { activeProviderSet } from './store/slices/providersSlice.ts';
 import { appConfig } from './config/appConfig.ts';
 import {
   runtimeLoaded,
@@ -79,8 +83,18 @@ async function bootRuntime(): Promise<void> {
     llmRequest: createLlmRequestHandler({
       db,
       dispatch: store.dispatch,
-      getProvider: () =>
-        resolveProvider(store.getState().providers.activeProviderId),
+      getProvider: () => {
+        const resolved = resolveProvider(
+          store.getState().providers.activeProviderId,
+          appConfig,
+        );
+        // The chat UI blocks sending unless a provider is configured, so this
+        // is a defensive guard, not the user-facing path.
+        if (!resolved.ok) {
+          throw new Error(`No provider configured (${resolved.reason}).`);
+        }
+        return resolved.provider;
+      },
       submit: (command) => host.submit(command),
     }),
   };
@@ -90,6 +104,19 @@ async function bootRuntime(): Promise<void> {
 bootRuntime().catch((error: unknown) => {
   console.error('Runtime boot failed', error);
 });
+
+// Pre-select a default provider. Fails closed: in a normal build none is
+// selected (chat shows a setup CTA); only when the mock is explicitly allowed
+// (demo/dev) is it pre-selected so the console works behind the safety banner.
+const defaultProviderId = defaultActiveProviderId(appConfig);
+if (
+  defaultProviderId !== null &&
+  store.getState().providers.activeProviderId === null
+) {
+  store.dispatch(
+    activeProviderSet({ id: defaultProviderId, label: 'Mock (dev)' }),
+  );
+}
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

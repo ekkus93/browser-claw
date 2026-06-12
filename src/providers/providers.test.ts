@@ -3,7 +3,11 @@ import { createMockProvider } from './mockProvider.ts';
 import { createOpenAICompatibleProvider } from './openAiCompatible.ts';
 import { createOpenAIProvider } from './presets.ts';
 import { createAnthropicProvider } from './anthropic.ts';
-import { resolveProvider } from './registry.ts';
+import {
+  resolveProvider,
+  isProviderConfigured,
+  defaultActiveProviderId,
+} from './registry.ts';
 import { ProviderError, httpStatusToKind, kindToHealth } from './errors.ts';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -105,13 +109,54 @@ describe('Anthropic provider', () => {
   });
 });
 
-describe('registry', () => {
-  it('defaults to mock and resolves presets by id', () => {
-    expect(resolveProvider(null).id).toBe('mock');
-    expect(resolveProvider('unknown').id).toBe('mock');
-    expect(resolveProvider('anthropic').id).toBe('anthropic');
-    expect(resolveProvider('openai').id).toBe('openai');
-    expect(resolveProvider('ollama').id).toBe('ollama');
+describe('registry — fails closed', () => {
+  const mockOff = { isMockProviderAllowed: false };
+  const mockOn = { isMockProviderAllowed: true };
+
+  it('resolves real presets by id', () => {
+    const anthropic = resolveProvider('anthropic', mockOff);
+    expect(anthropic.ok && anthropic.provider.id).toBe('anthropic');
+    const openai = resolveProvider('openai', mockOff);
+    expect(openai.ok && openai.provider.id).toBe('openai');
+    const ollama = resolveProvider('ollama', mockOff);
+    expect(ollama.ok && ollama.provider.id).toBe('ollama');
+  });
+
+  it('does NOT fall back to mock for null or unknown ids', () => {
+    expect(resolveProvider(null, mockOff)).toEqual({
+      ok: false,
+      reason: 'not_configured',
+    });
+    expect(resolveProvider('unknown', mockOff)).toEqual({
+      ok: false,
+      reason: 'unknown_provider',
+    });
+  });
+
+  it('resolves the mock only when explicitly allowed', () => {
+    expect(resolveProvider('mock', mockOff)).toEqual({
+      ok: false,
+      reason: 'not_configured',
+    });
+    const allowed = resolveProvider('mock', mockOn);
+    expect(allowed.ok && allowed.provider.id).toBe('mock');
+  });
+});
+
+describe('provider configuration helpers', () => {
+  it('isProviderConfigured gates the mock behind the flag', () => {
+    expect(isProviderConfigured(null, false)).toBe(false);
+    expect(isProviderConfigured('unknown', true)).toBe(false);
+    expect(isProviderConfigured('openai', false)).toBe(true);
+    expect(isProviderConfigured('mock', false)).toBe(false);
+    expect(isProviderConfigured('mock', true)).toBe(true);
+  });
+
+  it('defaultActiveProviderId fails closed unless the mock is allowed', () => {
+    expect(defaultActiveProviderId({ isMockProviderAllowed: false })).toBeNull();
+    expect(defaultActiveProviderId({ isMockProviderAllowed: true })).toBe(
+      'mock',
+    );
   });
 });
 

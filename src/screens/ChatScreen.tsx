@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, PlugZap } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { db } from '../db/db.ts';
 import type { MessageRow } from '../db/types.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
@@ -7,6 +8,8 @@ import {
   composerDraftSet,
   userMessageSubmitted,
 } from '../store/slices/chatSlice.ts';
+import { isProviderConfigured } from '../providers/registry.ts';
+import { appConfig } from '../config/appConfig.ts';
 import {
   approvalResolved,
   approvalDismissed,
@@ -25,6 +28,13 @@ export default function ChatScreen() {
   );
   const approvalQueue = useAppSelector((state) => state.approvals.queue);
   const pendingApprovals = approvalQueue.filter((a) => a.status === 'pending');
+  const activeProviderId = useAppSelector(
+    (state) => state.providers.activeProviderId,
+  );
+  const providerReady = isProviderConfigured(
+    activeProviderId,
+    appConfig.isMockProviderAllowed,
+  );
 
   const messages =
     useLiveQuery(
@@ -39,6 +49,7 @@ export default function ChatScreen() {
     ) ?? [];
 
   async function handleSend() {
+    if (!providerReady) return;
     const text = draft.trim();
     if (!text) return;
     const now = Date.now();
@@ -78,7 +89,22 @@ export default function ChatScreen() {
 
       <div className="flex-1 overflow-y-auto px-6 py-5">
         <div className="mx-auto flex max-w-3xl flex-col gap-4">
-          {isEmpty ? (
+          {!providerReady ? (
+            <EmptyState
+              icon={<PlugZap className="size-5" />}
+              title="No provider configured"
+              description="Connect an AI provider before you can chat. Add and test a provider in the Models screen."
+              action={
+                <Link
+                  to="/models"
+                  data-testid="chat-setup-cta"
+                  className="inline-flex h-9 items-center justify-center rounded-button bg-primary px-4 text-sm font-medium text-surface transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
+                  Set up a provider
+                </Link>
+              }
+            />
+          ) : isEmpty ? (
             <EmptyState
               icon={<MessageSquare className="size-5" />}
               title="Start a conversation"
@@ -118,6 +144,7 @@ export default function ChatScreen() {
             onSend={() => {
               void handleSend();
             }}
+            disabled={!providerReady}
           />
         </div>
       </div>

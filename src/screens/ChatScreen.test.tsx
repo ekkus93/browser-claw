@@ -2,34 +2,57 @@ import 'fake-indexeddb/auto';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
+import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 import chatReducer from '../store/slices/chatSlice.ts';
 import approvalsReducer, {
   approvalRequested,
 } from '../store/slices/approvalsSlice.ts';
+import providersReducer, {
+  activeProviderSet,
+} from '../store/slices/providersSlice.ts';
 import ChatScreen from './ChatScreen.tsx';
 
 // The db singleton stays open for the file; useLiveQuery subscriptions are torn
 // down by Testing Library's afterEach cleanup. (Closing it here would race the
 // live query and throw DatabaseClosedError.)
 
-function renderChat() {
+function renderChat({ providerId }: { providerId?: string } = {}) {
   const store = configureStore({
-    reducer: { chat: chatReducer, approvals: approvalsReducer },
+    reducer: {
+      chat: chatReducer,
+      approvals: approvalsReducer,
+      providers: providersReducer,
+    },
   });
+  if (providerId) {
+    store.dispatch(activeProviderSet({ id: providerId, label: providerId }));
+  }
   render(
     <Provider store={store}>
-      <ChatScreen />
+      <MemoryRouter>
+        <ChatScreen />
+      </MemoryRouter>
     </Provider>,
   );
   return store;
 }
 
 describe('ChatScreen', () => {
+  it('blocks chat with a setup CTA when no provider is configured', () => {
+    renderChat();
+    expect(screen.getByText('No provider configured')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-setup-cta')).toHaveAttribute(
+      'href',
+      '/models',
+    );
+    expect(screen.getByRole('button', { name: /send/i })).toBeDisabled();
+  });
+
   it('shows the empty state, then the message after sending', async () => {
     const user = userEvent.setup();
-    renderChat();
+    renderChat({ providerId: 'openai' });
     expect(screen.getByText('Start a conversation')).toBeInTheDocument();
 
     await user.type(
@@ -45,7 +68,7 @@ describe('ChatScreen', () => {
 
   it('renders a pending approval and resolves it off the queue', async () => {
     const user = userEvent.setup();
-    const store = renderChat();
+    const store = renderChat({ providerId: 'openai' });
     store.dispatch(
       approvalRequested({
         id: 'a1',

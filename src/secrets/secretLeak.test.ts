@@ -51,7 +51,9 @@ describe('SecretVault — no plaintext leaks to Redux or audit', () => {
     expect(serializedState).not.toContain(RAW_KEY);
 
     // Redux holds metadata only — the secret exists, with no value field.
-    const meta = store.getState().secrets.secrets.find((s) => s.id === providerSecretId('openai'));
+    const meta = store
+      .getState()
+      .secrets.secrets.find((s) => s.id === providerSecretId('openai'));
     expect(meta?.label).toBe('OpenAI');
     expect(meta).not.toHaveProperty('value');
 

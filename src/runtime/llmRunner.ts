@@ -73,7 +73,9 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
 
     let text: string;
     try {
-      const result = await deps.getProvider().complete({ messages }, callOptions);
+      const result = await deps
+        .getProvider()
+        .complete({ messages }, callOptions);
       text = result.text;
     } catch (error) {
       // Provider failures are NOT written as a fake assistant reply. Surface an

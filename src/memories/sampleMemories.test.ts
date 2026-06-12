@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  SAMPLE_MEMORIES,
-  isUnmodifiedSampleMemory,
-} from './sampleMemories.ts';
+import { SAMPLE_MEMORIES, isUnmodifiedSampleMemory } from './sampleMemories.ts';
 
 describe('sample memories', () => {
   it('are all tagged demo', () => {
@@ -27,9 +24,9 @@ describe('isUnmodifiedSampleMemory', () => {
   });
 
   it('does not match a seed the user edited', () => {
-    expect(
-      isUnmodifiedSampleMemory({ ...sample, title: 'My own note' }),
-    ).toBe(false);
+    expect(isUnmodifiedSampleMemory({ ...sample, title: 'My own note' })).toBe(
+      false,
+    );
     expect(
       isUnmodifiedSampleMemory({ ...sample, source: 'Conversation: Other' }),
     ).toBe(false);

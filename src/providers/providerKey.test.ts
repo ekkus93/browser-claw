@@ -31,7 +31,10 @@ function source(opts: {
 describe('resolveApiKey', () => {
   it('needs no key for key-less providers or no profile', async () => {
     expect(
-      await resolveApiKey(source({ unlocked: false }), profile({ apiKeyMode: 'none' })),
+      await resolveApiKey(
+        source({ unlocked: false }),
+        profile({ apiKeyMode: 'none' }),
+      ),
     ).toEqual({ ok: true });
     expect(await resolveApiKey(source({ unlocked: false }), null)).toEqual({
       ok: true,

@@ -43,11 +43,11 @@ the open questions.
 All overrides are off by default — a normal build is fully fail-closed. They are
 opt-in via build-time Vite flags, parsed once in `src/config/appConfig.ts`:
 
-| Flag | Effect |
-| --- | --- |
-| `VITE_DEMO_MODE=true` | Enables seeded demo data; implies both overrides below. |
-| `VITE_ALLOW_REFERENCE_RUNTIME_FALLBACK=true` | Permits the TS reference runtime when WASM can't load. |
-| `VITE_ALLOW_MOCK_PROVIDER=true` | Permits the mock provider when no real provider is configured. |
+| Flag                                         | Effect                                                         |
+| -------------------------------------------- | -------------------------------------------------------------- |
+| `VITE_DEMO_MODE=true`                        | Enables seeded demo data; implies both overrides below.        |
+| `VITE_ALLOW_REFERENCE_RUNTIME_FALLBACK=true` | Permits the TS reference runtime when WASM can't load.         |
+| `VITE_ALLOW_MOCK_PROVIDER=true`              | Permits the mock provider when no real provider is configured. |
 
 Only the exact value `true` (string or boolean) turns a flag on; anything else
 is off. Whenever any override is active, `SafetyOverrideBanner` shows a

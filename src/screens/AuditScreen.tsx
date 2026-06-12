@@ -48,10 +48,8 @@ export default function AuditScreen() {
   const [riskFilter, setRiskFilter] = useState<'all' | AuditRiskLevel>('all');
 
   const recent =
-    useLiveQuery(
-      () => db.audit_events.orderBy('at').reverse().toArray(),
-      [],
-    ) ?? [];
+    useLiveQuery(() => db.audit_events.orderBy('at').reverse().toArray(), []) ??
+    [];
 
   const events =
     riskFilter === 'all'

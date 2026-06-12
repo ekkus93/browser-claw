@@ -142,8 +142,10 @@ export async function queryAuditEvents(
   query: AuditQuery = {},
 ): Promise<AuditEventRow[]> {
   let rows = await db.audit_events.orderBy('at').reverse().toArray();
-  if (query.type !== undefined) rows = rows.filter((r) => r.type === query.type);
-  if (query.risk !== undefined) rows = rows.filter((r) => r.risk === query.risk);
+  if (query.type !== undefined)
+    rows = rows.filter((r) => r.type === query.type);
+  if (query.risk !== undefined)
+    rows = rows.filter((r) => r.risk === query.risk);
   if (query.source !== undefined)
     rows = rows.filter((r) => r.source === query.source);
   if (query.status !== undefined)

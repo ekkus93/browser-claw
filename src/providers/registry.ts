@@ -84,7 +84,10 @@ export function resolveProvider(
 ): ResolvedProvider {
   switch (activeProviderId) {
     case 'openai':
-      return { ok: true, provider: createOpenAIProvider(presetOptions(overrides)) };
+      return {
+        ok: true,
+        provider: createOpenAIProvider(presetOptions(overrides)),
+      };
     case 'anthropic':
       return {
         ok: true,

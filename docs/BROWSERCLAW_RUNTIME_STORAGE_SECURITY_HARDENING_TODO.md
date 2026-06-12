@@ -236,23 +236,26 @@
 
 ### 5.3 Complete Memory Filters and Provenance
 
-- [ ] Implement tag filter.
-- [ ] Implement source filter.
-- [ ] Implement created-by filter.
-- [ ] Implement sensitivity filter.
-- [ ] Implement pinned filter if UI exposes it.
+<!-- Filters are now pure + wired: src/memories/filterMemories.ts (filterMemories
+     + deriveMemoryFacets), state in memoriesSlice, applied in MemoriesScreen.
+     The old Sensitivity <Select> was a decorative no-op (no onChange) — now real. -->
+- [x] Implement tag filter.
+- [x] Implement source filter.
+- [x] Implement created-by filter.
+- [x] Implement sensitivity filter.
+- [x] Implement pinned filter if UI exposes it. <!-- "Pinned only" checkbox -->
 - [ ] Persist provenance:
-  - [ ] source conversation ID;
+  - [ ] source conversation ID; <!-- BLOCKED: no memory-write pipeline exists yet (no runtime/effect path creates memories), so there is no writer to populate conversation/message/skill provenance. MemoryRow already persists source/createdBy/createdAt/lastUsedAt via Dexie; the conversation/message/skill-source fields need a memory-creation effect first (same class of gap as 5.1 storage handlers / 7.4 tool-execution — needs a claw-schema/WASM contract addition). Adding unwritten fields now would be speculative. -->
   - [ ] source message ID;
-  - [ ] created by;
+  - [x] created by; <!-- already persisted on MemoryRow -->
   - [ ] skill/tool source;
-  - [ ] created at;
-  - [ ] last used at.
-- [ ] Implement retrieval history based on real retrieval events.
+  - [x] created at; <!-- already persisted on MemoryRow -->
+  - [x] last used at. <!-- field persists; not yet *written* by a real retrieval (see below) -->
+- [ ] Implement retrieval history based on real retrieval events. <!-- BLOCKED: no memory-retrieval pipeline exists. lastUsedAt is never written by any real code path (grep confirms only demo seeds set it), so the "Recently used"/"Retrieval history" panels are correctly EMPTY in a normal build (honest-when-empty) and only show demo seed data in demo mode. Wiring real retrieval needs the runtime memory-read effect first. -->
 - [ ] Tests:
-  - [ ] each filter works;
-  - [ ] provenance persists after reload;
-  - [ ] retrieval history records real retrieval.
+  - [x] each filter works; <!-- filterMemories.test.ts (unit, per-filter + AND) + MemoriesScreen.test.tsx (wired created-by filter + clear) -->
+  - [ ] provenance persists after reload; <!-- blocked with provenance writer above -->
+  - [ ] retrieval history records real retrieval. <!-- blocked with retrieval pipeline above -->
 
 ## Phase 6 — Backup / Restore Hardening
 

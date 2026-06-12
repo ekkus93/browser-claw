@@ -6,8 +6,19 @@ import type { MemoryRow } from '../db/types.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
 import {
   searchQuerySet,
+  sensitivityFilterSet,
+  sourceFilterSet,
+  createdByFilterSet,
+  tagFilterSet,
+  pinnedOnlySet,
+  filtersCleared,
   selectedMemorySet,
 } from '../store/slices/memoriesSlice.ts';
+import {
+  filterMemories,
+  deriveMemoryFacets,
+  type SensitivityFilter,
+} from '../memories/filterMemories.ts';
 import { Input } from '../components/ui/Input.tsx';
 import { Select } from '../components/ui/Select.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
@@ -20,6 +31,15 @@ import { SAMPLE_MEMORIES } from '../memories/sampleMemories.ts';
 export default function MemoriesScreen() {
   const dispatch = useAppDispatch();
   const searchQuery = useAppSelector((state) => state.memories.searchQuery);
+  const sensitivityFilter = useAppSelector(
+    (state) => state.memories.sensitivityFilter,
+  );
+  const sourceFilter = useAppSelector((state) => state.memories.sourceFilter);
+  const createdByFilter = useAppSelector(
+    (state) => state.memories.createdByFilter,
+  );
+  const tagFilter = useAppSelector((state) => state.memories.tagFilter);
+  const pinnedOnly = useAppSelector((state) => state.memories.pinnedOnly);
   const selectedMemoryId = useAppSelector(
     (state) => state.memories.selectedMemoryId,
   );
@@ -40,15 +60,22 @@ export default function MemoriesScreen() {
   const memories =
     useLiveQuery(() => db.memories.orderBy('createdAt').toArray(), []) ?? [];
 
-  const query = searchQuery.trim().toLowerCase();
-  const filtered = query
-    ? memories.filter(
-        (memory) =>
-          memory.title.toLowerCase().includes(query) ||
-          memory.text.toLowerCase().includes(query) ||
-          memory.tags.some((tag) => tag.includes(query)),
-      )
-    : memories;
+  const facets = deriveMemoryFacets(memories);
+  const filtered = filterMemories(memories, {
+    query: searchQuery,
+    sensitivity: sensitivityFilter,
+    source: sourceFilter,
+    createdBy: createdByFilter,
+    tag: tagFilter,
+    pinnedOnly,
+  });
+  const filtersActive =
+    searchQuery.trim() !== '' ||
+    sensitivityFilter !== 'all' ||
+    sourceFilter !== 'all' ||
+    createdByFilter !== 'all' ||
+    tagFilter !== 'all' ||
+    pinnedOnly;
 
   const selected =
     filtered.find((memory) => memory.id === selectedMemoryId) ?? filtered[0];
@@ -80,22 +107,96 @@ export default function MemoriesScreen() {
             </p>
           </header>
 
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-56 flex-1">
-              <Input
-                label="Search"
-                placeholder="Search memories…"
-                value={searchQuery}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-56 flex-1">
+                <Input
+                  label="Search"
+                  placeholder="Search memories…"
+                  value={searchQuery}
+                  onChange={(event) =>
+                    dispatch(searchQuerySet(event.target.value))
+                  }
+                />
+              </div>
+              <Select
+                label="Sensitivity"
+                value={sensitivityFilter}
                 onChange={(event) =>
-                  dispatch(searchQuerySet(event.target.value))
+                  dispatch(
+                    sensitivityFilterSet(
+                      event.target.value as SensitivityFilter,
+                    ),
+                  )
                 }
-              />
+              >
+                <option value="all">All</option>
+                <option value="normal">Normal</option>
+                <option value="sensitive">Sensitive</option>
+              </Select>
             </div>
-            <Select label="Sensitivity" defaultValue="all">
-              <option value="all">All</option>
-              <option value="normal">Normal</option>
-              <option value="sensitive">Sensitive</option>
-            </Select>
+            <div className="flex flex-wrap items-end gap-3">
+              <Select
+                label="Source"
+                value={sourceFilter}
+                onChange={(event) =>
+                  dispatch(sourceFilterSet(event.target.value))
+                }
+              >
+                <option value="all">All sources</option>
+                {facets.sources.map((source) => (
+                  <option key={source} value={source}>
+                    {source}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label="Created by"
+                value={createdByFilter}
+                onChange={(event) =>
+                  dispatch(createdByFilterSet(event.target.value))
+                }
+              >
+                <option value="all">Anyone</option>
+                {facets.creators.map((creator) => (
+                  <option key={creator} value={creator}>
+                    {creator}
+                  </option>
+                ))}
+              </Select>
+              <Select
+                label="Tag"
+                value={tagFilter}
+                onChange={(event) => dispatch(tagFilterSet(event.target.value))}
+              >
+                <option value="all">All tags</option>
+                {facets.tags.map((tag) => (
+                  <option key={tag} value={tag}>
+                    {tag}
+                  </option>
+                ))}
+              </Select>
+              <label className="flex h-9 items-center gap-2 text-sm font-medium text-text">
+                <input
+                  type="checkbox"
+                  checked={pinnedOnly}
+                  onChange={(event) =>
+                    dispatch(pinnedOnlySet(event.target.checked))
+                  }
+                  className="size-4 rounded border-border text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                />
+                Pinned only
+              </label>
+              {filtersActive && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => dispatch(filtersCleared())}
+                >
+                  Clear filters
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
@@ -104,7 +205,11 @@ export default function MemoriesScreen() {
                 <EmptyState
                   icon={<Search className="size-5" />}
                   title="No memories found"
-                  description="Try a different search."
+                  description={
+                    filtersActive
+                      ? 'No memories match the current filters.'
+                      : 'No memories yet.'
+                  }
                 />
               ) : (
                 filtered.map((memory) => (

@@ -102,9 +102,7 @@ describe('createSkillManager', () => {
       },
       'skill_md',
     );
-    expect(
-      await db.skill_files.where('skillId').equals(id).count(),
-    ).toBe(2);
+    expect(await db.skill_files.where('skillId').equals(id).count()).toBe(2);
 
     const v2 = [
       '---',

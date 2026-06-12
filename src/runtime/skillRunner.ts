@@ -40,7 +40,10 @@ export function createSkillEffectHandler(deps: SkillEffectDeps) {
     await deps.submit({
       type: 'resolve_effect',
       id: effect.id,
-      result: { ok: false, error: { kind: 'permission_denied', message: reason } },
+      result: {
+        ok: false,
+        error: { kind: 'permission_denied', message: reason },
+      },
     });
   }
 

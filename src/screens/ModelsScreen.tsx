@@ -166,7 +166,9 @@ function ProviderCard({
             label="API key mode"
             value={apiKeyMode}
             onChange={(event) =>
-              setApiKeyMode(event.target.value as ProviderProfileRow['apiKeyMode'])
+              setApiKeyMode(
+                event.target.value as ProviderProfileRow['apiKeyMode'],
+              )
             }
           >
             <option value="none">No key</option>

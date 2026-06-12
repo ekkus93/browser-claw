@@ -30,10 +30,7 @@ import { resolveApiKey } from './providers/providerKey.ts';
 import { secretVault } from './secrets/vault.ts';
 import { activeProviderSet } from './store/slices/providersSlice.ts';
 import { appConfig } from './config/appConfig.ts';
-import {
-  runtimeLoaded,
-  runtimeFailed,
-} from './store/slices/runtimeSlice.ts';
+import { runtimeLoaded, runtimeFailed } from './store/slices/runtimeSlice.ts';
 import { recordAudit } from './audit/auditSink.ts';
 import type { AuditRiskLevel, AuditStatus } from './db/types.ts';
 

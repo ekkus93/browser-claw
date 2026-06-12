@@ -69,8 +69,7 @@ describe('createLlmRequestHandler', () => {
 
     const failing: LlmProvider = {
       id: 'openai',
-      complete: () =>
-        Promise.reject(new ProviderError('auth', 'unauthorized')),
+      complete: () => Promise.reject(new ProviderError('auth', 'unauthorized')),
       checkHealth: () => Promise.resolve('auth_failed'),
     };
     const submit = vi
@@ -101,7 +100,9 @@ describe('createLlmRequestHandler', () => {
     expect(store.getState().chat.runState).toBe('error');
     expect(store.getState().chat.error?.kind).toBe('auth');
     expect(
-      store.getState().audit.recent.some((e) => e.type === 'provider.request_failed'),
+      store
+        .getState()
+        .audit.recent.some((e) => e.type === 'provider.request_failed'),
     ).toBe(true);
 
     // The effect resolved as a failure.
@@ -197,7 +198,9 @@ describe('createLlmRequestHandler', () => {
       dispatch: store.dispatch,
       getProvider: () => provider,
       getApiKey: () => Promise.resolve({ ok: true, apiKey: 'sk-runtime' }),
-      submit: vi.fn<(c: unknown) => Promise<void>>().mockResolvedValue(undefined),
+      submit: vi
+        .fn<(c: unknown) => Promise<void>>()
+        .mockResolvedValue(undefined),
     });
 
     await handler({

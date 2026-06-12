@@ -146,7 +146,9 @@ describe('registry — fails closed', () => {
     // The Models screen passes the saved profile values through; a health check
     // must hit exactly that base URL — proving the test uses persisted values.
     const fetchImpl = vi.fn(() =>
-      Promise.resolve(jsonResponse({ choices: [{ message: { content: 'ok' } }] })),
+      Promise.resolve(
+        jsonResponse({ choices: [{ message: { content: 'ok' } }] }),
+      ),
     );
     vi.stubGlobal('fetch', fetchImpl);
     try {
@@ -175,7 +177,9 @@ describe('provider configuration helpers', () => {
   });
 
   it('defaultActiveProviderId fails closed unless the mock is allowed', () => {
-    expect(defaultActiveProviderId({ isMockProviderAllowed: false })).toBeNull();
+    expect(
+      defaultActiveProviderId({ isMockProviderAllowed: false }),
+    ).toBeNull();
     expect(defaultActiveProviderId({ isMockProviderAllowed: true })).toBe(
       'mock',
     );

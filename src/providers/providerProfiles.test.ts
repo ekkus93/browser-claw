@@ -22,7 +22,9 @@ afterEach(async () => {
   await db.app_settings.clear();
 });
 
-const openai = (over: Partial<ProviderProfileRow> = {}): ProviderProfileRow => ({
+const openai = (
+  over: Partial<ProviderProfileRow> = {},
+): ProviderProfileRow => ({
   id: 'openai',
   kind: 'openai',
   label: 'OpenAI',
@@ -50,7 +52,9 @@ describe('provider profile store', () => {
   });
 
   it('merges persisted edits over the built-in templates, in order', () => {
-    const merged = mergeProviderProfiles([openai({ baseUrl: 'https://edited' })]);
+    const merged = mergeProviderProfiles([
+      openai({ baseUrl: 'https://edited' }),
+    ]);
     expect(merged).toHaveLength(DEFAULT_PROVIDER_PROFILES.length);
     expect(merged[0]?.id).toBe('openai');
     expect(merged[0]?.baseUrl).toBe('https://edited');

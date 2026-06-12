@@ -54,6 +54,36 @@ describe('MemoriesScreen', () => {
     ).toBeInTheDocument();
   });
 
+  it('filters the list by created-by (a real, wired filter)', async () => {
+    const user = userEvent.setup();
+    renderMemories();
+
+    // mem-3 ("Rust ownership basics") was created by the user; the two
+    // assistant-authored samples should disappear when we filter to "user".
+    await screen.findByRole('button', { name: /WebAssembly memory model/ });
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Created by' }),
+      'user',
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('button', { name: /WebAssembly memory model/ }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole('button', { name: /Rust ownership basics/ }),
+    ).toBeInTheDocument();
+
+    // Clearing filters restores the full list.
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /WebAssembly memory model/ }),
+      ).toBeInTheDocument(),
+    );
+  });
+
   it('edits the selected memory and persists the change', async () => {
     const user = userEvent.setup();
     renderMemories();

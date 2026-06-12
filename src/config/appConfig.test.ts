@@ -11,7 +11,11 @@ describe('parseAppConfig — fail closed by default', () => {
   });
 
   it('a production-like env (only Vite defaults) stays fail closed', () => {
-    const config = parseAppConfig({ MODE: 'production', PROD: true, DEV: false });
+    const config = parseAppConfig({
+      MODE: 'production',
+      PROD: true,
+      DEV: false,
+    });
     expect(config.isSafetyOverrideActive).toBe(false);
   });
 

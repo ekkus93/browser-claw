@@ -70,8 +70,62 @@ export async function exportBackup(
   };
 }
 
+/**
+ * Serialize to JSONL: the first line is the manifest, then one line per record
+ * (`{"collection": name, "row": {...}}`). This streams well for large
+ * collections, where a single JSON array would have to be held in memory.
+ */
 export function serializeBackup(backup: ClawBackup): string {
-  return JSON.stringify(backup, null, 2);
+  const lines: string[] = [JSON.stringify({ manifest: backup.manifest })];
+  for (const [name, rows] of Object.entries(backup.collections)) {
+    for (const row of rows) {
+      lines.push(JSON.stringify({ collection: name, row }));
+    }
+  }
+  return `${lines.join('\n')}\n`;
+}
+
+interface BackupLine {
+  manifest?: BackupManifest;
+  collection?: string;
+  row?: unknown;
+  collections?: Record<string, unknown[]>;
+}
+
+/**
+ * Parse a backup file back into a ClawBackup. Accepts the JSONL format and,
+ * for backward compatibility, a single JSON document. Throws if no manifest is
+ * present.
+ */
+export function parseBackup(text: string): ClawBackup {
+  const trimmed = text.trim();
+
+  // Legacy single-document JSON format.
+  try {
+    const whole = JSON.parse(trimmed) as BackupLine;
+    if (whole.manifest && whole.collections) {
+      return { manifest: whole.manifest, collections: whole.collections };
+    }
+  } catch {
+    // Not a single JSON document — fall through to JSONL parsing.
+  }
+
+  let manifest: BackupManifest | undefined;
+  const collections: Record<string, unknown[]> = {};
+  for (const line of trimmed.split('\n')) {
+    const value = line.trim();
+    if (value.length === 0) continue;
+    const parsed = JSON.parse(value) as BackupLine;
+    if (parsed.manifest) {
+      manifest = parsed.manifest;
+    } else if (typeof parsed.collection === 'string') {
+      (collections[parsed.collection] ??= []).push(parsed.row);
+    }
+  }
+  if (!manifest) {
+    throw new Error('Backup is missing its manifest.');
+  }
+  return { manifest, collections };
 }
 
 export type BackupSummary = Record<string, number>;

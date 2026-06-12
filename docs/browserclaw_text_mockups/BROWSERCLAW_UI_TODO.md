@@ -151,7 +151,7 @@
 
 - [x] Implement `.clawbackup` export.
 - [x] Include manifest.
-- [ ] Export collections as JSONL.
+- [x] Export collections as JSONL.
 - [x] Optionally include encrypted secrets.
 - [x] Include model references, not model files.
 - [x] Include installed skills and skill state.

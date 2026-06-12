@@ -11,6 +11,7 @@ import {
 import {
   exportBackup,
   serializeBackup,
+  parseBackup,
   validateBackup,
   importBackup,
   recordBackupHistory,
@@ -112,8 +113,7 @@ export default function StorageScreen() {
 
   async function handleFile(file: File) {
     try {
-      const data: unknown = JSON.parse(await file.text());
-      const result = validateBackup(data);
+      const result = validateBackup(parseBackup(await file.text()));
       if (!result.valid) {
         toast({
           tone: 'danger',

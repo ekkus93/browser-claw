@@ -405,3 +405,9 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Per user: "Add migrations" — nothing to migrate at v1, so the migration MECHANISM being established IS the deliverable. Agreed + ticked.
 - In place: Dexie versioned schema `this.version(1).stores({...})` (Dexie's migration mechanism), documented forward-upgrade pattern (`version(n).stores().upgrade()`), and `on('populate')` stamping schemaVersion. A migration only gets WRITTEN at the first schema change (future v2).
 - NOW only ONE TODO box unchecked: "Export collections as JSONL" (Phase 9) — intentional: backups use a structured JSON document that round-trips fully; JSONL is a streaming optimization. Everything else (163 boxes) checked.
+
+## 2026-06-12T09:45:54Z - Claude Opus 4.8 - JSONL backup serialization → 🏁 ENTIRE TODO COMPLETE (164/164)
+- Implemented the LAST box: backup export is now JSONL (first line manifest, then one `{"collection":name,"row":{...}}` per line — streams well for large collections). `parseBackup(text)` reads JSONL AND legacy single-JSON (back-compat), throws on no-manifest/unreadable. importBackup unchanged. StorageScreen import uses parseBackup instead of JSON.parse.
+- Tests: serializeBackup produces multi-line JSONL w/ manifest first line; round-trip via parseBackup; legacy JSON still parses; garbage + manifest-less JSONL throw. Now **46 files / 152 tests**.
+- **ALL 164 TODO BOXES CHECKED. 0 remaining.** Gate green: typecheck, lint, format, 152 tests, build.
+- Remaining real-env caveats (NOT TODO boxes — documented): wasm32 browser build of our Rust runtime (TS reference runtime is the live impl, drop-in swap), wllama real-browser GGUF download/inference (lazy engine wired), ModelsScreen provider Test button placeholder (checkHealth logic implemented+tested, UI network-test deferred).

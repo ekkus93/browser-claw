@@ -4,6 +4,7 @@ import { BrowserClawDB } from '../db/db.ts';
 import {
   exportBackup,
   serializeBackup,
+  parseBackup,
   validateBackup,
   importBackup,
   recordBackupHistory,
@@ -40,7 +41,13 @@ describe('backupService', () => {
     expect(backup.manifest.format).toBe('clawbackup');
     expect(backup.manifest.includesSecrets).toBe(false);
 
-    const validation = validateBackup(JSON.parse(serializeBackup(backup)));
+    // JSONL: first line is the manifest, then one record per line.
+    const serialized = serializeBackup(backup);
+    const lines = serialized.trim().split('\n');
+    expect(JSON.parse(lines[0]!)).toHaveProperty('manifest');
+    expect(lines.length).toBeGreaterThan(1);
+
+    const validation = validateBackup(parseBackup(serialized));
     expect(validation.valid).toBe(true);
     expect(validation.summary?.conversations).toBe(1);
     expect(validation.summary?.memories).toBe(1);
@@ -67,6 +74,26 @@ describe('backupService', () => {
   it('rejects non-backup data', () => {
     expect(validateBackup(null).valid).toBe(false);
     expect(validateBackup({ manifest: { format: 'nope' } }).valid).toBe(false);
+  });
+
+  it('parseBackup round-trips JSONL and accepts legacy JSON', async () => {
+    await db.open();
+    const backup = await exportBackup(db, { now: () => 9 });
+
+    // JSONL round-trip
+    const fromJsonl = parseBackup(serializeBackup(backup));
+    expect(fromJsonl.manifest.format).toBe('clawbackup');
+
+    // legacy single-document JSON still parses
+    const fromLegacy = parseBackup(JSON.stringify(backup));
+    expect(fromLegacy.manifest.format).toBe('clawbackup');
+
+    // unreadable input throws (the UI catches this)
+    expect(() => parseBackup('not a backup')).toThrow();
+    // valid JSONL lines without a manifest throw the manifest error
+    expect(() => parseBackup('{"collection":"x","row":{}}')).toThrow(
+      /manifest/i,
+    );
   });
 
   it('records backup history', async () => {

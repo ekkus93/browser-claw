@@ -1,0 +1,49 @@
+{
+  "app": "BrowserClaw",
+  "style": "desktop-class local-first AI agent console",
+  "colors": {
+    "background": "#F6F8FB",
+    "surface": "#FFFFFF",
+    "surfaceSubtle": "#F9FBFF",
+    "border": "#DCE4F0",
+    "text": "#101828",
+    "muted": "#667085",
+    "mutedSubtle": "#98A2B3",
+    "primary": "#2563EB",
+    "primarySubtle": "#EFF6FF",
+    "success": "#16A34A",
+    "successSubtle": "#ECFDF3",
+    "warning": "#F59E0B",
+    "warningSubtle": "#FFFAEB",
+    "danger": "#DC2626",
+    "dangerSubtle": "#FEF2F2",
+    "purple": "#7C3AED",
+    "purpleSubtle": "#F5F3FF"
+  },
+  "typography": {
+    "fontFamily": "Inter, Arial, sans-serif",
+    "sizes": {
+      "xs": 12,
+      "sm": 13,
+      "md": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    },
+    "weights": {
+      "regular": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700,
+      "extrabold": 800
+    }
+  },
+  "layout": {
+    "appWidth": 1586,
+    "appHeight": 992,
+    "leftNavWidth": 260,
+    "rightInspectorWidth": 380,
+    "cardRadius": 12,
+    "buttonRadius": 8
+  }
+}

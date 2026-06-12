@@ -5,11 +5,13 @@ import { PlaceholderScreen } from './screens/PlaceholderScreen.tsx';
 import ComponentGallery from './screens/ComponentGallery.tsx';
 import OnboardingScreen from './screens/OnboardingScreen.tsx';
 import ChatScreen from './screens/ChatScreen.tsx';
+import ModelsScreen from './screens/ModelsScreen.tsx';
 import { NAV_ITEMS } from './components/shell/navItems.ts';
 
 // Real screens replace the placeholder as each Phase 6 screen lands.
 const SCREEN_OVERRIDES: Record<string, ReactNode> = {
   chat: <ChatScreen />,
+  models: <ModelsScreen />,
 };
 
 /**

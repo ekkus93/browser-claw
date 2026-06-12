@@ -115,7 +115,7 @@
 
 - [x] `/onboarding` from `01_onboarding.svg`.
 - [x] `/chat` from `02_chat_workbench.svg`.
-- [ ] `/models` from `03_models.svg`.
+- [x] `/models` from `03_models.svg`.
 - [ ] `/storage` from `04_storage_backup.svg`.
 - [ ] `/skills` from `05_skills.svg`.
 - [ ] `/memories` from `06_memories.svg`.

@@ -232,3 +232,15 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - VISUAL (chromium+firefox screenshots read): /chat matches mockup — header, empty state w/ approval explanation, composer pinned bottom (attach + "/" hint + disabled Send), inspector tabs (Tool Calls active), Chat nav active. 
 - Gate green: typecheck, lint, format, 111/111, build (464 kB), e2e 10/10.
 - NEXT (iteration 20): /models (03_models.svg) — Remote Providers cards (OpenAI/Anthropic/Compatible: base URL, model, key mode, Test, status badges Connected/CORS/Auth failed/etc), Local Endpoints (Ollama/llama-server), Browser-Local wllama (HF repo/file, download queue, progress, load/unload, delete, quota). Inspector: Provider Health + Model Download Queue. Wire to providers + models slices.
+
+## 2026-06-12T07:54:32Z - Claude Opus 4.8 - Ralph iteration 20: /models screen (VISUALLY VERIFIED)
+- `/models` checked. 6 screens remain (storage, skills, memories, audit, settings, workflow).
+- `src/screens/ModelsScreen.tsx`: own 2-col layout (main config + 300px right rail — NOT the shared inspector; AppLayout only shows inspector on /chat). Remote Providers (OpenAI/Anthropic/OpenAI-compatible) cards: status Badge from providers.health, Base URL/Model Input, API key mode Select, Test btn. Local Endpoints (Ollama/llama-server). Browser-Local Models table (SmolLM2/Mistral/Phi-3: name/size/status-from-models.downloads/Download|Load action). Right rail: Provider Health list (all 6), Model Download Queue (from models.downloads, EmptyState text), Troubleshooting.
+- HEALTH_META maps ProviderHealth → {label,tone}: unconfigured→Not configured/neutral, connected→Connected/success, auth_failed→Auth failed/danger, cors_error→CORS issue/warning, model_not_found→warning, unreachable→danger.
+- Test btn = PLACEHOLDER (dispatches providerHealthSet 'connected' + activeProviderSet) — Phase 7 replaces with real network test. Marked with comment.
+- router SCREEN_OVERRIDES: added models→ModelsScreen.
+- GOTCHA (test): heading.closest('div') returns the header flex div (heading+badge), NOT the card div with the Test button → use `getAllByRole('button',{name:'Test'})[0]` for the OpenAI card. General: for repeated card actions, index getAllByRole rather than closest().
+- Test: lists providers + browser-local models + empty download queue; Test → providers.health.openai='connected' + activeProviderId='openai'. Now **33 files / 113 tests**.
+- VISUAL (chromium screenshot): matches mockup — provider cards, local endpoints, right rail (Provider Health all 6 'Not configured', Download Queue empty, Troubleshooting), Models nav active.
+- Gate green: typecheck, lint, format, 113/113, build (470 kB), e2e.
+- NEXT (iteration 21): /storage (04_storage_backup.svg) — Storage Overview cards (IndexedDB usage/Model Cache/Persist from storage slice + storageService), Backup & Restore (Export/Import/Request persistent btns), what's-included list; right rail: Recent Backups, Local Data Health checks, Storage Recommendations. Wire to storage slice + refreshStorageInfo/requestPersistentStorage. (.clawbackup export is Phase 9 — Phase 6 just the UI shell + live storage numbers.)

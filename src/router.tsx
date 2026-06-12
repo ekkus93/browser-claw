@@ -11,6 +11,7 @@ import SkillsScreen from './screens/SkillsScreen.tsx';
 import MemoriesScreen from './screens/MemoriesScreen.tsx';
 import AuditScreen from './screens/AuditScreen.tsx';
 import SettingsScreen from './screens/SettingsScreen.tsx';
+import WorkflowScreen from './screens/WorkflowScreen.tsx';
 import { NAV_ITEMS } from './components/shell/navItems.ts';
 
 // Real screens replace the placeholder as each Phase 6 screen lands.
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
           ),
         };
       }),
+      { path: 'workflow', element: <WorkflowScreen /> },
       { path: 'showcase', element: <ComponentGallery /> },
     ],
   },

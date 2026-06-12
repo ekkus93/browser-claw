@@ -121,7 +121,7 @@
 - [x] `/memories` from `06_memories.svg`.
 - [x] `/audit` from `07_audit.svg`.
 - [x] `/settings` from `08_settings.svg`.
-- [ ] `/workflow` from `09_user_workflow.svg`.
+- [x] `/workflow` from `09_user_workflow.svg`.
 
 ## Phase 7 — Provider System
 

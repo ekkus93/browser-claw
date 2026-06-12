@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import {
   activeProviderSet,
@@ -6,6 +6,7 @@ import {
   type ProviderHealth,
 } from '../store/slices/providersSlice.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
+import { resolveProvider } from '../providers/registry.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Badge, type BadgeTone } from '../components/ui/Badge.tsx';
 import { Input } from '../components/ui/Input.tsx';
@@ -81,15 +82,27 @@ export default function ModelsScreen() {
     [dispatch],
   );
 
+  const [testingIds, setTestingIds] = useState<readonly string[]>([]);
+
   function statusOf(id: string): ProviderHealth {
     return health[id] ?? 'unconfigured';
   }
 
-  // Placeholder test — a real network health check is wired with provider
-  // profiles in a later pass.
-  function testProvider(id: string, label: string) {
-    dispatch(providerHealthSet({ providerId: id, health: 'connected' }));
-    dispatch(activeProviderSet({ id, label }));
+  /**
+   * Run a real reachability/health check against the provider. No API key is
+   * needed — an unauthenticated request still tells us if the endpoint is
+   * reachable (and a 401 means "reachable, needs auth"); local endpoints need
+   * no key at all.
+   */
+  async function testProvider(id: string, label: string) {
+    setTestingIds((prev) => [...prev, id]);
+    try {
+      const result = await resolveProvider(id).checkHealth();
+      dispatch(providerHealthSet({ providerId: id, health: result }));
+      if (result === 'connected') dispatch(activeProviderSet({ id, label }));
+    } finally {
+      setTestingIds((prev) => prev.filter((value) => value !== id));
+    }
   }
 
   function runModelAction(action: Promise<void>, failure: string) {
@@ -147,7 +160,10 @@ export default function ModelsScreen() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => testProvider(provider.id, provider.label)}
+                      loading={testingIds.includes(provider.id)}
+                      onClick={() => {
+                        void testProvider(provider.id, provider.label);
+                      }}
                     >
                       Test
                     </Button>
@@ -184,7 +200,10 @@ export default function ModelsScreen() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => testProvider(endpoint.id, endpoint.label)}
+                      loading={testingIds.includes(endpoint.id)}
+                      onClick={() => {
+                        void testProvider(endpoint.id, endpoint.label);
+                      }}
                     >
                       Test
                     </Button>

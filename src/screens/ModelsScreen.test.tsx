@@ -1,8 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import providersReducer from '../store/slices/providersSlice.ts';
 import modelsReducer from '../store/slices/modelsSlice.ts';
 import { ToastProvider } from '../components/ui/Toast.tsx';
@@ -22,6 +22,10 @@ function renderModels() {
   return store;
 }
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe('ModelsScreen', () => {
   it('lists the providers and browser-local models', () => {
     renderModels();
@@ -36,7 +40,13 @@ describe('ModelsScreen', () => {
     expect(screen.getByText('No downloads in progress.')).toBeInTheDocument();
   });
 
-  it('updates provider health when tested', async () => {
+  it('runs a real health check when tested (no API key needed)', async () => {
+    // Stub the network so the check is deterministic and offline. A network
+    // failure maps to "unreachable".
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new TypeError('network down'))),
+    );
     const user = userEvent.setup();
     const store = renderModels();
 
@@ -44,7 +54,8 @@ describe('ModelsScreen', () => {
     const testButtons = screen.getAllByRole('button', { name: 'Test' });
     await user.click(testButtons[0]!);
 
-    expect(store.getState().providers.health.openai).toBe('connected');
-    expect(store.getState().providers.activeProviderId).toBe('openai');
+    await waitFor(() =>
+      expect(store.getState().providers.health.openai).toBe('unreachable'),
+    );
   });
 });

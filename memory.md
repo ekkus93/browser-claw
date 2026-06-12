@@ -411,3 +411,23 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Tests: serializeBackup produces multi-line JSONL w/ manifest first line; round-trip via parseBackup; legacy JSON still parses; garbage + manifest-less JSONL throw. Now **46 files / 152 tests**.
 - **ALL 164 TODO BOXES CHECKED. 0 remaining.** Gate green: typecheck, lint, format, 152 tests, build.
 - Remaining real-env caveats (NOT TODO boxes — documented): wasm32 browser build of our Rust runtime (TS reference runtime is the live impl, drop-in swap), wllama real-browser GGUF download/inference (lazy engine wired), ModelsScreen provider Test button placeholder (checkHealth logic implemented+tested, UI network-test deferred).
+
+## 2026-06-12T10:22:57Z - Claude Opus 4.8 - Closing caveat #1: wasm32 toolchain + REAL WASM runtime in browser (Chromium+Firefox)
+- User pushed back (rightly): I CAN test WASM in real browsers via Playwright even though jsdom can't. Done.
+- TOOLCHAIN: `rustup target add wasm32-unknown-unknown` + installed wasm-pack 0.13.1 via the prebuilt-binary installer (curl init.sh | sh — fast, NOT cargo install).
+- BUILT artifact: `pnpm build:wasm` = `wasm-pack build crates/claw-wasm --target web --out-dir ../../src/runtime/wasm --out-name claw_wasm`. Output committed (175KB claw_wasm_bg.wasm + 4KB glue + d.ts) — removed wasm-pack's generated .gitignore so it's tracked. Tooling: added src/runtime/wasm to .prettierignore + eslint ignores (wasm-pack output has its own eslint-disable but we ignore the dir).
+- `src/runtime/wasmRuntime.ts`: createWasmRuntime(snapshot?) — lazy `import('./wasm/claw_wasm.js')`, `await wasm.default({module_or_path: wasmUrl})` (object form — string form is deprecated/warns), `new ClawRuntime()` or `ClawRuntime.fromSnapshot(JSON.stringify(snapshot))`. Adapts to the SAME ClawRuntimePort (dispatch JSON↔Effect[], snapshot). wasm asset via `import wasmUrl from './wasm/claw_wasm_bg.wasm?url'` (vite/client types cover *?url). Separate chunk — not in main bundle.
+- WIRED AS DEFAULT: main.tsx bootRuntime now PREFERS the wasm runtime (createWasmRuntime), FALLS BACK to createReferenceRuntime if it can't load. Uses RuntimeHost(port, ctx) directly. So the app actually runs the Rust-compiled-to-WASM runtime in-browser; chat e2e now exercises it.
+- `src/screens/WasmProbe.tsx` + route /wasm-probe: loads wasm runtime, dispatches a command, checks effects (audit+llm) + snapshot.message_count===1 + determinism, renders data-testid=wasm-probe "wasm-ok ...".
+- EXTENDED TEST INFRA: base playwright.config testIgnore '**/*.extended.spec.ts'; new `playwright.extended.config.ts` (testMatch *.extended.spec.ts, timeout 600s, chromium+firefox); script `test:e2e:extended` = `playwright test -c playwright.extended.config.ts`. Normal `test:e2e` excludes extended.
+- `e2e/wasm.extended.spec.ts`: /wasm-probe → expect 'wasm-ok' + 'mc=1'. **PASSES in Chromium AND Firefox.** Normal e2e still 26/26 (and now boots through wasm).
+- Gate green: typecheck, lint, format, 152 tests, normal e2e 26/26 both browsers + wasm extended 2/2 both browsers.
+- STILL TODO this session: caveat #2 (wllama real GGUF download+inference extended test, both browsers — use wllama's own CDN wasm config), caveat #3 (implement Models Test button to call real checkHealth — NO api key needed for reachability; auth_failed on 401 is useful; local endpoints need no key; + extended test).
+
+## 2026-06-12T10:30:04Z - Claude Opus 4.8 - Closing caveat #3: Models Test button does REAL health check (no API key)
+- User was right: a reachability/health check needs NO API key. Implemented.
+- ModelsScreen testProvider rewritten: `await resolveProvider(id).checkHealth()` → dispatch providerHealthSet(result); only activeProviderSet on 'connected'. Per-id `testingIds` state → Button `loading` spinner while in flight. No key needed: 401 from a remote provider → auth_failed ("reachable, needs auth" — useful); local endpoints (Ollama/llama-server) need no key.
+- Unit test updated: stub global fetch to reject (TypeError) → checkHealth → 'unreachable'; afterEach vi.unstubAllGlobals. (Was the old placeholder asserting 'connected'.)
+- `e2e/models.extended.spec.ts`: click Ollama Test (4th Test button) → assert the Provider-Health rail Ollama status moves AWAY from "Not configured" (robust — actual outcome depends on what's listening locally; in THIS env localhost:11434 returned 404 → "Model not found", proving a real request was made). PASSES Chromium + Firefox.
+- Gate green: typecheck, lint, format, 152 tests. Models extended 2/2 both browsers.
+- ONE caveat left: #2 wllama real GGUF download + inference extended test (both browsers).

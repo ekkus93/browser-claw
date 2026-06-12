@@ -6,6 +6,8 @@ import {
   createLlamaServerProvider,
 } from './presets.ts';
 import { createAnthropicProvider } from './anthropic.ts';
+import { createWllamaProvider } from './wllamaProvider.ts';
+import { getWllamaEngine } from '../wllama/engine.ts';
 
 /**
  * Resolve a provider instance from the active provider id (providers slice).
@@ -22,6 +24,8 @@ export function resolveProvider(activeProviderId: string | null): LlmProvider {
       return createOllamaProvider();
     case 'llama-server':
       return createLlamaServerProvider();
+    case 'wllama':
+      return createWllamaProvider(getWllamaEngine());
     default:
       return createMockProvider();
   }

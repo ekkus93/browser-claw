@@ -1,3 +1,5 @@
+import { useMemo } from 'react';
+import { AlertTriangle } from 'lucide-react';
 import {
   activeProviderSet,
   providerHealthSet,
@@ -9,6 +11,10 @@ import { Badge, type BadgeTone } from '../components/ui/Badge.tsx';
 import { Input } from '../components/ui/Input.tsx';
 import { Select } from '../components/ui/Select.tsx';
 import { Progress } from '../components/ui/Progress.tsx';
+import { useToast } from '../components/ui/toastContext.ts';
+import { MODEL_CATALOG } from '../wllama/catalog.ts';
+import { isWllamaSupported, getWllamaEngine } from '../wllama/engine.ts';
+import { createModelManager } from '../wllama/modelManager.ts';
 
 interface RemoteProvider {
   id: string;
@@ -47,12 +53,6 @@ const LOCAL_ENDPOINTS = [
   },
 ];
 
-const WLLAMA_MODELS = [
-  { id: 'smollm2', name: 'SmolLM2-1.7B Q4 GGUF', size: '1.1 GB' },
-  { id: 'mistral', name: 'Mistral 7B Q4 GGUF', size: '4.1 GB' },
-  { id: 'phi3', name: 'Phi-3 mini Q4 GGUF', size: '2.3 GB' },
-];
-
 const HEALTH_META: Record<ProviderHealth, { label: string; tone: BadgeTone }> =
   {
     unconfigured: { label: 'Not configured', tone: 'neutral' },
@@ -71,17 +71,31 @@ const ALL_PROVIDERS = [
 
 export default function ModelsScreen() {
   const dispatch = useAppDispatch();
+  const { toast } = useToast();
   const health = useAppSelector((state) => state.providers.health);
   const downloads = useAppSelector((state) => state.models.downloads);
+  const wllamaSupported = isWllamaSupported();
+
+  const manager = useMemo(
+    () => createModelManager(dispatch, getWllamaEngine()),
+    [dispatch],
+  );
 
   function statusOf(id: string): ProviderHealth {
     return health[id] ?? 'unconfigured';
   }
 
-  // Placeholder test — Phase 7 replaces this with a real provider health check.
+  // Placeholder test — a real network health check is wired with provider
+  // profiles in a later pass.
   function testProvider(id: string, label: string) {
     dispatch(providerHealthSet({ providerId: id, health: 'connected' }));
     dispatch(activeProviderSet({ id, label }));
+  }
+
+  function runModelAction(action: Promise<void>, failure: string) {
+    action.catch(() =>
+      toast({ tone: 'danger', title: 'Model error', description: failure }),
+    );
   }
 
   return (
@@ -184,6 +198,16 @@ export default function ModelsScreen() {
             <h2 className="mb-3 text-sm font-semibold text-text">
               Browser-Local Models
             </h2>
+            {!wllamaSupported && (
+              <p className="mb-3 flex items-center gap-2 rounded-button bg-warning-subtle p-3 text-sm text-text">
+                <AlertTriangle
+                  className="size-4 shrink-0 text-warning"
+                  aria-hidden="true"
+                />
+                This browser doesn&apos;t support WebAssembly workers, so
+                browser-local models can&apos;t run here.
+              </p>
+            )}
             <div className="overflow-hidden rounded-card border border-border bg-surface">
               <table className="w-full text-sm">
                 <thead>
@@ -197,8 +221,9 @@ export default function ModelsScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  {WLLAMA_MODELS.map((model) => {
+                  {MODEL_CATALOG.map((model) => {
                     const dl = downloads[model.id];
+                    const ready = dl?.status === 'ready';
                     return (
                       <tr
                         key={model.id}
@@ -207,16 +232,62 @@ export default function ModelsScreen() {
                         <td className="px-4 py-3 font-medium text-text">
                           {model.name}
                         </td>
-                        <td className="px-4 py-3 text-muted">{model.size}</td>
+                        <td className="px-4 py-3 text-muted">
+                          {model.sizeLabel}
+                        </td>
                         <td className="px-4 py-3 text-muted">
                           {dl
                             ? `${dl.status} ${dl.progress}%`
                             : 'Not downloaded'}
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <Button variant="ghost" size="sm">
-                            {dl?.status === 'ready' ? 'Load' : 'Download'}
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            {ready ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    runModelAction(
+                                      manager.load(model),
+                                      'Could not load the model.',
+                                    )
+                                  }
+                                >
+                                  Load
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() =>
+                                    runModelAction(
+                                      manager.remove(model),
+                                      'Could not delete the model.',
+                                    )
+                                  }
+                                >
+                                  Delete
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={
+                                  !wllamaSupported ||
+                                  dl?.status === 'downloading'
+                                }
+                                onClick={() =>
+                                  runModelAction(
+                                    manager.download(model),
+                                    'Could not download the model.',
+                                  )
+                                }
+                              >
+                                Download
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

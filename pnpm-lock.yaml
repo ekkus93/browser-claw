@@ -14,6 +14,9 @@ importers:
       '@reduxjs/toolkit':
         specifier: ^2.12.0
         version: 2.12.0(react-redux@9.3.0(@types/react@19.2.17)(react@19.2.7)(redux@5.0.1))(react@19.2.7)
+      '@wllama/wllama':
+        specifier: ^3.4.1
+        version: 3.4.1
       dexie:
         specifier: ^4.4.3
         version: 4.4.3
@@ -714,6 +717,9 @@ packages:
 
   '@vitest/utils@4.1.8':
     resolution: {integrity: sha512-uOJamYALNhfJ6iolExyQM40yIQwDqYnkKtQ5VCiSe17E33H0aQ/u+1GlRuz4LZBk6Mm3sg90G9hEbmEt37C1Zg==}
+
+  '@wllama/wllama@3.4.1':
+    resolution: {integrity: sha512-izq3CLVsIIpFoi4lI5/yvpM1tbzTBnDU8WuVi6I1q1oQgImSXSGF8eZo8WwDNBgbmhVJpcPGyw8cg24jKk0sbg==}
 
   acorn-jsx@5.3.2:
     resolution: {integrity: sha512-rq9s+JNhf0IChjtDXxllJ7g41oZk5SlXtp0LHwyA5cejwn7vKmKp4pPri6YEePv2PU65sAsegbXtIinmDFDXgQ==}
@@ -2184,6 +2190,8 @@ snapshots:
       '@vitest/pretty-format': 4.1.8
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.0
+
+  '@wllama/wllama@3.4.1': {}
 
   acorn-jsx@5.3.2(acorn@8.17.0):
     dependencies:

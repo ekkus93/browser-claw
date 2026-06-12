@@ -5,6 +5,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 import providersReducer from '../store/slices/providersSlice.ts';
 import modelsReducer from '../store/slices/modelsSlice.ts';
+import { ToastProvider } from '../components/ui/Toast.tsx';
 import ModelsScreen from './ModelsScreen.tsx';
 
 function renderModels() {
@@ -13,7 +14,9 @@ function renderModels() {
   });
   render(
     <Provider store={store}>
-      <ModelsScreen />
+      <ToastProvider>
+        <ModelsScreen />
+      </ToastProvider>
     </Provider>,
   );
   return store;
@@ -27,7 +30,9 @@ describe('ModelsScreen', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'OpenAI' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Ollama' })).toBeInTheDocument();
-    expect(screen.getByText('SmolLM2-1.7B Q4 GGUF')).toBeInTheDocument();
+    expect(
+      screen.getByText('SmolLM2-1.7B Instruct (Q4_K_M)'),
+    ).toBeInTheDocument();
     expect(screen.getByText('No downloads in progress.')).toBeInTheDocument();
   });
 

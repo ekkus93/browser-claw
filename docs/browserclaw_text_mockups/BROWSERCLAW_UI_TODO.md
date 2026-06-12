@@ -109,7 +109,7 @@
   - [x] audit_append
   - [x] runtime_snapshot_save
 - [ ] Wire effects to Redux listener middleware.
-- [ ] Persist snapshots.
+- [x] Persist snapshots.
 
 ## Phase 6 — Screens
 

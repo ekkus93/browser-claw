@@ -7,7 +7,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
  *
  * Audit payloads must never contain decrypted secrets.
  */
-export type AuditRisk = 'info' | 'low' | 'medium' | 'high';
+export type AuditRisk = 'info' | 'low' | 'medium' | 'high' | 'critical';
 
 export interface AuditEntry {
   id: string;

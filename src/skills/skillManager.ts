@@ -1,7 +1,7 @@
 import type { BrowserClawDB } from '../db/db.ts';
 import type { AppDispatch } from '../store/store.ts';
 import type { SkillSource } from '../db/types.ts';
-import { auditAppended } from '../store/slices/auditSlice.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 import { SkillFs } from './skillFs.ts';
 import { emptyPermissions, type ParsedSkill } from './skillTypes.ts';
 
@@ -15,15 +15,15 @@ export interface SkillManagerDeps {
 
 function audit(deps: SkillManagerDeps, type: string, summary: string): void {
   const now = deps.now ?? Date.now;
-  deps.dispatch(
-    auditAppended({
-      id: crypto.randomUUID(),
-      type,
-      summary,
-      risk: 'info',
-      at: now(),
-    }),
-  );
+  // Durable + live tail. Redux dispatch is synchronous inside recordAudit, so
+  // the durable write can be fire-and-forget here.
+  void recordAudit(deps.db, deps.dispatch, {
+    type,
+    summary,
+    source: 'skill',
+    risk: 'info',
+    at: now(),
+  });
 }
 
 /**

@@ -25,17 +25,27 @@ import {
   runtimeLoaded,
   runtimeFailed,
 } from './store/slices/runtimeSlice.ts';
-import { auditAppended, type AuditRisk } from './store/slices/auditSlice.ts';
+import { recordAudit } from './audit/auditSink.ts';
+import type { AuditRiskLevel, AuditStatus } from './db/types.ts';
 
 const RUNTIME_FAILED_MESSAGE =
   'The BrowserClaw runtime could not start (WebAssembly failed to load). ' +
   'The console is disabled. Reload to try again.';
 
-// Live recent-audit feed only; the durable audit log lands in Phase 3. Never
-// include secrets in audit payloads.
-function appendAudit(type: string, summary: string, risk: AuditRisk): void {
-  const at = Date.now();
-  store.dispatch(auditAppended({ id: `${type}-${at}`, type, summary, risk, at }));
+// Durable audit + live tail. Never include secrets in audit payloads.
+function appendAudit(
+  type: string,
+  summary: string,
+  risk: AuditRiskLevel,
+  status: AuditStatus,
+): void {
+  void recordAudit(db, store.dispatch, {
+    type,
+    summary,
+    source: 'runtime',
+    risk,
+    status,
+  });
 }
 
 // Boot the deterministic runtime: restore the latest snapshot (if any), wire
@@ -54,7 +64,12 @@ async function bootRuntime(): Promise<void> {
       createReference: createReferenceRuntime,
       onLoaded: (mode) => {
         store.dispatch(runtimeLoaded({ mode }));
-        appendAudit('runtime.loaded', `Runtime loaded (${mode})`, 'info');
+        appendAudit(
+          'runtime.loaded',
+          `Runtime loaded (${mode})`,
+          'info',
+          'success',
+        );
       },
       onFallback: (error) => {
         console.warn(
@@ -66,12 +81,18 @@ async function bootRuntime(): Promise<void> {
           'runtime.reference_fallback_used',
           'WASM runtime unavailable; using the reference runtime (dev fallback enabled)',
           'high',
+          'success',
         );
       },
       onFailed: (error) => {
         console.error(RUNTIME_FAILED_MESSAGE, error);
         store.dispatch(runtimeFailed(RUNTIME_FAILED_MESSAGE));
-        appendAudit('runtime.load_failed', RUNTIME_FAILED_MESSAGE, 'high');
+        appendAudit(
+          'runtime.load_failed',
+          RUNTIME_FAILED_MESSAGE,
+          'high',
+          'failure',
+        );
       },
     },
     snapshot,

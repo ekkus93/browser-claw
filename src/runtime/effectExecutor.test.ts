@@ -43,10 +43,16 @@ describe('executeEffect', () => {
       ctx,
     );
     expect(store.getState().audit.recent[0]).toMatchObject({
-      id: 'a1',
+      type: 'x',
       risk: 'low',
       at: 1234,
     });
+    // It was also persisted durably.
+    const durable = await ctx.db.audit_events
+      .where('type')
+      .equals('x')
+      .toArray();
+    expect(durable[0]).toMatchObject({ source: 'runtime', risk: 'low' });
   });
 
   it('routes tool_call_proposal into the approval queue', async () => {

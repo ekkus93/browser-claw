@@ -71,6 +71,21 @@ function generateId(): string {
   return crypto.randomUUID();
 }
 
+const RISK_LEVELS: readonly AuditRiskLevel[] = [
+  'info',
+  'low',
+  'medium',
+  'high',
+  'critical',
+];
+
+/** Coerce an arbitrary risk string (e.g. from the runtime) to a valid level. */
+export function normalizeRiskLevel(risk: string): AuditRiskLevel {
+  return (RISK_LEVELS as string[]).includes(risk)
+    ? (risk as AuditRiskLevel)
+    : 'info';
+}
+
 /**
  * Backfill the v3 audit fields on a pre-v3 row in place. Older events predate
  * `source`/`status`, so they default to a system-sourced success. Used by the

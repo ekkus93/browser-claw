@@ -1,7 +1,8 @@
 import type { AppDispatch } from '../store/store.ts';
 import type { BrowserClawDB } from '../db/db.ts';
 import type { Effect } from './effectTypes.ts';
-import { auditAppended, type AuditRisk } from '../store/slices/auditSlice.ts';
+import { recordAudit } from '../audit/auditSink.ts';
+import { normalizeRiskLevel } from '../audit/auditService.ts';
 import {
   approvalRequested,
   type ApprovalRisk,
@@ -39,10 +40,6 @@ export interface EffectContext {
   ports?: EffectPorts;
 }
 
-function normalizeAuditRisk(risk: string): AuditRisk {
-  return risk === 'low' || risk === 'medium' || risk === 'high' ? risk : 'info';
-}
-
 function normalizeApprovalRisk(risk: string): ApprovalRisk {
   return risk === 'high' || risk === 'medium' ? risk : 'low';
 }
@@ -59,15 +56,13 @@ export async function executeEffect(
   const now = ctx.now ?? Date.now;
   switch (effect.type) {
     case 'audit_append':
-      ctx.dispatch(
-        auditAppended({
-          id: effect.id,
-          type: effect.event_type,
-          summary: effect.summary,
-          risk: normalizeAuditRisk(effect.risk),
-          at: now(),
-        }),
-      );
+      await recordAudit(ctx.db, ctx.dispatch, {
+        type: effect.event_type,
+        summary: effect.summary,
+        source: 'runtime',
+        risk: normalizeRiskLevel(effect.risk),
+        at: now(),
+      });
       return;
     case 'runtime_snapshot_save':
       await ctx.db.runtime_snapshots.put({

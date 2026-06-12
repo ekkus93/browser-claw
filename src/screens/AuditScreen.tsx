@@ -1,60 +1,39 @@
-import { useEffect, useRef, useState } from 'react';
-import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
-import {
-  auditAppended,
-  auditCleared,
-  type AuditEntry,
-  type AuditRisk,
-} from '../store/slices/auditSlice.ts';
+import { useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../db/db.ts';
+import type { AuditEventRow, AuditRiskLevel } from '../db/types.ts';
+import { auditEventsToCsv } from '../audit/auditService.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Badge, type BadgeTone } from '../components/ui/Badge.tsx';
 import { Select } from '../components/ui/Select.tsx';
 import { Progress } from '../components/ui/Progress.tsx';
 
-const SAMPLE_AUDIT: AuditEntry[] = [
-  {
-    id: 'a5',
-    type: 'llm_request_sent',
-    summary: 'LLM request sent',
-    risk: 'low',
-    at: 5,
-  },
-  {
-    id: 'a4',
-    type: 'memory_created',
-    summary: 'Memory created',
-    risk: 'info',
-    at: 4,
-  },
-  {
-    id: 'a3',
-    type: 'skill_installed',
-    summary: 'Skill installed',
-    risk: 'medium',
-    at: 3,
-  },
-  {
-    id: 'a2',
-    type: 'secret_unlocked',
-    summary: 'Secret unlocked',
-    risk: 'medium',
-    at: 2,
-  },
-  {
-    id: 'a1',
-    type: 'backup_exported',
-    summary: 'Backup exported',
-    risk: 'low',
-    at: 1,
-  },
-];
-
-const RISK_TONE: Record<AuditRisk, BadgeTone> = {
+const RISK_TONE: Record<AuditRiskLevel, BadgeTone> = {
   info: 'neutral',
   low: 'success',
   medium: 'warning',
   high: 'danger',
+  critical: 'danger',
 };
+
+const STATUS_META: Record<
+  AuditEventRow['status'],
+  { tone: BadgeTone; label: string }
+> = {
+  success: { tone: 'success', label: 'OK' },
+  failure: { tone: 'danger', label: 'Failed' },
+  pending: { tone: 'warning', label: 'Pending' },
+  rejected: { tone: 'neutral', label: 'Rejected' },
+  cancelled: { tone: 'neutral', label: 'Cancelled' },
+};
+
+const RISK_LEVELS: AuditRiskLevel[] = [
+  'info',
+  'low',
+  'medium',
+  'high',
+  'critical',
+];
 
 function formatTime(at: number): string {
   if (at < 1_000_000_000) return `#${at}`;
@@ -65,18 +44,14 @@ function formatTime(at: number): string {
 }
 
 export default function AuditScreen() {
-  const dispatch = useAppDispatch();
-  const recent = useAppSelector((state) => state.audit.recent);
-  const seededRef = useRef(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [riskFilter, setRiskFilter] = useState<'all' | AuditRisk>('all');
+  const [riskFilter, setRiskFilter] = useState<'all' | AuditRiskLevel>('all');
 
-  useEffect(() => {
-    if (!seededRef.current && recent.length === 0) {
-      seededRef.current = true;
-      SAMPLE_AUDIT.forEach((entry) => dispatch(auditAppended(entry)));
-    }
-  }, [recent.length, dispatch]);
+  const recent =
+    useLiveQuery(
+      () => db.audit_events.orderBy('at').reverse().toArray(),
+      [],
+    ) ?? [];
 
   const events =
     riskFilter === 'all'
@@ -84,23 +59,27 @@ export default function AuditScreen() {
       : recent.filter((entry) => entry.risk === riskFilter);
 
   const total = recent.length;
-  const riskCounts: Record<AuditRisk, number> = {
+  const successCount = recent.filter((e) => e.status === 'success').length;
+  const failedCount = recent.filter((e) => e.status === 'failure').length;
+  const riskCounts: Record<AuditRiskLevel, number> = {
     info: 0,
     low: 0,
     medium: 0,
     high: 0,
+    critical: 0,
   };
   for (const entry of recent) riskCounts[entry.risk] += 1;
   const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
 
+  async function clearAudit() {
+    await db.audit_events.clear();
+    setExpandedId(null);
+  }
+
   function exportCsv() {
     if (typeof URL.createObjectURL !== 'function') return;
-    const header = 'time,type,summary,risk\n';
-    const body = recent
-      .map((e) => `${e.at},${e.type},"${e.summary}",${e.risk}`)
-      .join('\n');
     const url = URL.createObjectURL(
-      new Blob([header + body], { type: 'text/csv' }),
+      new Blob([auditEventsToCsv(recent)], { type: 'text/csv' }),
     );
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -125,7 +104,7 @@ export default function AuditScreen() {
               label="Risk"
               value={riskFilter}
               onChange={(event) =>
-                setRiskFilter(event.target.value as 'all' | AuditRisk)
+                setRiskFilter(event.target.value as 'all' | AuditRiskLevel)
               }
             >
               <option value="all">All</option>
@@ -133,13 +112,13 @@ export default function AuditScreen() {
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
+              <option value="critical">Critical</option>
             </Select>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => {
-                dispatch(auditCleared());
-                setExpandedId(null);
+                void clearAudit();
               }}
             >
               Clear
@@ -192,8 +171,8 @@ export default function AuditScreen() {
             </h2>
             <dl className="flex flex-col gap-1.5 text-sm">
               <SummaryRow label="Total" value={String(total)} />
-              <SummaryRow label="Success" value={String(total)} />
-              <SummaryRow label="Failed" value="0" />
+              <SummaryRow label="Success" value={String(successCount)} />
+              <SummaryRow label="Failed" value={String(failedCount)} />
             </dl>
           </div>
 
@@ -202,25 +181,23 @@ export default function AuditScreen() {
               Risk breakdown
             </h2>
             <div className="flex flex-col gap-3">
-              {(['low', 'medium', 'high', 'info'] as AuditRisk[]).map(
-                (risk) => (
-                  <Progress
-                    key={risk}
-                    value={pct(riskCounts[risk])}
-                    label={risk}
-                    showValue
-                    tone={
-                      risk === 'high'
-                        ? 'danger'
-                        : risk === 'medium'
-                          ? 'warning'
-                          : risk === 'low'
-                            ? 'success'
-                            : 'primary'
-                    }
-                  />
-                ),
-              )}
+              {RISK_LEVELS.map((risk) => (
+                <Progress
+                  key={risk}
+                  value={pct(riskCounts[risk])}
+                  label={risk}
+                  showValue
+                  tone={
+                    risk === 'high' || risk === 'critical'
+                      ? 'danger'
+                      : risk === 'medium'
+                        ? 'warning'
+                        : risk === 'low'
+                          ? 'success'
+                          : 'primary'
+                  }
+                />
+              ))}
             </div>
           </div>
 
@@ -238,10 +215,11 @@ function FragmentRow({
   expanded,
   onToggle,
 }: {
-  entry: AuditEntry;
+  entry: AuditEventRow;
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const status = STATUS_META[entry.status];
   return (
     <>
       <tr
@@ -258,7 +236,7 @@ function FragmentRow({
           </Badge>
         </td>
         <td className="px-4 py-3">
-          <Badge tone="success">OK</Badge>
+          <Badge tone={status.tone}>{status.label}</Badge>
         </td>
       </tr>
       {expanded && (

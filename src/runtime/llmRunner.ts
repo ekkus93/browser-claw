@@ -1,7 +1,7 @@
 import type { BrowserClawDB } from '../db/db.ts';
 import type { AppDispatch } from '../store/store.ts';
 import { runStateSet, chatErrored } from '../store/slices/chatSlice.ts';
-import { auditAppended } from '../store/slices/auditSlice.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 import type { Command, Effect } from './effectTypes.ts';
 import type { LlmProvider, ChatMessage } from '../providers/types.ts';
 import { describeProviderError } from '../providers/errors.ts';
@@ -44,15 +44,14 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
       // the runtime records it (and stores no message). See HARDENING_NOTES.md.
       const failure = describeProviderError(error);
       deps.dispatch(chatErrored(failure));
-      deps.dispatch(
-        auditAppended({
-          id: crypto.randomUUID(),
-          type: 'provider.request_failed',
-          summary: `Provider request failed (${failure.kind})`,
-          risk: 'medium',
-          at: Date.now(),
-        }),
-      );
+      void recordAudit(deps.db, deps.dispatch, {
+        type: 'provider.request_failed',
+        summary: `Provider request failed (${failure.kind})`,
+        source: 'provider',
+        risk: 'medium',
+        status: 'failure',
+        conversationId: effect.conversation_id,
+      });
       await deps.submit({
         type: 'resolve_effect',
         id: effect.id,

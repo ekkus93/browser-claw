@@ -37,19 +37,19 @@
 
 - [x] Configure Redux store.
 - [x] Add listener middleware.
-- [ ] Add slices:
+- [x] Add slices:
   - [x] app
   - [x] runtime
   - [x] chat
   - [x] approvals
   - [x] providers
   - [x] models
-  - [ ] skills
-  - [ ] memories
+  - [x] skills
+  - [x] memories
   - [x] storage
-  - [ ] audit
-  - [ ] secrets metadata only
-- [ ] Ensure raw/decrypted secrets are never stored in Redux.
+  - [x] audit
+  - [x] secrets metadata only
+- [x] Ensure raw/decrypted secrets are never stored in Redux.
 - [x] Add runtime event/action naming conventions.
 
 ## Phase 3 — IndexedDB/OPFS Storage

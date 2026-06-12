@@ -119,3 +119,11 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - store now 7 slices (app/runtime/providers/models/storage/chat/approvals); store.test.ts key list updated.
 - Tests: chatSlice/approvalsSlice .test.ts. Now 16 files / 53 tests. Gate green (typecheck, lint, format, 53/53, build).
 - NEXT (iteration 10): skills + memories + audit + secrets (METADATA ONLY) slices → completes Phase 2 slice list. Then tick "Ensure no decrypted secrets in Redux" and add a guard test asserting the secrets slice shape carries no plaintext. SecretVault itself = Phase 4.
+
+## 2026-06-12T02:03:49Z - Claude Opus 4.8 - Ralph iteration 10: skills/memories/audit/secrets slices → PHASE 2 COMPLETE
+- All 11 slices done; **Phase 2 fully checked** (store, listener mw, conventions, 11 slices, no-secrets rule).
+- `skillsSlice.ts`: selectedSkillId + enabledIds[] (enable dedupes). `memoriesSlice.ts`: searchQuery/filterTags/selectedMemoryId. `auditSlice.ts`: recent AuditEntry[] feed, newest-first via unshift, capped at 50 (MAX_RECENT); AuditEntry.at is caller-supplied (reducers deterministic — no Date.now). `secretsSlice.ts`: **METADATA ONLY** — SecretMetadata {id,label,storageMode('session'|'encrypted')}, NO value/key field; vaultLocked starts true.
+- **Security acceptance criterion met + guarded**: `secretsSlice.test.ts` asserts stored metadata has none of [value,key,secret,token,plaintext,apiKey] and exactly keys [id,label,storageMode]. Ticked "Ensure raw/decrypted secrets are never stored in Redux." Decrypted secrets → SecretVault only (Phase 4).
+- store now 11 slices: app/runtime/providers/models/storage/chat/approvals/skills/memories/audit/secrets. store.test.ts key list updated (11 keys).
+- Tests: skills/memories/audit/secrets .test.ts. Now **20 files / 64 tests**. Gate green (typecheck, lint, format, 64/64, build).
+- PHASES DONE: 0, 1, 2. NEXT = **Phase 3 — IndexedDB/OPFS Storage**: Dexie schema (17 stores: app_settings, provider_profiles, encrypted_secrets, conversations, messages, memories, todos, rules, schedules, skills, skill_files, skill_state, audit_events, runtime_snapshots, model_catalog, model_cache_index, backup_history) + migrations, quota service, persistent-storage request service, storage health checks. `encrypted_secrets` stores CIPHERTEXT only. For real Dexie open/query tests in jsdom, add `fake-indexeddb` dev dep.

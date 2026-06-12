@@ -6,6 +6,10 @@ import modelsReducer from './slices/modelsSlice.ts';
 import storageReducer from './slices/storageSlice.ts';
 import chatReducer from './slices/chatSlice.ts';
 import approvalsReducer from './slices/approvalsSlice.ts';
+import skillsReducer from './slices/skillsSlice.ts';
+import memoriesReducer from './slices/memoriesSlice.ts';
+import auditReducer from './slices/auditSlice.ts';
+import secretsReducer from './slices/secretsSlice.ts';
 import { listenerMiddleware } from './listenerMiddleware.ts';
 
 /**
@@ -23,6 +27,10 @@ export const store = configureStore({
     storage: storageReducer,
     chat: chatReducer,
     approvals: approvalsReducer,
+    skills: skillsReducer,
+    memories: memoriesReducer,
+    audit: auditReducer,
+    secrets: secretsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().prepend(listenerMiddleware.middleware),

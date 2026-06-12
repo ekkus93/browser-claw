@@ -54,26 +54,26 @@
 
 ## Phase 3 — IndexedDB/OPFS Storage
 
-- [ ] Create Dexie schema.
+- [x] Create Dexie schema.
 - [ ] Add migrations.
-- [ ] Add stores:
-  - [ ] app_settings
-  - [ ] provider_profiles
-  - [ ] encrypted_secrets
-  - [ ] conversations
-  - [ ] messages
-  - [ ] memories
-  - [ ] todos
-  - [ ] rules
-  - [ ] schedules
-  - [ ] skills
-  - [ ] skill_files
-  - [ ] skill_state
-  - [ ] audit_events
-  - [ ] runtime_snapshots
-  - [ ] model_catalog
-  - [ ] model_cache_index
-  - [ ] backup_history
+- [x] Add stores:
+  - [x] app_settings
+  - [x] provider_profiles
+  - [x] encrypted_secrets
+  - [x] conversations
+  - [x] messages
+  - [x] memories
+  - [x] todos
+  - [x] rules
+  - [x] schedules
+  - [x] skills
+  - [x] skill_files
+  - [x] skill_state
+  - [x] audit_events
+  - [x] runtime_snapshots
+  - [x] model_catalog
+  - [x] model_cache_index
+  - [x] backup_history
 - [ ] Add storage quota service.
 - [ ] Add persistent storage request service.
 - [ ] Add storage health checks.

@@ -101,24 +101,24 @@
 
 ### 2.3 SecretVault Provider Integration
 
-- [ ] Add provider secret reference support.
-- [ ] Add UI for:
+- [x] Add provider secret reference support.
+- [ ] Add UI for: <!-- Pass 11: secrets/security screen -->
   - [ ] session-only API key;
   - [ ] encrypted stored API key;
   - [ ] delete key;
   - [ ] lock;
   - [ ] unlock.
-- [ ] Provider test flow must retrieve key from SecretVault.
-- [ ] Runtime LLM flow must retrieve key from SecretVault.
-- [ ] Locked key must produce `secret_locked`.
-- [ ] Missing key must produce `secret_missing`.
-- [ ] Secret prompts must not leak key text.
+- [x] Provider test flow must retrieve key from SecretVault.
+- [x] Runtime LLM flow must retrieve key from SecretVault.
+- [x] Locked key must produce `secret_locked`.
+- [x] Missing key must produce `secret_missing`.
+- [ ] Secret prompts must not leak key text. <!-- Pass 11: with key-entry UI -->
 - [ ] Tests:
-  - [ ] raw API key absent from Redux;
-  - [ ] raw API key absent from audit payloads;
-  - [ ] locked key blocks provider call;
-  - [ ] unlocked key allows provider call;
-  - [ ] deleting key prevents future provider call.
+  - [x] raw API key absent from Redux;
+  - [x] raw API key absent from audit payloads;
+  - [x] locked key blocks provider call;
+  - [x] unlocked key allows provider call;
+  - [ ] deleting key prevents future provider call. <!-- Pass 11: needs delete UI -->
 
 ### 2.4 Provider Error Handling
 

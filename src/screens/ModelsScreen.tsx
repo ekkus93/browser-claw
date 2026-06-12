@@ -8,6 +8,8 @@ import {
 } from '../store/slices/providersSlice.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
 import { resolveProvider } from '../providers/registry.ts';
+import { resolveApiKey } from '../providers/providerKey.ts';
+import { secretVault } from '../secrets/vault.ts';
 import {
   listProviderProfiles,
   mergeProviderProfiles,
@@ -113,7 +115,14 @@ function ProviderCard({
         );
         return;
       }
-      const result = await resolved.provider.checkHealth();
+      // Use a stored key if the vault is unlocked; an unauthenticated health
+      // check is still meaningful (a 401 means "reachable, needs auth").
+      const keyResult = await resolveApiKey(secretVault, buildRow());
+      const callOptions =
+        keyResult.ok && keyResult.apiKey !== undefined
+          ? { apiKey: keyResult.apiKey }
+          : undefined;
+      const result = await resolved.provider.checkHealth(callOptions);
       dispatch(providerHealthSet({ providerId: profile.id, health: result }));
       if (result === 'connected') {
         dispatch(

@@ -111,4 +111,104 @@ describe('createLlmRequestHandler', () => {
       result: { ok: false },
     });
   });
+
+  it('blocks the call with secret_locked when the key cannot be resolved', async () => {
+    await db.open();
+    const store = configureStore({
+      reducer: { chat: chatReducer, audit: auditReducer },
+    });
+    await db.messages.put({
+      id: 'u3',
+      conversationId: 'c3',
+      role: 'user',
+      content: 'hello',
+      createdAt: 1,
+    });
+
+    const complete = vi.fn();
+    const provider: LlmProvider = {
+      id: 'openai',
+      complete,
+      checkHealth: () => Promise.resolve('auth_failed'),
+    };
+    const submit = vi
+      .fn<(command: unknown) => Promise<void>>()
+      .mockResolvedValue(undefined);
+    const handler = createLlmRequestHandler({
+      db,
+      dispatch: store.dispatch,
+      getProvider: () => provider,
+      getApiKey: () =>
+        Promise.resolve({
+          ok: false,
+          kind: 'secret_locked',
+          message: 'locked',
+        }),
+      submit,
+    });
+
+    await handler({
+      type: 'llm_request',
+      id: 'eff-3',
+      conversation_id: 'c3',
+      prompt: 'hello',
+    });
+
+    // The provider was never called, and no assistant message was written.
+    expect(complete).not.toHaveBeenCalled();
+    const messages = await db.messages
+      .where('conversationId')
+      .equals('c3')
+      .sortBy('createdAt');
+    expect(messages.some((m) => m.role === 'assistant')).toBe(false);
+
+    expect(store.getState().chat.error?.kind).toBe('secret_locked');
+    expect(
+      store
+        .getState()
+        .audit.recent.some((e) => e.type === 'provider.secret_unavailable'),
+    ).toBe(true);
+    expect(submit.mock.calls[0]?.[0]).toMatchObject({
+      result: { ok: false, error: { kind: 'secret_locked' } },
+    });
+  });
+
+  it('passes the resolved API key to the provider', async () => {
+    await db.open();
+    const store = configureStore({ reducer: { chat: chatReducer } });
+    await db.messages.put({
+      id: 'u4',
+      conversationId: 'c4',
+      role: 'user',
+      content: 'hello',
+      createdAt: 1,
+    });
+
+    const complete = vi
+      .fn<LlmProvider['complete']>()
+      .mockResolvedValue({ text: 'hi' });
+    const provider: LlmProvider = {
+      id: 'openai',
+      complete,
+      checkHealth: () => Promise.resolve('connected'),
+    };
+    const handler = createLlmRequestHandler({
+      db,
+      dispatch: store.dispatch,
+      getProvider: () => provider,
+      getApiKey: () => Promise.resolve({ ok: true, apiKey: 'sk-runtime' }),
+      submit: vi.fn<(c: unknown) => Promise<void>>().mockResolvedValue(undefined),
+    });
+
+    await handler({
+      type: 'llm_request',
+      id: 'eff-4',
+      conversation_id: 'c4',
+      prompt: 'hello',
+    });
+
+    expect(complete).toHaveBeenCalledWith(expect.anything(), {
+      apiKey: 'sk-runtime',
+    });
+  });
 });

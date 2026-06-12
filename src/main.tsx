@@ -24,6 +24,8 @@ import {
   defaultActiveProviderId,
 } from './providers/registry.ts';
 import { getActiveProviderProfile } from './providers/providerProfiles.ts';
+import { resolveApiKey } from './providers/providerKey.ts';
+import { secretVault } from './secrets/vault.ts';
 import { activeProviderSet } from './store/slices/providersSlice.ts';
 import { appConfig } from './config/appConfig.ts';
 import {
@@ -176,6 +178,10 @@ async function bootRuntime(): Promise<void> {
         }
         return resolved.provider;
       },
+      getApiKey: () =>
+        getActiveProviderProfile(db).then((profile) =>
+          resolveApiKey(secretVault, profile),
+        ),
       submit: (command) => host.submit(command),
     }),
   };

@@ -14,44 +14,8 @@ import { Badge } from '../components/ui/Badge.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { EmptyState } from '../components/ui/EmptyState.tsx';
 import { cn } from '../lib/cn.ts';
-
-const SAMPLE_MEMORIES: MemoryRow[] = [
-  {
-    id: 'mem-1',
-    title: 'Rust/WASM architecture overview',
-    text: 'BrowserClaw runs a deterministic Rust core compiled to WASM that emits effects for the host to execute.',
-    tags: ['rust', 'wasm'],
-    source: 'Conversation: Architecture',
-    createdBy: 'assistant',
-    createdAt: 1,
-    lastUsedAt: 5,
-    pinned: true,
-    sensitivity: 'normal',
-  },
-  {
-    id: 'mem-2',
-    title: 'WebAssembly memory model',
-    text: 'WASM linear memory is a contiguous, resizable ArrayBuffer shared with JS.',
-    tags: ['wasm', 'memory'],
-    source: 'Conversation: Architecture',
-    createdBy: 'assistant',
-    createdAt: 2,
-    lastUsedAt: 4,
-    pinned: false,
-    sensitivity: 'normal',
-  },
-  {
-    id: 'mem-3',
-    title: 'Rust ownership basics',
-    text: 'Each value has a single owner; borrows are checked at compile time.',
-    tags: ['rust'],
-    source: 'Conversation: Learning Rust',
-    createdBy: 'user',
-    createdAt: 3,
-    pinned: false,
-    sensitivity: 'normal',
-  },
-];
+import { appConfig } from '../config/appConfig.ts';
+import { SAMPLE_MEMORIES } from '../memories/sampleMemories.ts';
 
 export default function MemoriesScreen() {
   const dispatch = useAppDispatch();
@@ -64,6 +28,8 @@ export default function MemoriesScreen() {
   const [draftText, setDraftText] = useState('');
 
   useEffect(() => {
+    // Seed sample memories ONLY in demo mode; a normal build starts empty.
+    if (!appConfig.isDemoMode) return;
     void (async () => {
       if ((await db.memories.count()) === 0) {
         await db.memories.bulkPut(SAMPLE_MEMORIES);
@@ -212,9 +178,12 @@ export default function MemoriesScreen() {
                 ) : (
                   <>
                     <div className="flex items-start justify-between gap-2">
-                      <h2 className="text-md font-semibold text-text">
-                        {selected.title}
-                      </h2>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-md font-semibold text-text">
+                          {selected.title}
+                        </h2>
+                        {selected.demo && <Badge tone="warning">Demo</Badge>}
+                      </div>
                       <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"

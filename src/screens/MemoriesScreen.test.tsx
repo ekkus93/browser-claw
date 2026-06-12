@@ -3,9 +3,18 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import memoriesReducer from '../store/slices/memoriesSlice.ts';
+import { db } from '../db/db.ts';
+import { SAMPLE_MEMORIES } from '../memories/sampleMemories.ts';
 import MemoriesScreen from './MemoriesScreen.tsx';
+
+// A normal build no longer seeds; the tests populate the store directly.
+beforeEach(async () => {
+  await db.open();
+  await db.memories.clear();
+  await db.memories.bulkPut(SAMPLE_MEMORIES);
+});
 
 function renderMemories() {
   const store = configureStore({ reducer: { memories: memoriesReducer } });
@@ -18,7 +27,7 @@ function renderMemories() {
 }
 
 describe('MemoriesScreen', () => {
-  it('seeds and lists memories, then filters by search', async () => {
+  it('lists memories, then filters by search', async () => {
     const user = userEvent.setup();
     renderMemories();
 

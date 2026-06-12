@@ -1,5 +1,9 @@
 import Dexie, { type Table } from 'dexie';
 import { backfillAuditDefaults } from '../audit/auditService.ts';
+import {
+  SAMPLE_MEMORIES,
+  isUnmodifiedSampleMemory,
+} from '../memories/sampleMemories.ts';
 import type {
   AppSettingRow,
   ProviderProfileRow,
@@ -22,7 +26,7 @@ import type {
 } from './types.ts';
 
 export const DB_NAME = 'browserclaw';
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 
 /**
  * Durable local storage (IndexedDB) via Dexie — the source of truth for
@@ -100,6 +104,19 @@ export class BrowserClawDB extends Dexie {
             backfillAuditDefaults(row);
           });
       });
+
+    // v4 — one-time cleanup: remove the old unconditionally-seeded sample
+    // memories from real storage. Only untouched seeds are deleted; anything
+    // the user edited is left alone. (replies1.md Q6 / TODO 5.2.)
+    this.version(4).upgrade(async (tx) => {
+      const table = tx.table<MemoryRow, string>('memories');
+      for (const sample of SAMPLE_MEMORIES) {
+        const row = await table.get(sample.id);
+        if (row && isUnmodifiedSampleMemory(row)) {
+          await table.delete(sample.id);
+        }
+      }
+    });
 
     // First-run seed (only fires when the database is created).
     this.on('populate', (tx) => {

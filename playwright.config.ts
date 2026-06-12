@@ -28,9 +28,10 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: true,
     timeout: 60_000,
-    // E2E exercises the chat path, which now fails closed without a configured
-    // provider. Enable the mock provider (it auto-selects behind the safety
-    // banner) so the end-to-end chat spec has a provider to talk to.
-    env: { VITE_ALLOW_MOCK_PROVIDER: 'true' },
+    // Run e2e in demo mode: this auto-selects the mock provider (so the chat
+    // spec has a provider) and seeds the sample memories the memory specs
+    // expect — both behind the safety banner. Demo mode implies the mock
+    // provider override.
+    env: { VITE_DEMO_MODE: 'true' },
   },
 });

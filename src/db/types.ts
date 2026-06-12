@@ -68,6 +68,8 @@ export interface MemoryRow {
   lastUsedAt?: number;
   pinned: boolean;
   sensitivity: 'normal' | 'sensitive';
+  /** True for memories seeded as demo data (only in demo mode). */
+  demo?: boolean;
 }
 
 export interface TodoRow {

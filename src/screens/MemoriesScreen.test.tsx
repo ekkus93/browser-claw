@@ -27,6 +27,23 @@ function renderMemories() {
 }
 
 describe('MemoriesScreen', () => {
+  it('a fresh non-demo DB shows the empty state and seeds nothing', async () => {
+    // The default (non-demo) build must never auto-insert sample memories.
+    // appConfig.isDemoMode is false unless VITE_DEMO_MODE is set, so the
+    // seeding effect must early-return and leave the store empty.
+    await db.memories.clear();
+    renderMemories();
+
+    await waitFor(() =>
+      expect(screen.getByText('No memories yet.')).toBeInTheDocument(),
+    );
+    // Give the seeding effect a chance to (wrongly) run, then assert it didn't.
+    expect(await db.memories.count()).toBe(0);
+    expect(
+      screen.queryByRole('button', { name: /Rust ownership basics/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it('lists memories, then filters by search', async () => {
     const user = userEvent.setup();
     renderMemories();

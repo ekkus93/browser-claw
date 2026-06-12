@@ -226,13 +226,18 @@
 
 ### 5.2 Remove Fake Memory Seeding
 
-- [ ] Remove fake memory seeding from Memories screen.
-- [ ] Add empty memory state.
-- [ ] Gate demo memories behind explicit demo mode if needed.
-- [ ] Mark demo memories as demo.
-- [ ] Tests:
-  - [ ] empty DB shows empty state;
-  - [ ] fake memories are not inserted by default.
+<!-- Implemented across earlier passes; boxes reconciled in Pass 19 with the
+     missing guardrail test added. Seeding is gated by appConfig.isDemoMode
+     (MemoriesScreen.tsx ~L50), which defaults false (appConfig.ts; only
+     VITE_DEMO_MODE=true enables it). A one-time v4 migration (db.ts ~L108)
+     deletes only UNTOUCHED prior seeds via isUnmodifiedSampleMemory(). -->
+- [x] Remove fake memory seeding from Memories screen.
+- [x] Add empty memory state. <!-- EmptyState: "No memories yet." vs "No memories match the current filters." -->
+- [x] Gate demo memories behind explicit demo mode if needed.
+- [x] Mark demo memories as demo. <!-- SAMPLE_MEMORIES all carry demo:true (sampleMemories.test.ts) + "Demo" Badge in the UI -->
+- [x] Tests:
+  - [x] empty DB shows empty state; <!-- MemoriesScreen.test.tsx: "a fresh non-demo DB shows the empty state and seeds nothing" -->
+  - [x] fake memories are not inserted by default. <!-- same test asserts db.memories.count() === 0 after render -->
 
 ### 5.3 Complete Memory Filters and Provenance
 

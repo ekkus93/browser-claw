@@ -35,11 +35,11 @@
 
 ## Phase 2 — Redux Control Plane
 
-- [ ] Configure Redux store.
-- [ ] Add listener middleware.
+- [x] Configure Redux store.
+- [x] Add listener middleware.
 - [ ] Add slices:
-  - [ ] app
-  - [ ] runtime
+  - [x] app
+  - [x] runtime
   - [ ] chat
   - [ ] approvals
   - [ ] providers
@@ -50,7 +50,7 @@
   - [ ] audit
   - [ ] secrets metadata only
 - [ ] Ensure raw/decrypted secrets are never stored in Redux.
-- [ ] Add runtime event/action naming conventions.
+- [x] Add runtime event/action naming conventions.
 
 ## Phase 3 — IndexedDB/OPFS Storage
 

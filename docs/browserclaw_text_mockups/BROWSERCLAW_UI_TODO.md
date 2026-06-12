@@ -80,14 +80,14 @@
 
 ## Phase 4 — SecretVault
 
-- [ ] Implement in-memory SecretVault.
-- [ ] Support session-only keys.
-- [ ] Support encrypted stored keys.
+- [x] Implement in-memory SecretVault.
+- [x] Support session-only keys.
+- [x] Support encrypted stored keys.
 - [x] Implement Web Crypto AES-GCM encryption.
-- [ ] Implement passphrase-derived key flow.
-- [ ] Add lock timeout.
-- [ ] Add unlock/lock audit events.
-- [ ] Add tests that verify secrets do not reach Redux/logs.
+- [x] Implement passphrase-derived key flow.
+- [x] Add lock timeout.
+- [x] Add unlock/lock audit events.
+- [x] Add tests that verify secrets do not reach Redux/logs.
 
 ## Phase 5 — Rust/WASM Runtime Stub
 

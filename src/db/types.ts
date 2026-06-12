@@ -149,6 +149,13 @@ export interface ModelCacheIndexRow {
   cachedAt: number;
 }
 
+/** Cached GGUF model bytes (added in schema v2) for browsers without OPFS. */
+export interface ModelBlobRow {
+  modelId: string;
+  blob: Blob;
+  cachedAt: number;
+}
+
 export interface BackupHistoryRow {
   id: string;
   createdAt: number;

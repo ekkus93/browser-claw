@@ -6,6 +6,7 @@ import ComponentGallery from './screens/ComponentGallery.tsx';
 import OnboardingScreen from './screens/OnboardingScreen.tsx';
 import WasmProbe from './screens/WasmProbe.tsx';
 import WllamaProbe from './screens/WllamaProbe.tsx';
+import ModelCacheProbe from './screens/ModelCacheProbe.tsx';
 import ChatScreen from './screens/ChatScreen.tsx';
 import ModelsScreen from './screens/ModelsScreen.tsx';
 import StorageScreen from './screens/StorageScreen.tsx';
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
   { path: '/onboarding', element: <OnboardingScreen /> },
   { path: '/wasm-probe', element: <WasmProbe /> },
   { path: '/wllama-probe', element: <WllamaProbe /> },
+  { path: '/model-cache-probe', element: <ModelCacheProbe /> },
   {
     path: '/',
     element: <AppLayout />,

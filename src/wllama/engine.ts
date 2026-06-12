@@ -1,5 +1,12 @@
 import type { ChatMessage } from '../providers/types.ts';
 import type { CatalogModel } from './catalog.ts';
+import { db } from '../db/db.ts';
+import {
+  createDexieModelBlobStore,
+  fetchGguf,
+  getOrFetchModelBlob,
+  type ModelBlobStore,
+} from './modelCache.ts';
 
 /**
  * Engine that runs browser-local GGUF models via wllama (which manages its own
@@ -13,7 +20,7 @@ export interface WllamaEngine {
   ): Promise<void>;
   load(model: CatalogModel): Promise<void>;
   unload(): Promise<void>;
-  deleteCache(): Promise<void>;
+  deleteCache(modelId?: string): Promise<void>;
   complete(messages: ChatMessage[]): Promise<string>;
   loadedModelId(): string | null;
 }
@@ -50,28 +57,9 @@ interface WllamaModule {
 const WASM_URL =
   'https://cdn.jsdelivr.net/npm/@wllama/wllama@3.4.1/esm/wasm/wllama.wasm';
 
-/** Stream a GGUF from Hugging Face into an in-memory Blob (no OPFS). */
-async function fetchGguf(
-  model: CatalogModel,
-  onProgress?: (loaded: number, total: number) => void,
-): Promise<Blob> {
-  const url = `https://huggingface.co/${model.repo}/resolve/main/${model.file}`;
-  const response = await fetch(url);
-  if (!response.ok || !response.body) {
-    throw new Error(`Model download failed (${response.status})`);
-  }
-  const total = Number(response.headers.get('content-length') ?? 0);
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let loaded = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    chunks.push(value);
-    loaded += value.byteLength;
-    onProgress?.(loaded, total);
-  }
-  return new Blob(chunks as BlobPart[]);
+export interface WllamaEngineOptions {
+  /** Where to cache model blobs when OPFS is unavailable. */
+  blobStore?: ModelBlobStore;
 }
 
 /**
@@ -80,9 +68,16 @@ async function fetchGguf(
  * Vite asset wiring; vendoring them is a future hardening step. Needs
  * real-browser verification.
  */
-export function createWllamaEngine(): WllamaEngine {
+export function createWllamaEngine(
+  options: WllamaEngineOptions = {},
+): WllamaEngine {
   let instance: WllamaInstance | null = null;
   let loaded: string | null = null;
+  // Coalesces concurrent loads of the same model. A second load would open a
+  // second OPFS sync-access handle on the same file ("another open Access
+  // Handle") — which happens under React StrictMode's double-effect or a
+  // download/load race. Identical in-flight requests share one promise.
+  let inFlight: { id: string; promise: Promise<void> } | null = null;
 
   async function getInstance(): Promise<WllamaInstance> {
     if (instance) return instance;
@@ -94,10 +89,24 @@ export function createWllamaEngine(): WllamaEngine {
     return instance;
   }
 
+  // Public entry: coalesces concurrent requests for the same model (see
+  // `inFlight`) so we never open two OPFS handles on the same file.
+  function loadFromHF(
+    model: CatalogModel,
+    onProgress?: (loaded: number, total: number) => void,
+  ): Promise<void> {
+    if (inFlight && inFlight.id === model.id) return inFlight.promise;
+    const promise = runLoad(model, onProgress).finally(() => {
+      if (inFlight?.promise === promise) inFlight = null;
+    });
+    inFlight = { id: model.id, promise };
+    return promise;
+  }
+
   // Load from HF, caching the model in OPFS. Some browsers (notably Firefox in
   // automation) reject OPFS sync-access writes with "No modification allowed";
-  // fall back to an in-memory (uncached) load so browser-local models still run.
-  async function loadFromHF(
+  // fall back to our IndexedDB blob cache so browser-local models still run.
+  async function runLoad(
     model: CatalogModel,
     onProgress?: (loaded: number, total: number) => void,
   ): Promise<void> {
@@ -116,9 +125,13 @@ export function createWllamaEngine(): WllamaEngine {
         error instanceof Error &&
         /modification allowed/i.test(error.message)
       ) {
-        // OPFS is unavailable (e.g. Firefox automation): fetch the GGUF into
-        // memory ourselves and load it directly, bypassing the cache.
-        const blob = await fetchGguf(model, onProgress);
+        // OPFS is unavailable (e.g. Firefox): load from our own IndexedDB blob
+        // cache, downloading once if needed. No OPFS involved.
+        const blob = options.blobStore
+          ? await getOrFetchModelBlob(options.blobStore, model, {
+              ...(onProgress ? { onProgress } : {}),
+            })
+          : await fetchGguf(model, fetch, onProgress);
         await wllama.loadModel([blob]);
       } else {
         throw error;
@@ -139,7 +152,8 @@ export function createWllamaEngine(): WllamaEngine {
       instance = null;
       loaded = null;
     },
-    async deleteCache() {
+    async deleteCache(modelId) {
+      if (modelId) await options.blobStore?.delete(modelId);
       await this.unload();
     },
     async complete(messages) {
@@ -160,6 +174,8 @@ let singleton: WllamaEngine | null = null;
 
 /** Shared engine instance used by the app (one model loaded at a time). */
 export function getWllamaEngine(): WllamaEngine {
-  singleton ??= createWllamaEngine();
+  singleton ??= createWllamaEngine({
+    blobStore: createDexieModelBlobStore(db),
+  });
   return singleton;
 }

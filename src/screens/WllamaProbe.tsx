@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { isWllamaSupported, createWllamaEngine } from '../wllama/engine.ts';
+import { useEffect, useRef, useState } from 'react';
+import { isWllamaSupported, getWllamaEngine } from '../wllama/engine.ts';
 import { MODEL_CATALOG } from '../wllama/catalog.ts';
 
 /**
@@ -10,8 +10,12 @@ import { MODEL_CATALOG } from '../wllama/catalog.ts';
 export default function WllamaProbe() {
   const [status, setStatus] = useState('idle');
   const [pct, setPct] = useState(0);
+  // StrictMode invokes effects twice in dev; load the model only once.
+  const started = useRef(false);
 
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
     void (async () => {
       try {
         if (!isWllamaSupported()) {
@@ -23,7 +27,7 @@ export default function WllamaProbe() {
           setStatus('no-model');
           return;
         }
-        const engine = createWllamaEngine();
+        const engine = getWllamaEngine();
         setStatus('downloading');
         await engine.download(model, (loaded, total) => {
           if (total > 0) setPct(Math.round((loaded / total) * 100));

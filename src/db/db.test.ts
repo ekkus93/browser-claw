@@ -11,10 +11,10 @@ describe('BrowserClawDB', () => {
     expect(db.name).toBe(DB_NAME);
   });
 
-  it('opens with all 17 durable stores', async () => {
+  it('opens with all 18 durable stores (incl. v2 model_blobs)', async () => {
     await db.open();
     const tableNames = db.tables.map((t) => t.name).sort();
-    expect(tableNames).toHaveLength(17);
+    expect(tableNames).toHaveLength(18);
     expect(tableNames).toEqual([
       'app_settings',
       'audit_events',
@@ -23,6 +23,7 @@ describe('BrowserClawDB', () => {
       'encrypted_secrets',
       'memories',
       'messages',
+      'model_blobs',
       'model_cache_index',
       'model_catalog',
       'provider_profiles',

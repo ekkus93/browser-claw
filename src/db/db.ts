@@ -16,11 +16,12 @@ import type {
   RuntimeSnapshotRow,
   ModelCatalogRow,
   ModelCacheIndexRow,
+  ModelBlobRow,
   BackupHistoryRow,
 } from './types.ts';
 
 export const DB_NAME = 'browserclaw';
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 
 /**
  * Durable local storage (IndexedDB) via Dexie — the source of truth for
@@ -51,11 +52,14 @@ export class BrowserClawDB extends Dexie {
   runtime_snapshots!: Table<RuntimeSnapshotRow, string>;
   model_catalog!: Table<ModelCatalogRow, string>;
   model_cache_index!: Table<ModelCacheIndexRow, string>;
+  model_blobs!: Table<ModelBlobRow, string>;
   backup_history!: Table<BackupHistoryRow, string>;
 
   constructor() {
     super(DB_NAME);
-    this.version(DB_VERSION).stores({
+
+    // v1 — initial schema.
+    this.version(1).stores({
       app_settings: 'key',
       provider_profiles: 'id, kind',
       encrypted_secrets: 'id',
@@ -73,6 +77,12 @@ export class BrowserClawDB extends Dexie {
       model_catalog: 'id, provider',
       model_cache_index: 'id, modelId',
       backup_history: 'id, createdAt',
+    });
+
+    // v2 — cache downloaded model bytes for browsers without OPFS. Dexie keeps
+    // every v1 table; only the delta is declared here. No data upgrade needed.
+    this.version(2).stores({
+      model_blobs: 'modelId, cachedAt',
     });
 
     // First-run seed (only fires when the database is created).

@@ -61,7 +61,7 @@ export function createModelManager(
     },
 
     async remove(model: CatalogModel): Promise<void> {
-      await engine.deleteCache();
+      await engine.deleteCache(model.id);
       dispatch(modelDownloadRemoved(model.id));
     },
   };

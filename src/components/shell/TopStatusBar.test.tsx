@@ -24,6 +24,15 @@ describe('TopStatusBar', () => {
     ).toHaveAttribute('aria-valuenow', '25');
   });
 
+  it('shows an honest empty state when nothing is selected or measured', () => {
+    render(<TopStatusBar />);
+    expect(screen.getByText('No model selected')).toBeInTheDocument();
+    expect(screen.getByText('Storage not measured')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('progressbar', { name: 'Storage used' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('clamps the usage bar at 100%', () => {
     render(
       <TopStatusBar storageUsedBytes={9 * GB} storageTotalBytes={5 * GB} />,

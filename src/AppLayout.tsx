@@ -13,10 +13,22 @@ export default function AppLayout() {
   const { pathname } = useLocation();
   const showInspector = pathname.startsWith('/chat');
   const runtimeStatus = useAppSelector((state) => state.runtime.status);
+  const providerLabel = useAppSelector(
+    (state) => state.providers.activeProviderLabel,
+  );
+  const modelLabel = useAppSelector((state) => state.models.activeModelLabel);
+  const storageUsedBytes = useAppSelector((state) => state.storage.usedBytes);
+  const storageTotalBytes = useAppSelector((state) => state.storage.quotaBytes);
 
   return (
     <AppShell
       inspector={showInspector ? <RightInspectorPanel /> : undefined}
+      topBar={{
+        providerLabel,
+        modelLabel,
+        storageUsedBytes,
+        storageTotalBytes,
+      }}
       sidebar={{ footer: { status: runtimeStatus, version: APP_VERSION } }}
     >
       <Outlet />

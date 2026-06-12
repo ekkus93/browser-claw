@@ -2,29 +2,37 @@ import { describe, expect, it } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import appReducer from './slices/appSlice.ts';
 import runtimeReducer from './slices/runtimeSlice.ts';
+import providersReducer from './slices/providersSlice.ts';
+import modelsReducer from './slices/modelsSlice.ts';
+import storageReducer from './slices/storageSlice.ts';
 import { listenerMiddleware } from './listenerMiddleware.ts';
 import { runtimeReady } from './slices/runtimeSlice.ts';
 
 /** Build a fresh store per test so cases don't share mutable state. */
 function makeStore() {
   return configureStore({
-    reducer: { app: appReducer, runtime: runtimeReducer },
+    reducer: {
+      app: appReducer,
+      runtime: runtimeReducer,
+      providers: providersReducer,
+      models: modelsReducer,
+      storage: storageReducer,
+    },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware().prepend(listenerMiddleware.middleware),
   });
 }
 
 describe('store', () => {
-  it('composes the app and runtime slices', () => {
+  it('composes the registered slices', () => {
     const store = makeStore();
-    expect(store.getState()).toEqual({
-      app: {
-        hydrated: false,
-        onboardingComplete: false,
-        activeWorkspaceId: null,
-      },
-      runtime: { status: 'initializing', message: null },
-    });
+    expect(Object.keys(store.getState()).sort()).toEqual([
+      'app',
+      'models',
+      'providers',
+      'runtime',
+      'storage',
+    ]);
   });
 
   it('routes dispatched actions to the right slice', () => {

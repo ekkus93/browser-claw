@@ -42,11 +42,11 @@
   - [x] runtime
   - [ ] chat
   - [ ] approvals
-  - [ ] providers
-  - [ ] models
+  - [x] providers
+  - [x] models
   - [ ] skills
   - [ ] memories
-  - [ ] storage
+  - [x] storage
   - [ ] audit
   - [ ] secrets metadata only
 - [ ] Ensure raw/decrypted secrets are never stored in Redux.

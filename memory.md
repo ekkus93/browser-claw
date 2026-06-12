@@ -110,3 +110,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - WIRED TopStatusBar to store via AppLayout selectors (provider/model labels, storage used/quota). REMOVED TopStatusBar's hardcoded mockup defaults — now renders honest empty state: "No model selected" (grey dot) when no provider/model, "Storage not measured" (no progressbar) when quota 0. Pill builds provider•model conditionally. Initial app state shows the empty state (nothing dispatches selection yet — onboarding/Phase 6-7 will).
 - Tests added: providersSlice/modelsSlice/storageSlice .test.ts + a TopStatusBar empty-state case. Now **14 files / 46 tests**. Gate green (typecheck, lint, format, 46/46, build).
 - NEXT (iteration 9): chat + approvals slices. Then (10) skills + memories + audit + secrets-metadata-only → then can check "Ensure no decrypted secrets in Redux" + add a guard test. SecretVault itself = Phase 4.
+
+## 2026-06-12T02:00:36Z - Claude Opus 4.8 - Ralph iteration 9: chat + approvals slices
+- User directive: "keep Ralph Looping until everything is done" — now running iterations continuously without pausing to ask between them. Each iteration still fully gated + committed + pushed.
+- Phase 2 slices chat + approvals checked. Remaining: skills, memories, audit, secrets.
+- `chatSlice.ts`: activeConversationId, composerDraft, runState ('idle'|'thinking'|'streaming'|'awaiting_approval'|'error'), streamingMessageId. Actions activeConversationSet (clears draft), composerDraftSet, runStateSet, streamingMessageSet. (Messages/conversations themselves are durable Dexie — Phase 3.)
+- `approvalsSlice.ts`: the inline approval queue (underpins "no silent side effects"). ApprovalRequest = {id,kind,title,risk,summary,payloadPreview,status}. kind = tool_call|storage_write|llm_request|skill_install|network; risk = low|med|high; status = pending|approved|rejected. Actions approvalRequested (push as pending), approvalEdited (edit payloadPreview), approvalResolved ({id,status}), approvalDismissed (remove). payloadPreview is display-safe — NEVER raw secrets.
+- store now 7 slices (app/runtime/providers/models/storage/chat/approvals); store.test.ts key list updated.
+- Tests: chatSlice/approvalsSlice .test.ts. Now 16 files / 53 tests. Gate green (typecheck, lint, format, 53/53, build).
+- NEXT (iteration 10): skills + memories + audit + secrets (METADATA ONLY) slices → completes Phase 2 slice list. Then tick "Ensure no decrypted secrets in Redux" and add a guard test asserting the secrets slice shape carries no plaintext. SecretVault itself = Phase 4.

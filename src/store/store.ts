@@ -4,6 +4,8 @@ import runtimeReducer from './slices/runtimeSlice.ts';
 import providersReducer from './slices/providersSlice.ts';
 import modelsReducer from './slices/modelsSlice.ts';
 import storageReducer from './slices/storageSlice.ts';
+import chatReducer from './slices/chatSlice.ts';
+import approvalsReducer from './slices/approvalsSlice.ts';
 import { listenerMiddleware } from './listenerMiddleware.ts';
 
 /**
@@ -19,6 +21,8 @@ export const store = configureStore({
     providers: providersReducer,
     models: modelsReducer,
     storage: storageReducer,
+    chat: chatReducer,
+    approvals: approvalsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().prepend(listenerMiddleware.middleware),

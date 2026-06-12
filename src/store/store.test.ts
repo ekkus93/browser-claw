@@ -5,6 +5,8 @@ import runtimeReducer from './slices/runtimeSlice.ts';
 import providersReducer from './slices/providersSlice.ts';
 import modelsReducer from './slices/modelsSlice.ts';
 import storageReducer from './slices/storageSlice.ts';
+import chatReducer from './slices/chatSlice.ts';
+import approvalsReducer from './slices/approvalsSlice.ts';
 import { listenerMiddleware } from './listenerMiddleware.ts';
 import { runtimeReady } from './slices/runtimeSlice.ts';
 
@@ -17,6 +19,8 @@ function makeStore() {
       providers: providersReducer,
       models: modelsReducer,
       storage: storageReducer,
+      chat: chatReducer,
+      approvals: approvalsReducer,
     },
     middleware: (getDefaultMiddleware) =>
       getDefaultMiddleware().prepend(listenerMiddleware.middleware),
@@ -28,6 +32,8 @@ describe('store', () => {
     const store = makeStore();
     expect(Object.keys(store.getState()).sort()).toEqual([
       'app',
+      'approvals',
+      'chat',
       'models',
       'providers',
       'runtime',

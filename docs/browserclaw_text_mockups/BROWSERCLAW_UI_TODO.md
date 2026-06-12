@@ -40,8 +40,8 @@
 - [ ] Add slices:
   - [x] app
   - [x] runtime
-  - [ ] chat
-  - [ ] approvals
+  - [x] chat
+  - [x] approvals
   - [x] providers
   - [x] models
   - [ ] skills

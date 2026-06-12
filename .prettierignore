@@ -1,0 +1,13 @@
+dist
+node_modules
+coverage
+pnpm-lock.yaml
+
+# Canonical specs / mockups — source of truth, formatted by their authors
+docs
+
+# Hand-maintained project meta files
+CLAUDE.md
+CLAUDE.local.md
+memory.md
+README.md

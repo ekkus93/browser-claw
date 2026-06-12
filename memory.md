@@ -19,3 +19,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
   5. **Push to GitHub periodically** after each task/subtask. User's priority: full history must live on GitHub (rollback is fine, but GitHub is source of truth).
   6. `memory.md` should be a MORE detailed history than git commit messages; I may add anything that could matter later; user may also request entries.
 - Source of truth for "what's next": `docs/browserclaw_text_mockups/BROWSERCLAW_UI_TODO.md` (Phase 0 → Phase 13). Iterations should tick `[ ]`→`[x]` as work completes.
+
+## 2026-06-12T01:08:41Z - Claude Opus 4.8 - Ralph iteration 1: Phase 0 scaffold + tooling
+- Scaffolded the Vite app directly in repo root (manual scaffold — `create vite` won't run in a non-empty dir).
+- Installed toolchain (exact versions in package.json / pnpm-lock.yaml). Notable, all current/cutting-edge: React 19.2, Vite 8.0, TypeScript 6.0, Tailwind **4.3** (`@tailwindcss/vite` plugin + `@import "tailwindcss"` + `@theme` block — NO tailwind.config.js / postcss), Vitest 4.1, ESLint **10** (flat config), RTK 2.12, react-router 7.17, Dexie 4.4.
+- Files added: `index.html`, `vite.config.ts` (Vitest config inlined via `test` key, jsdom + globals + `src/test/setup.ts`), `tsconfig.json`/`tsconfig.app.json`/`tsconfig.node.json` (strict + `noUncheckedIndexedAccess` + `exactOptionalPropertyTypes`), `src/main.tsx`, `src/App.tsx`, `src/App.test.tsx`, `src/index.css` (minimal design tokens as Tailwind `@theme` vars — full token mapping deferred to Phase 1), `eslint.config.js`, `.prettierrc.json`, `.prettierignore`.
+- GOTCHA (ESLint 10): spreading `reactHooks.configs['recommended-latest']` / `reactRefresh.configs.vite` as full preset objects fails ("plugins must be object, not string array"). FIX: register `react-hooks`/`react-refresh` in a `plugins: {}` object and pull in only their `.rules`. See `eslint.config.js`.
+- Prettier scope: `.prettierignore` excludes `docs/` (canonical specs — do NOT reformat) and hand-maintained root meta (`CLAUDE.md`, `memory.md`, `README.md`). Formatter governs `src/**` + config files only.
+- `.gitignore` updated for Node/Vite (`node_modules`, `dist`, `coverage`, logs) — was Rust-only before.
+- Verification gate ALL GREEN: `pnpm typecheck`, `lint`, `format:check`, `test` (1 passing), `build` (dist OK, Tailwind CSS compiled), and `pnpm dev` boots + serves the app entry on :5199.
+- Scripts available: dev / build / preview / typecheck / lint / format / format:check / test / test:watch.
+- NEXT (Phase 0 remaining): wire minimal Redux Toolkit store (+ Provider), react-router (RouterProvider), and a Dexie db instance — deps installed, not yet integrated. Those 3 boxes left unchecked.

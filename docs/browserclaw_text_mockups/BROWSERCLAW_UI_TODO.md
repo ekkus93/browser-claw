@@ -2,14 +2,14 @@
 
 ## Phase 0 — Setup
 
-- [ ] Create React + TypeScript + Vite app.
-- [ ] Add Tailwind CSS.
+- [x] Create React + TypeScript + Vite app.
+- [x] Add Tailwind CSS.
 - [ ] Add Redux Toolkit.
 - [ ] Add router.
 - [ ] Add Dexie.
-- [ ] Add test framework.
-- [ ] Enable strict TypeScript.
-- [ ] Add lint/format scripts.
+- [x] Add test framework.
+- [x] Enable strict TypeScript.
+- [x] Add lint/format scripts.
 
 ## Phase 1 — Design System
 

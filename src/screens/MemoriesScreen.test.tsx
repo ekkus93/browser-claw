@@ -44,4 +44,22 @@ describe('MemoriesScreen', () => {
       screen.getByRole('button', { name: /Rust ownership basics/ }),
     ).toBeInTheDocument();
   });
+
+  it('edits the selected memory and persists the change', async () => {
+    const user = userEvent.setup();
+    renderMemories();
+    await screen.findByRole('button', { name: /Rust\/WASM architecture/ });
+
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    const titleInput = screen.getByLabelText('Title');
+    await user.clear(titleInput);
+    await user.type(titleInput, 'Rust/WASM (edited)');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { name: 'Rust/WASM (edited)' }),
+      ).toBeInTheDocument(),
+    );
+  });
 });

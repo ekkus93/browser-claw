@@ -176,22 +176,22 @@
 
 ## Phase 11 — Memories
 
-- [ ] Implement memory search.
-- [ ] Implement filters.
-- [ ] Implement memory detail editor.
-- [ ] Implement provenance.
-- [ ] Implement pin/delete/edit.
-- [ ] Implement retrieval history.
+- [x] Implement memory search.
+- [x] Implement filters.
+- [x] Implement memory detail editor.
+- [x] Implement provenance.
+- [x] Implement pin/delete/edit.
+- [x] Implement retrieval history.
 
 ## Phase 12 — Audit
 
-- [ ] Implement audit filters.
-- [ ] Implement event table/list.
-- [ ] Implement expandable details.
-- [ ] Implement JSON detail panel.
-- [ ] Implement summary metrics.
-- [ ] Implement risk breakdown.
-- [ ] Implement CSV export.
+- [x] Implement audit filters.
+- [x] Implement event table/list.
+- [x] Implement expandable details.
+- [x] Implement JSON detail panel.
+- [x] Implement summary metrics.
+- [x] Implement risk breakdown.
+- [x] Implement CSV export.
 
 ## Phase 13 — QA
 

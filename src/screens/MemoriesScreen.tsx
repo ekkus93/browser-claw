@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Pin, Trash2, Search } from 'lucide-react';
+import { Pin, Trash2, Search, Pencil } from 'lucide-react';
 import { db } from '../db/db.ts';
 import type { MemoryRow } from '../db/types.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
@@ -59,6 +59,9 @@ export default function MemoriesScreen() {
   const selectedMemoryId = useAppSelector(
     (state) => state.memories.selectedMemoryId,
   );
+  const [editing, setEditing] = useState(false);
+  const [draftTitle, setDraftTitle] = useState('');
+  const [draftText, setDraftText] = useState('');
 
   useEffect(() => {
     void (async () => {
@@ -91,6 +94,11 @@ export default function MemoriesScreen() {
   function remove(id: string) {
     void db.memories.delete(id);
     if (selectedMemoryId === id) dispatch(selectedMemorySet(null));
+  }
+
+  function saveEdit(id: string, title: string, text: string) {
+    void db.memories.update(id, { title, text });
+    setEditing(false);
   }
 
   const pinnedCount = memories.filter((m) => m.pinned).length;
@@ -166,42 +174,93 @@ export default function MemoriesScreen() {
 
             {selected && (
               <div className="rounded-card border border-border bg-surface p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <h2 className="text-md font-semibold text-text">
-                    {selected.title}
-                  </h2>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      leadingIcon={<Pin className="size-4" />}
-                      onClick={() => togglePin(selected)}
-                    >
-                      {selected.pinned ? 'Unpin' : 'Pin'}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      leadingIcon={<Trash2 className="size-4" />}
-                      onClick={() => remove(selected.id)}
-                    >
-                      Delete
-                    </Button>
+                {editing ? (
+                  <div className="flex flex-col gap-3">
+                    <Input
+                      label="Title"
+                      value={draftTitle}
+                      onChange={(event) => setDraftTitle(event.target.value)}
+                    />
+                    <label className="flex flex-col gap-1.5 text-sm font-medium text-text">
+                      Body
+                      <textarea
+                        value={draftText}
+                        onChange={(event) => setDraftText(event.target.value)}
+                        rows={4}
+                        className="rounded-button border border-border bg-surface p-2 text-sm font-normal text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      />
+                    </label>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditing(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() =>
+                          saveEdit(selected.id, draftTitle, draftText)
+                        }
+                      >
+                        Save
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <p className="mt-2 text-sm text-muted">{selected.text}</p>
-                <div className="mt-3 flex flex-wrap gap-1.5">
-                  {selected.tags.map((tag) => (
-                    <Badge key={tag} tone="primary">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-                <dl className="mt-4 flex flex-col gap-1.5 text-sm">
-                  <Row label="Source" value={selected.source} />
-                  <Row label="Created by" value={selected.createdBy} />
-                  <Row label="Sensitivity" value={selected.sensitivity} />
-                </dl>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="text-md font-semibold text-text">
+                        {selected.title}
+                      </h2>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          leadingIcon={<Pencil className="size-4" />}
+                          onClick={() => {
+                            setDraftTitle(selected.title);
+                            setDraftText(selected.text);
+                            setEditing(true);
+                          }}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          leadingIcon={<Pin className="size-4" />}
+                          onClick={() => togglePin(selected)}
+                        >
+                          {selected.pinned ? 'Unpin' : 'Pin'}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          leadingIcon={<Trash2 className="size-4" />}
+                          onClick={() => remove(selected.id)}
+                        >
+                          Delete
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="mt-2 text-sm text-muted">{selected.text}</p>
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {selected.tags.map((tag) => (
+                        <Badge key={tag} tone="primary">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    <dl className="mt-4 flex flex-col gap-1.5 text-sm">
+                      <Row label="Source" value={selected.source} />
+                      <Row label="Created by" value={selected.createdBy} />
+                      <Row label="Sensitivity" value={selected.sensitivity} />
+                    </dl>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -228,6 +287,28 @@ export default function MemoriesScreen() {
                 .map((m) => (
                   <li key={m.id} className="truncate">
                     {m.title}
+                  </li>
+                ))}
+            </ul>
+          </div>
+
+          <div className="rounded-card border border-border bg-surface p-4">
+            <h2 className="mb-3 text-sm font-semibold text-text">
+              Retrieval history
+            </h2>
+            <ul className="flex flex-col gap-1.5 text-sm">
+              {[...memories]
+                .filter((m) => m.lastUsedAt != null)
+                .sort((a, b) => (b.lastUsedAt ?? 0) - (a.lastUsedAt ?? 0))
+                .map((m) => (
+                  <li
+                    key={m.id}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span className="truncate text-muted">{m.title}</span>
+                    <span className="tabular-nums text-muted-subtle">
+                      #{m.lastUsedAt}
+                    </span>
                   </li>
                 ))}
             </ul>

@@ -372,3 +372,19 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - VISUAL (chromium): real skills (summarize-pdf/web-search bundled v1.0.0), detail w/ real description + Uninstall + tabs, Import dropzone. Skills nav active.
 - Gate green: typecheck, lint, format, 150/150, build, e2e 10/10.
 - PHASES DONE: 0,1,2,3(−migr),4,5,6,7,8(−verify),9(−JSONL),10. NEXT = **Phase 11 — Memories functionality**: search, filters, detail editor, provenance, pin/delete/edit, retrieval history. MOSTLY DONE in iteration 23 (MemoriesScreen has search/filter/list/detail/pin/delete via Dexie). Remaining: memory detail EDITOR (edit text/title inline → db.memories.update), retrieval history (could be a memories-used log). Quick phase. Then Phase 12 (audit — also mostly done iter 24: filters/table/expandable/JSON/summary/risk/CSV; add a couple) + Phase 13 (QA).
+
+## 2026-06-12T09:09:33Z - Claude Opus 4.8 - Ralph iteration 33: Memories editor + retrieval history → PHASES 11 & 12 COMPLETE
+- **Phase 11 DONE** (added the 2 gaps) + **Phase 12 DONE** (audit was fully built in iter 24 — filters/table/expandable-JSON/summary/risk-breakdown/CSV; ticked now).
+- MemoriesScreen: added INLINE EDITOR — Edit btn → editing mode w/ Input(title) + textarea(body) + Save/Cancel; saveEdit → db.memories.update(id,{title,text}). Added RETRIEVAL HISTORY rail (memories w/ lastUsedAt sorted desc, showing title + #lastUsedAt). Provenance/pin/delete/search/filter already done iter 23.
+- Test: edit selected memory title → Save → heading shows new title (waitFor live query). Now **46 files / 151 tests**.
+- Gate green: typecheck, lint, format, 151/151, build.
+- PHASES DONE: 0,1,2,3(−migr),4,5,6,7,8(−verify),9(−JSONL),10,11,12. ONLY **Phase 13 — QA** remains:
+  - Run typecheck/lint/tests ✓ (all green; will run final).
+  - Test keyboard navigation — components use focus-visible + role/tab/switch; could add an e2e keyboard test.
+  - Test reload persistence — Dexie persists; could add an e2e (reload, data survives).
+  - Test backup export/import ✓ (unit tested).
+  - Test provider error states ✓ (provider tests).
+  - Test no decrypted secrets in Redux ✓ (vault guard test).
+  - Test skill filesystem isolation ✓ (skillFs tests).
+  - Test model quota error handling ✓ (modelManager error test).
+- NEXT (iteration 34, FINAL): Phase 13 QA — add e2e for keyboard nav + reload persistence; run the FULL gate (JS typecheck/lint/test, Rust cargo test/fmt/clippy, Playwright both browsers); tick Phase 13; final summary. After that the TODO is COMPLETE (modulo documented deferrals: DB migrations baseline, JSONL backup, wasm32 browser build of our Rust runtime, wllama real-browser verification).

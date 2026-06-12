@@ -11,5 +11,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: true,
+    // Unit tests live in src/; e2e/ is Playwright's (different test runner).
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 });

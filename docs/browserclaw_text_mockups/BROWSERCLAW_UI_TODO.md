@@ -74,9 +74,9 @@
   - [x] model_catalog
   - [x] model_cache_index
   - [x] backup_history
-- [ ] Add storage quota service.
-- [ ] Add persistent storage request service.
-- [ ] Add storage health checks.
+- [x] Add storage quota service.
+- [x] Add persistent storage request service.
+- [x] Add storage health checks.
 
 ## Phase 4 — SecretVault
 

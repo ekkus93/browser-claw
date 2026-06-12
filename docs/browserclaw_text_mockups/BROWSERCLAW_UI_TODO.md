@@ -113,7 +113,7 @@
 
 ## Phase 6 — Screens
 
-- [ ] `/onboarding` from `01_onboarding.svg`.
+- [x] `/onboarding` from `01_onboarding.svg`.
 - [ ] `/chat` from `02_chat_workbench.svg`.
 - [ ] `/models` from `03_models.svg`.
 - [ ] `/storage` from `04_storage_backup.svg`.

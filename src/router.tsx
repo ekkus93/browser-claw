@@ -2,14 +2,16 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppLayout from './AppLayout.tsx';
 import { PlaceholderScreen } from './screens/PlaceholderScreen.tsx';
 import ComponentGallery from './screens/ComponentGallery.tsx';
+import OnboardingScreen from './screens/OnboardingScreen.tsx';
 import { NAV_ITEMS } from './components/shell/navItems.ts';
 
 /**
  * Phase 6 replaces each placeholder element with the real screen built from
- * its mockup. For now every primary route renders inside the shared AppShell
- * so the navigation, active states, and layout are exercised end to end.
+ * its mockup. Onboarding renders standalone (its own first-run layout); every
+ * other primary route renders inside the shared AppShell.
  */
 export const router = createBrowserRouter([
+  { path: '/onboarding', element: <OnboardingScreen /> },
   {
     path: '/',
     element: <AppLayout />,

@@ -1,0 +1,16 @@
+{
+  "name": "claw-wasm",
+  "type": "module",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "files": [
+    "claw_wasm_bg.wasm",
+    "claw_wasm.js",
+    "claw_wasm.d.ts"
+  ],
+  "main": "claw_wasm.js",
+  "types": "claw_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

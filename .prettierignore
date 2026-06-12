@@ -3,6 +3,9 @@ node_modules
 coverage
 pnpm-lock.yaml
 
+# Generated wasm-pack artifact
+src/runtime/wasm
+
 # Canonical specs / mockups — source of truth, formatted by their authors
 docs
 

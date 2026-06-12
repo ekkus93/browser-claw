@@ -4,16 +4,17 @@ const PORT = 4321;
 const BASE_URL = `http://localhost:${PORT}`;
 
 /**
- * Playwright drives a real browser against the Vite dev server for visual
- * verification of the screens. E2E specs live in e2e/ (Vitest is scoped to
- * src/, so the two runners don't collide).
+ * Extended (long-running) e2e suite — only run when explicitly invoked
+ * (`pnpm test:e2e:extended`). These exercise the real WASM runtime, a real
+ * wllama GGUF download + inference, and live provider health checks, in both
+ * Chromium and Firefox. They are heavy and network-dependent, so they are not
+ * part of the normal gate.
  */
 export default defineConfig({
   testDir: './e2e',
-  // Extended tests (real model download, live network) are opt-in via the
-  // extended config; keep them out of the normal fast run.
-  testIgnore: '**/*.extended.spec.ts',
-  fullyParallel: true,
+  testMatch: '**/*.extended.spec.ts',
+  // A real GGUF download can take minutes.
+  timeout: 600_000,
   reporter: 'list',
   use: {
     baseURL: BASE_URL,

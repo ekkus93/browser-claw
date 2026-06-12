@@ -14,7 +14,9 @@
     "pretest": "pnpm run lint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:extended": "playwright test -c playwright.extended.config.ts",
+    "build:wasm": "wasm-pack build crates/claw-wasm --target web --out-dir ../../src/runtime/wasm --out-name claw_wasm"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",

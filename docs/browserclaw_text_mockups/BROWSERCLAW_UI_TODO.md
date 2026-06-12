@@ -117,7 +117,7 @@
 - [x] `/chat` from `02_chat_workbench.svg`.
 - [x] `/models` from `03_models.svg`.
 - [x] `/storage` from `04_storage_backup.svg`.
-- [ ] `/skills` from `05_skills.svg`.
+- [x] `/skills` from `05_skills.svg`.
 - [ ] `/memories` from `06_memories.svg`.
 - [ ] `/audit` from `07_audit.svg`.
 - [ ] `/settings` from `08_settings.svg`.

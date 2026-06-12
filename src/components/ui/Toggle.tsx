@@ -5,6 +5,8 @@ export interface ToggleProps {
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   label?: string;
+  /** Accessible name when there is no visible label. */
+  ariaLabel?: string;
   disabled?: boolean;
   id?: string;
 }
@@ -17,6 +19,7 @@ export function Toggle({
   checked,
   onCheckedChange,
   label,
+  ariaLabel,
   disabled = false,
   id,
 }: ToggleProps) {
@@ -30,6 +33,7 @@ export function Toggle({
         role="switch"
         aria-checked={checked}
         aria-labelledby={labelId}
+        aria-label={labelId ? undefined : ariaLabel}
         disabled={disabled}
         onClick={() => onCheckedChange(!checked)}
         className={cn(

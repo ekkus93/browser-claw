@@ -7,6 +7,7 @@ import OnboardingScreen from './screens/OnboardingScreen.tsx';
 import ChatScreen from './screens/ChatScreen.tsx';
 import ModelsScreen from './screens/ModelsScreen.tsx';
 import StorageScreen from './screens/StorageScreen.tsx';
+import SkillsScreen from './screens/SkillsScreen.tsx';
 import { NAV_ITEMS } from './components/shell/navItems.ts';
 
 // Real screens replace the placeholder as each Phase 6 screen lands.
@@ -14,6 +15,7 @@ const SCREEN_OVERRIDES: Record<string, ReactNode> = {
   chat: <ChatScreen />,
   models: <ModelsScreen />,
   storage: <StorageScreen />,
+  skills: <SkillsScreen />,
 };
 
 /**

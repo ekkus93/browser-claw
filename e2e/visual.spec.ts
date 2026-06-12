@@ -9,6 +9,11 @@ const ROUTES = [
   { path: '/chat', name: 'chat' },
   { path: '/models', name: 'models' },
   { path: '/storage', name: 'storage' },
+  { path: '/skills', name: 'skills' },
+  { path: '/memories', name: 'memories' },
+  { path: '/audit', name: 'audit' },
+  { path: '/settings', name: 'settings' },
+  { path: '/workflow', name: 'workflow' },
   { path: '/showcase', name: 'showcase' },
 ];
 

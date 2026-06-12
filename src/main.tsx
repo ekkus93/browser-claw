@@ -13,12 +13,26 @@ import {
   loadLatestSnapshot,
 } from './runtime/runtimeHost.ts';
 import { registerRuntimeListeners } from './runtime/runtimeListeners.ts';
+import { createLlmRequestHandler } from './runtime/llmRunner.ts';
+import type { EffectContext } from './runtime/effectExecutor.ts';
+import { resolveProvider } from './providers/registry.ts';
 
-// Boot the deterministic runtime: restore the latest snapshot (if any), then
-// wire the listener that drives it from dispatched user messages.
+// Boot the deterministic runtime: restore the latest snapshot (if any), wire
+// the provider that answers llm_request effects, then register the listener
+// that drives the runtime from dispatched user messages.
 async function bootRuntime(): Promise<void> {
   const snapshot = await loadLatestSnapshot(db);
-  const host = createRuntimeHost({ dispatch: store.dispatch, db }, snapshot);
+  const ctx: EffectContext = { dispatch: store.dispatch, db };
+  const host = createRuntimeHost(ctx, snapshot);
+  ctx.ports = {
+    llmRequest: createLlmRequestHandler({
+      db,
+      dispatch: store.dispatch,
+      getProvider: () =>
+        resolveProvider(store.getState().providers.activeProviderId),
+      submit: (command) => host.submit(command),
+    }),
+  };
   registerRuntimeListeners(startAppListening, host);
 }
 

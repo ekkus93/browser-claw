@@ -23,9 +23,8 @@ export default function ChatScreen() {
   const activeConversationId = useAppSelector(
     (state) => state.chat.activeConversationId,
   );
-  const pendingApprovals = useAppSelector((state) =>
-    state.approvals.queue.filter((a) => a.status === 'pending'),
-  );
+  const approvalQueue = useAppSelector((state) => state.approvals.queue);
+  const pendingApprovals = approvalQueue.filter((a) => a.status === 'pending');
 
   const messages =
     useLiveQuery(

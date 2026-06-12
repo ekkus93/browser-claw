@@ -125,15 +125,15 @@
 
 ## Phase 7 — Provider System
 
-- [ ] Define normalized LLM provider interface.
-- [ ] Implement mock provider.
-- [ ] Implement OpenAI-compatible provider.
-- [ ] Implement OpenAI preset.
-- [ ] Implement Anthropic preset.
-- [ ] Implement Ollama preset.
-- [ ] Implement llama-server preset.
-- [ ] Implement provider health tests.
-- [ ] Normalize CORS/auth/model/network errors.
+- [x] Define normalized LLM provider interface.
+- [x] Implement mock provider.
+- [x] Implement OpenAI-compatible provider.
+- [x] Implement OpenAI preset.
+- [x] Implement Anthropic preset.
+- [x] Implement Ollama preset.
+- [x] Implement llama-server preset.
+- [x] Implement provider health tests.
+- [x] Normalize CORS/auth/model/network errors.
 
 ## Phase 8 — wllama
 

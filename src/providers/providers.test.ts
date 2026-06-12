@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { createMockProvider } from './mockProvider.ts';
 import { createOpenAICompatibleProvider } from './openAiCompatible.ts';
 import { createOpenAIProvider } from './presets.ts';
+import { createAnthropicProvider } from './anthropic.ts';
+import { resolveProvider } from './registry.ts';
 import { ProviderError, httpStatusToKind, kindToHealth } from './errors.ts';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -70,6 +72,46 @@ describe('OpenAI-compatible provider', () => {
       provider.complete({ messages: [{ role: 'user', content: 'x' }] }),
     ).rejects.toBeInstanceOf(ProviderError);
     expect(await provider.checkHealth()).toBe('unreachable');
+  });
+});
+
+describe('Anthropic provider', () => {
+  it('posts to /v1/messages, hoists system, and parses content blocks', async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(
+        jsonResponse({ content: [{ type: 'text', text: 'claude says hi' }] }),
+      ),
+    ) as unknown as typeof fetch;
+    const provider = createAnthropicProvider({ fetchImpl });
+    const result = await provider.complete(
+      {
+        messages: [
+          { role: 'system', content: 'be brief' },
+          { role: 'user', content: 'hi' },
+        ],
+      },
+      { apiKey: 'sk-ant' },
+    );
+    expect(result.text).toBe('claude says hi');
+
+    const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0] as [string, RequestInit];
+    expect(url).toContain('/v1/messages');
+    expect((init.headers as Record<string, string>)['x-api-key']).toBe(
+      'sk-ant',
+    );
+    const body = JSON.parse(init.body as string) as { system?: string };
+    expect(body.system).toBe('be brief');
+  });
+});
+
+describe('registry', () => {
+  it('defaults to mock and resolves presets by id', () => {
+    expect(resolveProvider(null).id).toBe('mock');
+    expect(resolveProvider('unknown').id).toBe('mock');
+    expect(resolveProvider('anthropic').id).toBe('anthropic');
+    expect(resolveProvider('openai').id).toBe('openai');
+    expect(resolveProvider('ollama').id).toBe('ollama');
   });
 });
 

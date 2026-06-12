@@ -116,15 +116,50 @@ export interface SkillStateRow {
   value: unknown;
 }
 
-export type AuditRiskLevel = 'info' | 'low' | 'medium' | 'high';
+export type AuditRiskLevel = 'info' | 'low' | 'medium' | 'high' | 'critical';
 
+export type AuditStatus =
+  | 'success'
+  | 'failure'
+  | 'pending'
+  | 'rejected'
+  | 'cancelled';
+
+export type AuditSource =
+  | 'user'
+  | 'runtime'
+  | 'provider'
+  | 'storage'
+  | 'skill'
+  | 'backup'
+  | 'model'
+  | 'system';
+
+/**
+ * Durable audit event. `at` (epoch ms) is canonical for ordering/range queries;
+ * `timestamp` is an optional derived ISO string for export readability.
+ * Correlation ids are optional. Decrypted secrets must never appear here — the
+ * audit service redacts `details` before writing.
+ */
 export interface AuditEventRow {
   id: string;
   type: string;
   summary: string;
   risk: AuditRiskLevel;
+  source: AuditSource;
+  status: AuditStatus;
   at: number;
+  timestamp?: string;
+  conversationId?: string;
+  providerId?: string;
+  skillId?: string;
+  toolName?: string;
+  modelId?: string;
+  effectId?: string;
+  runId?: string;
   details?: unknown;
+  /** Marks events seeded for demo/dev so they can be told apart from real ones. */
+  demo?: boolean;
 }
 
 export interface RuntimeSnapshotRow {

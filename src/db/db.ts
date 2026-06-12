@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import { backfillAuditDefaults } from '../audit/auditService.ts';
 import type {
   AppSettingRow,
   ProviderProfileRow,
@@ -21,7 +22,7 @@ import type {
 } from './types.ts';
 
 export const DB_NAME = 'browserclaw';
-export const DB_VERSION = 2;
+export const DB_VERSION = 3;
 
 /**
  * Durable local storage (IndexedDB) via Dexie — the source of truth for
@@ -84,6 +85,21 @@ export class BrowserClawDB extends Dexie {
     this.version(2).stores({
       model_blobs: 'modelId, cachedAt',
     });
+
+    // v3 — reconciled durable audit schema: index source/status for queries and
+    // backfill them on existing rows (older events predate these fields).
+    this.version(3)
+      .stores({
+        audit_events: 'id, type, risk, at, source, status',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table<AuditEventRow, string>('audit_events')
+          .toCollection()
+          .modify((row) => {
+            backfillAuditDefaults(row);
+          });
+      });
 
     // First-run seed (only fires when the database is created).
     this.on('populate', (tx) => {

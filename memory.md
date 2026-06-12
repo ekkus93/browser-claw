@@ -30,3 +30,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Verification gate ALL GREEN: `pnpm typecheck`, `lint`, `format:check`, `test` (1 passing), `build` (dist OK, Tailwind CSS compiled), and `pnpm dev` boots + serves the app entry on :5199.
 - Scripts available: dev / build / preview / typecheck / lint / format / format:check / test / test:watch.
 - NEXT (Phase 0 remaining): wire minimal Redux Toolkit store (+ Provider), react-router (RouterProvider), and a Dexie db instance — deps installed, not yet integrated. Those 3 boxes left unchecked.
+
+## 2026-06-12T01:14:03Z - Claude Opus 4.8 - Ralph iteration 2: wire Redux/router/Dexie + zero-tolerance lint policy
+- **Completes Phase 0.** All 8 Phase 0 boxes now checked.
+- Redux: `src/store/store.ts` (configureStore), `src/store/bootstrapSlice.ts` (minimal `bootstrap` slice — placeholder reducer so the store is valid; real domain slices + listener middleware are Phase 2), `src/store/hooks.ts` (typed `useAppDispatch`/`useAppSelector` via `.withTypes`). App wrapped in `<Provider>`.
+- Router: `src/router.tsx` (`createBrowserRouter`, single index route → App; nine real screens are Phase 6). `<RouterProvider>` wired in `main.tsx`.
+- Dexie: `src/db/db.ts` — `BrowserClawDB extends Dexie`, `version(1).stores({})` empty bootstrap schema (full 17-store schema + migrations are Phase 3). Singleton `db` exported.
+- Tests added: `src/store/store.test.ts`, `src/db/db.test.ts` (db test checks `db.name` only — no IndexedDB needed in jsdom; Phase 3 can add fake-indexeddb for real open/query tests). 3 test files / 3 tests pass.
+- **NEW POLICY (user request 2026-06-12): linting is zero-tolerance and coupled to tests.** `lint` script is now `eslint . --max-warnings 0` (warnings = failures). Added `pretest` script `pnpm run lint`, so `pnpm test` lints ALL files before Vitest runs. **Never suppress** lint findings (no `eslint-disable`, no rule-downgrading) — fix the code. Documented in CLAUDE.md (Conventions) and the `/qa` skill.
+- Verbatim-module-syntax note: imports use explicit `.ts`/`.tsx` extensions and `import type` for type-only imports (required by `verbatimModuleSyntax` + `allowImportingTsExtensions`).
+- Gate ALL GREEN: typecheck, lint (max-warnings 0), format:check, `pnpm test` (3/3), build (35 modules, dist OK).

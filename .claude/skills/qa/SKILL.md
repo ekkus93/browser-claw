@@ -12,8 +12,8 @@ Run the Phase 13 quality checks (see `docs/browserclaw_text_mockups/BROWSERCLAW_
 Run these in order and report results. If a script doesn't exist yet (greenfield / pre-Phase-0), say so and skip it rather than failing.
 
 1. **Typecheck** — `pnpm run typecheck` (or `pnpm exec tsc --noEmit` if no script). TypeScript is strict; treat type errors as failures.
-2. **Lint** — `pnpm run lint`.
-3. **Tests** — `pnpm test` (or `pnpm run test`). For a single test, use the test runner's filter (e.g. `pnpm test -- -t "name"`).
+2. **Lint** — `pnpm run lint` (`eslint . --max-warnings 0`). **Warnings are failures.** Never silence a finding with `eslint-disable` or by disabling a rule — fix the code.
+3. **Tests** — `pnpm test` (or `pnpm run test`). Note: `pnpm test` already lints first via `pretest`, so a passing `pnpm test` also means lint passed. For a single test, use the test runner's filter (e.g. `pnpm test -- -t "name"`).
 4. **Secret-leak check** — grep the source for decrypted secrets reaching forbidden sinks. Decrypted API keys/tokens must NEVER appear in Redux state, localStorage, console logs, audit payloads, or screenshots — they belong in the in-memory SecretVault only. Flag anything suspicious:
    - decrypted key/token values being dispatched into Redux slices or written to `localStorage`
    - `console.log`/`console.*` of secret values

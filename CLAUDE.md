@@ -37,6 +37,7 @@ State ownership boundaries (enforce these): Redux = transient UI/session/run sta
 
 - **Package manager: pnpm.** Use `pnpm install` / `pnpm run <script>`. Do not use npm or yarn.
 - **Git: solo workflow on `master`.** Commit directly to master; no PR process yet.
+- **Linting is part of testing and is zero-tolerance.** `pnpm test` lints all files first (`pretest` → `eslint . --max-warnings 0`) before running Vitest. **Lint warnings are errors** — any warning fails the run and must be *fixed*, never suppressed. Do not add `eslint-disable` comments or downgrade/disable rules to silence a finding; change the code instead. (If a rule is genuinely wrong for this project, raise it explicitly rather than quietly suppressing.)
 - No meaningful side effect happens silently — side effects go through inline approval cards (approve/edit/reject, show risk, show exact data).
 - Every meaningful action emits an audit event (see the audit event list in `BROWSERCLAW_UI_SPEC.md`).
 

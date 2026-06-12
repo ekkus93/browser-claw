@@ -4,9 +4,9 @@
 
 - [x] Create React + TypeScript + Vite app.
 - [x] Add Tailwind CSS.
-- [ ] Add Redux Toolkit.
-- [ ] Add router.
-- [ ] Add Dexie.
+- [x] Add Redux Toolkit.
+- [x] Add router.
+- [x] Add Dexie.
 - [x] Add test framework.
 - [x] Enable strict TypeScript.
 - [x] Add lint/format scripts.

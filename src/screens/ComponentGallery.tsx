@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, FolderOpen } from 'lucide-react';
 import { Button } from '../components/ui/Button.tsx';
 import {
   Card,
@@ -12,6 +12,12 @@ import { Badge, type BadgeTone } from '../components/ui/Badge.tsx';
 import { Input } from '../components/ui/Input.tsx';
 import { Select } from '../components/ui/Select.tsx';
 import { Toggle } from '../components/ui/Toggle.tsx';
+import { Tabs } from '../components/ui/Tabs.tsx';
+import { Dialog } from '../components/ui/Dialog.tsx';
+import { Progress } from '../components/ui/Progress.tsx';
+import { EmptyState } from '../components/ui/EmptyState.tsx';
+import { ErrorState } from '../components/ui/ErrorState.tsx';
+import { useToast } from '../components/ui/toastContext.ts';
 
 const BADGE_TONES: BadgeTone[] = [
   'neutral',
@@ -39,6 +45,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
  */
 export default function ComponentGallery() {
   const [toggleOn, setToggleOn] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8 p-8">
@@ -116,6 +124,111 @@ export default function ComponentGallery() {
           </CardFooter>
         </Card>
       </Section>
+
+      <Section title="Progress">
+        <div className="flex w-full flex-col gap-4">
+          <Progress value={64} label="Downloading SmolLM2-1.7B" showValue />
+          <Progress value={100} tone="success" label="Backup complete" />
+        </div>
+      </Section>
+
+      <Section title="Tabs">
+        <div className="w-full">
+          <Tabs
+            items={[
+              {
+                id: 'overview',
+                label: 'Overview',
+                content: (
+                  <p className="text-sm text-muted">
+                    Skill overview and description.
+                  </p>
+                ),
+              },
+              {
+                id: 'permissions',
+                label: 'Permissions',
+                content: (
+                  <p className="text-sm text-muted">
+                    Declared permissions and approved namespaces.
+                  </p>
+                ),
+              },
+              {
+                id: 'state',
+                label: 'State',
+                content: (
+                  <p className="text-sm text-muted">
+                    Private per-skill mutable state.
+                  </p>
+                ),
+              },
+            ]}
+          />
+        </div>
+      </Section>
+
+      <Section title="Overlays & feedback">
+        <Button variant="secondary" onClick={() => setDialogOpen(true)}>
+          Open dialog
+        </Button>
+        <Button
+          variant="secondary"
+          onClick={() =>
+            toast({
+              tone: 'success',
+              title: 'Provider connected',
+              description: 'Anthropic responded successfully.',
+            })
+          }
+        >
+          Show toast
+        </Button>
+      </Section>
+
+      <Section title="Empty & error states">
+        <div className="grid w-full gap-4 sm:grid-cols-2">
+          <EmptyState
+            icon={<FolderOpen className="size-5" />}
+            title="No skills installed"
+            description="Import a .clawskill or SKILL.md to get started."
+            action={
+              <Button variant="primary" size="sm">
+                Import skill
+              </Button>
+            }
+          />
+          <ErrorState
+            description="The local endpoint was unreachable. Check that llama-server is running."
+            action={
+              <Button variant="secondary" size="sm">
+                Retry
+              </Button>
+            }
+          />
+        </div>
+      </Section>
+
+      <Dialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        title="Delete conversation?"
+        description="This permanently removes the conversation and its messages."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={() => setDialogOpen(false)}>
+              Delete
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted">
+          Conversations live in local IndexedDB. This action cannot be undone.
+        </p>
+      </Dialog>
     </div>
   );
 }

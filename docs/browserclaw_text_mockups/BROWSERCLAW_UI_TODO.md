@@ -26,12 +26,12 @@
   - [x] Input
   - [x] Select
   - [x] Toggle
-  - [ ] Tabs
-  - [ ] Dialog
-  - [ ] Progress
-  - [ ] Toast
-  - [ ] EmptyState
-  - [ ] ErrorState
+  - [x] Tabs
+  - [x] Dialog
+  - [x] Progress
+  - [x] Toast
+  - [x] EmptyState
+  - [x] ErrorState
 
 ## Phase 2 — Redux Control Plane
 

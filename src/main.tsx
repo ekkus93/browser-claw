@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router-dom';
 import './index.css';
 import { store } from './store/store.ts';
 import { router } from './router.tsx';
+import { ToastProvider } from './components/ui/Toast.tsx';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -14,7 +15,9 @@ if (!rootElement) {
 createRoot(rootElement).render(
   <StrictMode>
     <Provider store={store}>
-      <RouterProvider router={router} />
+      <ToastProvider>
+        <RouterProvider router={router} />
+      </ToastProvider>
     </Provider>
   </StrictMode>,
 );

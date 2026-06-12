@@ -72,3 +72,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Tests `src/components/ui/ui.test.tsx`: Button click + loading-disabled/aria-busy, Badge content, Input label assoc + aria-invalid, Toggle aria-checked flip. 4 files / 9 tests pass.
 - Gate green: typecheck, lint, format, test (9/9), build (CSS 20.89 kB).
 - NEXT (Phase 1 batch B): Tabs, Dialog (focus-trap + restore — acceptance criterion), Progress, Toast, EmptyState, ErrorState. Then Phase 1 done → Phase 2 (Redux slices + listener middleware; wire shell placeholders to real state).
+
+## 2026-06-12T01:36:11Z - Claude Opus 4.8 - Ralph iteration 6: component library batch B → PHASE 1 COMPLETE
+- Built the remaining 6 components. **All of Phase 1 is now checked** (tokens + shell + 12 components).
+- `src/components/ui/`: `Tabs.tsx` (data-driven, ARIA tablist + roving tabindex + Arrow/Home/End keyboard nav), `Dialog.tsx` (portal to body; focus-trap, Escape-to-close, overlay-click close, body scroll-lock, **restores focus to the previously focused element on close** — accessibility acceptance criterion), `Progress.tsx` (determinate 0–100, role=progressbar, optional label/showValue, tones), `EmptyState.tsx` (icon/title/description/action, dashed), `ErrorState.tsx` (role=alert, danger-toned, AlertTriangle).
+- Toast split across TWO files to satisfy `react-refresh/only-export-components` under `--max-warnings 0`: `toastContext.ts` (ToastContext + `useToast` hook + types — NO component) and `Toast.tsx` (ToastProvider + internal ToastViewport/ToastCard — components only). PATTERN: keep hooks/context in a separate non-component module from the provider component.
+- Wired `<ToastProvider>` into `main.tsx` (wraps RouterProvider, inside Redux Provider). `useToast()` now available app-wide.
+- Gallery (`/showcase`) expanded to demo every component incl. live Dialog + Toast.
+- Tests: `src/components/ui/feedback.test.tsx` — Tabs click + arrow-key, Dialog focus-in/Escape/focus-restore, Progress aria-valuenow, Empty/ErrorState titles, Toast show + dismiss. Now **5 test files / 15 tests pass**.
+- Gate green: typecheck, lint, format, test (15/15), build (CSS 22.82 kB, JS 337.84 kB).
+- Component inventory complete. Reusable design-system import paths: `src/components/ui/{Button,Card,Badge,Input,Select,Toggle,Tabs,Dialog,Progress,Toast,EmptyState,ErrorState}.tsx`, hook `toastContext.ts#useToast`, helper `src/lib/cn.ts`. Shell in `src/components/shell/`.
+- NEXT: **Phase 2 — Redux Control Plane**: configure store (replace bootstrap slice), add listener middleware, add slices (app/runtime/chat/approvals/providers/models/skills/memories/storage/audit/secrets-metadata-ONLY), runtime event/action naming conventions, and the hard rule: NO raw/decrypted secrets in Redux. Then wire the shell's placeholder props (model, storage, runtime status) to real selectors.

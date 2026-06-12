@@ -370,14 +370,14 @@
 
 ### 7.4 Runtime Permission Enforcement
 
-- [ ] Enforce skill permissions during tool execution.
-- [ ] Enforce skill filesystem permissions during reads/writes.
-- [ ] Do not rely only on UI display.
+- [ ] Enforce skill permissions during tool execution. <!-- BLOCKED: the tool_call_proposal effect carries no skill_id (effectTypes.ts), so the runtime tool path can't be tied to a skill's declared tools yet. Needs a claw-schema/WASM contract change to add skill_id, like the 5.1 storage-handler gap. -->
+- [x] Enforce skill filesystem permissions during reads/writes. <!-- skillRunner.ts routes skill_fs_read_text/skill_state_get/skill_state_put through the permission-scoped SkillFs; wired as ctx.ports.skill in main.tsx (was an unwired no-op). -->
+- [x] Do not rely only on UI display. <!-- enforcement lives in SkillFs/skillRunner data layer; disabled/unknown skills fail closed. -->
 - [ ] Tests:
-  - [ ] skill cannot call undeclared tool;
-  - [ ] skill cannot read undeclared path;
-  - [ ] skill cannot write undeclared state path;
-  - [ ] permission denial is audited.
+  - [ ] skill cannot call undeclared tool; <!-- deferred with the tool-execution bullet above -->
+  - [x] skill cannot read undeclared path;
+  - [x] skill cannot write undeclared state path;
+  - [x] permission denial is audited.
 
 ## Phase 8 — wllama and Local Model Hardening
 

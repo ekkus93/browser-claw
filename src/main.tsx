@@ -11,6 +11,8 @@ import { db } from './db/db.ts';
 import { RuntimeHost, loadLatestSnapshot } from './runtime/runtimeHost.ts';
 import { registerRuntimeListeners } from './runtime/runtimeListeners.ts';
 import { createLlmRequestHandler } from './runtime/llmRunner.ts';
+import { createSkillEffectHandler } from './runtime/skillRunner.ts';
+import { createSkillManager } from './skills/skillManager.ts';
 import type { EffectContext } from './runtime/effectExecutor.ts';
 import {
   createReferenceRuntime,
@@ -182,6 +184,15 @@ async function bootRuntime(): Promise<void> {
         getActiveProviderProfile(db).then((profile) =>
           resolveApiKey(secretVault, profile),
         ),
+      submit: (command) => host.submit(command),
+    }),
+    skill: createSkillEffectHandler({
+      db,
+      dispatch: store.dispatch,
+      // Route every skill fs/state effect through the permission-scoped
+      // SkillFs so namespace/reserved-key rules are enforced, not UI-only.
+      fsFor: (skillId) =>
+        createSkillManager({ db, dispatch: store.dispatch }).fsFor(skillId),
       submit: (command) => host.submit(command),
     }),
   };

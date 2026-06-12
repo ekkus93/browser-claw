@@ -104,3 +104,130 @@ describe('backupService', () => {
     expect(history.at(-1)?.sizeBytes).toBe(2048);
   });
 });
+
+function backupOf(
+  collections: Record<string, unknown[]>,
+  schemaVersion = 1,
+): unknown {
+  return {
+    manifest: {
+      format: 'clawbackup',
+      schemaVersion,
+      appVersion: 'test',
+      createdAt: 0,
+      includesSecrets: false,
+    },
+    collections,
+  };
+}
+
+describe('validateBackup hardening', () => {
+  it('rejects an unknown collection', () => {
+    const result = validateBackup(backupOf({ rootkit: [{ id: 'x' }] }));
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/unknown backup collection/i);
+  });
+
+  it('rejects a collection that is not a list', () => {
+    const result = validateBackup(backupOf({ memories: { id: 'x' } as never }));
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/not a list/i);
+  });
+
+  it('rejects a malformed row (missing key field)', () => {
+    const result = validateBackup(backupOf({ memories: [{ title: 'no id' }] }));
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/key field/i);
+  });
+
+  it('rejects a non-object row', () => {
+    const result = validateBackup(backupOf({ memories: ['nope'] }));
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/malformed/i);
+  });
+
+  it('rejects a backup from a newer schema version', () => {
+    const result = validateBackup(backupOf({ memories: [] }, 9999));
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/newer than this app/i);
+  });
+
+  it('rejects a backup with no schema version', () => {
+    const result = validateBackup({
+      manifest: { format: 'clawbackup', appVersion: 'x', createdAt: 0 },
+      collections: {},
+    });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/schema version/i);
+  });
+
+  it('rejects a backup over the row-count limit', () => {
+    const rows = [{ id: 'a' }, { id: 'b' }, { id: 'c' }];
+    const result = validateBackup(backupOf({ memories: rows }), {
+      maxRowsPerCollection: 2,
+    });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/over the 2 limit/i);
+  });
+
+  it('rejects a backup over the total-size limit', () => {
+    const rows = [{ id: 'a', blob: 'x'.repeat(100) }];
+    const result = validateBackup(backupOf({ memories: rows }), {
+      maxTotalBytes: 10,
+    });
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/total size limit/i);
+  });
+
+  it('rejects a row that embeds a raw decrypted secret (by field name)', () => {
+    const result = validateBackup(
+      backupOf({ provider_profiles: [{ id: 'openai', apiKey: 'hunter2xyz' }] }),
+    );
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/raw decrypted secret/i);
+  });
+
+  it('rejects a row that embeds a credential-shaped value anywhere', () => {
+    const result = validateBackup(
+      backupOf({
+        memories: [{ id: 'm1', text: 'my key is sk-ant-abcdefghijklmnopqrst' }],
+      }),
+    );
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/raw decrypted secret/i);
+  });
+
+  it('accepts a legitimate provider profile (apiKeyMode / encryptedSecretId are not secrets)', () => {
+    const result = validateBackup(
+      backupOf({
+        provider_profiles: [
+          {
+            id: 'openai',
+            kind: 'openai',
+            label: 'OpenAI',
+            apiKeyMode: 'encrypted',
+            encryptedSecretId: 'provider:openai',
+          },
+        ],
+      }),
+    );
+    expect(result.valid).toBe(true);
+  });
+
+  it('accepts ciphertext-only encrypted_secrets rows', () => {
+    const result = validateBackup(
+      backupOf({
+        encrypted_secrets: [
+          {
+            id: 'provider:openai',
+            label: 'OpenAI',
+            storageMode: 'encrypted',
+            ciphertext: 'YmFzZTY0Y2lwaGVydGV4dA==',
+            iv: 'YmFzZTY0aXY=',
+          },
+        ],
+      }),
+    );
+    expect(result.valid).toBe(true);
+  });
+});

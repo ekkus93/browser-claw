@@ -258,22 +258,22 @@
 
 ### 6.1 Backup Format and Validation
 
-- [ ] Define backup manifest schema.
-- [ ] Define allowed backup collections.
-- [ ] Define row validators for every importable collection.
-- [ ] Enforce schema version compatibility.
-- [ ] Enforce record count limits.
-- [ ] Enforce record size limits.
-- [ ] Enforce total import size limit.
-- [ ] Reject unknown collections.
-- [ ] Reject malformed rows.
-- [ ] Reject backups containing likely raw decrypted secrets.
-- [ ] Tests:
-  - [ ] unknown collection rejected;
-  - [ ] malformed collection rejected;
-  - [ ] invalid row rejected;
-  - [ ] unsupported version rejected;
-  - [ ] oversized backup rejected.
+- [x] Define backup manifest schema.
+- [x] Define allowed backup collections.
+- [x] Define row validators for every importable collection. <!-- KEY_FIELDS: app_settings[key], skill_files[skillId,path], skill_state[skillId,key], else [id]; every row must be a plain object with non-empty string key fields. -->
+- [x] Enforce schema version compatibility. <!-- reject schemaVersion > DB_VERSION or non-numeric; older accepted (Dexie migrates). -->
+- [x] Enforce record count limits.
+- [x] Enforce record size limits.
+- [x] Enforce total import size limit.
+- [x] Reject unknown collections.
+- [x] Reject malformed rows.
+- [x] Reject backups containing likely raw decrypted secrets. <!-- containsLikelyRawSecret: plaintext-secret field names (excludes apiKeyMode/encryptedSecretId) + credential-shaped values (sk-/sk-ant-/AKIA/ghp_/ya29./JWT/xox). -->
+- [x] Tests:
+  - [x] unknown collection rejected;
+  - [x] malformed collection rejected;
+  - [x] invalid row rejected;
+  - [x] unsupported version rejected;
+  - [x] oversized backup rejected.
 
 ### 6.2 Transactional Import
 

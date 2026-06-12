@@ -137,7 +137,107 @@ export interface ValidationResult {
   backup?: ClawBackup;
 }
 
-export function validateBackup(data: unknown): ValidationResult {
+/** Collections an import is allowed to write (the export set + ciphertext). */
+const ALLOWED_COLLECTIONS = new Set<string>([
+  ...COLLECTIONS,
+  'encrypted_secrets',
+]);
+
+/** Primary-key fields every row in a collection must carry. */
+const KEY_FIELDS: Record<string, string[]> = {
+  app_settings: ['key'],
+  skill_files: ['skillId', 'path'],
+  skill_state: ['skillId', 'key'],
+};
+
+function keyFieldsFor(name: string): string[] {
+  return KEY_FIELDS[name] ?? ['id'];
+}
+
+export interface BackupLimits {
+  maxRowsPerCollection: number;
+  maxTotalRows: number;
+  /** Serialized size of a single row. */
+  maxRowBytes: number;
+  /** Serialized size of all collections combined. */
+  maxTotalBytes: number;
+}
+
+export const DEFAULT_BACKUP_LIMITS: BackupLimits = {
+  maxRowsPerCollection: 200_000,
+  maxTotalRows: 1_000_000,
+  maxRowBytes: 2_000_000,
+  maxTotalBytes: 200_000_000,
+};
+
+// Field names (normalized) that hold a raw plaintext secret in our schema only
+// by mistake. `apiKeyMode` (an enum) and `encryptedSecretId` (a reference) are
+// deliberately NOT here — they are legitimate, secret-free fields.
+const PLAINTEXT_SECRET_FIELDS = new Set([
+  'apikey',
+  'accesstoken',
+  'refreshtoken',
+  'clientsecret',
+  'secretkey',
+  'privatekey',
+  'password',
+  'passwd',
+  'plaintext',
+]);
+
+// Value shapes that look like live credentials regardless of field name.
+const SECRET_VALUE_PATTERNS = [
+  /sk-ant-[A-Za-z0-9-]{16,}/, // Anthropic
+  /sk-[A-Za-z0-9-]{16,}/, // OpenAI-style
+  /xox[baprs]-[A-Za-z0-9-]{10,}/, // Slack
+  /AKIA[0-9A-Z]{16}/, // AWS access key id
+  /ghp_[A-Za-z0-9]{20,}/, // GitHub PAT
+  /ya29\.[A-Za-z0-9._-]{20,}/, // Google OAuth
+  /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/, // JWT
+];
+
+function normalizeFieldName(key: string): string {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * True if `value` (a row or any nested value) appears to embed a raw decrypted
+ * secret — either a known plaintext-secret field holding a non-empty string, or
+ * any string whose shape matches a live credential. Our own export never writes
+ * plaintext (secrets live in `encrypted_secrets` as ciphertext only), so a hit
+ * means a foreign or tampered backup and we refuse it.
+ */
+export function containsLikelyRawSecret(value: unknown, depth = 0): boolean {
+  if (depth > 6 || value === null || typeof value !== 'object') {
+    return typeof value === 'string'
+      ? SECRET_VALUE_PATTERNS.some((re) => re.test(value))
+      : false;
+  }
+  if (Array.isArray(value)) {
+    return value.some((item) => containsLikelyRawSecret(item, depth + 1));
+  }
+  for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+    if (
+      PLAINTEXT_SECRET_FIELDS.has(normalizeFieldName(key)) &&
+      typeof val === 'string' &&
+      val.trim().length > 0
+    ) {
+      return true;
+    }
+    if (containsLikelyRawSecret(val, depth + 1)) return true;
+  }
+  return false;
+}
+
+function isPlainRow(row: unknown): row is Record<string, unknown> {
+  return typeof row === 'object' && row !== null && !Array.isArray(row);
+}
+
+export function validateBackup(
+  data: unknown,
+  limits: Partial<BackupLimits> = {},
+): ValidationResult {
+  const lim = { ...DEFAULT_BACKUP_LIMITS, ...limits };
   if (typeof data !== 'object' || data === null) {
     return { valid: false, error: 'Not a valid backup file.' };
   }
@@ -145,16 +245,94 @@ export function validateBackup(data: unknown): ValidationResult {
   if (candidate.manifest?.format !== BACKUP_FORMAT) {
     return { valid: false, error: 'This is not a .clawbackup file.' };
   }
+
+  // Schema-version compatibility: refuse a backup written by a newer schema we
+  // don't understand. Older versions are accepted (Dexie migrates the DB).
+  const schemaVersion = candidate.manifest.schemaVersion;
+  if (typeof schemaVersion !== 'number' || !Number.isFinite(schemaVersion)) {
+    return { valid: false, error: 'Backup manifest has no schema version.' };
+  }
+  if (schemaVersion > DB_VERSION) {
+    return {
+      valid: false,
+      error: `Backup schema v${schemaVersion} is newer than this app (v${DB_VERSION}); upgrade BrowserClaw to import it.`,
+    };
+  }
+
   if (
     typeof candidate.collections !== 'object' ||
-    candidate.collections === null
+    candidate.collections === null ||
+    Array.isArray(candidate.collections)
   ) {
     return { valid: false, error: 'Backup is missing its collections.' };
   }
+
   const summary: BackupSummary = {};
+  let totalRows = 0;
+  let totalBytes = 0;
+
   for (const [name, rows] of Object.entries(candidate.collections)) {
-    summary[name] = Array.isArray(rows) ? rows.length : 0;
+    if (!ALLOWED_COLLECTIONS.has(name)) {
+      return { valid: false, error: `Unknown backup collection: ${name}.` };
+    }
+    if (!Array.isArray(rows)) {
+      return {
+        valid: false,
+        error: `Collection ${name} is not a list of records.`,
+      };
+    }
+    if (rows.length > lim.maxRowsPerCollection) {
+      return {
+        valid: false,
+        error: `Collection ${name} has ${rows.length} records, over the ${lim.maxRowsPerCollection} limit.`,
+      };
+    }
+
+    const required = keyFieldsFor(name);
+    for (const row of rows) {
+      if (!isPlainRow(row)) {
+        return { valid: false, error: `Malformed record in ${name}.` };
+      }
+      for (const field of required) {
+        if (typeof row[field] !== 'string' || row[field] === '') {
+          return {
+            valid: false,
+            error: `Record in ${name} is missing its key field "${field}".`,
+          };
+        }
+      }
+      const serialized = JSON.stringify(row);
+      if (serialized.length > lim.maxRowBytes) {
+        return {
+          valid: false,
+          error: `A record in ${name} exceeds the ${lim.maxRowBytes}-byte size limit.`,
+        };
+      }
+      if (containsLikelyRawSecret(row)) {
+        return {
+          valid: false,
+          error: `Record in ${name} looks like it contains a raw decrypted secret; refusing to import.`,
+        };
+      }
+      totalBytes += serialized.length;
+      if (totalBytes > lim.maxTotalBytes) {
+        return {
+          valid: false,
+          error: `Backup exceeds the ${lim.maxTotalBytes}-byte total size limit.`,
+        };
+      }
+    }
+
+    totalRows += rows.length;
+    if (totalRows > lim.maxTotalRows) {
+      return {
+        valid: false,
+        error: `Backup exceeds the ${lim.maxTotalRows}-record total limit.`,
+      };
+    }
+    summary[name] = rows.length;
   }
+
   return { valid: true, summary, backup: candidate as ClawBackup };
 }
 

@@ -83,7 +83,7 @@
 - [ ] Implement in-memory SecretVault.
 - [ ] Support session-only keys.
 - [ ] Support encrypted stored keys.
-- [ ] Implement Web Crypto AES-GCM encryption.
+- [x] Implement Web Crypto AES-GCM encryption.
 - [ ] Implement passphrase-derived key flow.
 - [ ] Add lock timeout.
 - [ ] Add unlock/lock audit events.

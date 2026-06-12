@@ -20,12 +20,12 @@
 - [x] Add RightInspectorPanel.
 - [x] Add StatusFooter.
 - [ ] Add shared components:
-  - [ ] Button
-  - [ ] Card
-  - [ ] Badge
-  - [ ] Input
-  - [ ] Select
-  - [ ] Toggle
+  - [x] Button
+  - [x] Card
+  - [x] Badge
+  - [x] Input
+  - [x] Select
+  - [x] Toggle
   - [ ] Tabs
   - [ ] Dialog
   - [ ] Progress

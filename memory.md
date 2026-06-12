@@ -61,3 +61,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Tests: `src/components/shell/AppShell.test.tsx` (renders brand/nav/runtime/version/content; active-route `aria-current`; inspector tab switching via userEvent). 3 files / 5 tests pass.
 - Gate green: typecheck, lint (max-warnings 0), format, test (5/5), build (CSS 16.75 kB, Inter woff2 bundled).
 - NOT yet visually verified in a real browser (no Playwright installed) — jsdom tests + full build are the current evidence. Worth a real screenshot pass later.
+
+## 2026-06-12T01:30:45Z - Claude Opus 4.8 - Ralph iteration 5: component library batch A (primitives)
+- Built 6 of 12 shared components. Phase 1 sub-boxes Button/Card/Badge/Input/Select/Toggle checked; Tabs/Dialog/Progress/Toast/EmptyState/ErrorState remain (batch B).
+- `src/lib/cn.ts`: tiny className joiner (filter(Boolean).join(' ')) — no tailwind-merge.
+- `src/components/ui/`: `Button.tsx` (variants primary/secondary/ghost/danger, sizes sm/md, leading/trailing icon, `loading` w/ Loader2 spinner + aria-busy, disabled), `Card.tsx` (Card + CardHeader/CardTitle/CardContent/CardFooter composables), `Badge.tsx` (tones neutral/primary/success/warning/danger/purple, optional dot), `Input.tsx` + `Select.tsx` (forwardRef, label/hint/error, aria-invalid + aria-describedby; Select has appearance-none + ChevronDown), `Toggle.tsx` (real button role="switch", aria-checked, keyboard-operable).
+- Style maps (VARIANTS/SIZES/TONES/DOTS) kept module-internal (not exported) to stay clear of `react-refresh/only-export-components` under `--max-warnings 0`.
+- `src/screens/ComponentGallery.tsx` + route `/showcase`: living design-system gallery (also the surface for future visual review). Not a product screen.
+- POLICY REMINDER honored: briefly added an `eslint-disable react/button-has-type` in Button, then REMOVED it (violates no-suppression rule; the rule isn't even enabled). No suppressions anywhere.
+- Tests `src/components/ui/ui.test.tsx`: Button click + loading-disabled/aria-busy, Badge content, Input label assoc + aria-invalid, Toggle aria-checked flip. 4 files / 9 tests pass.
+- Gate green: typecheck, lint, format, test (9/9), build (CSS 20.89 kB).
+- NEXT (Phase 1 batch B): Tabs, Dialog (focus-trap + restore — acceptance criterion), Progress, Toast, EmptyState, ErrorState. Then Phase 1 done → Phase 2 (Redux slices + listener middleware; wire shell placeholders to real state).

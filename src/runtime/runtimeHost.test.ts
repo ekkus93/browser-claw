@@ -4,7 +4,12 @@ import { configureStore } from '@reduxjs/toolkit';
 import auditReducer from '../store/slices/auditSlice.ts';
 import approvalsReducer from '../store/slices/approvalsSlice.ts';
 import { BrowserClawDB } from '../db/db.ts';
-import { createRuntimeHost, loadLatestSnapshot } from './runtimeHost.ts';
+import {
+  RuntimeHost,
+  createRuntimeHost,
+  loadLatestSnapshot,
+} from './runtimeHost.ts';
+import { createReferenceRuntime } from './referenceRuntime.ts';
 import type { EffectContext } from './effectExecutor.ts';
 
 const db = new BrowserClawDB();
@@ -33,6 +38,22 @@ describe('RuntimeHost', () => {
     // the audit_append effect was executed (llm_request has no port -> no-op)
     expect(store.getState().audit.recent).toHaveLength(1);
     expect(store.getState().audit.recent[0]?.type).toBe('llm_request_sent');
+  });
+
+  it('schedules a snapshot save after a submit when enabled', async () => {
+    await db.open();
+    const { ctx } = makeContext();
+    const host = new RuntimeHost(createReferenceRuntime(), ctx, {
+      snapshot: { delayMs: 0 },
+    });
+    await host.submit({
+      type: 'submit_user_message',
+      conversation_id: 'c1',
+      text: 'hi',
+    });
+    await host.flushSnapshot();
+    const snapshot = await loadLatestSnapshot(db);
+    expect(snapshot?.message_count).toBe(1);
   });
 
   it('persists and restores a snapshot deterministically', async () => {

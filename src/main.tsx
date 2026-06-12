@@ -12,7 +12,11 @@ import { RuntimeHost, loadLatestSnapshot } from './runtime/runtimeHost.ts';
 import { registerRuntimeListeners } from './runtime/runtimeListeners.ts';
 import { createLlmRequestHandler } from './runtime/llmRunner.ts';
 import type { EffectContext } from './runtime/effectExecutor.ts';
-import { createReferenceRuntime } from './runtime/referenceRuntime.ts';
+import {
+  createReferenceRuntime,
+  type ClawRuntimePort,
+  type RuntimeSnapshot,
+} from './runtime/referenceRuntime.ts';
 import { createWasmRuntime } from './runtime/wasmRuntime.ts';
 import { loadRuntimePort } from './runtime/runtimeBoot.ts';
 import {
@@ -48,6 +52,51 @@ function appendAudit(
   });
 }
 
+// Wrap a runtime factory so a corrupted/incompatible snapshot doesn't take the
+// app down: if constructing from the snapshot throws, audit the restore failure
+// and start fresh (a real construction failure on the fresh path still
+// propagates and is handled as a runtime load failure). A successful restore is
+// audited too. See replies1.md Q5 / TODO Phase 4.
+function withSnapshotRestore<T extends ClawRuntimePort>(
+  create: (snapshot?: RuntimeSnapshot) => T | Promise<T>,
+): (snapshot?: RuntimeSnapshot) => Promise<T> {
+  return async (snapshot) => {
+    if (snapshot === undefined) return create(undefined);
+    try {
+      const port = await create(snapshot);
+      appendAudit(
+        'runtime.snapshot_restored',
+        'Runtime snapshot restored',
+        'info',
+        'success',
+      );
+      return port;
+    } catch (error) {
+      console.error(
+        'Runtime snapshot could not be restored; starting fresh',
+        error,
+      );
+      appendAudit(
+        'runtime.snapshot_restore_failed',
+        'Runtime snapshot could not be restored; started fresh',
+        'medium',
+        'failure',
+      );
+      return create(undefined);
+    }
+  };
+}
+
+function onSnapshotSaveError(error: unknown): void {
+  console.error('Runtime snapshot save failed', error);
+  appendAudit(
+    'runtime.snapshot_save_failed',
+    'Runtime snapshot save failed',
+    'medium',
+    'failure',
+  );
+}
+
 // Boot the deterministic runtime: restore the latest snapshot (if any), wire
 // the provider that answers llm_request effects, then register the listener
 // that drives the runtime from dispatched user messages.
@@ -60,8 +109,8 @@ async function bootRuntime(): Promise<void> {
   const { port } = await loadRuntimePort(
     {
       config: appConfig,
-      createWasm: createWasmRuntime,
-      createReference: createReferenceRuntime,
+      createWasm: withSnapshotRestore(createWasmRuntime),
+      createReference: withSnapshotRestore(createReferenceRuntime),
       onLoaded: (mode) => {
         store.dispatch(runtimeLoaded({ mode }));
         appendAudit(
@@ -99,7 +148,13 @@ async function bootRuntime(): Promise<void> {
   );
   if (!port) return;
   const ctx: EffectContext = { dispatch: store.dispatch, db };
-  const host = new RuntimeHost(port, ctx);
+  const host = new RuntimeHost(port, ctx, {
+    snapshot: { delayMs: 500, onError: onSnapshotSaveError },
+  });
+  // Persist any pending snapshot when the page is being hidden/unloaded.
+  window.addEventListener('pagehide', () => {
+    void host.flushSnapshot();
+  });
   ctx.ports = {
     llmRequest: createLlmRequestHandler({
       db,

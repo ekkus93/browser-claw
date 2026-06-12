@@ -14,7 +14,9 @@ import type { ClawRuntimePort, RuntimeSnapshot } from './referenceRuntime.ts';
 export interface RuntimeBootDeps {
   config: Pick<AppConfig, 'isDevFallbackAllowed'>;
   createWasm: (snapshot?: RuntimeSnapshot) => Promise<ClawRuntimePort>;
-  createReference: (snapshot?: RuntimeSnapshot) => ClawRuntimePort;
+  createReference: (
+    snapshot?: RuntimeSnapshot,
+  ) => ClawRuntimePort | Promise<ClawRuntimePort>;
   /** Called when the WASM runtime loads successfully. */
   onLoaded: (mode: RuntimeMode) => void;
   /** Called when WASM failed but the dev fallback is permitted. */
@@ -39,7 +41,7 @@ export async function loadRuntimePort(
     return { port, mode: 'wasm' };
   } catch (error) {
     if (deps.config.isDevFallbackAllowed) {
-      const port = deps.createReference(snapshot);
+      const port = await deps.createReference(snapshot);
       deps.onFallback(error);
       return { port, mode: 'reference' };
     }

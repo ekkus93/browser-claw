@@ -6,8 +6,17 @@ import {
   type RuntimeSnapshot,
 } from './referenceRuntime.ts';
 import { executeEffect, type EffectContext } from './effectExecutor.ts';
+import { SnapshotScheduler } from './snapshotScheduler.ts';
 
 const LATEST_SNAPSHOT_ID = 'latest';
+
+export interface RuntimeHostOptions {
+  /** Enable debounced snapshot persistence after each submitted command. */
+  snapshot?: {
+    delayMs?: number;
+    onError?: (error: unknown) => void;
+  };
+}
 
 /**
  * Owns a runtime port and runs the command -> effects -> side-effects loop,
@@ -17,16 +26,35 @@ const LATEST_SNAPSHOT_ID = 'latest';
 export class RuntimeHost {
   readonly #port: ClawRuntimePort;
   readonly #ctx: EffectContext;
+  readonly #snapshots: SnapshotScheduler | undefined;
 
-  constructor(port: ClawRuntimePort, ctx: EffectContext) {
+  constructor(
+    port: ClawRuntimePort,
+    ctx: EffectContext,
+    options?: RuntimeHostOptions,
+  ) {
     this.#port = port;
     this.#ctx = ctx;
+    this.#snapshots = options?.snapshot
+      ? new SnapshotScheduler(
+          () => this.saveSnapshot(),
+          options.snapshot.delayMs,
+          options.snapshot.onError,
+        )
+      : undefined;
   }
 
   async submit(command: Command): Promise<void> {
     for (const effect of this.#port.dispatch(command)) {
       await executeEffect(effect, this.#ctx);
     }
+    // Coalesced save after the turn settles (no-op unless snapshots enabled).
+    this.#snapshots?.schedule();
+  }
+
+  /** Persist any pending snapshot immediately (idle/error/before-unload). */
+  async flushSnapshot(): Promise<void> {
+    await this.#snapshots?.flush();
   }
 
   /** Persist the current runtime state so it survives reload. */

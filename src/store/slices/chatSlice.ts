@@ -43,6 +43,15 @@ const chatSlice = createSlice({
     streamingMessageSet(state, action: PayloadAction<string | null>) {
       state.streamingMessageId = action.payload;
     },
+    /** User sent a message — picked up by the runtime listener. */
+    userMessageSubmitted(
+      state,
+      action: PayloadAction<{ conversationId: string; text: string }>,
+    ) {
+      state.activeConversationId = action.payload.conversationId;
+      state.composerDraft = '';
+      state.runState = 'thinking';
+    },
   },
 });
 
@@ -51,5 +60,6 @@ export const {
   composerDraftSet,
   runStateSet,
   streamingMessageSet,
+  userMessageSubmitted,
 } = chatSlice.actions;
 export default chatSlice.reducer;

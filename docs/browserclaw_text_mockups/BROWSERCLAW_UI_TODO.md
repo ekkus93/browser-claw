@@ -108,7 +108,7 @@
   - [x] skill_state_put
   - [x] audit_append
   - [x] runtime_snapshot_save
-- [ ] Wire effects to Redux listener middleware.
+- [x] Wire effects to Redux listener middleware.
 - [x] Persist snapshots.
 
 ## Phase 6 — Screens

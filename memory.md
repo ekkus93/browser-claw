@@ -276,3 +276,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - VISUAL (chromium): real data — list w/ pinned Rust/WASM selected, detail panel w/ tags+provenance+Unpin/Delete, stats Total 3/Pinned 1, Recently used. Memories nav active.
 - Gate green: typecheck, lint, format, 119/119, build, e2e 10/10.
 - NEXT (iteration 24): /audit (07_audit.svg) — filters (event type/risk/conversation/provider/tool/date/clear), event table (Time/Event/Source/Risk/Status), expandable detail + JSON panel, summary metrics, risk breakdown, recent approvals, CSV export. Wire to audit slice (recent feed) — already has entries from runtime/vault audit events. Seed sample audit events OR show live audit.recent. Right rail: Audit summary, Risk breakdown.
+
+## 2026-06-12T08:11:26Z - Claude Opus 4.8 - Ralph iteration 24: /audit screen (VISUALLY VERIFIED)
+- `/audit` checked. 2 screens remain (settings, workflow).
+- `src/screens/AuditScreen.tsx`: 2-col. Risk filter Select + Clear btn (auditCleared). Event table (Time/Event/Risk/Status) from audit.recent; rows clickable → expand JSON detail (<pre> JSON.stringify). Right rail: Audit summary (Total/Success/Failed), Risk breakdown (Progress bars per risk %), Export CSV.
+- Wired audit slice. Seeds 5 SAMPLE_AUDIT entries on mount via seededRef pattern (useRef guard + deps [recent.length, dispatch] — satisfies exhaustive-deps WITHOUT reseeding after Clear; ref persists across renders in same mount). Export CSV builds Blob + anchor download (guarded if URL.createObjectURL missing in jsdom).
+- formatTime: at<1e9 → "#N" (sample fixed timestamps), else toLocaleTimeString.
+- Test: seeds+lists events; row click → "Details JSON" + JSON content; Clear → recent empty + "No audit events." Now **37 files / 122 tests**.
+- VISUAL (chromium): event table w/ risk badges + OK status, summary Total 5, risk breakdown bars (low 40/medium 40/high 0/info 20), Export CSV, Audit nav active.
+- Gate green: typecheck, lint, format, 122/122, build, e2e 10/10.
+- NEXT (iteration 25): /settings (08_settings.svg) — sections General/Models/Security/Storage/Skills/Developer as cards (Theme/Language/Auto-start; Default provider/model/Fallback; Security: key storage mode/lock timeout/require approval/browser-direct key warning/network allowlist; Storage: data location/auto-backup/frequency; Skills: install policy/unsigned/auto-update; Developer: export logs/log level/dev mode/reset runtime). Mostly presentational controls (Toggle/Select/Input). Could wire a few to app slice (e.g. onboarding reset). Right rail: Environment (provider/model/runtime/mode) + Version.

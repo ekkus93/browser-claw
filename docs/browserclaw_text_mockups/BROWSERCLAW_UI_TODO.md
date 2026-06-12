@@ -19,7 +19,7 @@
 - [x] Add SidebarNav.
 - [x] Add RightInspectorPanel.
 - [x] Add StatusFooter.
-- [ ] Add shared components:
+- [x] Add shared components:
   - [x] Button
   - [x] Card
   - [x] Badge
@@ -195,13 +195,13 @@
 
 ## Phase 13 — QA
 
-- [ ] Run typecheck.
-- [ ] Run lint.
-- [ ] Run tests.
-- [ ] Test keyboard navigation.
-- [ ] Test reload persistence.
-- [ ] Test backup export/import.
-- [ ] Test provider error states.
-- [ ] Test no decrypted secrets in Redux.
-- [ ] Test skill filesystem isolation.
-- [ ] Test model quota error handling.
+- [x] Run typecheck.
+- [x] Run lint.
+- [x] Run tests.
+- [x] Test keyboard navigation.
+- [x] Test reload persistence.
+- [x] Test backup export/import.
+- [x] Test provider error states.
+- [x] Test no decrypted secrets in Redux.
+- [x] Test skill filesystem isolation.
+- [x] Test model quota error handling.

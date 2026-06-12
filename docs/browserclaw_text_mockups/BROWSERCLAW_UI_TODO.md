@@ -162,17 +162,17 @@
 
 ## Phase 10 — Skills
 
-- [ ] Implement `.clawskill` import.
-- [ ] Implement `SKILL.md` import.
-- [ ] Parse frontmatter.
-- [ ] Show install permission review.
-- [ ] Implement enable/disable.
-- [ ] Implement SkillPackageStore.
-- [ ] Implement SkillAssetStore.
-- [ ] Implement SkillStateStore.
-- [ ] Implement safe SkillFs API.
-- [ ] Enforce permissions.
-- [ ] Add skill audit events.
+- [x] Implement `.clawskill` import.
+- [x] Implement `SKILL.md` import.
+- [x] Parse frontmatter.
+- [x] Show install permission review.
+- [x] Implement enable/disable.
+- [x] Implement SkillPackageStore.
+- [x] Implement SkillAssetStore.
+- [x] Implement SkillStateStore.
+- [x] Implement safe SkillFs API.
+- [x] Enforce permissions.
+- [x] Add skill audit events.
 
 ## Phase 11 — Memories
 

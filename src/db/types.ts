@@ -98,6 +98,7 @@ export interface SkillRow {
   id: string;
   name: string;
   version: string;
+  description: string;
   source: SkillSource;
   enabled: boolean;
   installedAt: number;

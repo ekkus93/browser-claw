@@ -41,6 +41,7 @@ export function createSkillManager(deps: SkillManagerDeps) {
         id,
         name: parsed.manifest.name,
         version: parsed.manifest.version,
+        description: parsed.manifest.description,
         source,
         enabled: false,
         installedAt: now(),

@@ -43,6 +43,7 @@ export default function SettingsScreen() {
   );
   const model = useAppSelector((state) => state.models.activeModelLabel);
   const runtimeStatus = useAppSelector((state) => state.runtime.status);
+  const runtimeMode = useAppSelector((state) => state.runtime.mode);
 
   const [flags, setFlags] = useState<Flags>({
     autoStart: false,
@@ -229,7 +230,14 @@ export default function SettingsScreen() {
             <dl className="flex flex-col gap-1.5 text-sm">
               <Row label="Provider" value={provider ?? 'None'} />
               <Row label="Model" value={model ?? 'None'} />
-              <Row label="Runtime" value={runtimeStatus} />
+              <Row
+                label="Runtime"
+                value={
+                  runtimeMode
+                    ? `${runtimeStatus} (${runtimeMode})`
+                    : runtimeStatus
+                }
+              />
               <Row label="Mode" value="Local" />
               <Row label="Data" value="IndexedDB" />
             </dl>

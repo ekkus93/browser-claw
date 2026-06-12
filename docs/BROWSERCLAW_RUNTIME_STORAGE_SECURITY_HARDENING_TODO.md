@@ -277,22 +277,22 @@
 
 ### 6.2 Transactional Import
 
-- [ ] Implement import preview.
+- [x] Implement import preview. <!-- StorageScreen restore Dialog shows the validated summary before any write. -->
 - [ ] Show:
-  - [ ] collections;
-  - [ ] record counts;
-  - [ ] conflicts;
-  - [ ] encrypted secrets present or absent;
-  - [ ] model references.
-- [ ] Require explicit import confirmation.
-- [ ] Implement merge strategy.
-- [ ] Implement replace strategy.
-- [ ] Run import in transaction.
-- [ ] Roll back on failure.
-- [ ] Tests:
-  - [ ] failed import leaves DB unchanged;
-  - [ ] merge preserves non-conflicting records;
-  - [ ] replace clears selected collections only.
+  - [x] collections;
+  - [x] record counts;
+  - [ ] conflicts; <!-- DEFERRED: per-record id-collision counts need reading existing keys per collection; preview shows counts + secrets presence today. -->
+  - [x] encrypted secrets present or absent;
+  - [ ] model references; <!-- DEFERRED with conflicts: model_catalog/model_cache_index counts already listed; a dedicated "references" callout pending. -->
+- [x] Require explicit import confirmation.
+- [x] Implement merge strategy.
+- [x] Implement replace strategy.
+- [x] Run import in transaction. <!-- importBackup wraps all collections in one Dexie 'rw' transaction. -->
+- [x] Roll back on failure.
+- [x] Tests:
+  - [x] failed import leaves DB unchanged;
+  - [x] merge preserves non-conflicting records;
+  - [x] replace clears selected collections only.
 
 ### 6.3 Backup Export Accuracy
 

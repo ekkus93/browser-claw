@@ -340,17 +340,32 @@ export function validateBackup(
 
 export type RestoreStrategy = 'merge' | 'replace';
 
+/**
+ * Restore a backup atomically. All collections are written inside a single
+ * Dexie read/write transaction, so if ANY write fails the whole import rolls
+ * back and the database is left exactly as it was — never half-restored.
+ * `replace` clears only the collections present in the backup; collections not
+ * in the backup are untouched. (Hardening TODO 6.2.)
+ */
 export async function importBackup(
   db: BrowserClawDB,
   backup: ClawBackup,
   strategy: RestoreStrategy = 'merge',
 ): Promise<void> {
-  for (const [name, rows] of Object.entries(backup.collections)) {
-    if (!Array.isArray(rows)) continue;
-    const table = db.table(name);
-    if (strategy === 'replace') await table.clear();
-    await table.bulkPut(rows);
-  }
+  const names = Object.keys(backup.collections).filter((name) =>
+    Array.isArray(backup.collections[name]),
+  );
+  // Resolve tables up front: an unknown collection throws here (before any
+  // write) rather than corrupting a partial restore.
+  const tables = names.map((name) => db.table(name));
+  await db.transaction('rw', tables, async () => {
+    for (const name of names) {
+      const rows = backup.collections[name]!;
+      const table = db.table(name);
+      if (strategy === 'replace') await table.clear();
+      await table.bulkPut(rows);
+    }
+  });
 }
 
 export async function recordBackupHistory(

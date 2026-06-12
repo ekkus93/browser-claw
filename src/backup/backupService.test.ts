@@ -11,6 +11,7 @@ import {
   importBackup,
   recordBackupHistory,
   runBackupExport,
+  type ClawBackup,
 } from './backupService.ts';
 import type { AppDispatch } from '../store/store.ts';
 
@@ -106,6 +107,141 @@ describe('backupService', () => {
     await recordBackupHistory(db, backup, 2048);
     const history = await db.backup_history.toArray();
     expect(history.at(-1)?.sizeBytes).toBe(2048);
+  });
+});
+
+describe('importBackup (transactional)', () => {
+  function backup(collections: Record<string, unknown[]>): ClawBackup {
+    return {
+      manifest: {
+        format: 'clawbackup',
+        schemaVersion: 1,
+        appVersion: 'test',
+        createdAt: 0,
+        includesSecrets: false,
+      },
+      collections,
+    };
+  }
+
+  it('rolls back entirely if any collection fails to import', async () => {
+    await db.open();
+    await db.memories.clear();
+
+    // memories imports first, then a skill_state row missing its compound key
+    // ([skillId+key]) makes bulkPut reject -> the whole transaction rolls back.
+    await expect(
+      importBackup(
+        db,
+        backup({
+          memories: [
+            {
+              id: 'keep',
+              title: 'x',
+              text: 'x',
+              tags: [],
+              source: 'chat',
+              createdBy: 'user',
+              createdAt: 1,
+              pinned: false,
+              sensitivity: 'normal',
+            },
+          ],
+          skill_state: [{ bogus: true }],
+        }),
+      ),
+    ).rejects.toThrow();
+
+    // The earlier memories write must NOT have survived the failed import.
+    expect(await db.memories.get('keep')).toBeUndefined();
+  });
+
+  it('merge preserves non-conflicting existing records', async () => {
+    await db.open();
+    await db.memories.clear();
+    await db.memories.put({
+      id: 'existing',
+      title: 'old',
+      text: 'old',
+      tags: [],
+      source: 'chat',
+      createdBy: 'user',
+      createdAt: 1,
+      pinned: false,
+      sensitivity: 'normal',
+    });
+
+    await importBackup(
+      db,
+      backup({
+        memories: [
+          {
+            id: 'fresh',
+            title: 'new',
+            text: 'new',
+            tags: [],
+            source: 'chat',
+            createdBy: 'user',
+            createdAt: 2,
+            pinned: false,
+            sensitivity: 'normal',
+          },
+        ],
+      }),
+      'merge',
+    );
+
+    expect(await db.memories.get('existing')).toBeTruthy();
+    expect(await db.memories.get('fresh')).toBeTruthy();
+  });
+
+  it('replace clears only the collections present in the backup', async () => {
+    await db.open();
+    await db.memories.clear();
+    await db.conversations.clear();
+    await db.memories.put({
+      id: 'old',
+      title: 'old',
+      text: 'old',
+      tags: [],
+      source: 'chat',
+      createdBy: 'user',
+      createdAt: 1,
+      pinned: false,
+      sensitivity: 'normal',
+    });
+    await db.conversations.put({
+      id: 'c-keep',
+      title: 'keep me',
+      createdAt: 1,
+      updatedAt: 1,
+    });
+
+    await importBackup(
+      db,
+      backup({
+        memories: [
+          {
+            id: 'new',
+            title: 'new',
+            text: 'new',
+            tags: [],
+            source: 'chat',
+            createdBy: 'user',
+            createdAt: 2,
+            pinned: false,
+            sensitivity: 'normal',
+          },
+        ],
+      }),
+      'replace',
+    );
+
+    // memories was in the backup -> cleared then replaced.
+    expect(await db.memories.get('old')).toBeUndefined();
+    expect(await db.memories.get('new')).toBeTruthy();
+    // conversations was NOT in the backup -> left untouched.
+    expect(await db.conversations.get('c-keep')).toBeTruthy();
   });
 });
 

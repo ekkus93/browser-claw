@@ -354,6 +354,11 @@ export default function StorageScreen() {
               </li>
             ))}
         </ul>
+        <p className="mt-3 text-xs text-muted-subtle">
+          {(preview?.summary?.encrypted_secrets ?? 0) > 0
+            ? 'This backup includes encrypted secrets (ciphertext only).'
+            : 'This backup contains no secrets.'}
+        </p>
       </Dialog>
     </div>
   );

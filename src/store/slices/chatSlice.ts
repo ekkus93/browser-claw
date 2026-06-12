@@ -12,11 +12,19 @@ export type RunState =
   | 'awaiting_approval'
   | 'error';
 
+/** A provider/runtime failure surfaced to the user as an error card. */
+export interface ChatError {
+  kind: string;
+  message: string;
+}
+
 export interface ChatState {
   activeConversationId: string | null;
   composerDraft: string;
   runState: RunState;
   streamingMessageId: string | null;
+  /** Set when the last turn failed; shown as an error card, never as a reply. */
+  error: ChatError | null;
 }
 
 const initialState: ChatState = {
@@ -24,6 +32,7 @@ const initialState: ChatState = {
   composerDraft: '',
   runState: 'idle',
   streamingMessageId: null,
+  error: null,
 };
 
 const chatSlice = createSlice({
@@ -43,6 +52,15 @@ const chatSlice = createSlice({
     streamingMessageSet(state, action: PayloadAction<string | null>) {
       state.streamingMessageId = action.payload;
     },
+    /** The turn failed: surface an error card instead of a fake reply. */
+    chatErrored(state, action: PayloadAction<ChatError>) {
+      state.runState = 'error';
+      state.error = action.payload;
+    },
+    chatErrorCleared(state) {
+      state.error = null;
+      if (state.runState === 'error') state.runState = 'idle';
+    },
     /** User sent a message — picked up by the runtime listener. */
     userMessageSubmitted(
       state,
@@ -51,6 +69,7 @@ const chatSlice = createSlice({
       state.activeConversationId = action.payload.conversationId;
       state.composerDraft = '';
       state.runState = 'thinking';
+      state.error = null;
     },
   },
 });
@@ -60,6 +79,8 @@ export const {
   composerDraftSet,
   runStateSet,
   streamingMessageSet,
+  chatErrored,
+  chatErrorCleared,
   userMessageSubmitted,
 } = chatSlice.actions;
 export default chatSlice.reducer;

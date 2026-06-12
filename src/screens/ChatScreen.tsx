@@ -16,6 +16,7 @@ import {
   approvalEdited,
 } from '../store/slices/approvalsSlice.ts';
 import { EmptyState } from '../components/ui/EmptyState.tsx';
+import { ErrorState } from '../components/ui/ErrorState.tsx';
 import { MessageBubble } from './chat/MessageBubble.tsx';
 import { ApprovalCard } from './chat/ApprovalCard.tsx';
 import { ChatComposer } from './chat/ChatComposer.tsx';
@@ -35,6 +36,7 @@ export default function ChatScreen() {
     activeProviderId,
     appConfig.isMockProviderAllowed,
   );
+  const chatError = useAppSelector((state) => state.chat.error);
 
   const messages =
     useLiveQuery(
@@ -132,6 +134,14 @@ export default function ChatScreen() {
                 />
               ))}
             </>
+          )}
+          {chatError && (
+            <div data-testid="chat-error">
+              <ErrorState
+                title="The provider could not respond"
+                description={chatError.message}
+              />
+            </div>
           )}
         </div>
       </div>

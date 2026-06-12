@@ -36,6 +36,23 @@ describe('referenceRuntime', () => {
     }
   });
 
+  it('stores no message and audits a failure when the llm_request fails', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('hi'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { ok: false, error: { kind: 'auth' } },
+    });
+    expect(effects).toHaveLength(1);
+    expect(effects[0]).toMatchObject({
+      type: 'audit_append',
+      event_type: 'llm_request_failed',
+      risk: 'medium',
+    });
+    expect(effects.some((e) => e.type === 'storage_put')).toBe(false);
+  });
+
   it('restores from a snapshot and stays deterministic', () => {
     const a = createReferenceRuntime();
     a.dispatch(submit('one'));

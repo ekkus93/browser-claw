@@ -1,9 +1,10 @@
 import type { BrowserClawDB } from '../db/db.ts';
 import type { AppDispatch } from '../store/store.ts';
-import { runStateSet } from '../store/slices/chatSlice.ts';
+import { runStateSet, chatErrored } from '../store/slices/chatSlice.ts';
+import { auditAppended } from '../store/slices/auditSlice.ts';
 import type { Command, Effect } from './effectTypes.ts';
 import type { LlmProvider, ChatMessage } from '../providers/types.ts';
-import { ProviderError } from '../providers/errors.ts';
+import { describeProviderError } from '../providers/errors.ts';
 
 export interface LlmRequestDeps {
   db: BrowserClawDB;
@@ -38,10 +39,26 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
       const result = await deps.getProvider().complete({ messages });
       text = result.text;
     } catch (error) {
-      text =
-        error instanceof ProviderError
-          ? `The provider could not respond (${error.kind}).`
-          : 'The model could not respond.';
+      // Provider failures are NOT written as a fake assistant reply. Surface an
+      // error card, audit the failure, and resolve the effect as a failure so
+      // the runtime records it (and stores no message). See HARDENING_NOTES.md.
+      const failure = describeProviderError(error);
+      deps.dispatch(chatErrored(failure));
+      deps.dispatch(
+        auditAppended({
+          id: crypto.randomUUID(),
+          type: 'provider.request_failed',
+          summary: `Provider request failed (${failure.kind})`,
+          risk: 'medium',
+          at: Date.now(),
+        }),
+      );
+      await deps.submit({
+        type: 'resolve_effect',
+        id: effect.id,
+        result: { ok: false, error: failure },
+      });
+      return;
     }
 
     await deps.db.messages.put({
@@ -56,7 +73,7 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
     await deps.submit({
       type: 'resolve_effect',
       id: effect.id,
-      result: { text },
+      result: { ok: true, text },
     });
   };
 }

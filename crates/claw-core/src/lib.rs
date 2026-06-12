@@ -70,6 +70,21 @@ impl Runtime {
             Command::ResolveEffect { id, result } => {
                 match self.state.pending.remove(&id).as_deref() {
                     Some("llm_request") => {
+                        // A failed provider call (host marks `ok: false` or
+                        // `error`) stores no assistant message — it is audited
+                        // as a failure so the runtime never claims a reply it
+                        // didn't get.
+                        if result.get("ok") == Some(&Value::Bool(false))
+                            || result.get("error").is_some()
+                        {
+                            let audit_id = self.next_id();
+                            return vec![Effect::AuditAppend {
+                                id: audit_id,
+                                event_type: "llm_request_failed".to_string(),
+                                summary: "Provider request failed".to_string(),
+                                risk: "medium".to_string(),
+                            }];
+                        }
                         let content = result
                             .get("text")
                             .and_then(Value::as_str)
@@ -141,6 +156,30 @@ mod tests {
             }
             other => panic!("expected StoragePut, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn resolving_a_failed_llm_request_stores_no_message() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("hi"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "ok": false, "error": { "kind": "auth" } }),
+        });
+        // No assistant message stored; only a failure audit.
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::AuditAppend {
+                event_type, risk, ..
+            } => {
+                assert_eq!(event_type, "llm_request_failed");
+                assert_eq!(risk, "medium");
+            }
+            other => panic!("expected AuditAppend, got {other:?}"),
+        }
+        assert!(!effects
+            .iter()
+            .any(|e| matches!(e, Effect::StoragePut { .. })));
     }
 
     #[test]

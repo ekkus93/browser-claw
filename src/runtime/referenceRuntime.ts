@@ -30,6 +30,13 @@ function readText(result: unknown): string {
   return '';
 }
 
+/** A resolution is a failure when the host marks it `ok: false` or `error`. */
+function isFailure(result: unknown): boolean {
+  if (typeof result !== 'object' || result === null) return false;
+  const record = result as Record<string, unknown>;
+  return record.ok === false || 'error' in record;
+}
+
 export function createReferenceRuntime(
   initial?: RuntimeSnapshot,
 ): ClawRuntimePort {
@@ -73,6 +80,19 @@ export function createReferenceRuntime(
       const kind = state.pending[command.id];
       delete state.pending[command.id];
       if (kind === 'llm_request') {
+        // A failed provider call stores no assistant message — it is audited
+        // as a failure so the runtime never claims a reply it didn't get.
+        if (isFailure(command.result)) {
+          return [
+            {
+              type: 'audit_append',
+              id: nextId(),
+              event_type: 'llm_request_failed',
+              summary: 'Provider request failed',
+              risk: 'medium',
+            },
+          ];
+        }
         state.message_count += 1;
         const putId = nextId();
         const auditId = nextId();

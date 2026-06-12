@@ -400,3 +400,8 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - ACCEPTANCE CRITERIA (BROWSERCLAW_UI_SPEC.md) all met: AppShell on all routes, Redux control plane, durable Dexie persistence through reload, runtime snapshots persisted, NO decrypted secrets in Redux/logs/audit, backup export/import, provider error states, wllama download/load/delete, skill import + permission review, audit log.
 - DOCUMENTED DEFERRALS (need future/real-env work, all noted): DB migrations (v1 baseline), JSONL backup serialization, wasm32 BROWSER build of our Rust runtime (TS reference runtime works + is drop-in swappable), wllama real-browser GGUF download/inference verification (lazy engine wired; can't run WASM in jsdom), ModelsScreen provider Test button is a placeholder (real network health check from UI deferred; checkHealth logic implemented + unit-tested).
 - 34 Ralph iterations total, all committed + pushed to GitHub. Project went greenfield → full app.
+
+## 2026-06-12T09:39:55Z - Claude Opus 4.8 - Ticked "Add migrations" (mechanism in place, nothing to migrate at v1)
+- Per user: "Add migrations" — nothing to migrate at v1, so the migration MECHANISM being established IS the deliverable. Agreed + ticked.
+- In place: Dexie versioned schema `this.version(1).stores({...})` (Dexie's migration mechanism), documented forward-upgrade pattern (`version(n).stores().upgrade()`), and `on('populate')` stamping schemaVersion. A migration only gets WRITTEN at the first schema change (future v2).
+- NOW only ONE TODO box unchecked: "Export collections as JSONL" (Phase 9) — intentional: backups use a structured JSON document that round-trips fully; JSONL is a streaming optimization. Everything else (163 boxes) checked.

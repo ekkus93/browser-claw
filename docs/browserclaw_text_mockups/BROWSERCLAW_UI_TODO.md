@@ -55,7 +55,7 @@
 ## Phase 3 — IndexedDB/OPFS Storage
 
 - [x] Create Dexie schema.
-- [ ] Add migrations.
+- [x] Add migrations.
 - [x] Add stores:
   - [x] app_settings
   - [x] provider_profiles

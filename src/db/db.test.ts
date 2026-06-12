@@ -81,6 +81,7 @@ describe('BrowserClawDB', () => {
     await db.open();
     await db.memories.put({
       id: 'mem1',
+      title: 'API base URL',
       text: 'remember the api base url',
       tags: ['work', 'config'],
       source: 'chat',

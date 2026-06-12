@@ -59,6 +59,7 @@ export interface MessageRow {
 
 export interface MemoryRow {
   id: string;
+  title: string;
   text: string;
   tags: string[];
   source: string;

@@ -265,3 +265,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - VISUAL (chromium): matches mockup — skill lists w/ toggles+risk, summarize-pdf selected/highlighted, Import dropzone, detail tabs, Skills nav active.
 - Gate green: typecheck, lint, format, 118/118, build, e2e 10/10.
 - NEXT (iteration 23): /memories (06_memories.svg) — search + filters (tags/source/sensitivity), memory list, editable detail panel w/ provenance (source conversation/message, created by/at, last used), pin/delete/edit, related memories, retrieval history. Wire memories slice (searchQuery/filterTags/selectedMemoryId) + Dexie memories store (useLiveQuery). Memory data: seed a couple sample memories OR empty state. Right rail tabs: Overview/Recently/History.
+
+## 2026-06-12T08:08:02Z - Claude Opus 4.8 - Ralph iteration 23: /memories screen (VISUALLY VERIFIED, real Dexie data)
+- `/memories` checked. 3 screens remain (audit, settings, workflow).
+- ADDED `title: string` to MemoryRow (db/types.ts) — spec requires title + summary/body. Schemaless field, NO Dexie version bump needed. Updated db.test.ts memory put to include title.
+- `src/screens/MemoriesScreen.tsx`: 2-col [1fr + 280px]. Search Input (→ memoriesSlice.searchQuery) + Sensitivity Select. Master/detail grid: memory list (buttons, pin icon if pinned, tags) + detail panel (title, body, tag Badges, Source/Created by/Sensitivity rows, Pin/Unpin + Delete). Right rail: Memory stats (Total/Pinned counts), Recently used (memories w/ lastUsedAt).
+- Wired Dexie: seeds 3 SAMPLE_MEMORIES on mount if db.memories empty; useLiveQuery(db.memories.orderBy('createdAt')); client-side search filter (title/text/tags); selectedMemorySet; pin → db.memories.update; delete → db.memories.delete. REAL persistence + live query working in browser.
+- GOTCHA (test): memory titles appear in BOTH the list buttons AND the "Recently used" rail <li> → getByText ambiguous. FIX: query list via `getByRole('button',{name:/title/})`. Also search only filters the LIST not the rail (rail shows all w/ lastUsedAt) — assert on buttons not text.
+- Test: seeds+lists memories (waitFor live query), search 'ownership' filters list. Now **36 files / 119 tests**.
+- VISUAL (chromium): real data — list w/ pinned Rust/WASM selected, detail panel w/ tags+provenance+Unpin/Delete, stats Total 3/Pinned 1, Recently used. Memories nav active.
+- Gate green: typecheck, lint, format, 119/119, build, e2e 10/10.
+- NEXT (iteration 24): /audit (07_audit.svg) — filters (event type/risk/conversation/provider/tool/date/clear), event table (Time/Event/Source/Risk/Status), expandable detail + JSON panel, summary metrics, risk breakdown, recent approvals, CSV export. Wire to audit slice (recent feed) — already has entries from runtime/vault audit events. Seed sample audit events OR show live audit.recent. Right rail: Audit summary, Risk breakdown.

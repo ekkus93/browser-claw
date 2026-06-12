@@ -33,10 +33,10 @@ describe('StorageScreen', () => {
     expect(screen.getByText('No backups yet.')).toBeInTheDocument();
   });
 
-  it('toasts when exporting a backup (Phase 9 placeholder)', async () => {
+  it('exports a backup over Dexie', async () => {
     const user = userEvent.setup();
     renderStorage();
     await user.click(screen.getByRole('button', { name: 'Export Backup' }));
-    expect(await screen.findByText(/arrives in Phase 9/i)).toBeInTheDocument();
+    expect(await screen.findByText('Backup exported')).toBeInTheDocument();
   });
 });

@@ -137,28 +137,28 @@
 
 ## Phase 8 — wllama
 
-- [ ] Add wllama integration.
-- [ ] Run wllama in a Web Worker.
-- [ ] Add Hugging Face GGUF model references.
-- [ ] Implement model download queue.
-- [ ] Implement progress UI.
-- [ ] Implement load/unload.
-- [ ] Implement cache deletion.
-- [ ] Handle storage quota failures.
-- [ ] Add clear compatibility warnings.
+- [x] Add wllama integration.
+- [x] Run wllama in a Web Worker.
+- [x] Add Hugging Face GGUF model references.
+- [x] Implement model download queue.
+- [x] Implement progress UI.
+- [x] Implement load/unload.
+- [x] Implement cache deletion.
+- [x] Handle storage quota failures.
+- [x] Add clear compatibility warnings.
 
 ## Phase 9 — Backup/Restore
 
-- [ ] Implement `.clawbackup` export.
-- [ ] Include manifest.
+- [x] Implement `.clawbackup` export.
+- [x] Include manifest.
 - [ ] Export collections as JSONL.
-- [ ] Optionally include encrypted secrets.
-- [ ] Include model references, not model files.
-- [ ] Include installed skills and skill state.
-- [ ] Implement import validation.
-- [ ] Implement restore preview.
-- [ ] Implement conflict handling.
-- [ ] Add backup history.
+- [x] Optionally include encrypted secrets.
+- [x] Include model references, not model files.
+- [x] Include installed skills and skill state.
+- [x] Implement import validation.
+- [x] Implement restore preview.
+- [x] Implement conflict handling.
+- [x] Add backup history.
 
 ## Phase 10 — Skills
 

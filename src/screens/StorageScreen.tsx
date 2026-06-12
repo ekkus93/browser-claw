@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, Database, HardDrive, ShieldCheck } from 'lucide-react';
 import { db } from '../db/db.ts';
@@ -8,8 +8,17 @@ import {
   requestPersistentStorage,
   assessStorageHealth,
 } from '../services/storageService.ts';
+import {
+  exportBackup,
+  serializeBackup,
+  validateBackup,
+  importBackup,
+  recordBackupHistory,
+  type ValidationResult,
+} from '../backup/backupService.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
+import { Dialog } from '../components/ui/Dialog.tsx';
 import { useToast } from '../components/ui/toastContext.ts';
 
 function formatBytes(bytes: number): string {
@@ -72,6 +81,9 @@ export default function StorageScreen() {
     [],
   );
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<ValidationResult | null>(null);
+
   const health = assessStorageHealth(
     { usedBytes: storage.usedBytes, quotaBytes: storage.quotaBytes },
     storage.persisted,
@@ -80,6 +92,53 @@ export default function StorageScreen() {
     storage.quotaBytes > 0
       ? Math.round((storage.usedBytes / storage.quotaBytes) * 100)
       : 0;
+
+  async function handleExport() {
+    const backup = await exportBackup(db);
+    const json = serializeBackup(backup);
+    await recordBackupHistory(db, backup, new Blob([json]).size);
+    if (typeof URL.createObjectURL === 'function') {
+      const url = URL.createObjectURL(
+        new Blob([json], { type: 'application/json' }),
+      );
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = 'browserclaw-backup.clawbackup';
+      anchor.click();
+      URL.revokeObjectURL(url);
+    }
+    toast({ tone: 'success', title: 'Backup exported' });
+  }
+
+  async function handleFile(file: File) {
+    try {
+      const data: unknown = JSON.parse(await file.text());
+      const result = validateBackup(data);
+      if (!result.valid) {
+        toast({
+          tone: 'danger',
+          title: 'Import failed',
+          description: result.error ?? 'Invalid backup file.',
+        });
+        return;
+      }
+      setPreview(result);
+    } catch {
+      toast({
+        tone: 'danger',
+        title: 'Import failed',
+        description: 'Unreadable file.',
+      });
+    }
+  }
+
+  async function confirmRestore() {
+    if (preview?.backup) {
+      await importBackup(db, preview.backup);
+      toast({ tone: 'success', title: 'Backup restored' });
+    }
+    setPreview(null);
+  }
 
   return (
     <div className="overflow-y-auto">
@@ -138,29 +197,31 @@ export default function StorageScreen() {
               <Button
                 variant="primary"
                 size="sm"
-                onClick={() =>
-                  toast({
-                    tone: 'info',
-                    title: 'Backup export',
-                    description: '.clawbackup export arrives in Phase 9.',
-                  })
-                }
+                onClick={() => {
+                  void handleExport();
+                }}
               >
                 Export Backup
               </Button>
               <Button
                 variant="secondary"
                 size="sm"
-                onClick={() =>
-                  toast({
-                    tone: 'info',
-                    title: 'Backup import',
-                    description: '.clawbackup import arrives in Phase 9.',
-                  })
-                }
+                onClick={() => fileInputRef.current?.click()}
               >
                 Import Backup
               </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".clawbackup,.json,application/json"
+                className="hidden"
+                aria-label="Import backup file"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void handleFile(file);
+                  event.target.value = '';
+                }}
+              />
             </div>
 
             <h3 className="mb-2 mt-4 text-sm font-medium text-text">
@@ -244,6 +305,39 @@ export default function StorageScreen() {
           </div>
         </aside>
       </div>
+
+      <Dialog
+        open={preview !== null}
+        onClose={() => setPreview(null)}
+        title="Restore backup?"
+        description="Records are merged into your local database by id."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setPreview(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                void confirmRestore();
+              }}
+            >
+              Restore
+            </Button>
+          </>
+        }
+      >
+        <ul className="flex flex-col gap-1 text-sm text-muted">
+          {Object.entries(preview?.summary ?? {})
+            .filter(([, count]) => count > 0)
+            .map(([name, count]) => (
+              <li key={name} className="flex justify-between">
+                <span>{name}</span>
+                <span className="tabular-nums text-text">{count}</span>
+              </li>
+            ))}
+        </ul>
+      </Dialog>
     </div>
   );
 }

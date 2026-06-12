@@ -4,6 +4,7 @@ import type { SkillSource } from '../db/types.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { SkillFs } from './skillFs.ts';
 import { emptyPermissions, type ParsedSkill } from './skillTypes.ts';
+import { validateSkillImport } from './validateSkill.ts';
 
 const PERMISSIONS_KEY = '__permissions__';
 
@@ -35,6 +36,22 @@ export function createSkillManager(deps: SkillManagerDeps) {
 
   return {
     async install(parsed: ParsedSkill, source: SkillSource): Promise<string> {
+      // Strict gate: reject before persisting anything. Imported skills also
+      // start disabled (below) until the user enables them.
+      const validation = validateSkillImport(parsed);
+      if (!validation.ok) {
+        const reason = validation.errors.join(' ');
+        const now = deps.now ?? Date.now;
+        void recordAudit(deps.db, deps.dispatch, {
+          type: 'skill_import_failed',
+          summary: `Rejected skill import: ${reason}`,
+          source: 'skill',
+          risk: 'medium',
+          status: 'failure',
+          at: now(),
+        });
+        throw new Error(`Invalid skill: ${reason}`);
+      }
       const id = parsed.manifest.name;
       const now = deps.now ?? Date.now;
       await db.skills.put({

@@ -312,22 +312,22 @@
 
 ### 7.1 Strict Skill Import
 
-- [ ] Reject `SKILL.md` missing required frontmatter:
-  - [ ] `name`;
-  - [ ] `description`;
-  - [ ] `version`.
-- [ ] Validate skill name.
-- [ ] Validate version.
-- [ ] Validate permissions.
-- [ ] Reject unknown permission fields unless explicitly allowed.
-- [ ] Imported skills start disabled unless user enables them.
-- [ ] Show permission review before install.
-- [ ] Tests:
-  - [ ] missing name rejected;
-  - [ ] missing description rejected;
-  - [ ] invalid name rejected;
-  - [ ] unknown permission rejected;
-  - [ ] imported skill disabled by default.
+- [x] Reject `SKILL.md` missing required frontmatter:
+  - [x] `name`;
+  - [x] `description`;
+  - [x] `version`.
+- [x] Validate skill name.
+- [x] Validate version.
+- [x] Validate permissions.
+- [x] Reject unknown permission fields unless explicitly allowed.
+- [x] Imported skills start disabled unless user enables them.
+- [ ] Show permission review before install. <!-- needs skills import UI -->
+- [x] Tests:
+  - [x] missing name rejected;
+  - [x] missing description rejected;
+  - [x] invalid name rejected;
+  - [x] unknown permission rejected;
+  - [x] imported skill disabled by default.
 
 ### 7.2 Skill Filesystem Safety
 

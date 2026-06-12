@@ -29,9 +29,10 @@ describe('parseSkillMd', () => {
     expect(parsed.instructions).toBe('Read the PDF and summarize it.');
   });
 
-  it('falls back to defaults without frontmatter', () => {
+  it('leaves required fields empty without frontmatter (so validation can reject)', () => {
     const parsed = parseSkillMd('just instructions');
-    expect(parsed.manifest.name).toBe('untitled-skill');
+    expect(parsed.manifest.name).toBe('');
+    expect(parsed.manifest.version).toBe('');
     expect(parsed.instructions).toBe('just instructions');
   });
 });

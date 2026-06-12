@@ -16,6 +16,7 @@ const SKILL_MD = [
   '---',
   'name: summarize-pdf',
   'version: 1.0.0',
+  'description: Summarizes PDFs',
   'read: skills/summarize-pdf/data/**',
   'write: skills/summarize-pdf/out/**',
   '---',
@@ -43,6 +44,21 @@ describe('createSkillManager', () => {
     ).rejects.toThrow(/denied/);
     await fs.setState('count', 3);
     expect(await fs.getState('count')).toBe(3);
+  });
+
+  it('rejects an invalid skill at install and persists nothing', async () => {
+    await db.open();
+    const store = configureStore({ reducer: { audit: auditReducer } });
+    const manager = createSkillManager({ db, dispatch: store.dispatch });
+
+    // Missing name + description (only instructions present).
+    const bad = parseSkillMd('just instructions');
+    await expect(manager.install(bad, 'skill_md')).rejects.toThrow(/Invalid/);
+
+    expect(await db.skills.get('')).toBeUndefined();
+    expect(store.getState().audit.recent.map((e) => e.type)).toContain(
+      'skill_import_failed',
+    );
   });
 
   it('enables, disables, and uninstalls with audit + cleanup', async () => {

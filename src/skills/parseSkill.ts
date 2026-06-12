@@ -53,9 +53,12 @@ function asStringArray(value: FieldValue | undefined): string[] {
 
 export function parseSkillMd(text: string): ParsedSkill {
   const { fields, body } = parseFrontmatter(text);
+  // Parsing does NOT invent values for missing fields — an absent name/version
+  // stays empty so strict validation (validateSkillImport) can reject it rather
+  // than silently installing a nameless, unversioned skill.
   const manifest: SkillManifest = {
-    name: asString(fields.name) || 'untitled-skill',
-    version: asString(fields.version) || '0.0.0',
+    name: asString(fields.name),
+    version: asString(fields.version),
     description: asString(fields.description),
     permissions: {
       tools: asStringArray(fields.tools),
@@ -75,7 +78,7 @@ export function parseClawskill(text: string): ParsedSkill {
   return {
     manifest: {
       name: data.manifest.name,
-      version: data.manifest.version ?? '0.0.0',
+      version: data.manifest.version ?? '',
       description: data.manifest.description ?? '',
       permissions: { ...emptyPermissions(), ...data.manifest.permissions },
     },

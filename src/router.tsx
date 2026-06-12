@@ -10,6 +10,7 @@ import StorageScreen from './screens/StorageScreen.tsx';
 import SkillsScreen from './screens/SkillsScreen.tsx';
 import MemoriesScreen from './screens/MemoriesScreen.tsx';
 import AuditScreen from './screens/AuditScreen.tsx';
+import SettingsScreen from './screens/SettingsScreen.tsx';
 import { NAV_ITEMS } from './components/shell/navItems.ts';
 
 // Real screens replace the placeholder as each Phase 6 screen lands.
@@ -20,6 +21,7 @@ const SCREEN_OVERRIDES: Record<string, ReactNode> = {
   skills: <SkillsScreen />,
   memories: <MemoriesScreen />,
   audit: <AuditScreen />,
+  settings: <SettingsScreen />,
 };
 
 /**

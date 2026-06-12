@@ -120,7 +120,7 @@
 - [x] `/skills` from `05_skills.svg`.
 - [x] `/memories` from `06_memories.svg`.
 - [x] `/audit` from `07_audit.svg`.
-- [ ] `/settings` from `08_settings.svg`.
+- [x] `/settings` from `08_settings.svg`.
 - [ ] `/workflow` from `09_user_workflow.svg`.
 
 ## Phase 7 — Provider System

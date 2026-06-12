@@ -14,11 +14,11 @@
 ## Phase 1 — Design System
 
 - [x] Implement tokens from `design_tokens.json`.
-- [ ] Add AppShell.
-- [ ] Add TopStatusBar.
-- [ ] Add SidebarNav.
-- [ ] Add RightInspectorPanel.
-- [ ] Add StatusFooter.
+- [x] Add AppShell.
+- [x] Add TopStatusBar.
+- [x] Add SidebarNav.
+- [x] Add RightInspectorPanel.
+- [x] Add StatusFooter.
 - [ ] Add shared components:
   - [ ] Button
   - [ ] Card

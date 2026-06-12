@@ -13,7 +13,7 @@
 
 ## Phase 1 — Design System
 
-- [ ] Implement tokens from `design_tokens.json`.
+- [x] Implement tokens from `design_tokens.json`.
 - [ ] Add AppShell.
 - [ ] Add TopStatusBar.
 - [ ] Add SidebarNav.

@@ -1,22 +1,64 @@
 @import 'tailwindcss';
 
 /*
- * BrowserClaw design tokens (from docs/browserclaw_text_mockups/design_tokens.json).
- * Full token mapping lands in Phase 1 — Design System. This is the minimal base.
+ * BrowserClaw design tokens.
+ * Canonical source: docs/browserclaw_text_mockups/design_tokens.json.
+ * Exposed as Tailwind v4 theme variables so utilities like `bg-surface`,
+ * `text-muted`, `text-md`, `font-semibold`, and `rounded-card` are generated.
+ * `static` keeps the full token set emitted as CSS custom properties even
+ * before a utility references it, so tokens can also be used via `var(--...)`.
  */
-@theme {
+@theme static {
+  /* Colors */
   --color-background: #f6f8fb;
   --color-surface: #ffffff;
+  --color-surface-subtle: #f9fbff;
+  --color-border: #dce4f0;
   --color-text: #101828;
   --color-muted: #667085;
+  --color-muted-subtle: #98a2b3;
   --color-primary: #2563eb;
+  --color-primary-subtle: #eff6ff;
   --color-success: #16a34a;
+  --color-success-subtle: #ecfdf3;
   --color-warning: #f59e0b;
+  --color-warning-subtle: #fffaeb;
   --color-danger: #dc2626;
+  --color-danger-subtle: #fef2f2;
+  --color-purple: #7c3aed;
+  --color-purple-subtle: #f5f3ff;
 
-  --font-sans:
-    Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial,
-    sans-serif;
+  /* Typography */
+  --font-sans: Inter, Arial, sans-serif;
+
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* Radii */
+  --radius-button: 8px;
+  --radius-card: 12px;
+}
+
+/*
+ * Fixed layout dimensions from design_tokens.json. Kept as plain custom
+ * properties (not utility-generating) for use in the AppShell via
+ * arbitrary values, e.g. `w-[var(--bc-left-nav-width)]`.
+ */
+:root {
+  --bc-app-width: 1586px;
+  --bc-app-height: 992px;
+  --bc-left-nav-width: 260px;
+  --bc-right-inspector-width: 380px;
 }
 
 html,
@@ -30,4 +72,5 @@ body {
   background-color: var(--color-background);
   color: var(--color-text);
   font-family: var(--font-sans);
+  font-size: var(--text-md);
 }

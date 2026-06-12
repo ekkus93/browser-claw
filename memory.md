@@ -40,3 +40,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - **NEW POLICY (user request 2026-06-12): linting is zero-tolerance and coupled to tests.** `lint` script is now `eslint . --max-warnings 0` (warnings = failures). Added `pretest` script `pnpm run lint`, so `pnpm test` lints ALL files before Vitest runs. **Never suppress** lint findings (no `eslint-disable`, no rule-downgrading) — fix the code. Documented in CLAUDE.md (Conventions) and the `/qa` skill.
 - Verbatim-module-syntax note: imports use explicit `.ts`/`.tsx` extensions and `import type` for type-only imports (required by `verbatimModuleSyntax` + `allowImportingTsExtensions`).
 - Gate ALL GREEN: typecheck, lint (max-warnings 0), format:check, `pnpm test` (3/3), build (35 modules, dist OK).
+
+## 2026-06-12T01:18:14Z - Claude Opus 4.8 - Ralph iteration 3: Phase 1 design tokens
+- Implemented the full `design_tokens.json` set in `src/index.css` as Tailwind v4 `@theme static`.
+- Colors (17): background, surface, surface-subtle, border, text, muted, muted-subtle, primary(+subtle), success(+subtle), warning(+subtle), danger(+subtle), purple(+subtle). Utilities: `bg-*`/`text-*`/`border-*` etc.
+- Typography: `--font-sans` (Inter); sizes xs=12 sm=13 md=14 lg=16 xl=20 2xl=24 (px, matching the canonical tokens exactly — note: px not rem, so they don't scale with user font settings; revisit if a11y wants rem). Weights regular..extrabold → `font-regular`/`medium`/`semibold`/`bold`/`extrabold`.
+- Radii: `rounded-button` (8px), `rounded-card` (12px).
+- Layout dims kept as plain `:root` custom props (not utility-generating): `--bc-app-width` 1586, `--bc-app-height` 992, `--bc-left-nav-width` 260, `--bc-right-inspector-width` 380. Use via arbitrary values e.g. `w-[var(--bc-left-nav-width)]`.
+- GOTCHA (Tailwind v4): plain `@theme` TREE-SHAKES unused theme vars out of the build — `color-purple`/`surface-subtle` were missing until referenced. FIX: `@theme static` always emits the declared token set (verified all present in dist CSS). Use this for canonical token layers.
+- Gate green: typecheck, `pnpm test` (3/3), format:check, build (CSS 9.02 kB).
+- NEXT (Phase 1): AppShell, then TopStatusBar / SidebarNav / RightInspectorPanel / StatusFooter, then the shared component library (Button, Card, Badge, Input, Select, Toggle, Tabs, Dialog, Progress, Toast, EmptyState, ErrorState). Plan to use the `frontend-design` skill for these. Will batch into small committed iterations.

@@ -25,7 +25,16 @@ function makeContext() {
   const store = configureStore({
     reducer: { audit: auditReducer, approvals: approvalsReducer },
   });
-  const ctx: EffectContext = { dispatch: store.dispatch, db, now: () => 1 };
+  // A no-op llm_request handler: these tests exercise the host loop and
+  // snapshots, not the provider call. The handler must be present, though —
+  // a missing one is now fatal (TODO 1.2), so leaving it out would (correctly)
+  // throw instead of silently skipping the effect.
+  const ctx: EffectContext = {
+    dispatch: store.dispatch,
+    db,
+    now: () => 1,
+    ports: { llmRequest: () => undefined },
+  };
   return { store, ctx };
 }
 
@@ -38,7 +47,7 @@ describe('RuntimeHost', () => {
       conversation_id: 'c1',
       text: 'hi',
     });
-    // the audit_append effect was executed (llm_request has no port -> no-op)
+    // the audit_append effect ran; llm_request went to the no-op stub handler
     expect(store.getState().audit.recent).toHaveLength(1);
     expect(store.getState().audit.recent[0]?.type).toBe('llm_request_sent');
   });

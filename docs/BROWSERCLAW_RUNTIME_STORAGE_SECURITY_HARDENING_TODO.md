@@ -42,28 +42,28 @@
 
 ### 1.2 Remove No-Op Effect Ports
 
-- [ ] Refactor effect executor so missing ports are fatal.
+- [ ] Refactor effect executor so missing ports are fatal. <!-- DONE for llm_request + skill ports + unknown effect types (effectExecutor.ts failEffect: audit + runtimeErrored + throw). NOT YET for storage: the chat flow emits a redundant storage_put (referenceRuntime) that carries no conversation_id, and the llm handler already persists the message to db.messages — so a generic storage handler can't build a valid row and making it fatal would break chat. Storage's missing-handler is converted from a SILENT no-op to an AUDITED drop (runtime.effect_dropped) as an honest interim; making it fatal needs 5.1 (storage handler) + a conversation_id on the storage effect (claw-schema). -->
 - [ ] Require handlers for:
-  - [ ] `llm_request`;
-  - [ ] `storage_get`;
+  - [x] `llm_request`; <!-- missing handler -> failEffect (fatal). -->
+  - [ ] `storage_get`; <!-- audited-drop interim, not fatal — see top note (needs 5.1 + conversation_id). -->
   - [ ] `storage_put`;
   - [ ] `storage_search`;
-  - [ ] `skill_fs_read_text`;
-  - [ ] `skill_state_get`;
-  - [ ] `skill_state_put`;
-  - [ ] `audit_append`;
-  - [ ] `runtime_snapshot_save`.
-- [ ] Unknown effect types must fail.
-- [ ] Missing handlers must fail.
-- [ ] Every effect failure must:
-  - [ ] dispatch runtime error or effect error;
-  - [ ] append durable audit event;
-  - [ ] show user-visible error state.
+  - [x] `skill_fs_read_text`; <!-- missing skill handler -> failEffect (fatal). -->
+  - [x] `skill_state_get`;
+  - [x] `skill_state_put`;
+  - [x] `audit_append`; <!-- handled inline (recordAudit) — never missing. -->
+  - [x] `runtime_snapshot_save`. <!-- handled inline (db.runtime_snapshots.put) — never missing. -->
+- [x] Unknown effect types must fail. <!-- default case -> failEffect; effectExecutor.test.ts "fails closed on an unknown effect type". -->
+- [ ] Missing handlers must fail. <!-- llm + skill handlers now fail closed; storage is audited-drop pending 5.1 (see top note). -->
+- [x] Every effect failure must:
+  - [x] dispatch runtime error or effect error; <!-- failEffect dispatches runtimeErrored (status 'error'). -->
+  - [x] append durable audit event; <!-- failEffect records runtime.effect_failed (source runtime, status failure, risk high). -->
+  - [x] show user-visible error state. <!-- runtimeErrored sets runtime.status='error', shown in the sidebar runtime status. -->
 - [ ] Tests:
-  - [ ] missing storage handler fails;
-  - [ ] missing skill handler fails;
-  - [ ] unknown effect fails;
-  - [ ] failure is audited.
+  - [ ] missing storage handler fails; <!-- instead, effectExecutor.test.ts "records (never silently drops) a storage effect with no handler" asserts the dropped effect is AUDITED (runtime.effect_dropped) rather than fatal — the interim behavior; a fatal-storage test waits on 5.1. -->
+  - [x] missing skill handler fails; <!-- effectExecutor.test.ts "fails when a skill handler is missing" (throws + runtime status error). -->
+  - [x] unknown effect fails; <!-- effectExecutor.test.ts "fails closed on an unknown effect type". -->
+  - [x] failure is audited. <!-- same tests assert a durable runtime.effect_failed event with status failure. -->
 
 ## Phase 2 — Provider Configuration and SecretVault Wiring
 

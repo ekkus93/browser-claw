@@ -495,15 +495,15 @@
 
 ### 9.3 Models Screen
 
-- [ ] Replace `defaultValue`-only fields with controlled persisted form state.
-- [ ] Save provider profile edits.
-- [ ] Fix provider health ID mapping.
-- [ ] Provider health must reflect real provider test state.
-- [ ] Disable unimplemented actions or mark them coming later.
-- [ ] Tests:
-  - [ ] profile form saves;
-  - [ ] provider health ID mapping correct for `llama-server`;
-  - [ ] unimplemented model actions disabled.
+- [x] Replace `defaultValue`-only fields with controlled persisted form state. <!-- ProviderCard fields (Base URL/Endpoint URL, Model, API key mode) are all controlled value+onChange, seeded from the saved profile (useState(profile.baseUrl ?? '') etc.), and the screen waits for listProviderProfiles via useLiveQuery before rendering so each card seeds from the persisted row, not a default template. ModelsScreen.tsx:65-89,173-199. -->
+- [x] Save provider profile edits. <!-- handleSave -> saveProviderProfile(db, buildRow()) -> db.provider_profiles.put; ModelsScreen.test.tsx persists-base-URL / persists-model tests. -->
+- [x] Fix provider health ID mapping. <!-- Health is written and read by the provider id (profile.id / entry.id), never the kind: write providerHealthSet({providerId: profile.id}) ModelsScreen.tsx:137; read statusOf(entry.id) ModelsScreen.tsx:252-254,422. id 'llama-server' vs kind 'llama_server' are kept distinct (kind only feeds LOCAL_KINDS categorization). Now regression-guarded by a test. -->
+- [x] Provider health must reflect real provider test state. <!-- health defaults to 'unconfigured' (empty map) and is set ONLY by a real resolved.provider.checkHealth() result or a real 'unreachable' on resolve failure — never seeded/faked. providersSlice health:{}; ModelsScreen.tsx:115,136-137. -->
+- [x] Disable unimplemented actions or mark them coming later. <!-- No hollow buttons: Save/Test/Download/Load/Delete all call real impls. Download is disabled when !wllamaSupported or already downloading (ModelsScreen.tsx:390-392) and the unsupported banner explains why. Add/remove-provider and inline API-key entry are intentionally absent (not stubbed), so no button looks live while doing nothing. -->
+- [x] Tests:
+  - [x] profile form saves; <!-- ModelsScreen.test.tsx "persists an edited base URL to IndexedDB" + "persists an edited model to IndexedDB". -->
+  - [x] provider health ID mapping correct for `llama-server`; <!-- ModelsScreen.test.tsx "keys llama-server health by its provider id, not its kind": clicks Test on the llama-server card, asserts health['llama-server'] is set (not 'unconfigured') and health['llama_server'] (the kind) is undefined. -->
+  - [x] unimplemented model actions disabled. <!-- ModelsScreen.test.tsx "shows the unavailable banner when wllama is unsupported" (Download disabled via !wllamaSupported) and "shows a visible, audited error when a model download fails". -->
 
 ## Phase 10 — UI Honesty Pass
 

@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -127,6 +127,39 @@ describe('ModelsScreen', () => {
       expect(rows).toHaveLength(1);
       expect(rows[0]?.status).toBe('failure');
     });
+  });
+
+  it('keys llama-server health by its provider id, not its kind', async () => {
+    // Regression guard for the health ID mapping: the llama-server card must
+    // store its test result under the provider id 'llama-server', never under
+    // the kind 'llama_server' — otherwise the sidebar would read 'unconfigured'
+    // forever even after a real test.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new TypeError('network down'))),
+    );
+    const user = userEvent.setup();
+    const store = renderModels();
+
+    const heading = await screen.findByRole('heading', {
+      name: 'llama-server',
+    });
+    const card = heading.closest('div.rounded-card');
+    expect(card).not.toBeNull();
+    await user.click(
+      within(card as HTMLElement).getByRole('button', {
+        name: 'Test',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(store.getState().providers.health['llama-server']).toBeDefined(),
+    );
+    // The kind must never be used as the health key.
+    expect(store.getState().providers.health['llama_server']).toBeUndefined();
+    expect(store.getState().providers.health['llama-server']).not.toBe(
+      'unconfigured',
+    );
   });
 
   it('persists an edited base URL to IndexedDB', async () => {

@@ -190,10 +190,10 @@
   - [ ] skill installed/enabled/disabled/import failed; <!-- partial: skillManager.ts 'skill_import_failed' + skillRunner.ts 'skill.permission_denied'; install/enable/disable not wired -->
   - [ ] secret unlocked/locked/deleted; <!-- not wired -->
   - [ ] backup export/import success/failure; <!-- partial: backupService.ts 'backup.exported'/'backup.export_failed'; import path not wired -->
-  - [ ] model download/load/delete success/failure; <!-- not wired (wllama model manager — Phase 8) -->
+  - [x] model download/load/delete success/failure; <!-- modelManager.ts emits source:'model' audit events: model.download_succeeded/_failed, model.loaded/.load_failed, model.deleted/.delete_failed (modelId only, no URLs/secrets); wllama.test.ts asserts durable rows + no 'huggingface' leak -->
 - [x] Ensure no raw secrets or large content bodies are recorded. <!-- redactDetails() in auditService.ts; provider/runtime audit summaries carry ids + verdicts only, never keys or message bodies; guardrail in ModelsScreen.test asserts no 'sk-' in the row -->
 
-<!-- 3.3 status: core runtime/provider/LLM events wired + secret-safe. Remaining items (effect/tool/memory/skill-lifecycle/secret/backup-import/model) are partial or blocked on the effect-port contract (Phase 1.2/7.4) and Phase 8 model manager — wire incrementally as those land. -->
+<!-- 3.3 status: core runtime/provider/LLM/model events wired + secret-safe. Remaining items (effect/tool/memory/skill-lifecycle/secret/backup-import) are partial or blocked on the effect-port contract (Phase 1.2/7.4) — wire incrementally as those land. -->
 
 
 ## Phase 4 — Runtime Snapshot Persistence

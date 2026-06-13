@@ -233,7 +233,7 @@ export default function ModelsScreen() {
   const wllamaSupported = isWllamaSupported();
 
   const manager = useMemo(
-    () => createModelManager(dispatch, getWllamaEngine()),
+    () => createModelManager(db, dispatch, getWllamaEngine()),
     [dispatch],
   );
 

@@ -1,10 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import 'fake-indexeddb/auto';
+import { afterEach, describe, expect, it } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import modelsReducer from '../store/slices/modelsSlice.ts';
 import { createModelManager } from './modelManager.ts';
 import { isWllamaSupported, type WllamaEngine } from './engine.ts';
 import { createWllamaProvider } from '../providers/wllamaProvider.ts';
 import { MODEL_CATALOG } from './catalog.ts';
+import { db } from '../db/db.ts';
+import { queryAuditEvents } from '../audit/auditService.ts';
 
 function fakeEngine(overrides: Partial<WllamaEngine> = {}): WllamaEngine {
   return {
@@ -29,9 +32,13 @@ function store() {
 }
 
 describe('modelManager', () => {
+  afterEach(async () => {
+    await db.audit_events.clear();
+  });
+
   it('downloads with progress and marks the model ready', async () => {
     const s = store();
-    await createModelManager(s.dispatch, fakeEngine()).download(model);
+    await createModelManager(db, s.dispatch, fakeEngine()).download(model);
     expect(s.getState().models.downloads[model.id]).toEqual({
       status: 'ready',
       progress: 100,
@@ -41,6 +48,7 @@ describe('modelManager', () => {
   it('marks error and rethrows on download failure', async () => {
     const s = store();
     const manager = createModelManager(
+      db,
       s.dispatch,
       fakeEngine({
         download: () => Promise.reject(new Error('quota exceeded')),
@@ -52,12 +60,55 @@ describe('modelManager', () => {
 
   it('load sets the active model; remove clears the download entry', async () => {
     const s = store();
-    const manager = createModelManager(s.dispatch, fakeEngine());
+    const manager = createModelManager(db, s.dispatch, fakeEngine());
     await manager.load(model);
     expect(s.getState().models.activeModelId).toBe(model.id);
     await manager.download(model);
     await manager.remove(model);
     expect(s.getState().models.downloads[model.id]).toBeUndefined();
+  });
+
+  it('appends a durable audit event for a successful download', async () => {
+    const s = store();
+    await createModelManager(db, s.dispatch, fakeEngine()).download(model);
+
+    const events = await queryAuditEvents(db, { source: 'model' });
+    const event = events.find((e) => e.type === 'model.download_succeeded');
+    expect(event).toBeDefined();
+    expect(event?.status).toBe('success');
+    expect(event?.modelId).toBe(model.id);
+    // The audit summary must never leak download URLs or credentials.
+    expect(JSON.stringify(event)).not.toContain('huggingface');
+  });
+
+  it('audits a failed download as a failure', async () => {
+    const s = store();
+    const manager = createModelManager(
+      db,
+      s.dispatch,
+      fakeEngine({
+        download: () => Promise.reject(new Error('quota exceeded')),
+      }),
+    );
+    await expect(manager.download(model)).rejects.toThrow('quota exceeded');
+
+    const events = await queryAuditEvents(db, { source: 'model' });
+    const event = events.find((e) => e.type === 'model.download_failed');
+    expect(event?.status).toBe('failure');
+    expect(event?.modelId).toBe(model.id);
+  });
+
+  it('audits load and delete operations', async () => {
+    const s = store();
+    const manager = createModelManager(db, s.dispatch, fakeEngine());
+    await manager.load(model);
+    await manager.remove(model);
+
+    const types = (await queryAuditEvents(db, { source: 'model' })).map(
+      (e) => e.type,
+    );
+    expect(types).toContain('model.loaded');
+    expect(types).toContain('model.deleted');
   });
 });
 

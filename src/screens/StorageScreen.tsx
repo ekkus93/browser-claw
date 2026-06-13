@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Check, Database, HardDrive, ShieldCheck } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  Database,
+  HardDrive,
+  ShieldCheck,
+} from 'lucide-react';
 import { db } from '../db/db.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
 import {
@@ -54,6 +60,20 @@ function StatCard({
       {sub != null && <p className="text-xs text-muted-subtle">{sub}</p>}
       {action != null && <div className="mt-2">{action}</div>}
     </div>
+  );
+}
+
+/** One honest health line: a green check when healthy, an amber warning when not. */
+function HealthRow({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <li className="flex items-center gap-2 text-muted">
+      {ok ? (
+        <Check className="size-4 text-success" aria-hidden="true" />
+      ) : (
+        <AlertTriangle className="size-4 text-warning" aria-hidden="true" />
+      )}
+      {label}
+    </li>
   );
 }
 
@@ -290,20 +310,36 @@ export default function StorageScreen() {
             <h2 className="mb-3 text-sm font-semibold text-text">
               Local Data Health
             </h2>
-            <ul className="flex flex-col gap-2 text-sm">
-              {[
-                'IndexedDB healthy',
-                'Cache storage healthy',
-                'Local storage healthy',
-                'Service worker healthy',
-                health.level === 'ok' ? 'Quota good' : 'Quota tight',
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-2 text-muted">
-                  <Check className="size-4 text-success" aria-hidden="true" />
-                  {item}
-                </li>
-              ))}
-            </ul>
+            {storage.quotaBytes > 0 ? (
+              <ul className="flex flex-col gap-2 text-sm">
+                <HealthRow
+                  ok={health.level === 'ok'}
+                  label={
+                    health.level === 'ok'
+                      ? `Quota healthy (${quotaPct}% used)`
+                      : health.level === 'warning'
+                        ? `Quota getting tight (${quotaPct}% used)`
+                        : `Quota critical (${quotaPct}% used)`
+                  }
+                />
+                <HealthRow
+                  ok={storage.persisted}
+                  label={
+                    storage.persisted
+                      ? 'Persistent storage granted'
+                      : 'Persistent storage not granted'
+                  }
+                />
+              </ul>
+            ) : (
+              <p className="flex items-center gap-2 text-sm text-warning">
+                <AlertTriangle
+                  className="size-4 shrink-0 text-warning"
+                  aria-hidden="true"
+                />
+                Storage estimate unavailable in this browser.
+              </p>
+            )}
           </div>
 
           <div className="rounded-card border border-border bg-surface p-4">

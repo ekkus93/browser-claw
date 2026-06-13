@@ -33,6 +33,22 @@ describe('StorageScreen', () => {
     expect(screen.getByText('No backups yet.')).toBeInTheDocument();
   });
 
+  it('surfaces an honest storage-unavailable state instead of fake all-green health', async () => {
+    // In jsdom navigator.storage is absent, so the estimate is unavailable
+    // (quotaBytes 0). The health panel must say so — not claim a hardcoded set
+    // of always-healthy subsystems.
+    renderStorage();
+
+    expect(
+      await screen.findByText(/storage estimate unavailable/i),
+    ).toBeInTheDocument();
+    // The previously-fabricated, always-green health claims must be gone.
+    expect(screen.queryByText('Cache storage healthy')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Service worker healthy'),
+    ).not.toBeInTheDocument();
+  });
+
   it('exports a backup over Dexie', async () => {
     const user = userEvent.setup();
     renderStorage();

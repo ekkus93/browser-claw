@@ -522,7 +522,7 @@
   - [x] no downloaded models. <!-- ModelsScreen browser-local table always lists the catalog with an honest per-row status ("Not downloaded" / "downloading N%" / "ready") and the downloads panel shows "No downloads in progress." (asserted in ModelsScreen.test.tsx) — so the not-downloaded state is explicit, not silent. -->
 - [ ] Add error states for:
   - [x] runtime failed; <!-- AppLayout runtimeFatal -> RuntimeBlockedScreen (ErrorState "Runtime unavailable" + Reload). -->
-  - [ ] storage unavailable; <!-- still missing: StorageScreen has no explicit error UI if the estimate/query fails. -->
+  - [x] storage unavailable; <!-- StorageScreen "Local Data Health" panel now shows an honest "Storage estimate unavailable in this browser." warning (AlertTriangle) when quotaBytes is 0 (estimate missing), instead of the prior hardcoded all-green list. Tested: StorageScreen.test.tsx "surfaces an honest storage-unavailable state instead of fake all-green health". This also removed fabricated "Cache/Service worker/IndexedDB healthy" claims — the panel now reflects real quota level (ok/warning/critical icon) + real persistence. -->
   - [x] provider missing; <!-- ChatScreen EmptyState "No provider configured" with an action link to /models when !isProviderConfigured. -->
   - [x] secret locked; <!-- SecurityScreen shows a Locked badge + unlock/setup form gated on state.secrets.vaultLocked. -->
   - [ ] model unavailable; <!-- partial: failed download/load surfaces a danger toast + audited model.*_failed + an 'error' row status, but there's no persistent per-model error/recovery affordance in the table. -->

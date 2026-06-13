@@ -558,7 +558,7 @@
 - [ ] Onboarding -> provider setup -> chat.
 - [ ] Provider failure -> visible error -> audit failure.
 - [ ] Memory write approval -> memory persisted -> audit persisted.
-- [ ] Backup export -> import preview -> restore.
+- [x] Backup export -> import preview -> restore. <!-- StorageScreen.test.tsx "imports a backup file: shows a preview, then restore writes it back": builds a real backup file (serializeBackup(exportBackup(db))), uploads it via the file input, asserts the "Restore backup?" preview Dialog appears (no silent restore), wipes the db, clicks Restore, and asserts the "Backup restored" toast + the memory is re-created. Export path also covered by "exports a backup over Dexie". -->
 - [ ] Skill import -> permission review -> enable -> audit.
 - [ ] Reload -> runtime snapshot restored.
 - [x] wllama model download failure -> truthful model status. <!-- ModelsScreen.test.tsx "reflects a truthful error status in the model row after a failed download": a failed download (fail-closed CDN consent) leaves downloads['smollm2-135m'].status === 'error' (never 'ready') and the row visibly shows an "error" status; complemented by "shows a visible, audited error when a model download fails" (toast + model.download_failed audit) and the engine/quota/consent paths from Phase 8.1/8.2. -->

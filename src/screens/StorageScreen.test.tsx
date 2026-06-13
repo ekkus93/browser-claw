@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest';
 import storageReducer from '../store/slices/storageSlice.ts';
 import { ToastProvider } from '../components/ui/Toast.tsx';
 import { db } from '../db/db.ts';
+import { exportBackup, serializeBackup } from '../backup/backupService.ts';
+import { SAMPLE_MEMORIES } from '../memories/sampleMemories.ts';
 import StorageScreen from './StorageScreen.tsx';
 
 function renderStorage() {
@@ -65,5 +67,34 @@ describe('StorageScreen', () => {
     renderStorage();
     await user.click(screen.getByRole('button', { name: 'Export Backup' }));
     expect(await screen.findByText('Backup exported')).toBeInTheDocument();
+  });
+
+  it('imports a backup file: shows a preview, then restore writes it back', async () => {
+    // Integration (TODO 11.3): importing must preview before touching data (no
+    // silent restore), then a confirmed restore re-creates the records.
+    const user = userEvent.setup();
+    const memory = SAMPLE_MEMORIES[0]!;
+    await db.memories.clear();
+    await db.memories.bulkPut([memory]);
+    const file = new File(
+      [serializeBackup(await exportBackup(db))],
+      'data.clawbackup',
+      { type: 'application/json' },
+    );
+
+    renderStorage();
+
+    await user.upload(screen.getByLabelText('Import backup file'), file);
+    // A preview dialog appears first — nothing is restored yet.
+    expect(await screen.findByText('Restore backup?')).toBeInTheDocument();
+
+    // Wipe local data, then confirm the restore brings it back.
+    await db.memories.clear();
+    await user.click(screen.getByRole('button', { name: 'Restore' }));
+
+    // The success toast fires only after importBackup resolves, so the write
+    // has already landed by the time it appears.
+    expect(await screen.findByText('Backup restored')).toBeInTheDocument();
+    expect(await db.memories.get(memory.id)).toBeTruthy();
   });
 });

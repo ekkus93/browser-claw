@@ -5,7 +5,7 @@ import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
-import chatReducer from '../store/slices/chatSlice.ts';
+import chatReducer, { chatErrored } from '../store/slices/chatSlice.ts';
 import approvalsReducer, {
   approvalRequested,
 } from '../store/slices/approvalsSlice.ts';
@@ -64,6 +64,23 @@ describe('ChatScreen', () => {
     await waitFor(() =>
       expect(screen.getByText('hello world')).toBeInTheDocument(),
     );
+  });
+
+  it('shows a provider error card, not a fake assistant reply', async () => {
+    const store = renderChat({ providerId: 'openai' });
+    store.dispatch(
+      chatErrored({ kind: 'cors', message: 'Blocked by the browser (CORS).' }),
+    );
+
+    expect(await screen.findByTestId('chat-error')).toBeInTheDocument();
+    expect(
+      screen.getByText('The provider could not respond'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Blocked by the browser (CORS).'),
+    ).toBeInTheDocument();
+    // The failure never appears as a normal assistant message bubble.
+    expect(screen.queryByText('assistant')).not.toBeInTheDocument();
   });
 
   it('renders a pending approval and resolves it off the queue', async () => {

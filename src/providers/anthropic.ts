@@ -47,8 +47,9 @@ export function createAnthropicProvider(
       .filter((message) => message.role !== 'system')
       .map((message) => ({ role: message.role, content: message.content }));
 
-    const response = await fetchOrThrow(() =>
-      doFetch(`${baseUrl}/v1/messages`, {
+    const url = `${baseUrl}/v1/messages`;
+    const response = await fetchOrThrow(url, () =>
+      doFetch(url, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',

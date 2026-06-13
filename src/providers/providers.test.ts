@@ -8,7 +8,11 @@ import {
   isProviderConfigured,
   defaultActiveProviderId,
 } from './registry.ts';
-import { ProviderError, httpStatusToKind, kindToHealth } from './errors.ts';
+import {
+  httpStatusToKind,
+  kindToHealth,
+  classifyFetchFailure,
+} from './errors.ts';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -67,14 +71,34 @@ describe('OpenAI-compatible provider', () => {
     expect(await provider.checkHealth()).toBe('auth_failed');
   });
 
-  it('maps a network failure to unreachable', async () => {
+  it('maps a cross-origin network failure to a likely CORS block', async () => {
+    // The default OpenAI base URL is cross-origin to the test page, so a thrown
+    // TypeError is reported as a probable CORS error (the actionable kind).
     const fetchImpl = vi.fn(() =>
       Promise.reject(new TypeError('Failed to fetch')),
     ) as unknown as typeof fetch;
     const provider = createOpenAIProvider({ fetchImpl });
     await expect(
       provider.complete({ messages: [{ role: 'user', content: 'x' }] }),
-    ).rejects.toBeInstanceOf(ProviderError);
+    ).rejects.toMatchObject({ kind: 'cors' });
+    expect(await provider.checkHealth()).toBe('cors_error');
+  });
+
+  it('maps a same-origin network failure to unreachable', async () => {
+    // A same-origin endpoint cannot fail for CORS reasons, so a thrown
+    // TypeError is an ordinary network problem.
+    const fetchImpl = vi.fn(() =>
+      Promise.reject(new TypeError('Failed to fetch')),
+    ) as unknown as typeof fetch;
+    const provider = createOpenAICompatibleProvider({
+      id: 'local',
+      baseUrl: `${globalThis.location.origin}/v1`,
+      model: 'm',
+      fetchImpl,
+    });
+    await expect(
+      provider.complete({ messages: [{ role: 'user', content: 'x' }] }),
+    ).rejects.toMatchObject({ kind: 'unreachable' });
     expect(await provider.checkHealth()).toBe('unreachable');
   });
 });
@@ -193,5 +217,16 @@ describe('error mapping', () => {
     expect(httpStatusToKind(500)).toBe('unknown');
     expect(kindToHealth('cors')).toBe('cors_error');
     expect(kindToHealth('model_not_found')).toBe('model_not_found');
+  });
+
+  it('classifies fetch failures as CORS only across origins', () => {
+    expect(classifyFetchFailure('https://api.openai.com/v1/chat')).toBe('cors');
+    expect(classifyFetchFailure(`${globalThis.location.origin}/v1/chat`)).toBe(
+      'unreachable',
+    );
+    // A relative URL resolves to the page origin — not a CORS case.
+    expect(classifyFetchFailure('/v1/chat')).toBe('unreachable');
+    // A malformed URL cannot be cross-origin classified; fall back safely.
+    expect(classifyFetchFailure('::not a url::')).toBe('unreachable');
   });
 });

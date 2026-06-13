@@ -38,8 +38,9 @@ export function createOpenAICompatibleProvider(
     request: CompletionRequest,
     options?: ProviderCallOptions,
   ) {
-    const response = await fetchOrThrow(() =>
-      doFetch(`${config.baseUrl}/chat/completions`, {
+    const url = `${config.baseUrl}/chat/completions`;
+    const response = await fetchOrThrow(url, () =>
+      doFetch(url, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',

@@ -122,17 +122,18 @@
 
 ### 2.4 Provider Error Handling
 
-- [ ] Replace provider-error-as-assistant-message behavior.
-- [ ] Add normalized provider error shape.
-- [ ] Runtime must receive provider failures as effect errors.
-- [ ] Chat must show error card, not fake assistant response.
-- [ ] Audit must record provider failure.
-- [ ] Add CORS/possible-CORS classification.
-- [ ] Tests:
-  - [ ] network failure produces provider error card;
-  - [ ] auth failure produces auth error;
-  - [ ] model-not-found produces model error;
-  - [ ] provider failure does not create normal assistant message.
+- [x] Replace provider-error-as-assistant-message behavior. <!-- llmRunner.ts complete() catch returns early (resolve_effect ok:false) and never writes an assistant message -->
+- [x] Add normalized provider error shape. <!-- ProviderError { kind: cors|auth|model_not_found|unreachable|unknown } in providers/errors.ts -->
+- [x] Runtime must receive provider failures as effect errors. <!-- llmRunner submits { type:'resolve_effect', result:{ ok:false, error } } -->
+- [x] Chat must show error card, not fake assistant response. <!-- ChatScreen renders data-testid="chat-error" ErrorState from state.chat.error -->
+- [x] Audit must record provider failure. <!-- recordAudit type 'provider.request_failed', source 'provider', status 'failure' -->
+- [x] Add CORS/possible-CORS classification. <!-- Pass 22: classifyFetchFailure() maps cross-origin fetch throws to 'cors', same-origin/non-browser to 'unreachable'; threaded through fetchOrThrow(url, run) -->
+- [x] Tests:
+  - [x] network failure produces provider error card; <!-- ChatScreen.test "shows a provider error card, not a fake assistant reply"; providers.test cross-origin->cors -->
+  - [x] auth failure produces auth error; <!-- providers.test "maps a 401 to an auth error" -->
+  - [x] model-not-found produces model error; <!-- providers.test error-mapping httpStatusToKind(404)=model_not_found -->
+  - [x] provider failure does not create normal assistant message. <!-- llmRunner.test "surfaces a provider failure as an error, never a fake reply" + ChatScreen.test -->
+
 
 ## Phase 3 — Durable Audit Log
 

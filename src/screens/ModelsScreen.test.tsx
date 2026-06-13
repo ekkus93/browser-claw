@@ -47,8 +47,9 @@ describe('ModelsScreen', () => {
   });
 
   it('runs a real health check when tested (no API key needed)', async () => {
-    // Stub the network so the check is deterministic and offline. A network
-    // failure maps to "unreachable".
+    // Stub the network so the check is deterministic and offline. OpenAI's API
+    // is cross-origin to the browser, so a thrown fetch maps to a likely CORS
+    // block — the honest, actionable result for a browser-direct call.
     vi.stubGlobal(
       'fetch',
       vi.fn(() => Promise.reject(new TypeError('network down'))),
@@ -62,7 +63,7 @@ describe('ModelsScreen', () => {
     await user.click(testButtons[0]!);
 
     await waitFor(() =>
-      expect(store.getState().providers.health.openai).toBe('unreachable'),
+      expect(store.getState().providers.health.openai).toBe('cors_error'),
     );
   });
 

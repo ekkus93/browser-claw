@@ -16,6 +16,7 @@ import { createSkillManager } from './skills/skillManager.ts';
 import type { EffectContext } from './runtime/effectExecutor.ts';
 import {
   createReferenceRuntime,
+  SNAPSHOT_SCHEMA_VERSION,
   type ClawRuntimePort,
   type RuntimeSnapshot,
 } from './runtime/referenceRuntime.ts';
@@ -107,7 +108,19 @@ function onSnapshotSaveError(error: unknown): void {
 // app blocks (no silent reference-runtime fallback). The reference runtime is
 // used only when VITE_ALLOW_REFERENCE_RUNTIME_FALLBACK (or demo mode) is set.
 async function bootRuntime(): Promise<void> {
-  const snapshot = await loadLatestSnapshot(db);
+  // Restore the latest snapshot only when its schema version matches this
+  // build. An incompatible snapshot is dropped and audited rather than restored
+  // into a runtime that would misinterpret it (silent state corruption).
+  const load = await loadLatestSnapshot(db);
+  if (load.status === 'incompatible') {
+    appendAudit(
+      'runtime.snapshot_incompatible',
+      `Discarded an incompatible runtime snapshot (found v${load.foundVersion ?? 'unversioned'}, expected v${SNAPSHOT_SCHEMA_VERSION}); started fresh`,
+      'medium',
+      'failure',
+    );
+  }
+  const snapshot = load.status === 'ok' ? load.snapshot : undefined;
   const { port } = await loadRuntimePort(
     {
       config: appConfig,

@@ -198,26 +198,29 @@
 
 ## Phase 4 — Runtime Snapshot Persistence
 
-- [ ] Add snapshot persistence to normal runtime flow.
+- [x] Add snapshot persistence to normal runtime flow. <!-- RuntimeHost owns a SnapshotScheduler (debounced save) wired in main.tsx bootRuntime; loadLatestSnapshot restores on boot -->
 - [ ] Save snapshot:
-  - [ ] after user message accepted;
-  - [ ] after each effect emitted;
-  - [ ] after each effect resolved;
-  - [ ] after runtime enters idle;
+  - [x] after user message accepted; <!-- RuntimeHost.submit() schedules a coalesced save after the turn settles (runtimeHost.ts) -->
+  - [ ] after each effect emitted; <!-- not wired: saves once per turn, not per effect — tied to effect-port lifecycle (Phase 1.2, contract-blocked) -->
+  - [ ] after each effect resolved; <!-- not wired (same as above) -->
+  - [ ] after runtime enters idle; <!-- reference runtime has no idle/error state machine to hook -->
   - [ ] after runtime enters error;
-  - [ ] before unload when possible.
-- [ ] Add snapshot compatibility check.
-- [ ] Add corrupted snapshot handling.
-- [ ] Add visible restore warning if snapshot incompatible/corrupted.
+  - [x] before unload when possible. <!-- main.tsx 'pagehide' listener -> host.flushSnapshot() -->
+- [x] Add snapshot compatibility check. <!-- SNAPSHOT_SCHEMA_VERSION (referenceRuntime.ts) stamped on every write (runtimeHost.saveSnapshot + effectExecutor); loadLatestSnapshot gates on version and discards mismatches -->
+- [x] Add corrupted snapshot handling. <!-- main.tsx withSnapshotRestore() try/catch -> start fresh + audit; loadLatestSnapshot drops incompatible/unversioned rows so they can't retry forever -->
+- [ ] Add visible restore warning if snapshot incompatible/corrupted. <!-- TODO next: incompatible/restore_failed are audited + console-logged but not surfaced in the UI yet (no toast/banner) -->
 - [ ] Add audit events:
-  - [ ] snapshot saved;
-  - [ ] snapshot restore success;
-  - [ ] snapshot restore failed;
-  - [ ] snapshot incompatible.
+  - [ ] snapshot saved; <!-- intentionally omitted: a per-turn save audit would spam the log; revisit if a discrete save signal is wanted -->
+  - [x] snapshot restore success; <!-- main.tsx 'runtime.snapshot_restored' -->
+  - [x] snapshot restore failed; <!-- main.tsx 'runtime.snapshot_restore_failed' (+ 'runtime.snapshot_save_failed' for save errors) -->
+  - [x] snapshot incompatible; <!-- main.tsx 'runtime.snapshot_incompatible' on a version mismatch (this pass) -->
 - [ ] Tests:
-  - [ ] reload restores runtime state;
-  - [ ] corrupted snapshot does not crash silently;
-  - [ ] incompatible snapshot is audited.
+  - [x] reload restores runtime state; <!-- runtimeHost.test.ts "persists and restores a snapshot deterministically"; referenceRuntime.test.ts restore -->
+  - [x] corrupted snapshot does not crash silently; <!-- runtimeHost.test.ts discards incompatible + pre-versioning snapshots; withSnapshotRestore catches deserialize throws -->
+  - [x] incompatible snapshot is audited. <!-- main.tsx emits 'runtime.snapshot_incompatible'; runtimeHost.test.ts asserts the load reports 'incompatible' + drops the row -->
+
+<!-- Phase 4 status: core save/restore + compatibility gate + corruption handling + audit all wired. Remaining: a VISIBLE (UI) restore warning, and per-effect/idle/error save triggers (blocked on the effect-port contract, Phase 1.2). -->
+
 
 ## Phase 5 — Storage Effects and Memory Hardening
 

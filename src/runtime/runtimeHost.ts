@@ -2,6 +2,7 @@ import type { BrowserClawDB } from '../db/db.ts';
 import type { Command } from './effectTypes.ts';
 import {
   createReferenceRuntime,
+  SNAPSHOT_SCHEMA_VERSION,
   type ClawRuntimePort,
   type RuntimeSnapshot,
 } from './referenceRuntime.ts';
@@ -9,6 +10,12 @@ import { executeEffect, type EffectContext } from './effectExecutor.ts';
 import { SnapshotScheduler } from './snapshotScheduler.ts';
 
 const LATEST_SNAPSHOT_ID = 'latest';
+
+/** Outcome of attempting to load the persisted snapshot. */
+export type SnapshotLoad =
+  | { status: 'none' }
+  | { status: 'ok'; snapshot: RuntimeSnapshot }
+  | { status: 'incompatible'; foundVersion: number | undefined };
 
 export interface RuntimeHostOptions {
   /** Enable debounced snapshot persistence after each submitted command. */
@@ -63,16 +70,27 @@ export class RuntimeHost {
     await this.#ctx.db.runtime_snapshots.put({
       id: LATEST_SNAPSHOT_ID,
       createdAt: now(),
+      version: SNAPSHOT_SCHEMA_VERSION,
       snapshot: this.#port.snapshot(),
     });
   }
 }
 
-export async function loadLatestSnapshot(
-  db: BrowserClawDB,
-): Promise<RuntimeSnapshot | undefined> {
+/**
+ * Load the persisted snapshot, gating on schema compatibility. A snapshot whose
+ * stored version does not match SNAPSHOT_SCHEMA_VERSION (including pre-version
+ * rows with no version) is dropped from storage and reported as `incompatible`
+ * so the caller can audit it and start fresh — restoring it could silently
+ * corrupt runtime state. Dropping it also stops it failing the same way forever.
+ */
+export async function loadLatestSnapshot(db: BrowserClawDB): Promise<SnapshotLoad> {
   const row = await db.runtime_snapshots.get(LATEST_SNAPSHOT_ID);
-  return (row?.snapshot as RuntimeSnapshot | undefined) ?? undefined;
+  if (!row || row.snapshot === undefined) return { status: 'none' };
+  if (row.version !== SNAPSHOT_SCHEMA_VERSION) {
+    await db.runtime_snapshots.delete(LATEST_SNAPSHOT_ID);
+    return { status: 'incompatible', foundVersion: row.version };
+  }
+  return { status: 'ok', snapshot: row.snapshot as RuntimeSnapshot };
 }
 
 /** Build a host backed by the TS reference runtime, optionally restored. */

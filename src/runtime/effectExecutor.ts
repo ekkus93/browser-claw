@@ -3,6 +3,7 @@ import type { BrowserClawDB } from '../db/db.ts';
 import type { Effect } from './effectTypes.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { normalizeRiskLevel } from '../audit/auditService.ts';
+import { SNAPSHOT_SCHEMA_VERSION } from './referenceRuntime.ts';
 import {
   approvalRequested,
   type ApprovalRisk,
@@ -68,6 +69,7 @@ export async function executeEffect(
       await ctx.db.runtime_snapshots.put({
         id: effect.id,
         createdAt: now(),
+        version: SNAPSHOT_SCHEMA_VERSION,
         snapshot: effect.snapshot,
       });
       return;

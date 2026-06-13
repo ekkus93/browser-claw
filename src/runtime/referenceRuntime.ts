@@ -13,6 +13,14 @@ export interface RuntimeSnapshot {
   pending: Record<string, string>;
 }
 
+/**
+ * Bump whenever the persisted RuntimeSnapshot shape changes in a way an older
+ * or newer runtime cannot faithfully restore. A stored snapshot stamped with a
+ * different version is discarded on load (never restored into a runtime that
+ * would misinterpret it). See loadLatestSnapshot in runtimeHost.ts.
+ */
+export const SNAPSHOT_SCHEMA_VERSION = 1;
+
 export interface ClawRuntimePort {
   dispatch(command: Command): Effect[];
   snapshot(): RuntimeSnapshot;

@@ -9,7 +9,10 @@ import {
   createRuntimeHost,
   loadLatestSnapshot,
 } from './runtimeHost.ts';
-import { createReferenceRuntime } from './referenceRuntime.ts';
+import {
+  createReferenceRuntime,
+  SNAPSHOT_SCHEMA_VERSION,
+} from './referenceRuntime.ts';
 import type { EffectContext } from './effectExecutor.ts';
 
 const db = new BrowserClawDB();
@@ -52,8 +55,9 @@ describe('RuntimeHost', () => {
       text: 'hi',
     });
     await host.flushSnapshot();
-    const snapshot = await loadLatestSnapshot(db);
-    expect(snapshot?.message_count).toBe(1);
+    const load = await loadLatestSnapshot(db);
+    expect(load.status).toBe('ok');
+    expect(load.status === 'ok' && load.snapshot.message_count).toBe(1);
   });
 
   it('persists and restores a snapshot deterministically', async () => {
@@ -67,14 +71,53 @@ describe('RuntimeHost', () => {
     });
     await host.saveSnapshot();
 
-    const snapshot = await loadLatestSnapshot(db);
-    expect(snapshot?.message_count).toBe(1);
+    const load = await loadLatestSnapshot(db);
+    expect(load.status).toBe('ok');
+    if (load.status !== 'ok') return;
+    expect(load.snapshot.message_count).toBe(1);
 
     // A host restored from the snapshot continues from the same state.
-    const restored = createRuntimeHost(makeContext().ctx, snapshot);
+    const restored = createRuntimeHost(makeContext().ctx, load.snapshot);
     await restored.saveSnapshot();
     const again = await loadLatestSnapshot(db);
-    expect(again?.message_count).toBe(1);
-    expect(again?.next_effect_id).toBe(snapshot?.next_effect_id);
+    expect(again.status === 'ok' && again.snapshot.message_count).toBe(1);
+    expect(again.status === 'ok' && again.snapshot.next_effect_id).toBe(
+      load.snapshot.next_effect_id,
+    );
+  });
+
+  it('discards an incompatible snapshot instead of restoring it', async () => {
+    await db.open();
+    // A snapshot stamped with a different schema version must never be restored
+    // — it would silently corrupt runtime state. It is dropped and reported.
+    await db.runtime_snapshots.put({
+      id: 'latest',
+      createdAt: 1,
+      version: SNAPSHOT_SCHEMA_VERSION + 1,
+      snapshot: { next_effect_id: 9, message_count: 9, pending: {} },
+    });
+
+    const load = await loadLatestSnapshot(db);
+    expect(load).toEqual({
+      status: 'incompatible',
+      foundVersion: SNAPSHOT_SCHEMA_VERSION + 1,
+    });
+    // The bad snapshot is removed so it cannot fail the same way on every boot.
+    expect(await db.runtime_snapshots.get('latest')).toBeUndefined();
+  });
+
+  it('treats a pre-versioning snapshot as incompatible', async () => {
+    await db.open();
+    // Rows written before snapshot versioning have no version field; they
+    // cannot be proven compatible, so they are discarded rather than trusted.
+    await db.runtime_snapshots.put({
+      id: 'latest',
+      createdAt: 1,
+      snapshot: { next_effect_id: 3, message_count: 3, pending: {} },
+    });
+
+    const load = await loadLatestSnapshot(db);
+    expect(load).toEqual({ status: 'incompatible', foundVersion: undefined });
+    expect(await db.runtime_snapshots.get('latest')).toBeUndefined();
   });
 });

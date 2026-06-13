@@ -167,6 +167,14 @@ export interface AuditEventRow {
 export interface RuntimeSnapshotRow {
   id: string;
   createdAt: number;
+  /**
+   * Snapshot schema version (see SNAPSHOT_SCHEMA_VERSION). A persisted snapshot
+   * whose version does not match the running build is discarded on load rather
+   * than restored — restoring across an incompatible shape would silently
+   * corrupt runtime state. Optional so pre-versioning rows read back as
+   * `undefined` and are treated as incompatible.
+   */
+  version?: number;
   snapshot: unknown;
 }
 

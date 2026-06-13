@@ -187,9 +187,9 @@
   - [ ] effect emitted/resolved/failed; <!-- partial: audit_append effect routes durably (effectExecutor); generic effect lifecycle events not yet wired — tied to effect-port contract (Phase 1.2, blocked) -->
   - [ ] tool proposed/approved/rejected/edited; <!-- not wired; depends on tool effect ports (Phase 7.4, contract-blocked) -->
   - [ ] memory created/updated/deleted; <!-- not wired in app code (memory_created appears only as a test fixture) -->
-  - [ ] skill installed/enabled/disabled/import failed; <!-- partial: skillManager.ts 'skill_import_failed' + skillRunner.ts 'skill.permission_denied'; install/enable/disable not wired -->
-  - [ ] secret unlocked/locked/deleted; <!-- not wired -->
-  - [ ] backup export/import success/failure; <!-- partial: backupService.ts 'backup.exported'/'backup.export_failed'; import path not wired -->
+  - [x] skill installed/enabled/disabled/import failed; <!-- skillManager.ts audits skill_installed/skill_reinstalled, skill_enabled/skill_disabled, skill_uninstalled, and skill_import_failed (all source 'skill', skillId); SkillsScreen.test.tsx "imports a skill ... and audits" asserts skill_installed + skill_enabled. (Prior annotation was stale.) -->
+  - [ ] secret unlocked/locked/deleted; <!-- partial: secretVault.ts audits secret_unlocked (unlock) + secret_locked (lock/auto-lock) via the vault observer (secretVault.test.ts). Secret deletion isn't a wired action yet, so its audit is pending that feature. -->
+  - [x] backup export/import success/failure; <!-- export: backupService runBackupExport 'backup.exported'/'backup.export_failed'. import: StorageScreen.confirmRestore now audits 'backup.imported' (success) / 'backup.import_failed' (failure, with a visible danger toast) — source 'backup'. StorageScreen.test.tsx asserts the backup.imported audit after a real restore. -->
   - [x] model download/load/delete success/failure; <!-- modelManager.ts emits source:'model' audit events: model.download_succeeded/_failed, model.loaded/.load_failed, model.deleted/.delete_failed (modelId only, no URLs/secrets); wllama.test.ts asserts durable rows + no 'huggingface' leak -->
 - [x] Ensure no raw secrets or large content bodies are recorded. <!-- redactDetails() in auditService.ts; provider/runtime audit summaries carry ids + verdicts only, never keys or message bodies; guardrail in ModelsScreen.test asserts no 'sk-' in the row -->
 

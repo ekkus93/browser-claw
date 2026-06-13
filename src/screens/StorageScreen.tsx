@@ -21,6 +21,7 @@ import {
   runBackupExport,
   type ValidationResult,
 } from '../backup/backupService.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
 import { Dialog } from '../components/ui/Dialog.tsx';
@@ -176,11 +177,36 @@ export default function StorageScreen() {
   }
 
   async function confirmRestore() {
-    if (preview?.backup) {
-      await importBackup(db, preview.backup);
-      toast({ tone: 'success', title: 'Backup restored' });
-    }
+    const backup = preview?.backup;
     setPreview(null);
+    if (!backup) return;
+    try {
+      await importBackup(db, backup);
+      void recordAudit(db, dispatch, {
+        type: 'backup.imported',
+        summary: `Backup restored (schema v${backup.manifest.schemaVersion})`,
+        source: 'backup',
+        risk: 'low',
+        status: 'success',
+      });
+      toast({ tone: 'success', title: 'Backup restored' });
+    } catch (error) {
+      // A failed import rolls back (importBackup is transactional). Surface it
+      // and audit the failure — never leave the user thinking it succeeded.
+      const message = error instanceof Error ? error.message : String(error);
+      void recordAudit(db, dispatch, {
+        type: 'backup.import_failed',
+        summary: `Backup restore failed: ${message}`,
+        source: 'backup',
+        risk: 'low',
+        status: 'failure',
+      });
+      toast({
+        tone: 'danger',
+        title: 'Restore failed',
+        description: 'The backup could not be restored.',
+      });
+    }
   }
 
   return (

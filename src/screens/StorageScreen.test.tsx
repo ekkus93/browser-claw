@@ -96,5 +96,12 @@ describe('StorageScreen', () => {
     // has already landed by the time it appears.
     expect(await screen.findByText('Backup restored')).toBeInTheDocument();
     expect(await db.memories.get(memory.id)).toBeTruthy();
+
+    // The restore is a meaningful action and must be durably audited.
+    const audited = await db.audit_events
+      .where('type')
+      .equals('backup.imported')
+      .toArray();
+    expect(audited.some((e) => e.source === 'backup')).toBe(true);
   });
 });

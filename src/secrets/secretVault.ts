@@ -65,7 +65,7 @@ const DEFAULT_LOCK_TIMEOUT_MS = 15 * 60 * 1000;
 export class SecretVault {
   readonly #store: VaultStore;
   readonly #observer: VaultObserver | undefined;
-  readonly #lockTimeoutMs: number;
+  #lockTimeoutMs: number;
 
   #key: CryptoKey | null = null;
   #unlocked = false;
@@ -81,6 +81,16 @@ export class SecretVault {
 
   isUnlocked(): boolean {
     return this.#unlocked;
+  }
+
+  /**
+   * Update the auto-lock idle timeout (ms; 0 disables). Re-arms the running
+   * timer immediately when the vault is unlocked so a Settings change takes
+   * effect this session; while locked the new value applies on the next unlock.
+   */
+  setLockTimeout(ms: number): void {
+    this.#lockTimeoutMs = ms;
+    if (this.#unlocked) this.#armLockTimer();
   }
 
   /** Whether the vault can persist encrypted secrets (passphrase set). */

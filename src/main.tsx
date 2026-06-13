@@ -37,7 +37,10 @@ import {
   snapshotRestoreWarned,
 } from './store/slices/runtimeSlice.ts';
 import { hydrated, onboardingCompleted } from './store/slices/appSlice.ts';
-import { getOnboardingComplete } from './settings/appSettings.ts';
+import {
+  getOnboardingComplete,
+  getLockTimeoutMinutes,
+} from './settings/appSettings.ts';
 import { recordAudit } from './audit/auditSink.ts';
 import type { AuditRiskLevel, AuditStatus } from './db/types.ts';
 
@@ -253,6 +256,15 @@ async function restoreActiveProvider(): Promise<void> {
 }
 
 void restoreActiveProvider();
+
+// Apply the user's persisted auto-lock timeout to the vault so idle locking
+// honours their Settings choice after reload — not just the session it was set.
+async function restoreLockTimeout(): Promise<void> {
+  const minutes = await getLockTimeoutMinutes(db);
+  secretVault.setLockTimeout(minutes * 60_000);
+}
+
+void restoreLockTimeout();
 
 // Restore durable first-run state, then mark the session hydrated so the index
 // route can decide between onboarding and chat. onboardingComplete is dispatched

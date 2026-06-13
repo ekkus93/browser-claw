@@ -121,6 +121,40 @@ describe('SecretVault', () => {
     }
   });
 
+  it('re-arms the timer when the lock timeout is shortened while unlocked', async () => {
+    vi.useFakeTimers();
+    try {
+      const vault = new SecretVault({
+        store: new InMemoryVaultStore(),
+        lockTimeoutMs: 60_000,
+      });
+      await vault.setup('p');
+      // Shortening the timeout mid-session must take effect immediately.
+      vault.setLockTimeout(1000);
+      vi.advanceTimersByTime(1000);
+      expect(vault.isUnlocked()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('honours a lock timeout configured before the vault is unlocked', async () => {
+    vi.useFakeTimers();
+    try {
+      const vault = new SecretVault({
+        store: new InMemoryVaultStore(),
+        lockTimeoutMs: 0,
+      });
+      // Set while locked: no live timer to re-arm, applies on next unlock.
+      vault.setLockTimeout(500);
+      await vault.setup('p');
+      vi.advanceTimersByTime(500);
+      expect(vault.isUnlocked()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('emits lock/unlock audit events and lock-state changes', async () => {
     const cap = capturing();
     const vault = new SecretVault({

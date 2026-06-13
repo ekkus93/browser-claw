@@ -476,14 +476,18 @@
   - [ ] theme;
   - [ ] default provider;
   - [ ] fallback provider;
-  - [ ] lock timeout;
+  - [x] lock timeout; <!-- First setting wired END-TO-END: SettingsScreen lock-timeout Select now reads the durable value from app_settings on mount (getLockTimeoutMinutes) and writes changes back (setLockTimeoutMinutes); main.tsx restoreLockTimeout applies the persisted value to the SecretVault at boot; SecretVault.setLockTimeout(ms) re-arms the real auto-lock timer (the genuine consumer — secretVault.ts:243). Not a hollow control: it drives actual idle-locking. -->
+        <!-- Remaining settings still decorative/local-only: theme (BLOCKED — app is single-theme, no dark tokens/darkMode config; persisting a theme that has no visual effect would itself be a hollow affordance), default/fallback provider, approval policy, backup, skill install policy, dev/demo/fallback mode (the last is env-gated via VITE_DEMO_MODE/appConfig, not runtime-mutable). -->
+        <!-- The two umbrella boxes above (read-from / write-to IndexedDB) stay UNTICKED until more controls are wired — only the lock-timeout control reads/writes so far. -->
+
   - [ ] approval policy;
   - [ ] backup settings;
   - [ ] skill install policy;
   - [ ] developer/demo/fallback mode.
 - [x] Settings button in top bar navigates to `/settings`. <!-- AppLayout.tsx now wires topBar.onOpenSettings to navigate('/settings'); previously a silent no-op because AppLayout never passed the prop to AppShell/TopStatusBar. -->
 - [ ] Tests:
-  - [ ] settings persist after reload;
+  - [x] settings persist after reload; <!-- Proven for the lock-timeout setting (the first end-to-end one): SettingsScreen.test.tsx seeds a durable value, asserts the control reflects it on mount, then asserts a change is written back to app_settings; appSettings.test.ts round-trips + defaults getLockTimeoutMinutes. The persist-after-reload mechanism (read-on-mount + boot rehydrate) now exists and is tested. -->
+
   - [x] top bar Settings button navigates; <!-- AppLayout.test.tsx: clicking the top-bar Settings button lands on /settings. -->
   - [ ] approval policy affects approval behavior.
 

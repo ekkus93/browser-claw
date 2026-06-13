@@ -7,6 +7,8 @@ import {
   getOnboardingComplete,
   setOnboardingComplete,
   ONBOARDING_COMPLETE_KEY,
+  getLockTimeoutMinutes,
+  setLockTimeoutMinutes,
 } from './appSettings.ts';
 
 describe('appSettings', () => {
@@ -30,5 +32,14 @@ describe('appSettings', () => {
     // Stored under the documented key so other readers agree.
     const row = await db.app_settings.get(ONBOARDING_COMPLETE_KEY);
     expect(row?.value).toBe(true);
+  });
+
+  it('defaults the lock timeout to 15 minutes when unset', async () => {
+    expect(await getLockTimeoutMinutes(db)).toBe(15);
+  });
+
+  it('persists the lock timeout durably', async () => {
+    await setLockTimeoutMinutes(db, 60);
+    expect(await getLockTimeoutMinutes(db)).toBe(60);
   });
 });

@@ -1,8 +1,9 @@
-import { act, render, screen } from '@testing-library/react';
+import 'fake-indexeddb/auto';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import providersReducer from '../store/slices/providersSlice.ts';
 import modelsReducer from '../store/slices/modelsSlice.ts';
 import runtimeReducer, {
@@ -10,6 +11,11 @@ import runtimeReducer, {
   runtimeLoaded,
 } from '../store/slices/runtimeSlice.ts';
 import SettingsScreen from './SettingsScreen.tsx';
+import { db } from '../db/db.ts';
+import {
+  getLockTimeoutMinutes,
+  setLockTimeoutMinutes,
+} from '../settings/appSettings.ts';
 
 function renderSettings() {
   const store = configureStore({
@@ -29,6 +35,10 @@ function renderSettings() {
 }
 
 describe('SettingsScreen', () => {
+  afterEach(async () => {
+    await db.app_settings.clear();
+  });
+
   it('renders the configuration sections', () => {
     renderSettings();
     for (const section of [
@@ -77,5 +87,22 @@ describe('SettingsScreen', () => {
     expect(store.getState().runtime.status).toBe('ready');
     await user.click(screen.getByRole('button', { name: 'Reset runtime' }));
     expect(store.getState().runtime.status).toBe('initializing');
+  });
+
+  it('loads the persisted lock timeout and writes changes to IndexedDB', async () => {
+    // A real, persisted setting: seed a durable value, confirm the control
+    // reflects it on mount, then prove a change is written back to IndexedDB.
+    await setLockTimeoutMinutes(db, 60);
+    const user = userEvent.setup();
+    renderSettings();
+
+    const select = await screen.findByRole('combobox', {
+      name: 'Lock timeout',
+    });
+    await waitFor(() => expect(select).toHaveValue('60'));
+
+    await user.selectOptions(select, '5');
+    expect(select).toHaveValue('5');
+    await waitFor(async () => expect(await getLockTimeoutMinutes(db)).toBe(5));
   });
 });

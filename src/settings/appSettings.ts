@@ -37,3 +37,21 @@ export async function setOnboardingComplete(
 ): Promise<void> {
   await setSetting(db, ONBOARDING_COMPLETE_KEY, value);
 }
+
+/** SecretVault auto-lock idle timeout, in minutes (drives a real lock timer). */
+export const LOCK_TIMEOUT_MINUTES_KEY = 'lockTimeoutMinutes';
+const DEFAULT_LOCK_TIMEOUT_MINUTES = 15;
+
+export async function getLockTimeoutMinutes(
+  db: BrowserClawDB,
+): Promise<number> {
+  const value = await getSetting<number>(db, LOCK_TIMEOUT_MINUTES_KEY);
+  return typeof value === 'number' ? value : DEFAULT_LOCK_TIMEOUT_MINUTES;
+}
+
+export async function setLockTimeoutMinutes(
+  db: BrowserClawDB,
+  minutes: number,
+): Promise<void> {
+  await setSetting(db, LOCK_TIMEOUT_MINUTES_KEY, minutes);
+}

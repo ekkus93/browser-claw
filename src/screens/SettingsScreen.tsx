@@ -1,6 +1,12 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
 import { runtimeReset } from '../store/slices/runtimeSlice.ts';
+import { db } from '../db/db.ts';
+import {
+  getLockTimeoutMinutes,
+  setLockTimeoutMinutes,
+} from '../settings/appSettings.ts';
+import { secretVault } from '../secrets/vault.ts';
 import { APP_VERSION } from '../lib/appMeta.ts';
 import { Toggle } from '../components/ui/Toggle.tsx';
 import { Select } from '../components/ui/Select.tsx';
@@ -56,6 +62,26 @@ export default function SettingsScreen() {
   });
   const toggle = (key: keyof Flags) =>
     setFlags((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // Lock timeout is a real, persisted setting: it drives the SecretVault's
+  // auto-lock timer. Read the durable value on mount and write changes back to
+  // IndexedDB while applying them to the live vault immediately.
+  const [lockTimeoutMinutes, setLockTimeoutMinutesState] = useState(15);
+  useEffect(() => {
+    let active = true;
+    void getLockTimeoutMinutes(db).then((minutes) => {
+      if (active) setLockTimeoutMinutesState(minutes);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const handleLockTimeoutChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const minutes = Number(event.target.value);
+    setLockTimeoutMinutesState(minutes);
+    secretVault.setLockTimeout(minutes * 60_000);
+    void setLockTimeoutMinutes(db, minutes);
+  };
 
   return (
     <div className="overflow-y-auto">
@@ -121,7 +147,12 @@ export default function SettingsScreen() {
               <Field
                 label="Lock timeout"
                 control={
-                  <Select defaultValue="15" className="w-40">
+                  <Select
+                    aria-label="Lock timeout"
+                    className="w-40"
+                    value={String(lockTimeoutMinutes)}
+                    onChange={handleLockTimeoutChange}
+                  >
                     <option value="5">5 minutes</option>
                     <option value="15">15 minutes</option>
                     <option value="60">1 hour</option>

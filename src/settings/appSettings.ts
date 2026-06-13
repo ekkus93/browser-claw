@@ -55,3 +55,21 @@ export async function setLockTimeoutMinutes(
 ): Promise<void> {
   await setSetting(db, LOCK_TIMEOUT_MINUTES_KEY, minutes);
 }
+
+/**
+ * Explicit user consent to fetch the wllama runtime WASM from the CDN. Defaults
+ * to false so the app fails closed: browser-local models never silently pull
+ * remote code from a CDN until the user opts in (TODO Phase 8.1).
+ */
+export const WLLAMA_CDN_CONSENT_KEY = 'wllamaCdnConsent';
+
+export async function getWllamaCdnConsent(db: BrowserClawDB): Promise<boolean> {
+  return (await getSetting<boolean>(db, WLLAMA_CDN_CONSENT_KEY)) === true;
+}
+
+export async function setWllamaCdnConsent(
+  db: BrowserClawDB,
+  value: boolean,
+): Promise<void> {
+  await setSetting(db, WLLAMA_CDN_CONSENT_KEY, value);
+}

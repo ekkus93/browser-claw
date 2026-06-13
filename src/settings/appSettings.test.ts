@@ -9,6 +9,9 @@ import {
   ONBOARDING_COMPLETE_KEY,
   getLockTimeoutMinutes,
   setLockTimeoutMinutes,
+  getWllamaCdnConsent,
+  setWllamaCdnConsent,
+  WLLAMA_CDN_CONSENT_KEY,
 } from './appSettings.ts';
 
 describe('appSettings', () => {
@@ -41,5 +44,16 @@ describe('appSettings', () => {
   it('persists the lock timeout durably', async () => {
     await setLockTimeoutMinutes(db, 60);
     expect(await getLockTimeoutMinutes(db)).toBe(60);
+  });
+
+  it('defaults wllama CDN consent to false (fails closed) when unset', async () => {
+    expect(await getWllamaCdnConsent(db)).toBe(false);
+  });
+
+  it('persists wllama CDN consent durably', async () => {
+    await setWllamaCdnConsent(db, true);
+    expect(await getWllamaCdnConsent(db)).toBe(true);
+    const row = await db.app_settings.get(WLLAMA_CDN_CONSENT_KEY);
+    expect(row?.value).toBe(true);
   });
 });

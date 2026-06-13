@@ -5,7 +5,10 @@ import { db } from '../db/db.ts';
 import {
   getLockTimeoutMinutes,
   setLockTimeoutMinutes,
+  getWllamaCdnConsent,
+  setWllamaCdnConsent,
 } from '../settings/appSettings.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 import { secretVault } from '../secrets/vault.ts';
 import { APP_VERSION } from '../lib/appMeta.ts';
 import { Toggle } from '../components/ui/Toggle.tsx';
@@ -83,6 +86,36 @@ export default function SettingsScreen() {
     void setLockTimeoutMinutes(db, minutes);
   };
 
+  // CDN consent for the wllama runtime is a real, persisted security policy:
+  // off by default (fail closed), it gates whether browser-local models may
+  // fetch the runtime WASM from the CDN. Changing it is a meaningful action, so
+  // it's audited. Read the durable value on mount; write changes back.
+  const [wllamaCdnConsent, setWllamaCdnConsentState] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void getWllamaCdnConsent(db).then((value) => {
+      if (active) setWllamaCdnConsentState(value);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const handleWllamaCdnConsentChange = (value: boolean) => {
+    setWllamaCdnConsentState(value);
+    void setWllamaCdnConsent(db, value);
+    void recordAudit(db, dispatch, {
+      type: value
+        ? 'settings.wllama_cdn_consent_granted'
+        : 'settings.wllama_cdn_consent_revoked',
+      summary: value
+        ? 'Granted consent to load the wllama runtime from the CDN'
+        : 'Revoked consent to load the wllama runtime from the CDN',
+      source: 'model',
+      status: 'success',
+      risk: value ? 'medium' : 'info',
+    });
+  };
+
   return (
     <div className="overflow-y-auto">
       <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_280px]">
@@ -131,6 +164,16 @@ export default function SettingsScreen() {
               <Field
                 label="Default model"
                 control={<Input defaultValue="SmolLM2" className="w-40" />}
+              />
+              <Field
+                label="Load runtime from CDN"
+                control={
+                  <Toggle
+                    checked={wllamaCdnConsent}
+                    onCheckedChange={handleWllamaCdnConsentChange}
+                    ariaLabel="Load runtime from CDN"
+                  />
+                }
               />
             </Section>
 

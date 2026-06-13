@@ -7,6 +7,23 @@ import {
   getOrFetchModelBlob,
   type ModelBlobStore,
 } from './modelCache.ts';
+import { getWllamaCdnConsent } from '../settings/appSettings.ts';
+
+/**
+ * Thrown when the wllama runtime WASM would be fetched from the CDN without
+ * explicit user consent. The app fails closed: browser-local models never
+ * silently pull remote code from a CDN. The message points the user at the
+ * Settings toggle that grants consent (TODO Phase 8.1).
+ */
+export class WllamaCdnConsentError extends Error {
+  constructor() {
+    super(
+      'wllama runtime not authorized: enable "Load runtime from CDN" for ' +
+        'browser-local models in Settings before downloading or running a model.',
+    );
+    this.name = 'WllamaCdnConsentError';
+  }
+}
 
 /**
  * Engine that runs browser-local GGUF models via wllama (which manages its own
@@ -60,6 +77,14 @@ const WASM_URL =
 export interface WllamaEngineOptions {
   /** Where to cache model blobs when OPFS is unavailable. */
   blobStore?: ModelBlobStore;
+  /**
+   * Gate the CDN WASM fetch on explicit user consent. Checked once, lazily,
+   * immediately before the runtime would be fetched from the CDN. When it
+   * resolves false the engine throws {@link WllamaCdnConsentError} instead of
+   * silently downloading — so the app fails closed. Omit it (e.g. in unit
+   * tests that mock the module) to skip the gate entirely.
+   */
+  requireCdnConsent?: () => Promise<boolean>;
 }
 
 /**
@@ -81,6 +106,12 @@ export function createWllamaEngine(
 
   async function getInstance(): Promise<WllamaInstance> {
     if (instance) return instance;
+    // Fail closed: never fetch the runtime from the CDN unless the user has
+    // explicitly consented. This check runs before the dynamic import below, so
+    // a denied gate means no remote code is fetched at all.
+    if (options.requireCdnConsent && !(await options.requireCdnConsent())) {
+      throw new WllamaCdnConsentError();
+    }
     // Import the built ESM (not the package's untyped .ts source, which would
     // be type-checked under our strict config). Typed via WllamaModule above.
     const mod =
@@ -176,6 +207,7 @@ let singleton: WllamaEngine | null = null;
 export function getWllamaEngine(): WllamaEngine {
   singleton ??= createWllamaEngine({
     blobStore: createDexieModelBlobStore(db),
+    requireCdnConsent: () => getWllamaCdnConsent(db),
   });
   return singleton;
 }

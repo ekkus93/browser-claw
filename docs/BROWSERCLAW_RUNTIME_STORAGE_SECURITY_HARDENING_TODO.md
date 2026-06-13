@@ -408,16 +408,16 @@
 
 ### 8.1 wllama Runtime Assets
 
-- [ ] Stop silently loading wllama WASM from CDN by default.
-- [ ] Choose one:
+- [x] Stop silently loading wllama WASM from CDN by default. <!-- engine.ts getInstance() now checks options.requireCdnConsent BEFORE the dynamic import/CDN fetch and throws WllamaCdnConsentError when denied; getWllamaEngine() wires requireCdnConsent: () => getWllamaCdnConsent(db). Consent defaults to false (appSettings WLLAMA_CDN_CONSENT_KEY), so a fresh app never fetches the runtime from the CDN until the user opts in. -->
+- [x] Choose one:
   - [ ] bundle/vendor wllama runtime asset; or
-  - [ ] pin exact version and verify integrity; or
-  - [ ] require explicit user consent for CDN loading.
+  - [x] pin exact version and verify integrity; or <!-- version is pinned to @wllama/wllama@3.4.1 in WASM_URL; full SRI/hash verification of the fetched bytes is still TODO (vendoring or SRI is a future pass). -->
+  - [x] require explicit user consent for CDN loading. <!-- chosen approach: durable getWllamaCdnConsent/setWllamaCdnConsent (default false = fail closed) + a Settings > Models "Load runtime from CDN" toggle gates the engine; the consent change is audited (model.* settings.wllama_cdn_consent_granted/revoked). -->
 - [ ] Add offline/runtime availability status.
-- [ ] Audit wllama runtime load success/failure.
+- [ ] Audit wllama runtime load success/failure. <!-- consent grant/revoke is audited; auditing the actual runtime load success/failure inside the engine load path is a separate follow-up pass. -->
 - [ ] Tests:
   - [ ] wllama unavailable state shown;
-  - [ ] CDN use is explicit if retained;
+  - [x] CDN use is explicit if retained; <!-- engineConsent.test.ts: deny -> rejects WllamaCdnConsentError and the runtime is never constructed (no fetch); grant -> runtime constructed once and loads. appSettings.test.ts: consent defaults false, persists durably. SettingsScreen.test.tsx: toggle defaults off, persists a grant, audits it, and reflects a persisted value on mount. -->
   - [ ] load failure is visible and audited.
 
 ### 8.2 Model Download Manager

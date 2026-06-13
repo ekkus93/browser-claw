@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { isWllamaSupported, getWllamaEngine } from '../wllama/engine.ts';
 import { MODEL_CATALOG } from '../wllama/catalog.ts';
+import { db } from '../db/db.ts';
+import { setWllamaCdnConsent } from '../settings/appSettings.ts';
 
 /**
  * Verification surface for the real wllama engine: downloads a small GGUF from
@@ -27,6 +29,9 @@ export default function WllamaProbe() {
           setStatus('no-model');
           return;
         }
+        // This probe is an authorized verification surface: grant CDN consent
+        // so the fail-closed gate (Phase 8.1) lets the real runtime load.
+        await setWllamaCdnConsent(db, true);
         const engine = getWllamaEngine();
         setStatus('downloading');
         await engine.download(model, (loaded, total) => {

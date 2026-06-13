@@ -15,7 +15,10 @@ import { db } from '../db/db.ts';
 import {
   getLockTimeoutMinutes,
   setLockTimeoutMinutes,
+  getWllamaCdnConsent,
+  setWllamaCdnConsent,
 } from '../settings/appSettings.ts';
+import { queryAuditEvents } from '../audit/auditService.ts';
 
 function renderSettings() {
   const store = configureStore({
@@ -37,6 +40,7 @@ function renderSettings() {
 describe('SettingsScreen', () => {
   afterEach(async () => {
     await db.app_settings.clear();
+    await db.audit_events.clear();
   });
 
   it('renders the configuration sections', () => {
@@ -104,5 +108,36 @@ describe('SettingsScreen', () => {
     await user.selectOptions(select, '5');
     expect(select).toHaveValue('5');
     await waitFor(async () => expect(await getLockTimeoutMinutes(db)).toBe(5));
+  });
+
+  it('defaults the wllama CDN-consent toggle off and persists + audits a grant', async () => {
+    // Fail-closed: the runtime never loads from the CDN until the user opts in.
+    const user = userEvent.setup();
+    renderSettings();
+
+    const toggle = screen.getByRole('switch', {
+      name: 'Load runtime from CDN',
+    });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await waitFor(async () => expect(await getWllamaCdnConsent(db)).toBe(true));
+
+    // The security-policy change must be audited — no silent meaningful action.
+    const events = await queryAuditEvents(db, { source: 'model' });
+    expect(
+      events.some((e) => e.type === 'settings.wllama_cdn_consent_granted'),
+    ).toBe(true);
+  });
+
+  it('reflects a persisted wllama CDN consent on mount', async () => {
+    await setWllamaCdnConsent(db, true);
+    renderSettings();
+
+    const toggle = await screen.findByRole('switch', {
+      name: 'Load runtime from CDN',
+    });
+    await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
   });
 });

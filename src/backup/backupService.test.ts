@@ -11,6 +11,7 @@ import {
   importBackup,
   recordBackupHistory,
   runBackupExport,
+  containsLikelyRawSecret,
   type ClawBackup,
 } from './backupService.ts';
 import type { AppDispatch } from '../store/store.ts';
@@ -416,5 +417,61 @@ describe('validateBackup hardening', () => {
       }),
     );
     expect(result.valid).toBe(true);
+  });
+});
+
+describe('containsLikelyRawSecret — credential-shape detection', () => {
+  // Each entry is a live-looking credential that must be detected by VALUE
+  // shape alone (placed under an innocuous field name), so a foreign/tampered
+  // backup can't smuggle a plaintext token through a non-obvious field.
+  const credentials: Record<string, string> = {
+    anthropic: 'sk-ant-' + 'A'.repeat(20),
+    openai: 'sk-' + 'A'.repeat(24),
+    slack: 'xoxb-' + 'A'.repeat(12),
+    aws: 'AKIA' + 'ABCDEFGHIJKLMNOP',
+    github: 'ghp_' + 'a'.repeat(24),
+    google: 'ya29.' + 'A'.repeat(24),
+    jwt: 'eyJ' + 'A'.repeat(8) + '.' + 'B'.repeat(8) + '.' + 'C'.repeat(8),
+  };
+
+  for (const [name, value] of Object.entries(credentials)) {
+    it(`detects a ${name} credential by value shape`, () => {
+      expect(containsLikelyRawSecret({ note: value })).toBe(true);
+    });
+  }
+
+  it('detects a reserved field name after normalization (e.g. "API-Key")', () => {
+    expect(containsLikelyRawSecret({ 'API-Key': 'hunter2' })).toBe(true);
+    expect(containsLikelyRawSecret({ Access_Token: 'whatever' })).toBe(true);
+  });
+
+  it('does not flag secret-free metadata', () => {
+    expect(
+      containsLikelyRawSecret({
+        id: 'openai',
+        label: 'OpenAI',
+        baseUrl: 'https://api.openai.com/v1',
+        model: 'gpt-4o',
+        apiKeyMode: 'encrypted',
+        encryptedSecretId: 'provider:openai',
+      }),
+    ).toBe(false);
+  });
+
+  it('does not flag a reserved field name holding an empty string', () => {
+    expect(containsLikelyRawSecret({ apiKey: '   ' })).toBe(false);
+  });
+
+  it('enforces the recursion depth limit', () => {
+    const nest = (levels: number, leaf: unknown): unknown => {
+      let value: unknown = leaf;
+      for (let i = 0; i < levels; i += 1) value = { a: value };
+      return value;
+    };
+    const key = 'sk-' + 'A'.repeat(24);
+    // Reachable within the depth budget -> detected.
+    expect(containsLikelyRawSecret(nest(7, key))).toBe(true);
+    // Buried past the budget -> not descended (a bounded scan, documented).
+    expect(containsLikelyRawSecret(nest(8, key))).toBe(false);
   });
 });

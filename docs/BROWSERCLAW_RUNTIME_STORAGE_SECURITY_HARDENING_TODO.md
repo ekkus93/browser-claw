@@ -561,7 +561,7 @@
 - [ ] Backup export -> import preview -> restore.
 - [ ] Skill import -> permission review -> enable -> audit.
 - [ ] Reload -> runtime snapshot restored.
-- [ ] wllama model download failure -> truthful model status.
+- [x] wllama model download failure -> truthful model status. <!-- ModelsScreen.test.tsx "reflects a truthful error status in the model row after a failed download": a failed download (fail-closed CDN consent) leaves downloads['smollm2-135m'].status === 'error' (never 'ready') and the row visibly shows an "error" status; complemented by "shows a visible, audited error when a model download fails" (toast + model.download_failed audit) and the engine/quota/consent paths from Phase 8.1/8.2. -->
 
 ### 11.4 Required Commands
 

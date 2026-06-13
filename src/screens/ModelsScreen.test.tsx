@@ -230,6 +230,30 @@ describe('ModelsScreen', () => {
     });
   });
 
+  it('reflects a truthful error status in the model row after a failed download', async () => {
+    // Integration (TODO 11.3): a failed download must leave the model in a
+    // truthful 'error' state — never a false 'ready' — both in the store and the
+    // visible row. Worker is stubbed so Download is enabled; CDN consent stays
+    // at its fail-closed default so the click fails.
+    vi.stubGlobal('Worker', class {});
+    const user = userEvent.setup();
+    const store = renderModels();
+
+    await user.click(
+      (await screen.findAllByRole('button', { name: 'Download' }))[0]!,
+    );
+
+    await waitFor(() =>
+      expect(store.getState().models.downloads['smollm2-135m']?.status).toBe(
+        'error',
+      ),
+    );
+    expect(store.getState().models.downloads['smollm2-135m']?.status).not.toBe(
+      'ready',
+    );
+    expect(await screen.findByText(/^error/)).toBeInTheDocument();
+  });
+
   it('tests the provider using the edited (not default) values', async () => {
     const fetchImpl = vi.fn(() =>
       Promise.resolve(

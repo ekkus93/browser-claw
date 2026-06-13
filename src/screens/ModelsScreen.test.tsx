@@ -210,6 +210,13 @@ describe('ModelsScreen', () => {
     expect(
       await screen.findByText(/browser-local models can.+run here/i),
     ).toBeInTheDocument();
+    // No-op honesty: the Download action must be DISABLED when it can't run,
+    // never a button that looks live but silently does nothing.
+    for (const button of await screen.findAllByRole('button', {
+      name: 'Download',
+    })) {
+      expect(button).toBeDisabled();
+    }
   });
 
   it('shows a visible, audited error when a model download fails', async () => {

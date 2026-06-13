@@ -529,7 +529,7 @@
   - [x] backup import failed; <!-- StorageScreen surfaces a danger toast "Import failed" on parse/validate failure (validateBackup rejection incl. raw-secret refusal). -->
   - [x] skill import failed; <!-- SkillsScreen danger toast "Import failed" + durable skill_import_failed audit. -->
 - [ ] Tests:
-  - [ ] no-op buttons are absent/disabled;
+  - [x] no-op buttons are absent/disabled; <!-- ModelsScreen.test.tsx "shows the unavailable banner when wllama is unsupported" now also asserts every Download button is DISABLED when wllama can't run (never a live-looking button that silently no-ops). Add/remove-provider and inline API-key controls are intentionally absent (not stubbed) per the 9.3 audit. -->
   - [x] empty states render honestly; <!-- MemoriesScreen.test.tsx (main "No memories yet." + sidebar "No memories used yet."/"No retrievals yet."), AuditScreen.test.tsx (no audit events), StorageScreen.test.tsx (no backups yet). -->
   - [ ] error states render visibly. <!-- partially covered (runtime/provider/secret/backup/skill); left unticked until storage-unavailable + model-unavailable error states exist + are tested. -->
 

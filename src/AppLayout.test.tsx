@@ -14,6 +14,7 @@ function renderShell() {
           <Route element={<AppLayout />}>
             <Route path="/chat" element={<div>CHAT</div>} />
             <Route path="/settings" element={<div>SETTINGS SCREEN</div>} />
+            <Route path="/models" element={<div>MODELS SCREEN</div>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -30,5 +31,15 @@ describe('AppLayout', () => {
     expect(screen.getByText('CHAT')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /settings/i }));
     expect(await screen.findByText('SETTINGS SCREEN')).toBeInTheDocument();
+  });
+
+  it('navigates to /models when the top-bar provider/model button is clicked', async () => {
+    const user = userEvent.setup();
+    renderShell();
+
+    // The provider/model button must route somewhere real, not be a no-op.
+    expect(screen.getByText('CHAT')).toBeInTheDocument();
+    await user.click(screen.getByTitle('Change active model or provider'));
+    expect(await screen.findByText('MODELS SCREEN')).toBeInTheDocument();
   });
 });

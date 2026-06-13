@@ -485,10 +485,12 @@
   - [ ] skill install policy;
   - [ ] developer/demo/fallback mode.
 - [x] Settings button in top bar navigates to `/settings`. <!-- AppLayout.tsx now wires topBar.onOpenSettings to navigate('/settings'); previously a silent no-op because AppLayout never passed the prop to AppShell/TopStatusBar. -->
+- [x] Provider/model button in top bar navigates to `/models`. <!-- AppLayout.tsx now wires topBar.onSelectModel to navigate('/models'); same hollow-affordance class as the Settings button — TopStatusBar already fired onSelectModel and /models+ModelsScreen exist, but AppLayout never passed the prop, so the click was a silent no-op. -->
 - [ ] Tests:
   - [x] settings persist after reload; <!-- Proven for the lock-timeout setting (the first end-to-end one): SettingsScreen.test.tsx seeds a durable value, asserts the control reflects it on mount, then asserts a change is written back to app_settings; appSettings.test.ts round-trips + defaults getLockTimeoutMinutes. The persist-after-reload mechanism (read-on-mount + boot rehydrate) now exists and is tested. -->
 
   - [x] top bar Settings button navigates; <!-- AppLayout.test.tsx: clicking the top-bar Settings button lands on /settings. -->
+  - [x] top bar provider/model button navigates; <!-- AppLayout.test.tsx: clicking the top-bar provider/model button (title "Change active model or provider") lands on /models. -->
   - [ ] approval policy affects approval behavior.
 
 ### 9.3 Models Screen

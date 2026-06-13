@@ -45,6 +45,10 @@ export default function AppLayout() {
         modelLabel,
         storageUsedBytes,
         storageTotalBytes,
+        // The top-bar provider/model button is a real affordance: route to
+        // /models (where remote providers and local models are managed) instead
+        // of leaving the onClick a silent no-op.
+        onSelectModel: () => navigate('/models'),
         // The top-bar Settings button is a real affordance: route to /settings
         // (TODO Phase 9.2) instead of leaving the onClick a silent no-op.
         onOpenSettings: () => navigate('/settings'),

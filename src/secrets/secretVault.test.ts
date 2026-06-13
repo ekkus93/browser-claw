@@ -37,6 +37,20 @@ describe('SecretVault', () => {
     ]);
   });
 
+  it('reports isConfigured only after a passphrase vault is set up', async () => {
+    const store = new InMemoryVaultStore();
+    const vault = new SecretVault({ store, lockTimeoutMs: 0 });
+    expect(await vault.isConfigured()).toBe(false);
+    // A session-only vault persists nothing, so it is still not "configured".
+    vault.openSession();
+    expect(await vault.isConfigured()).toBe(false);
+    await vault.setup('hunter2');
+    expect(await vault.isConfigured()).toBe(true);
+    // Locking does not erase the persisted salt — it stays configured.
+    vault.lock();
+    expect(await vault.isConfigured()).toBe(true);
+  });
+
   it('persists ciphertext so a fresh vault instance can decrypt', async () => {
     const store = new InMemoryVaultStore();
     const first = new SecretVault({ store, lockTimeoutMs: 0 });

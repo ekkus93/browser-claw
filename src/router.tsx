@@ -13,6 +13,7 @@ import StorageScreen from './screens/StorageScreen.tsx';
 import SkillsScreen from './screens/SkillsScreen.tsx';
 import MemoriesScreen from './screens/MemoriesScreen.tsx';
 import AuditScreen from './screens/AuditScreen.tsx';
+import SecurityScreen from './screens/SecurityScreen.tsx';
 import SettingsScreen from './screens/SettingsScreen.tsx';
 import WorkflowScreen from './screens/WorkflowScreen.tsx';
 import { NAV_ITEMS } from './components/shell/navItems.ts';
@@ -25,6 +26,7 @@ const SCREEN_OVERRIDES: Record<string, ReactNode> = {
   skills: <SkillsScreen />,
   memories: <MemoriesScreen />,
   audit: <AuditScreen />,
+  security: <SecurityScreen />,
   settings: <SettingsScreen />,
 };
 

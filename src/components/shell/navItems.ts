@@ -5,6 +5,7 @@ import {
   Puzzle,
   Brain,
   ScrollText,
+  ShieldCheck,
   Settings,
   type LucideIcon,
 } from 'lucide-react';
@@ -27,5 +28,6 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'skills', label: 'Skills', path: '/skills', icon: Puzzle },
   { id: 'memories', label: 'Memories', path: '/memories', icon: Brain },
   { id: 'audit', label: 'Audit', path: '/audit', icon: ScrollText },
+  { id: 'security', label: 'Security', path: '/security', icon: ShieldCheck },
   { id: 'settings', label: 'Settings', path: '/settings', icon: Settings },
 ];

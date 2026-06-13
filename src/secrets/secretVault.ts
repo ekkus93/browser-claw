@@ -88,6 +88,15 @@ export class SecretVault {
     return this.#key !== null;
   }
 
+  /**
+   * Whether a passphrase-protected vault already exists in storage (a salt has
+   * been persisted). Lets the UI choose between a first-run setup flow and an
+   * unlock flow. Reads only the presence of the salt — never any plaintext.
+   */
+  async isConfigured(): Promise<boolean> {
+    return (await this.#store.getSalt()) !== null;
+  }
+
   /** Create a passphrase-protected vault and unlock it. */
   async setup(passphrase: string): Promise<void> {
     const salt = generateSalt();

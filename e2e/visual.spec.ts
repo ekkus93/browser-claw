@@ -12,6 +12,7 @@ const ROUTES = [
   { path: '/skills', name: 'skills' },
   { path: '/memories', name: 'memories' },
   { path: '/audit', name: 'audit' },
+  { path: '/security', name: 'security' },
   { path: '/settings', name: 'settings' },
   { path: '/workflow', name: 'workflow' },
   { path: '/showcase', name: 'showcase' },

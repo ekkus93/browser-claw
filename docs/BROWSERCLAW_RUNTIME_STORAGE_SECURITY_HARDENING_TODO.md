@@ -102,12 +102,12 @@
 ### 2.3 SecretVault Provider Integration
 
 - [x] Add provider secret reference support.
-- [ ] Add UI for: <!-- Pass 11: secrets/security screen -->
-  - [ ] session-only API key;
-  - [ ] encrypted stored API key;
-  - [ ] delete key;
-  - [ ] lock;
-  - [ ] unlock.
+- [ ] Add UI for: <!-- Pass 20: new /security SecurityScreen + nav. Lock lifecycle done; key entry/delete = Pass 21. -->
+  - [ ] session-only API key; <!-- Pass 21: session vault open exists; per-key ENTRY form pending -->
+  - [ ] encrypted stored API key; <!-- Pass 21 -->
+  - [ ] delete key; <!-- Pass 21 -->
+  - [x] lock; <!-- SecurityScreen "Lock" -> secretVault.lock() -->
+  - [x] unlock. <!-- SecurityScreen setup (first run) / unlock (passphrase) + session-only; wrong passphrase fails closed -->
 - [x] Provider test flow must retrieve key from SecretVault.
 - [x] Runtime LLM flow must retrieve key from SecretVault.
 - [x] Locked key must produce `secret_locked`.

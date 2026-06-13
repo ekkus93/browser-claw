@@ -6,6 +6,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { describe, expect, it } from 'vitest';
 import storageReducer from '../store/slices/storageSlice.ts';
 import { ToastProvider } from '../components/ui/Toast.tsx';
+import { db } from '../db/db.ts';
 import StorageScreen from './StorageScreen.tsx';
 
 function renderStorage() {
@@ -47,6 +48,16 @@ describe('StorageScreen', () => {
     expect(
       screen.queryByText('Service worker healthy'),
     ).not.toBeInTheDocument();
+  });
+
+  it('reports the real model-cache size, not a hardcoded figure', async () => {
+    // Empty blob store -> an honest "0 models cached" derived from db, replacing
+    // the prior static "Tracked per model" sub-label.
+    await db.model_blobs.clear();
+    renderStorage();
+
+    expect(await screen.findByText('0 models cached')).toBeInTheDocument();
+    expect(screen.queryByText('Tracked per model')).not.toBeInTheDocument();
   });
 
   it('exports a backup over Dexie', async () => {

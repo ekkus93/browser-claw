@@ -100,6 +100,17 @@ export default function StorageScreen() {
     [],
   );
 
+  // Real size of the IndexedDB model-blob cache (the no-OPFS fallback), summed
+  // from the stored blobs — not a hardcoded figure. (OPFS-cached models aren't
+  // measurable here; this reflects what the blob store actually holds.)
+  const modelCache = useLiveQuery(async () => {
+    const rows = await db.model_blobs.toArray();
+    return {
+      bytes: rows.reduce((sum, row) => sum + (row.blob?.size ?? 0), 0),
+      count: rows.length,
+    };
+  }, []);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<ValidationResult | null>(null);
 
@@ -197,8 +208,10 @@ export default function StorageScreen() {
               <StatCard
                 icon={<HardDrive className="size-4" />}
                 label="Model Cache"
-                value="0 B"
-                sub="Tracked per model"
+                value={formatBytes(modelCache?.bytes ?? 0)}
+                sub={`${modelCache?.count ?? 0} model${
+                  (modelCache?.count ?? 0) === 1 ? '' : 's'
+                } cached`}
               />
               <StatCard
                 icon={<ShieldCheck className="size-4" />}

@@ -62,4 +62,30 @@ describe('getOrFetchModelBlob', () => {
       (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls,
     ).toHaveLength(1);
   });
+
+  it('does not cache anything when the download fails', async () => {
+    // A failed download must leave no partial/corrupt cache entry behind, so a
+    // later attempt re-downloads cleanly instead of serving garbage.
+    const cache = new Map<string, Blob>();
+    const store: ModelBlobStore = {
+      get: (id) => Promise.resolve(cache.get(id)),
+      put: (id, blob) => {
+        cache.set(id, blob);
+        return Promise.resolve();
+      },
+      delete: (id) => {
+        cache.delete(id);
+        return Promise.resolve();
+      },
+    };
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(new Response(null, { status: 404 })),
+    ) as unknown as typeof fetch;
+
+    await expect(
+      getOrFetchModelBlob(store, model, { fetchImpl }),
+    ).rejects.toThrow(/Model download failed \(404\)/);
+    expect(cache.size).toBe(0);
+    expect(await store.get(model.id)).toBeUndefined();
+  });
 });

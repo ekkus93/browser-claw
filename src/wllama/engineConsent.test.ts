@@ -37,6 +37,7 @@ import {
   getWllamaEngine,
   WllamaCdnConsentError,
 } from './engine.ts';
+import type { ModelBlobStore } from './modelCache.ts';
 import { MODEL_CATALOG } from './catalog.ts';
 import { db } from '../db/db.ts';
 import { setWllamaCdnConsent } from '../settings/appSettings.ts';
@@ -105,5 +106,32 @@ describe('wllama engine CDN consent gate', () => {
     expect(events.some((e) => e.type === 'runtime.wllama_load_succeeded')).toBe(
       true,
     );
+  });
+});
+
+describe('wllama engine cache deletion', () => {
+  it('deleteCache removes the cached model data from the blob store', async () => {
+    // Deleting a model must actually evict its cached bytes — not just update
+    // UI state — so freed quota is real and a re-download is clean.
+    const cache = new Map<string, Blob>();
+    const store: ModelBlobStore = {
+      get: (id) => Promise.resolve(cache.get(id)),
+      put: (id, blob) => {
+        cache.set(id, blob);
+        return Promise.resolve();
+      },
+      delete: (id) => {
+        cache.delete(id);
+        return Promise.resolve();
+      },
+    };
+    await store.put(model.id, new Blob([new Uint8Array([1, 2, 3])]));
+    expect(cache.size).toBe(1);
+
+    const engine = createWllamaEngine({ blobStore: store });
+    await engine.deleteCache(model.id);
+
+    expect(cache.size).toBe(0);
+    expect(await store.get(model.id)).toBeUndefined();
   });
 });

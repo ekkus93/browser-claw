@@ -35,6 +35,50 @@ describe('SkillsScreen', () => {
     ).toBeInTheDocument();
   });
 
+  it('imports a skill: reviews permissions, installs, enables, and audits', async () => {
+    // Integration (TODO 11.3): importing a skill must show a permission-review
+    // dialog before installing, and both install + enable must be audited.
+    const user = userEvent.setup();
+    renderSkills();
+    await screen.findByRole('button', { name: /web-search/ });
+
+    const skillMd = [
+      '---',
+      'name: note-taker',
+      'version: 1.0.0',
+      'description: Takes notes.',
+      'tools: [Page Reader]',
+      'read: skills/note-taker/data/**',
+      'write: skills/note-taker/out/**',
+      'network: false',
+      '---',
+      'Take notes.',
+    ].join('\n');
+    const file = new File([skillMd], 'SKILL.md', { type: 'text/markdown' });
+
+    await user.upload(screen.getByLabelText('Import skill file'), file);
+
+    // Permission review happens before anything is installed.
+    expect(await screen.findByText('Install note-taker?')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Install' }));
+    expect(await screen.findByText('Installed note-taker')).toBeInTheDocument();
+
+    // Then enable it.
+    await user.click(
+      await screen.findByRole('switch', { name: 'Enable note-taker' }),
+    );
+    await waitFor(async () =>
+      expect((await db.skills.get('note-taker'))?.enabled).toBe(true),
+    );
+
+    // Both the install and the enable are durably audited for this skill.
+    const types = (await db.audit_events.toArray())
+      .filter((e) => e.skillId === 'note-taker')
+      .map((e) => e.type);
+    expect(types).toContain('skill_installed');
+    expect(types).toContain('skill_enabled');
+  });
+
   it('enables a skill and shows its permissions', async () => {
     const user = userEvent.setup();
     renderSkills();

@@ -544,10 +544,10 @@
 
 ### 11.2 Add Security Regression Tests
 
-- [ ] Raw API key not in Redux.
-- [ ] Raw API key not in audit.
-- [ ] Raw API key not in localStorage.
-- [ ] Provider Authorization header not logged.
+- [x] Raw API key not in Redux. <!-- providersSlice/secretsSlice have no key/value field; secretLeak.test.ts "keeps the raw key out of Redux state" asserts the serialized store excludes RAW_KEY and metadata has no value; vaultWiring.test.ts + secretsSlice.test.ts reinforce. -->
+- [x] Raw API key not in audit. <!-- auditService.redactDetails strips api_key/token/authorization/secret/password/bearer/credential keys (auditService.test.ts); secretLeak.test.ts asserts no audit event carries RAW_KEY; ModelsScreen.test.tsx asserts no 'sk-' in the provider-test audit. -->
+- [x] Raw API key not in localStorage. <!-- secretLeak.test.ts "never writes a decrypted key to web storage": spies Storage.prototype.setItem (backs both localStorage + sessionStorage), stores+resolves a key via the vault, asserts setItem was never called and both storages stay empty (length 0). Vault persists only ciphertext via Dexie. -->
+- [x] Provider Authorization header not logged. <!-- providers.test.ts "never logs the API key or Authorization header to the console": spies console.log/debug/info/warn/error across an OpenAI-compatible provider.complete with a key, asserts the bearer token and 'Bearer' never appear in any console call. Providers contain no console logging of headers. -->
 - [ ] Backup import rejects raw secret-looking fields if not encrypted.
 - [ ] Skill cannot access reserved keys.
 - [ ] Skill cannot path-traverse.

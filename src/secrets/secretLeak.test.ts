@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import secretsReducer from '../store/slices/secretsSlice.ts';
 import auditReducer from '../store/slices/auditSlice.ts';
@@ -60,6 +60,37 @@ describe('SecretVault — no plaintext leaks to Redux or audit', () => {
     // No audit event carries the key text either.
     for (const event of store.getState().audit.recent) {
       expect(JSON.stringify(event)).not.toContain(RAW_KEY);
+    }
+  });
+
+  it('never writes a decrypted key to web storage', async () => {
+    // Storage.prototype.setItem backs both localStorage and sessionStorage, so
+    // one spy covers any attempt to persist a secret outside the vault.
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+    try {
+      const vault = new SecretVault({
+        store: new InMemoryVaultStore(),
+        lockTimeoutMs: 0,
+      });
+      await vault.setup('correct horse battery staple');
+      await vault.putEncryptedSecret(
+        providerSecretId('openai'),
+        'OpenAI',
+        RAW_KEY,
+      );
+
+      // It really stored the key (resolves back out of the vault)...
+      expect(await resolveApiKey(vault, openaiProfile)).toEqual({
+        ok: true,
+        apiKey: RAW_KEY,
+      });
+
+      // ...without ever touching web storage, and web storage holds nothing.
+      expect(setItem).not.toHaveBeenCalled();
+      expect(localStorage.length).toBe(0);
+      expect(sessionStorage.length).toBe(0);
+    } finally {
+      setItem.mockRestore();
     }
   });
 });

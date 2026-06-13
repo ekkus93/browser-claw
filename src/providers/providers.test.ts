@@ -60,6 +60,41 @@ describe('OpenAI-compatible provider', () => {
     );
   });
 
+  it('never logs the API key or Authorization header to the console', async () => {
+    // Security regression (TODO 11.2): the bearer token is built into the
+    // request header but must never reach the console on any path.
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(
+        jsonResponse({ choices: [{ message: { content: 'ok' } }] }),
+      ),
+    ) as unknown as typeof fetch;
+    const provider = createOpenAICompatibleProvider({
+      id: 'test',
+      baseUrl: 'https://api.example.com/v1',
+      model: 'm',
+      fetchImpl,
+    });
+
+    const methods = ['log', 'debug', 'info', 'warn', 'error'] as const;
+    const spies = methods.map((m) =>
+      vi.spyOn(console, m).mockImplementation(() => {}),
+    );
+    try {
+      await provider.complete(
+        { messages: [{ role: 'user', content: 'hi' }] },
+        { apiKey: 'sk-secret-DO-NOT-LOG' },
+      );
+      const logged = spies
+        .flatMap((s) => s.mock.calls)
+        .map((call) => JSON.stringify(call))
+        .join('\n');
+      expect(logged).not.toContain('sk-secret-DO-NOT-LOG');
+      expect(logged).not.toContain('Bearer');
+    } finally {
+      spies.forEach((s) => s.mockRestore());
+    }
+  });
+
   it('maps a 401 to an auth error', async () => {
     const fetchImpl = vi.fn(() =>
       Promise.resolve(jsonResponse({}, 401)),

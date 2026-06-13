@@ -8,6 +8,7 @@ import {
   type ModelBlobStore,
 } from './modelCache.ts';
 import { getWllamaCdnConsent } from '../settings/appSettings.ts';
+import { appendAuditEvent } from '../audit/auditService.ts';
 
 /**
  * Thrown when the wllama runtime WASM would be fetched from the CDN without
@@ -85,6 +86,14 @@ export interface WllamaEngineOptions {
    * tests that mock the module) to skip the gate entirely.
    */
   requireCdnConsent?: () => Promise<boolean>;
+  /**
+   * Notified after a real runtime load attempt — i.e. the first time the wllama
+   * WASM is actually fetched and instantiated. `loaded` is true on success and
+   * false if the fetch/instantiation threw. Not called when the consent gate
+   * blocks the load (that's a deliberate policy block, not a load failure).
+   * Wired to a `runtime`-source audit in {@link getWllamaEngine}.
+   */
+  onRuntimeLoad?: (loaded: boolean) => void;
 }
 
 /**
@@ -114,9 +123,18 @@ export function createWllamaEngine(
     }
     // Import the built ESM (not the package's untyped .ts source, which would
     // be type-checked under our strict config). Typed via WllamaModule above.
-    const mod =
-      (await import('@wllama/wllama/esm/index.js')) as unknown as WllamaModule;
-    instance = new mod.Wllama({ default: WASM_URL });
+    try {
+      const mod =
+        (await import('@wllama/wllama/esm/index.js')) as unknown as WllamaModule;
+      instance = new mod.Wllama({ default: WASM_URL });
+    } catch (error) {
+      // The runtime couldn't load (CDN unreachable, blocked, or bad asset).
+      // Surface it as a distinct runtime-level event, then rethrow so the
+      // caller's model-level handling still runs.
+      options.onRuntimeLoad?.(false);
+      throw error;
+    }
+    options.onRuntimeLoad?.(true);
     return instance;
   }
 
@@ -208,6 +226,19 @@ export function getWllamaEngine(): WllamaEngine {
   singleton ??= createWllamaEngine({
     blobStore: createDexieModelBlobStore(db),
     requireCdnConsent: () => getWllamaCdnConsent(db),
+    onRuntimeLoad: (loaded) => {
+      void appendAuditEvent(db, {
+        type: loaded
+          ? 'runtime.wllama_load_succeeded'
+          : 'runtime.wllama_load_failed',
+        summary: loaded
+          ? 'Loaded the wllama browser-local runtime'
+          : 'Failed to load the wllama browser-local runtime',
+        source: 'runtime',
+        status: loaded ? 'success' : 'failure',
+        risk: loaded ? 'info' : 'low',
+      });
+    },
   });
   return singleton;
 }

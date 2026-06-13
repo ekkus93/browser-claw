@@ -5,10 +5,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // CDN fetch never happens when consent is denied.
 const ctorCalls = vi.hoisted(() => ({ count: 0 }));
 const loadFromHFCalls = vi.hoisted(() => ({ count: 0 }));
+// When true, the (mocked) runtime fails to construct — simulating an
+// unreachable/blocked CDN or a bad asset.
+const failCtor = vi.hoisted(() => ({ on: false }));
 
 vi.mock('@wllama/wllama/esm/index.js', () => {
   class Wllama {
     constructor() {
+      if (failCtor.on) throw new Error('runtime fetch failed');
       ctorCalls.count += 1;
     }
     loadModelFromHF() {
@@ -28,8 +32,15 @@ vi.mock('@wllama/wllama/esm/index.js', () => {
   return { Wllama };
 });
 
-import { createWllamaEngine, WllamaCdnConsentError } from './engine.ts';
+import {
+  createWllamaEngine,
+  getWllamaEngine,
+  WllamaCdnConsentError,
+} from './engine.ts';
 import { MODEL_CATALOG } from './catalog.ts';
+import { db } from '../db/db.ts';
+import { setWllamaCdnConsent } from '../settings/appSettings.ts';
+import { queryAuditEvents } from '../audit/auditService.ts';
 
 const model = MODEL_CATALOG[0]!;
 
@@ -37,11 +48,14 @@ describe('wllama engine CDN consent gate', () => {
   beforeEach(() => {
     ctorCalls.count = 0;
     loadFromHFCalls.count = 0;
+    failCtor.on = false;
   });
 
   it('fails closed: throws and never constructs the runtime when consent is denied', async () => {
+    const onRuntimeLoad = vi.fn();
     const engine = createWllamaEngine({
       requireCdnConsent: () => Promise.resolve(false),
+      onRuntimeLoad,
     });
 
     await expect(engine.download(model, () => {})).rejects.toBeInstanceOf(
@@ -50,15 +64,46 @@ describe('wllama engine CDN consent gate', () => {
     // The CDN-backed runtime must never be instantiated (i.e. fetched) when
     // consent is denied — that's the whole point of failing closed.
     expect(ctorCalls.count).toBe(0);
+    // A policy block is not a load attempt, so no runtime-load event fires.
+    expect(onRuntimeLoad).not.toHaveBeenCalled();
   });
 
-  it('loads the runtime once the user has granted consent', async () => {
+  it('loads the runtime once the user has granted consent and reports success', async () => {
+    const onRuntimeLoad = vi.fn();
     const engine = createWllamaEngine({
       requireCdnConsent: () => Promise.resolve(true),
+      onRuntimeLoad,
     });
 
     await engine.load(model);
     expect(ctorCalls.count).toBe(1);
     expect(loadFromHFCalls.count).toBe(1);
+    expect(onRuntimeLoad).toHaveBeenCalledExactlyOnceWith(true);
+  });
+
+  it('reports a runtime-load failure when the runtime cannot be constructed', async () => {
+    failCtor.on = true;
+    const onRuntimeLoad = vi.fn();
+    const engine = createWllamaEngine({
+      requireCdnConsent: () => Promise.resolve(true),
+      onRuntimeLoad,
+    });
+
+    await expect(engine.load(model)).rejects.toThrow('runtime fetch failed');
+    expect(onRuntimeLoad).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it('the shared engine audits a successful runtime load to the durable log', async () => {
+    // Integration of the real getWllamaEngine wiring: granting consent and
+    // loading must leave a durable runtime-source audit event behind.
+    await db.audit_events.clear();
+    await setWllamaCdnConsent(db, true);
+
+    await getWllamaEngine().load(model);
+
+    const events = await queryAuditEvents(db, { source: 'runtime' });
+    expect(events.some((e) => e.type === 'runtime.wllama_load_succeeded')).toBe(
+      true,
+    );
   });
 });

@@ -161,6 +161,42 @@ describe('ModelsScreen', () => {
     });
   });
 
+  it('shows the unavailable banner when wllama is unsupported', async () => {
+    // Force the unsupported path so the warning is deterministic regardless of
+    // the jsdom feature set: the user must be told browser-local models can't
+    // run here, not left with a silently dead Download button.
+    vi.stubGlobal('WebAssembly', undefined);
+    renderModels();
+
+    expect(
+      await screen.findByText(/browser-local models can.+run here/i),
+    ).toBeInTheDocument();
+  });
+
+  it('shows a visible, audited error when a model download fails', async () => {
+    // Make wllama "supported" so Download is enabled, but leave CDN consent at
+    // its fail-closed default — so the click is blocked and must surface as a
+    // toast (visible) and a durable failure audit (auditable), never silently.
+    vi.stubGlobal('Worker', class {});
+    const user = userEvent.setup();
+    renderModels();
+
+    await user.click(
+      (await screen.findAllByRole('button', { name: 'Download' }))[0]!,
+    );
+
+    expect(
+      await screen.findByText('Could not download the model.'),
+    ).toBeInTheDocument();
+    await waitFor(async () => {
+      const rows = await db.audit_events
+        .where('type')
+        .equals('model.download_failed')
+        .toArray();
+      expect(rows[0]?.status).toBe('failure');
+    });
+  });
+
   it('tests the provider using the edited (not default) values', async () => {
     const fetchImpl = vi.fn(() =>
       Promise.resolve(

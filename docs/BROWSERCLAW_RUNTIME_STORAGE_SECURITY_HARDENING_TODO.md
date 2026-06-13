@@ -415,10 +415,10 @@
   - [x] require explicit user consent for CDN loading. <!-- chosen approach: durable getWllamaCdnConsent/setWllamaCdnConsent (default false = fail closed) + a Settings > Models "Load runtime from CDN" toggle gates the engine; the consent change is audited (model.* settings.wllama_cdn_consent_granted/revoked). -->
 - [ ] Add offline/runtime availability status.
 - [x] Audit wllama runtime load success/failure. <!-- engine.ts getInstance() try/catches the dynamic import + new Wllama() and fires options.onRuntimeLoad(true/false); getWllamaEngine() wires it to appendAuditEvent as runtime.wllama_load_succeeded / runtime.wllama_load_failed (source 'runtime'). This is distinct from the model.* audits: it records whether the WASM runtime itself loaded, not a specific model op. A consent-gate block does NOT fire it (deliberate policy block, already captured at model level). engineConsent.test.ts: grant->onRuntimeLoad(true) once; ctor throw->onRuntimeLoad(false) + rethrow; deny->not called; integration: getWllamaEngine load writes a durable runtime-source success event. -->
-- [ ] Tests:
-  - [ ] wllama unavailable state shown;
+- [x] Tests:
+  - [x] wllama unavailable state shown; <!-- ModelsScreen.test.tsx "shows the unavailable banner when wllama is unsupported": stubs WebAssembly undefined so isWllamaSupported() is false and asserts the "browser-local models can't run here" warning renders (and the Download button is disabled via !wllamaSupported). -->
   - [x] CDN use is explicit if retained; <!-- engineConsent.test.ts: deny -> rejects WllamaCdnConsentError and the runtime is never constructed (no fetch); grant -> runtime constructed once and loads. appSettings.test.ts: consent defaults false, persists durably. SettingsScreen.test.tsx: toggle defaults off, persists a grant, audits it, and reflects a persisted value on mount. -->
-  - [ ] load failure is visible and audited.
+  - [x] load failure is visible and audited. <!-- ModelsScreen.test.tsx "shows a visible, audited error when a model download fails": stubs Worker so Download is enabled, leaves CDN consent at its fail-closed default, clicks Download -> the WllamaCdnConsentError surfaces as a danger toast ("Could not download the model.") AND a durable model.download_failed audit (status failure). Engine runtime-load success/failure is separately covered in engineConsent.test.ts. -->
 
 ### 8.2 Model Download Manager
 

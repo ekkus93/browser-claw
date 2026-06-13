@@ -87,17 +87,18 @@
 
 ### 2.2 Remove Implicit Mock Provider
 
-- [ ] Change provider resolver:
-  - [ ] unknown provider ID returns error;
-  - [ ] no provider returns setup-required error;
-  - [ ] mock provider works only when explicitly configured.
-- [ ] Update tests that currently expect unknown provider to resolve to mock.
-- [ ] Chat must block when no provider is configured.
-- [ ] UI must show setup CTA when no provider is configured.
-- [ ] Tests:
-  - [ ] unknown provider fails;
-  - [ ] no provider blocks chat;
-  - [ ] explicit mock provider still works in demo/dev mode.
+- [x] Change provider resolver: <!-- providers/registry.ts resolveProvider switch fails closed -->
+  - [x] unknown provider ID returns error; <!-- default case -> { ok:false, reason:'unknown_provider' } -->
+  - [x] no provider returns setup-required error; <!-- case null -> { ok:false, reason:'not_configured' } -->
+  - [x] mock provider works only when explicitly configured. <!-- case 'mock' gated on config.isMockProviderAllowed -->
+- [x] Update tests that currently expect unknown provider to resolve to mock. <!-- providers.test "does NOT fall back to mock for null or unknown ids" -->
+- [x] Chat must block when no provider is configured. <!-- ChatScreen disables composer via providerReady=isProviderConfigured(activeId, mockAllowed) -->
+- [x] UI must show setup CTA when no provider is configured. <!-- ChatScreen renders "No provider configured" + data-testid="chat-setup-cta" href /models -->
+- [x] Tests:
+  - [x] unknown provider fails; <!-- providers.test registry "does NOT fall back to mock for null or unknown ids" -->
+  - [x] no provider blocks chat; <!-- ChatScreen.test "blocks chat with a setup CTA when no provider is configured" -->
+  - [x] explicit mock provider still works in demo/dev mode. <!-- providers.test "resolves the mock only when explicitly allowed" (mockOn) -->
+
 
 ### 2.3 SecretVault Provider Integration
 

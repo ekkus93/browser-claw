@@ -102,23 +102,23 @@
 ### 2.3 SecretVault Provider Integration
 
 - [x] Add provider secret reference support.
-- [ ] Add UI for: <!-- Pass 20: new /security SecurityScreen + nav. Lock lifecycle done; key entry/delete = Pass 21. -->
-  - [ ] session-only API key; <!-- Pass 21: session vault open exists; per-key ENTRY form pending -->
-  - [ ] encrypted stored API key; <!-- Pass 21 -->
-  - [ ] delete key; <!-- Pass 21 -->
+- [x] Add UI for: <!-- /security SecurityScreen (Pass 20 lock lifecycle + Pass 21 per-provider key CRUD). -->
+  - [x] session-only API key; <!-- pick provider -> setSessionSecret('provider:${id}'); profile.apiKeyMode='session' -->
+  - [x] encrypted stored API key; <!-- Storage=Encrypted (when canStoreEncrypted) -> putEncryptedSecret; profile.apiKeyMode='encrypted' + encryptedSecretId -->
+  - [x] delete key; <!-- per-key Delete -> removeSecret; profile.apiKeyMode left intact so a later call fails closed -->
   - [x] lock; <!-- SecurityScreen "Lock" -> secretVault.lock() -->
   - [x] unlock. <!-- SecurityScreen setup (first run) / unlock (passphrase) + session-only; wrong passphrase fails closed -->
 - [x] Provider test flow must retrieve key from SecretVault.
 - [x] Runtime LLM flow must retrieve key from SecretVault.
 - [x] Locked key must produce `secret_locked`.
 - [x] Missing key must produce `secret_missing`.
-- [ ] Secret prompts must not leak key text. <!-- Pass 11: with key-entry UI -->
-- [ ] Tests:
+- [x] Secret prompts must not leak key text. <!-- key input is type=password; SecurityScreen.test asserts the raw key is absent from the DOM and from Redux metadata -->
+- [x] Tests:
   - [x] raw API key absent from Redux;
   - [x] raw API key absent from audit payloads;
   - [x] locked key blocks provider call;
   - [x] unlocked key allows provider call;
-  - [ ] deleting key prevents future provider call. <!-- Pass 11: needs delete UI -->
+  - [x] deleting key prevents future provider call. <!-- providerKey.test: real vault store+remove -> resolveApiKey flips ok -> secret_missing -->
 
 ### 2.4 Provider Error Handling
 

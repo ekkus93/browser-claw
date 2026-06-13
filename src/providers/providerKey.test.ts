@@ -4,6 +4,8 @@ import {
   providerSecretId,
   type KeySource,
 } from './providerKey.ts';
+import { SecretVault } from '../secrets/secretVault.ts';
+import { InMemoryVaultStore } from '../secrets/vaultWiring.ts';
 import type { ProviderProfileRow } from '../db/types.ts';
 
 function profile(over: Partial<ProviderProfileRow> = {}): ProviderProfileRow {
@@ -60,5 +62,32 @@ describe('resolveApiKey', () => {
       profile(),
     );
     expect(result).toEqual({ ok: true, apiKey: 'sk-live-123' });
+  });
+
+  it('deleting a key prevents future provider calls (fails closed)', async () => {
+    // A real vault as the key source: storing then removing the key must flip
+    // resolution from ok -> secret_missing, with the profile still key-required.
+    const vault = new SecretVault({
+      store: new InMemoryVaultStore(),
+      lockTimeoutMs: 0,
+    });
+    await vault.setup('passphrase');
+    await vault.putEncryptedSecret(
+      providerSecretId('openai'),
+      'OpenAI',
+      'sk-live-123',
+    );
+
+    expect(await resolveApiKey(vault, profile())).toEqual({
+      ok: true,
+      apiKey: 'sk-live-123',
+    });
+
+    await vault.removeSecret(providerSecretId('openai'));
+
+    expect(await resolveApiKey(vault, profile())).toMatchObject({
+      ok: false,
+      kind: 'secret_missing',
+    });
   });
 });

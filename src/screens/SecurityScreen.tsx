@@ -1,17 +1,28 @@
 import { useEffect, useState } from 'react';
-import { KeyRound, Lock, LockOpen, ShieldCheck } from 'lucide-react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { KeyRound, Lock, LockOpen, ShieldCheck, Trash2 } from 'lucide-react';
 import { useAppSelector } from '../store/hooks.ts';
+import { db } from '../db/db.ts';
 import { secretVault } from '../secrets/vault.ts';
+import {
+  listProviderProfiles,
+  mergeProviderProfiles,
+  saveProviderProfile,
+} from '../providers/providerProfiles.ts';
+import { providerSecretId } from '../providers/providerKey.ts';
+import type { SecretStorageMode } from '../store/slices/secretsSlice.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Input } from '../components/ui/Input.tsx';
+import { Select } from '../components/ui/Select.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
 import { useToast } from '../components/ui/toastContext.ts';
 
 /**
  * Security / SecretVault screen — the lock lifecycle (setup, unlock, lock,
- * session-only). Decrypted keys live ONLY in the in-memory SecretVault; this
- * screen never reads or renders a key value, only the lock state and metadata
- * mirrored into Redux by the vault observer. Secret entry/delete lands next.
+ * session-only) plus per-provider key entry and deletion. Decrypted keys live
+ * ONLY in the in-memory SecretVault; this screen writes key text straight to
+ * the vault and otherwise renders only the lock state and metadata (id, label,
+ * storage mode) mirrored into Redux by the vault observer — never a key value.
  */
 export default function SecurityScreen() {
   const { toast } = useToast();
@@ -103,6 +114,63 @@ export default function SecurityScreen() {
     toast({ tone: 'info', title: 'Vault locked' });
   }
 
+  // --- Per-provider key entry -------------------------------------------------
+
+  const persistedProfiles = useLiveQuery(() => listProviderProfiles(db), []);
+  // Built-in templates merged with the user's saved edits; only providers that
+  // actually take an API key are offered a key.
+  const keyProviders = mergeProviderProfiles(persistedProfiles ?? []).filter(
+    (profile) => profile.apiKeyMode !== 'none',
+  );
+  const canEncrypt = secretVault.canStoreEncrypted();
+
+  const [providerId, setProviderId] = useState('');
+  const [keyValue, setKeyValue] = useState('');
+  const [keyMode, setKeyMode] = useState<SecretStorageMode>('session');
+
+  const selectedProvider =
+    keyProviders.find((p) => p.id === providerId) ?? keyProviders[0];
+
+  async function handleAddKey() {
+    const provider = selectedProvider;
+    if (!provider || keyValue === '') return;
+    // A session-only vault cannot persist ciphertext, so force session mode.
+    const mode: SecretStorageMode = canEncrypt ? keyMode : 'session';
+    const secretId = providerSecretId(provider.id);
+    try {
+      if (mode === 'encrypted') {
+        await secretVault.putEncryptedSecret(
+          secretId,
+          provider.label,
+          keyValue,
+        );
+      } else {
+        secretVault.setSessionSecret(secretId, provider.label, keyValue);
+      }
+      // Keep the profile's mode honest so reloads and the Models screen agree.
+      const profile = { ...provider, apiKeyMode: mode };
+      if (mode === 'encrypted') profile.encryptedSecretId = secretId;
+      else delete profile.encryptedSecretId;
+      await saveProviderProfile(db, profile);
+      setKeyValue('');
+      toast({ tone: 'success', title: `Key saved for ${provider.label}` });
+    } catch {
+      setKeyValue('');
+      toast({ tone: 'danger', title: 'Could not save the key' });
+    }
+  }
+
+  async function handleDeleteKey(id: string, label: string) {
+    try {
+      // Remove the secret but leave the provider's apiKeyMode intact so a later
+      // call fails closed (secret_missing) rather than running with no key.
+      await secretVault.removeSecret(id);
+      toast({ tone: 'info', title: `Key removed for ${label}` });
+    } catch {
+      toast({ tone: 'danger', title: 'Could not remove the key' });
+    }
+  }
+
   return (
     <div className="overflow-y-auto">
       <div className="mx-auto flex max-w-2xl flex-col gap-6 p-6">
@@ -139,14 +207,6 @@ export default function SecurityScreen() {
               </Button>
             )}
           </div>
-
-          {!vaultLocked && (
-            <p className="mt-3 text-sm text-muted">
-              {secrets.length === 0
-                ? 'No keys stored yet.'
-                : `${secrets.length} key${secrets.length === 1 ? '' : 's'} available this session.`}
-            </p>
-          )}
 
           {vaultLocked && configured === true && (
             <form
@@ -230,6 +290,123 @@ export default function SecurityScreen() {
             </div>
           )}
         </section>
+
+        {!vaultLocked && (
+          <section className="rounded-card border border-border bg-surface p-4">
+            <h2 className="mb-3 text-sm font-semibold text-text">
+              Provider keys
+            </h2>
+
+            {secrets.length === 0 ? (
+              <p className="text-sm text-muted">No keys stored yet.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {secrets.map((secret) => (
+                  <li
+                    key={secret.id}
+                    className="flex items-center justify-between gap-2 rounded-button border border-border px-3 py-2"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <KeyRound
+                        className="size-4 shrink-0 text-muted"
+                        aria-hidden="true"
+                      />
+                      <span className="truncate text-sm text-text">
+                        {secret.label}
+                      </span>
+                      <Badge
+                        tone={
+                          secret.storageMode === 'encrypted'
+                            ? 'success'
+                            : 'neutral'
+                        }
+                      >
+                        {secret.storageMode === 'encrypted'
+                          ? 'Encrypted'
+                          : 'Session'}
+                      </Badge>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      leadingIcon={<Trash2 className="size-4" />}
+                      onClick={() => {
+                        void handleDeleteKey(secret.id, secret.label);
+                      }}
+                    >
+                      Delete
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {keyProviders.length === 0 ? (
+              <p className="mt-4 text-sm text-muted">
+                Add a provider on the Models screen to store a key for it.
+              </p>
+            ) : (
+              <form
+                className="mt-4 flex flex-col gap-3"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleAddKey();
+                }}
+              >
+                <div className="flex flex-wrap items-end gap-3">
+                  <Select
+                    label="Provider"
+                    value={selectedProvider?.id ?? ''}
+                    onChange={(event) => setProviderId(event.target.value)}
+                  >
+                    {keyProviders.map((provider) => (
+                      <option key={provider.id} value={provider.id}>
+                        {provider.label}
+                      </option>
+                    ))}
+                  </Select>
+                  <Select
+                    label="Storage"
+                    value={canEncrypt ? keyMode : 'session'}
+                    disabled={!canEncrypt}
+                    onChange={(event) =>
+                      setKeyMode(event.target.value as SecretStorageMode)
+                    }
+                  >
+                    <option value="session">Session only</option>
+                    {canEncrypt && <option value="encrypted">Encrypted</option>}
+                  </Select>
+                </div>
+                <Input
+                  label="API key"
+                  type="password"
+                  autoComplete="off"
+                  placeholder="Paste the provider API key"
+                  value={keyValue}
+                  onChange={(event) => setKeyValue(event.target.value)}
+                />
+                <div className="flex justify-end">
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    disabled={keyValue === '' || !selectedProvider}
+                    leadingIcon={<KeyRound className="size-4" />}
+                  >
+                    Save key
+                  </Button>
+                </div>
+                {!canEncrypt && (
+                  <p className="text-xs text-muted-subtle">
+                    Session-only vault: keys are held in memory and cleared when
+                    you lock or reload. Set a passphrase to store encrypted
+                    keys.
+                  </p>
+                )}
+              </form>
+            )}
+          </section>
+        )}
 
         <section className="rounded-card border border-border bg-surface p-4">
           <h2 className="mb-2 text-sm font-semibold text-text">

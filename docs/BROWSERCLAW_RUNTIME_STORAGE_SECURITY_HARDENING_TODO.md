@@ -2,19 +2,20 @@
 
 ## Phase 0 — Ground Rules and Regression Guardrails
 
-- [ ] Add a `HARDENING_NOTES.md` or update existing docs explaining:
-  - [ ] no silent fallbacks;
-  - [ ] no no-op effect handlers;
-  - [ ] no implicit mock provider;
-  - [ ] no fake seeded audit/memory data outside explicit demo mode;
-  - [ ] no decrypted secrets in Redux/logs/audit.
-- [ ] Add an app-wide `isDemoMode`/`isDevFallbackAllowed` configuration policy.
-- [ ] Ensure production/default builds have:
-  - [ ] demo mode disabled;
-  - [ ] reference runtime fallback disabled;
-  - [ ] mock provider fallback disabled.
-- [ ] Add a visible developer/demo banner when any demo/fallback mode is enabled.
-- [ ] Add tests proving default mode fails closed.
+- [x] Add a `HARDENING_NOTES.md` or update existing docs explaining: <!-- HARDENING_NOTES.md at repo root -->
+  - [x] no silent fallbacks;
+  - [x] no no-op effect handlers;
+  - [x] no implicit mock provider;
+  - [x] no fake seeded audit/memory data outside explicit demo mode;
+  - [x] no decrypted secrets in Redux/logs/audit.
+- [x] Add an app-wide `isDemoMode`/`isDevFallbackAllowed` configuration policy. <!-- src/config/appConfig.ts: AppConfig { isDemoMode, isDevFallbackAllowed, isMockProviderAllowed, isSafetyOverrideActive }, parseAppConfig(import.meta.env) -->
+- [x] Ensure production/default builds have:
+  - [x] demo mode disabled; <!-- VITE_DEMO_MODE off unless exactly 'true' -->
+  - [x] reference runtime fallback disabled; <!-- isDevFallbackAllowed = isDemoMode || VITE_ALLOW_REFERENCE_RUNTIME_FALLBACK -->
+  - [x] mock provider fallback disabled. <!-- isMockProviderAllowed = isDemoMode || VITE_ALLOW_MOCK_PROVIDER -->
+- [x] Add a visible developer/demo banner when any demo/fallback mode is enabled. <!-- src/components/shell/SafetyOverrideBanner.tsx, mounted in AppLayout; null unless isSafetyOverrideActive -->
+- [x] Add tests proving default mode fails closed. <!-- appConfig.test.ts "an empty env disables every override" / "a production-like env... stays fail closed" / "treats any non-'true' value as off" -->
+
 
 ## Phase 1 — Remove Unsafe Runtime Fallbacks
 

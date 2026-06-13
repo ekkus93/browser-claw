@@ -129,21 +129,7 @@ export async function executeEffect(
     case 'storage_search': {
       const handler = ctx.ports?.storage;
       if (!handler) {
-        // Known gap (TODO 5.1): durable storage handlers aren't wired yet, and
-        // storage_put carries no conversation_id, so a generic handler can't
-        // build a valid row. Record the dropped effect rather than performing
-        // it silently — but don't fail the turn: the chat flow already persists
-        // messages via the llm handler, so nothing is lost. Making this fatal
-        // needs the 5.1 handler + a conversation_id on the storage effect.
-        await recordAudit(ctx.db, ctx.dispatch, {
-          type: 'runtime.effect_dropped',
-          summary: `Storage effect '${effect.type}' dropped: no storage handler wired`,
-          source: 'runtime',
-          status: 'failure',
-          risk: 'low',
-          at: now(),
-        });
-        return;
+        return failEffect(ctx, effect.type, 'no storage handler is wired', now);
       }
       await handler(effect);
       return;

@@ -22,9 +22,10 @@ export interface LlmRequestDeps {
 
 /**
  * Handles the runtime's `llm_request` effect: loads the conversation history,
- * calls the active provider, persists the assistant reply to Dexie (so the
- * chat view updates via its live query), and resolves the effect back into the
- * deterministic runtime for its audit record.
+ * calls the active provider, and resolves the effect back into the
+ * deterministic runtime. The runtime then emits the `storage_put` that persists
+ * the assistant reply (handled by the storage effect port — the single source
+ * of truth), which the chat view picks up via its live query.
  */
 export function createLlmRequestHandler(deps: LlmRequestDeps) {
   return async (effect: Extract<Effect, { type: 'llm_request' }>) => {
@@ -99,15 +100,12 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
       return;
     }
 
-    await deps.db.messages.put({
-      id: crypto.randomUUID(),
-      conversationId: effect.conversation_id,
-      role: 'assistant',
-      content: text,
-      createdAt: Date.now(),
-    });
     deps.dispatch(runStateSet('idle'));
 
+    // Resolve the effect with the reply; the deterministic runtime then emits
+    // the storage_put that persists the assistant message (the single source of
+    // truth, handled by the storage effect port). We deliberately do NOT write
+    // db.messages here — doing both would store the reply twice.
     await deps.submit({
       type: 'resolve_effect',
       id: effect.id,

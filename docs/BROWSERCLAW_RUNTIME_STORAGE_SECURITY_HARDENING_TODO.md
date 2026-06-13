@@ -42,25 +42,25 @@
 
 ### 1.2 Remove No-Op Effect Ports
 
-- [ ] Refactor effect executor so missing ports are fatal. <!-- DONE for llm_request + skill ports + unknown effect types (effectExecutor.ts failEffect: audit + runtimeErrored + throw). NOT YET for storage: the chat flow emits a redundant storage_put (referenceRuntime) that carries no conversation_id, and the llm handler already persists the message to db.messages — so a generic storage handler can't build a valid row and making it fatal would break chat. Storage's missing-handler is converted from a SILENT no-op to an AUDITED drop (runtime.effect_dropped) as an honest interim. UPDATE (Pass 55): conversation_id is now on the storage effect (claw-schema), so the remaining work to make storage fatal is just the 5.1 handler + removing the redundant llmRunner db.messages.put. -->
-- [ ] Require handlers for:
+- [x] Refactor effect executor so missing ports are fatal. <!-- effectExecutor.ts failEffect (audit runtime.effect_failed + dispatch runtimeErrored + throw) fires for a missing llm_request / storage / skill handler and for any unknown effect type. Storage is now fatal too (Pass 56): the storage port is wired (createStorageEffectHandler) and llmRunner's redundant db.messages.put was removed, so the runtime's storage_put is the single source of truth. -->
+- [x] Require handlers for:
   - [x] `llm_request`; <!-- missing handler -> failEffect (fatal). -->
-  - [ ] `storage_get`; <!-- audited-drop interim, not fatal — see top note (needs 5.1 + conversation_id). -->
-  - [ ] `storage_put`;
-  - [ ] `storage_search`;
+  - [x] `storage_get`; <!-- storage port required (fatal if missing); handler fails closed on get/search (not emitted yet). -->
+  - [x] `storage_put`; <!-- storage port persists the messages store; missing port -> failEffect. -->
+  - [x] `storage_search`;
   - [x] `skill_fs_read_text`; <!-- missing skill handler -> failEffect (fatal). -->
   - [x] `skill_state_get`;
   - [x] `skill_state_put`;
   - [x] `audit_append`; <!-- handled inline (recordAudit) — never missing. -->
   - [x] `runtime_snapshot_save`. <!-- handled inline (db.runtime_snapshots.put) — never missing. -->
 - [x] Unknown effect types must fail. <!-- default case -> failEffect; effectExecutor.test.ts "fails closed on an unknown effect type". -->
-- [ ] Missing handlers must fail. <!-- llm + skill handlers now fail closed; storage is audited-drop pending 5.1 (see top note). -->
+- [x] Missing handlers must fail. <!-- llm + storage + skill handlers all fail closed via failEffect. -->
 - [x] Every effect failure must:
   - [x] dispatch runtime error or effect error; <!-- failEffect dispatches runtimeErrored (status 'error'). -->
   - [x] append durable audit event; <!-- failEffect records runtime.effect_failed (source runtime, status failure, risk high). -->
   - [x] show user-visible error state. <!-- runtimeErrored sets runtime.status='error', shown in the sidebar runtime status. -->
 - [ ] Tests:
-  - [ ] missing storage handler fails; <!-- instead, effectExecutor.test.ts "records (never silently drops) a storage effect with no handler" asserts the dropped effect is AUDITED (runtime.effect_dropped) rather than fatal — the interim behavior; a fatal-storage test waits on 5.1. -->
+  - [x] missing storage handler fails; <!-- effectExecutor.test.ts "fails when the storage handler is missing" (throws + runtime status error). -->
   - [x] missing skill handler fails; <!-- effectExecutor.test.ts "fails when a skill handler is missing" (throws + runtime status error). -->
   - [x] unknown effect fails; <!-- effectExecutor.test.ts "fails closed on an unknown effect type". -->
   - [x] failure is audited. <!-- same tests assert a durable runtime.effect_failed event with status failure. -->
@@ -226,21 +226,21 @@
 
 ### 5.1 Storage Effect Handlers
 
-<!-- UNBLOCKED (Pass 55): the storage_put effect now carries conversation_id end-to-end (claw-schema Effect::StoragePut + RuntimeState.pending_conversation, populated by claw-core, mirrored in effectTypes.ts + referenceRuntime.ts, wasm rebuilt). So a real handler can now persist a correctly-scoped MessageRow. Remaining work for 5.1: implement the storage port (store->Dexie table, validate collection/row, audit failures), wire it in main.tsx, REMOVE the redundant db.messages.put in llmRunner so the runtime's storage_put is the single source of truth, then flip the executor's storage branch from audited-drop to fatal-on-missing (completes the storage half of 1.2). -->
+<!-- Pass 56: storage_put is implemented end-to-end (src/runtime/storageRunner.ts createStorageEffectHandler, wired in main.tsx). It persists the 'messages' store as a conversation-scoped MessageRow (using the conversation_id added in Pass 55), is the SINGLE source of truth (llmRunner's redundant db.messages.put removed), and is fatal-on-missing in the executor. storage_get/storage_search aren't emitted by the runtime yet, so the handler fails them closed rather than faking a query — implement when a real consumer exists. -->
 
 - [ ] Implement real handlers for:
-  - [ ] `storage_get`;
-  - [ ] `storage_put`;
-  - [ ] `storage_search`.
-- [ ] Validate collection names.
-- [ ] Validate row shape per collection.
-- [ ] Reject unknown collections.
-- [ ] Audit storage failures.
+  - [ ] `storage_get`; <!-- fail-closed 'not supported yet' — not emitted by the runtime; implement with a real consumer. -->
+  - [x] `storage_put`; <!-- storageRunner persists the 'messages' store; chat e2e exercises it end-to-end. -->
+  - [ ] `storage_search`; <!-- fail-closed 'not supported yet' — see storage_get. -->
+- [x] Validate collection names. <!-- only the 'messages' store is accepted; any other store is rejected. -->
+- [x] Validate row shape per collection. <!-- message records require a valid MessageRole + string content; malformed records are rejected. -->
+- [x] Reject unknown collections. <!-- unknown store -> audited failure + throw. -->
+- [x] Audit storage failures. <!-- storage.effect_failed (source 'storage', status failure) on any rejection. -->
 - [ ] Tests:
-  - [ ] storage_put persists valid record;
-  - [ ] storage_put rejects unknown collection;
-  - [ ] storage_search returns expected records;
-  - [ ] invalid storage effect is audited.
+  - [x] storage_put persists valid record; <!-- storageRunner.test.ts "persists a conversation-scoped message for storage_put". -->
+  - [x] storage_put rejects unknown collection; <!-- storageRunner.test.ts "rejects and audits an unknown store". -->
+  - [ ] storage_search returns expected records; <!-- deferred: storage_search isn't emitted/implemented (handler fails it closed; "fails closed on an unsupported storage op" is tested instead). -->
+  - [x] invalid storage effect is audited. <!-- storageRunner.test.ts "rejects and audits a malformed message record". -->
 
 ### 5.2 Remove Fake Memory Seeding
 

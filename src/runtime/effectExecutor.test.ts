@@ -143,28 +143,21 @@ describe('executeEffect', () => {
     expect(store.getState().runtime.status).toBe('error');
   });
 
-  it('records (never silently drops) a storage effect with no handler', async () => {
-    await db.open();
-    await db.audit_events.clear();
-    const { ctx } = makeCtx(); // no storage port
-    // It must not throw (the chat flow persists messages via the llm handler),
-    // but the dropped effect must be audited, not silently swallowed.
-    await executeEffect(
-      {
-        type: 'storage_put',
-        id: 'p1',
-        conversation_id: 'c1',
-        store: 'messages',
-        key: 'm1',
-        value: { role: 'assistant', content: 'hi' },
-      },
-      ctx,
-    );
-    const dropped = await db.audit_events
-      .where('type')
-      .equals('runtime.effect_dropped')
-      .toArray();
-    expect(dropped).toHaveLength(1);
-    expect(dropped[0]?.status).toBe('failure');
+  it('fails when the storage handler is missing', async () => {
+    const { store, ctx } = makeCtx(); // no storage port
+    await expect(
+      executeEffect(
+        {
+          type: 'storage_put',
+          id: 'p1',
+          conversation_id: 'c1',
+          store: 'messages',
+          key: 'm1',
+          value: { role: 'assistant', content: 'hi' },
+        },
+        ctx,
+      ),
+    ).rejects.toThrow(/storage/);
+    expect(store.getState().runtime.status).toBe('error');
   });
 });

@@ -14,8 +14,9 @@ afterAll(() => {
 });
 
 describe('createLlmRequestHandler', () => {
-  it('persists the assistant reply and resolves the effect', async () => {
+  it('resolves the effect with the reply (persistence is the storage port)', async () => {
     await db.open();
+    await db.messages.clear();
     const store = configureStore({ reducer: { chat: chatReducer } });
     await db.messages.put({
       id: 'u1',
@@ -42,16 +43,25 @@ describe('createLlmRequestHandler', () => {
       prompt: 'hello',
     });
 
+    // The runtime drives persistence via storage_put, so llmRunner must NOT
+    // write the assistant message itself (doing both would duplicate it).
     const messages = await db.messages
       .where('conversationId')
       .equals('c1')
       .sortBy('createdAt');
-    const assistant = messages.find((m) => m.role === 'assistant');
-    expect(assistant?.content).toContain('Mock response');
+    expect(messages.some((m) => m.role === 'assistant')).toBe(false);
     expect(store.getState().chat.runState).toBe('idle');
 
+    // It resolves the effect with the reply text the runtime will persist.
     const command = submit.mock.calls[0]?.[0];
-    expect(command).toMatchObject({ type: 'resolve_effect', id: 'eff-2' });
+    expect(command).toMatchObject({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { ok: true },
+    });
+    expect((command as { result: { text: string } }).result.text).toContain(
+      'Mock response',
+    );
   });
 
   it('surfaces a provider failure as an error, never a fake reply', async () => {

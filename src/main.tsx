@@ -12,6 +12,7 @@ import { RuntimeHost, loadLatestSnapshot } from './runtime/runtimeHost.ts';
 import { registerRuntimeListeners } from './runtime/runtimeListeners.ts';
 import { createLlmRequestHandler } from './runtime/llmRunner.ts';
 import { createSkillEffectHandler } from './runtime/skillRunner.ts';
+import { createStorageEffectHandler } from './runtime/storageRunner.ts';
 import { createSkillManager } from './skills/skillManager.ts';
 import type { EffectContext } from './runtime/effectExecutor.ts';
 import {
@@ -210,6 +211,7 @@ async function bootRuntime(): Promise<void> {
         ),
       submit: (command) => host.submit(command),
     }),
+    storage: createStorageEffectHandler({ db, dispatch: store.dispatch }),
     skill: createSkillEffectHandler({
       db,
       dispatch: store.dispatch,

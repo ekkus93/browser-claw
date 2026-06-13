@@ -22,6 +22,8 @@ import {
   requestPersistentStorage,
   refreshStorageInfo,
 } from '../services/storageService.ts';
+import { db } from '../db/db.ts';
+import { setOnboardingComplete } from '../settings/appSettings.ts';
 
 type InferenceMode = 'wllama' | 'local' | 'remote';
 
@@ -173,7 +175,10 @@ export default function OnboardingScreen() {
 
   const storage = useAppSelector((state) => state.storage);
 
-  function finish() {
+  async function finish() {
+    // Persist completion durably so the index route doesn't re-show onboarding
+    // on the next reload (TODO Phase 9.1).
+    await setOnboardingComplete(db, true);
     dispatch(onboardingCompleted());
     if (mode === 'remote') {
       dispatch(
@@ -328,7 +333,7 @@ export default function OnboardingScreen() {
                   Continue
                 </Button>
               ) : (
-                <Button variant="primary" onClick={finish}>
+                <Button variant="primary" onClick={() => void finish()}>
                   Finish setup
                 </Button>
               )}

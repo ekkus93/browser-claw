@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
 import AppLayout from './AppLayout.tsx';
+import { IndexRedirect } from './components/shell/IndexRedirect.tsx';
 import { PlaceholderScreen } from './screens/PlaceholderScreen.tsx';
 import ComponentGallery from './screens/ComponentGallery.tsx';
 import OnboardingScreen from './screens/OnboardingScreen.tsx';
@@ -44,7 +45,7 @@ export const router = createBrowserRouter([
     path: '/',
     element: <AppLayout />,
     children: [
-      { index: true, element: <Navigate to="/chat" replace /> },
+      { index: true, element: <IndexRedirect /> },
       ...NAV_ITEMS.map((item) => {
         const key = item.path.replace(/^\//, '');
         return {

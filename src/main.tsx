@@ -36,6 +36,8 @@ import {
   runtimeFailed,
   snapshotRestoreWarned,
 } from './store/slices/runtimeSlice.ts';
+import { hydrated, onboardingCompleted } from './store/slices/appSlice.ts';
+import { getOnboardingComplete } from './settings/appSettings.ts';
 import { recordAudit } from './audit/auditSink.ts';
 import type { AuditRiskLevel, AuditStatus } from './db/types.ts';
 
@@ -251,6 +253,22 @@ async function restoreActiveProvider(): Promise<void> {
 }
 
 void restoreActiveProvider();
+
+// Restore durable first-run state, then mark the session hydrated so the index
+// route can decide between onboarding and chat. onboardingComplete is dispatched
+// BEFORE hydrated so the index guard reads a consistent state in one paint and
+// never bounces a returning user to onboarding. See Phase 9.1 / IndexRedirect.
+async function restoreOnboardingState(): Promise<void> {
+  try {
+    if (await getOnboardingComplete(db)) {
+      store.dispatch(onboardingCompleted());
+    }
+  } finally {
+    store.dispatch(hydrated());
+  }
+}
+
+void restoreOnboardingState();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

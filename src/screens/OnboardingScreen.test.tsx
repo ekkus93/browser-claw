@@ -1,13 +1,16 @@
-import { render, screen } from '@testing-library/react';
+import 'fake-indexeddb/auto';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { configureStore } from '@reduxjs/toolkit';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import appReducer from '../store/slices/appSlice.ts';
 import providersReducer from '../store/slices/providersSlice.ts';
 import storageReducer from '../store/slices/storageSlice.ts';
 import OnboardingScreen from './OnboardingScreen.tsx';
+import { db } from '../db/db.ts';
+import { getOnboardingComplete } from '../settings/appSettings.ts';
 
 function renderOnboarding() {
   const store = configureStore({
@@ -31,6 +34,10 @@ function renderOnboarding() {
 }
 
 describe('OnboardingScreen', () => {
+  afterEach(async () => {
+    await db.app_settings.clear();
+  });
+
   it('walks through the steps and finishes into chat', async () => {
     const user = userEvent.setup();
     const store = renderOnboarding();
@@ -52,8 +59,13 @@ describe('OnboardingScreen', () => {
     expect(screen.getByText(/all set/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /finish setup/i }));
-    expect(screen.getByText('Chat screen')).toBeInTheDocument();
+    expect(await screen.findByText('Chat screen')).toBeInTheDocument();
     expect(store.getState().app.onboardingComplete).toBe(true);
+    // Completion is persisted durably so the index route skips onboarding next
+    // reload — not just held in Redux for this session.
+    await waitFor(async () =>
+      expect(await getOnboardingComplete(db)).toBe(true),
+    );
   });
 
   it('disables Back on the first step', () => {

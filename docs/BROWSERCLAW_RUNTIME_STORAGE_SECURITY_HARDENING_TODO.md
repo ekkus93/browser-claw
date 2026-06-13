@@ -454,17 +454,19 @@
 
 ### 9.1 Onboarding
 
-- [ ] Persist onboarding completion.
-- [ ] Persist selected inference mode.
-- [ ] Persist selected active provider.
-- [ ] Persist storage persistence result.
+- [x] Persist onboarding completion. <!-- OnboardingScreen.finish() -> setOnboardingComplete(db,true) writes app_settings['onboardingComplete']; src/settings/appSettings.ts getSetting/setSetting + getOnboardingComplete/setOnboardingComplete -->
+- [ ] Persist selected inference mode. <!-- still local useState(mode); not yet written to app_settings -->
+- [ ] Persist selected active provider. <!-- partial: remote mode dispatches activeProviderSet (Redux); onboarding does not yet call setActiveProviderId(db) durably -->
+- [ ] Persist storage persistence result. <!-- requestPersistentStorage updates Redux only; not persisted to app_settings -->
 - [ ] Persist selected/default model.
-- [ ] On refresh, do not repeat onboarding if completed.
-- [ ] If setup incomplete, resume correct step.
+- [x] On refresh, do not repeat onboarding if completed. <!-- main.tsx restoreOnboardingState() reads the flag at boot, dispatches onboardingCompleted() then hydrated(); IndexRedirect (index route) sends completed users to /chat, first-run to /onboarding; only the index route is gated so deep links are untouched -->
+- [ ] If setup incomplete, resume correct step. <!-- step index is not persisted yet; incomplete onboarding restarts at step 0 -->
 - [ ] Tests:
-  - [ ] onboarding completion persists;
+  - [x] onboarding completion persists; <!-- OnboardingScreen.test "finishes into chat" asserts getOnboardingComplete(db) is true after finish; appSettings.test round-trips; IndexRedirect.test covers the index-route decision -->
   - [ ] selected mode persists;
   - [ ] refresh resumes incomplete onboarding.
+
+<!-- 9.1 status: completion now persists durably + drives the index route (first-run vs returning) via IndexRedirect + boot rehydrate (hydrated gate avoids a first-paint bounce). Remaining: persist inference mode / active provider / storage result / step index — each a small app_settings write once the durable settings service (appSettings.ts, landed this pass) is wired into those controls. -->
 
 ### 9.2 Settings
 

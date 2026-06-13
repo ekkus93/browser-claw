@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Check,
@@ -23,7 +23,12 @@ import {
   refreshStorageInfo,
 } from '../services/storageService.ts';
 import { db } from '../db/db.ts';
-import { setOnboardingComplete } from '../settings/appSettings.ts';
+import {
+  setOnboardingComplete,
+  getOnboardingProgress,
+  setOnboardingProgress,
+  clearOnboardingProgress,
+} from '../settings/appSettings.ts';
 import { setActiveProviderId } from '../providers/providerProfiles.ts';
 
 type InferenceMode = 'wllama' | 'local' | 'remote';
@@ -173,13 +178,50 @@ export default function OnboardingScreen() {
   const [mode, setMode] = useState<InferenceMode>('wllama');
   const [endpoint, setEndpoint] = useState('http://localhost:11434');
   const [provider, setProvider] = useState('anthropic');
+  // Gate persistence on a completed restore so we never overwrite saved
+  // progress with the initial defaults before it has loaded.
+  const [restored, setRestored] = useState(false);
 
   const storage = useAppSelector((state) => state.storage);
+
+  // Resume an interrupted setup: load any saved progress and pick up where the
+  // user left off (TODO Phase 9.1). Clamp the step so corrupt data can't break.
+  useEffect(() => {
+    let active = true;
+    void getOnboardingProgress(db).then((progress) => {
+      if (!active) return;
+      if (progress) {
+        setStep(Math.min(Math.max(0, progress.step), STEPS.length - 1));
+        if (
+          progress.mode === 'wllama' ||
+          progress.mode === 'local' ||
+          progress.mode === 'remote'
+        ) {
+          setMode(progress.mode);
+        }
+        setEndpoint(progress.endpoint);
+        setProvider(progress.provider);
+      }
+      setRestored(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Persist progress on every change (after restore) so a reload resumes here.
+  useEffect(() => {
+    if (!restored) return;
+    void setOnboardingProgress(db, { step, mode, endpoint, provider });
+  }, [restored, step, mode, endpoint, provider]);
 
   async function finish() {
     // Persist completion durably so the index route doesn't re-show onboarding
     // on the next reload (TODO Phase 9.1).
     await setOnboardingComplete(db, true);
+    // The setup is done; drop the resume state so a future onboarding (e.g.
+    // after a reset) starts clean.
+    await clearOnboardingProgress(db);
     dispatch(onboardingCompleted());
     if (mode === 'remote') {
       // Persist the choice durably (not just in Redux) so restoreActiveProvider

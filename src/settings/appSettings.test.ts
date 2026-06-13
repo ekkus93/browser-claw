@@ -12,6 +12,9 @@ import {
   getWllamaCdnConsent,
   setWllamaCdnConsent,
   WLLAMA_CDN_CONSENT_KEY,
+  getOnboardingProgress,
+  setOnboardingProgress,
+  clearOnboardingProgress,
 } from './appSettings.ts';
 
 describe('appSettings', () => {
@@ -55,5 +58,23 @@ describe('appSettings', () => {
     expect(await getWllamaCdnConsent(db)).toBe(true);
     const row = await db.app_settings.get(WLLAMA_CDN_CONSENT_KEY);
     expect(row?.value).toBe(true);
+  });
+
+  it('round-trips and clears onboarding progress', async () => {
+    expect(await getOnboardingProgress(db)).toBeUndefined();
+    await setOnboardingProgress(db, {
+      step: 2,
+      mode: 'remote',
+      endpoint: 'http://localhost:11434',
+      provider: 'openai',
+    });
+    expect(await getOnboardingProgress(db)).toEqual({
+      step: 2,
+      mode: 'remote',
+      endpoint: 'http://localhost:11434',
+      provider: 'openai',
+    });
+    await clearOnboardingProgress(db);
+    expect(await getOnboardingProgress(db)).toBeUndefined();
   });
 });

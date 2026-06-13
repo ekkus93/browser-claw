@@ -457,16 +457,16 @@
 ### 9.1 Onboarding
 
 - [x] Persist onboarding completion. <!-- OnboardingScreen.finish() -> setOnboardingComplete(db,true) writes app_settings['onboardingComplete']; src/settings/appSettings.ts getSetting/setSetting + getOnboardingComplete/setOnboardingComplete -->
-- [ ] Persist selected inference mode. <!-- still local useState(mode); not yet written to app_settings -->
+- [x] Persist selected inference mode. <!-- OnboardingScreen writes app_settings 'onboardingProgress' {step,mode,endpoint,provider} on every change (after restore) via setOnboardingProgress; restored on mount and cleared on finish. appSettings.ts getOnboardingProgress/setOnboardingProgress/clearOnboardingProgress. -->
 - [x] Persist selected active provider. <!-- OnboardingScreen.finish() remote branch calls setActiveProviderId(db, provider) so restoreActiveProvider picks it up after reload; OnboardingScreen.test "persists the remote provider selection durably" asserts getActiveProviderId(db) -->
 - [ ] Persist storage persistence result. <!-- requestPersistentStorage updates Redux only; not persisted to app_settings -->
-- [ ] Persist selected/default model.
+- [ ] Persist selected/default model. <!-- partial: onboardingProgress persists mode + local endpoint + remote provider, but the wllama "Browser-local model" select in step 2 is still defaultValue-only (not in the progress payload). Add it when the model choice has a real downstream consumer. -->
 - [x] On refresh, do not repeat onboarding if completed. <!-- main.tsx restoreOnboardingState() reads the flag at boot, dispatches onboardingCompleted() then hydrated(); IndexRedirect (index route) sends completed users to /chat, first-run to /onboarding; only the index route is gated so deep links are untouched -->
-- [ ] If setup incomplete, resume correct step. <!-- step index is not persisted yet; incomplete onboarding restarts at step 0 -->
+- [x] If setup incomplete, resume correct step. <!-- OnboardingScreen restores the saved step on mount (clamped to a valid range) so a mid-setup reload picks up where the user left off instead of restarting at step 0. -->
 - [ ] Tests:
   - [x] onboarding completion persists; <!-- OnboardingScreen.test "finishes into chat" asserts getOnboardingComplete(db) is true after finish; appSettings.test round-trips; IndexRedirect.test covers the index-route decision -->
-  - [ ] selected mode persists;
-  - [ ] refresh resumes incomplete onboarding.
+  - [x] selected mode persists; <!-- OnboardingScreen.test.tsx "persists in-progress selections so a reload can resume" (mode 'remote' + step written to onboardingProgress); appSettings.test.ts round-trips it. -->
+  - [x] refresh resumes incomplete onboarding. <!-- OnboardingScreen.test.tsx "resumes at the saved step on reload" seeds onboardingProgress {step:2, mode:'remote', provider:'openai'} and asserts the screen mounts on "Configure model" (Step 3 of 4) with the provider restored. -->
 
 <!-- 9.1 status: completion + active provider now persist durably; completion drives the index route (first-run vs returning) via IndexRedirect + boot rehydrate (hydrated gate avoids a first-paint bounce). Remaining: persist storage-persistence result + step index (small app_settings writes). Inference mode is deliberately NOT persisted — nothing consumes it post-onboarding yet, so storing it would be a speculative/inert field (revisit when a consumer exists). -->
 

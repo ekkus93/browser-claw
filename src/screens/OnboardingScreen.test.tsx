@@ -10,7 +10,11 @@ import providersReducer from '../store/slices/providersSlice.ts';
 import storageReducer from '../store/slices/storageSlice.ts';
 import OnboardingScreen from './OnboardingScreen.tsx';
 import { db } from '../db/db.ts';
-import { getOnboardingComplete } from '../settings/appSettings.ts';
+import {
+  getOnboardingComplete,
+  getOnboardingProgress,
+  setOnboardingProgress,
+} from '../settings/appSettings.ts';
 import { getActiveProviderId } from '../providers/providerProfiles.ts';
 
 function renderOnboarding() {
@@ -79,9 +83,9 @@ describe('OnboardingScreen', () => {
     );
     await user.click(screen.getByRole('button', { name: /continue/i })); // -> storage
     await user.click(screen.getByRole('button', { name: /continue/i })); // -> configure
-    expect(
-      screen.getByRole('combobox', { name: /provider/i }),
-    ).toHaveValue('anthropic');
+    expect(screen.getByRole('combobox', { name: /provider/i })).toHaveValue(
+      'anthropic',
+    );
     await user.click(screen.getByRole('button', { name: /continue/i })); // -> finish
     await user.click(screen.getByRole('button', { name: /finish setup/i }));
 
@@ -95,5 +99,44 @@ describe('OnboardingScreen', () => {
   it('disables Back on the first step', () => {
     renderOnboarding();
     expect(screen.getByRole('button', { name: /back/i })).toBeDisabled();
+  });
+
+  it('persists in-progress selections so a reload can resume', async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    await user.click(
+      screen.getByRole('button', { name: /Use OpenAI \/ Anthropic/i }),
+    );
+    await user.click(screen.getByRole('button', { name: /continue/i })); // -> storage
+
+    await waitFor(async () => {
+      const progress = await getOnboardingProgress(db);
+      expect(progress?.mode).toBe('remote');
+      expect(progress?.step).toBe(1);
+    });
+  });
+
+  it('resumes at the saved step on reload', async () => {
+    // A prior, interrupted session left off on the "Configure model" step with
+    // the remote provider chosen.
+    await setOnboardingProgress(db, {
+      step: 2,
+      mode: 'remote',
+      endpoint: 'http://localhost:11434',
+      provider: 'openai',
+    });
+    renderOnboarding();
+
+    expect(
+      await screen.findByRole('heading', { name: 'Configure model' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Step 3 of 4')).toBeInTheDocument();
+    // The remote-mode provider choice is restored, not reset to the default.
+    await waitFor(() =>
+      expect(screen.getByRole('combobox', { name: /provider/i })).toHaveValue(
+        'openai',
+      ),
+    );
   });
 });

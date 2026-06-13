@@ -73,3 +73,36 @@ export async function setWllamaCdnConsent(
 ): Promise<void> {
   await setSetting(db, WLLAMA_CDN_CONSENT_KEY, value);
 }
+
+/**
+ * In-progress onboarding so a mid-setup reload resumes at the right step with
+ * the user's choices intact, instead of restarting at step 0 (TODO Phase 9.1).
+ * Cleared once onboarding finishes.
+ */
+export interface OnboardingProgress {
+  step: number;
+  mode: 'wllama' | 'local' | 'remote';
+  endpoint: string;
+  provider: string;
+}
+
+export const ONBOARDING_PROGRESS_KEY = 'onboardingProgress';
+
+export async function getOnboardingProgress(
+  db: BrowserClawDB,
+): Promise<OnboardingProgress | undefined> {
+  return getSetting<OnboardingProgress>(db, ONBOARDING_PROGRESS_KEY);
+}
+
+export async function setOnboardingProgress(
+  db: BrowserClawDB,
+  value: OnboardingProgress,
+): Promise<void> {
+  await setSetting(db, ONBOARDING_PROGRESS_KEY, value);
+}
+
+export async function clearOnboardingProgress(
+  db: BrowserClawDB,
+): Promise<void> {
+  await db.app_settings.delete(ONBOARDING_PROGRESS_KEY);
+}

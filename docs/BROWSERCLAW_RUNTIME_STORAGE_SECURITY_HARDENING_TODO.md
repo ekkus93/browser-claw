@@ -481,10 +481,10 @@
   - [ ] backup settings;
   - [ ] skill install policy;
   - [ ] developer/demo/fallback mode.
-- [ ] Settings button in top bar navigates to `/settings`.
+- [x] Settings button in top bar navigates to `/settings`. <!-- AppLayout.tsx now wires topBar.onOpenSettings to navigate('/settings'); previously a silent no-op because AppLayout never passed the prop to AppShell/TopStatusBar. -->
 - [ ] Tests:
   - [ ] settings persist after reload;
-  - [ ] top bar Settings button navigates;
+  - [x] top bar Settings button navigates; <!-- AppLayout.test.tsx: clicking the top-bar Settings button lands on /settings. -->
   - [ ] approval policy affects approval behavior.
 
 ### 9.3 Models Screen

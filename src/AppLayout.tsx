@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell.tsx';
 import { RightInspectorPanel } from './components/shell/RightInspectorPanel.tsx';
 import { SafetyOverrideBanner } from './components/shell/SafetyOverrideBanner.tsx';
@@ -14,6 +14,7 @@ import { APP_VERSION } from './lib/appMeta.ts';
  */
 export default function AppLayout() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const showInspector = pathname.startsWith('/chat');
   const runtimeStatus = useAppSelector((state) => state.runtime.status);
   const runtimeFatal = useAppSelector((state) => state.runtime.fatal);
@@ -44,6 +45,9 @@ export default function AppLayout() {
         modelLabel,
         storageUsedBytes,
         storageTotalBytes,
+        // The top-bar Settings button is a real affordance: route to /settings
+        // (TODO Phase 9.2) instead of leaving the onClick a silent no-op.
+        onOpenSettings: () => navigate('/settings'),
       }}
       sidebar={{ footer: { status: runtimeStatus, version: APP_VERSION } }}
     >

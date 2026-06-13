@@ -53,6 +53,11 @@ impl Runtime {
                 self.state
                     .pending
                     .insert(llm_id.clone(), "llm_request".to_string());
+                // Remember which conversation this request belongs to so the
+                // assistant message stored when it resolves is scoped correctly.
+                self.state
+                    .pending_conversation
+                    .insert(llm_id.clone(), conversation_id.clone());
                 vec![
                     Effect::AuditAppend {
                         id: audit_id,
@@ -68,6 +73,13 @@ impl Runtime {
                 ]
             }
             Command::ResolveEffect { id, result } => {
+                // The conversation this effect belongs to (recorded when it was
+                // emitted); cleaned up here regardless of success/failure.
+                let conversation_id = self
+                    .state
+                    .pending_conversation
+                    .remove(&id)
+                    .unwrap_or_default();
                 match self.state.pending.remove(&id).as_deref() {
                     Some("llm_request") => {
                         // A failed provider call (host marks `ok: false` or
@@ -96,6 +108,7 @@ impl Runtime {
                         vec![
                             Effect::StoragePut {
                                 id: put_id,
+                                conversation_id,
                                 store: "messages".to_string(),
                                 key: format!("m{}", self.state.message_count),
                                 value: json!({ "role": "assistant", "content": content }),
@@ -150,9 +163,16 @@ mod tests {
             result: json!({ "text": "hello there" }),
         });
         match &effects[0] {
-            Effect::StoragePut { store, value, .. } => {
+            Effect::StoragePut {
+                store,
+                value,
+                conversation_id,
+                ..
+            } => {
                 assert_eq!(store, "messages");
                 assert_eq!(value["content"], "hello there");
+                // The stored message stays scoped to its conversation.
+                assert_eq!(conversation_id, "c1");
             }
             other => panic!("expected StoragePut, got {other:?}"),
         }

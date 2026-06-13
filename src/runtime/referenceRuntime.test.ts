@@ -33,6 +33,8 @@ describe('referenceRuntime', () => {
     if (put?.type === 'storage_put') {
       expect(put.store).toBe('messages');
       expect(put.value).toEqual({ role: 'assistant', content: 'hello there' });
+      // The stored message stays scoped to the originating conversation.
+      expect(put.conversation_id).toBe('c1');
     }
   });
 

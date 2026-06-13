@@ -10,6 +10,9 @@ export type Effect =
   | {
       type: 'storage_put';
       id: string;
+      /** Conversation that triggered the write, so the host can persist a
+       * correctly-scoped record. Empty for writes with no conversation context. */
+      conversation_id: string;
       store: string;
       key: string;
       value: unknown;

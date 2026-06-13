@@ -153,6 +153,7 @@ describe('executeEffect', () => {
       {
         type: 'storage_put',
         id: 'p1',
+        conversation_id: 'c1',
         store: 'messages',
         key: 'm1',
         value: { role: 'assistant', content: 'hi' },

@@ -25,6 +25,12 @@ pub enum Effect {
     },
     StoragePut {
         id: String,
+        /// Conversation that triggered this write, so the host can persist a
+        /// correctly-scoped record (e.g. a chat message row needs its
+        /// conversation id). Defaults to empty for effects with no conversation
+        /// context.
+        #[serde(default)]
+        conversation_id: String,
         store: String,
         key: String,
         value: Value,
@@ -89,4 +95,10 @@ pub struct RuntimeState {
     pub message_count: u64,
     /// Outstanding effect id -> effect kind awaiting resolution.
     pub pending: BTreeMap<String, String>,
+    /// Outstanding effect id -> originating conversation id, so an effect
+    /// resolved later (e.g. a stored assistant message) stays conversation
+    /// scoped. Additive + defaulted: snapshots predating this field restore
+    /// with it empty.
+    #[serde(default)]
+    pub pending_conversation: BTreeMap<String, String>,
 }

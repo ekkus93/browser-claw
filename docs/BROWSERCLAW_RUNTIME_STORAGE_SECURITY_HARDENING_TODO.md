@@ -42,7 +42,7 @@
 
 ### 1.2 Remove No-Op Effect Ports
 
-- [ ] Refactor effect executor so missing ports are fatal. <!-- DONE for llm_request + skill ports + unknown effect types (effectExecutor.ts failEffect: audit + runtimeErrored + throw). NOT YET for storage: the chat flow emits a redundant storage_put (referenceRuntime) that carries no conversation_id, and the llm handler already persists the message to db.messages — so a generic storage handler can't build a valid row and making it fatal would break chat. Storage's missing-handler is converted from a SILENT no-op to an AUDITED drop (runtime.effect_dropped) as an honest interim; making it fatal needs 5.1 (storage handler) + a conversation_id on the storage effect (claw-schema). -->
+- [ ] Refactor effect executor so missing ports are fatal. <!-- DONE for llm_request + skill ports + unknown effect types (effectExecutor.ts failEffect: audit + runtimeErrored + throw). NOT YET for storage: the chat flow emits a redundant storage_put (referenceRuntime) that carries no conversation_id, and the llm handler already persists the message to db.messages — so a generic storage handler can't build a valid row and making it fatal would break chat. Storage's missing-handler is converted from a SILENT no-op to an AUDITED drop (runtime.effect_dropped) as an honest interim. UPDATE (Pass 55): conversation_id is now on the storage effect (claw-schema), so the remaining work to make storage fatal is just the 5.1 handler + removing the redundant llmRunner db.messages.put. -->
 - [ ] Require handlers for:
   - [x] `llm_request`; <!-- missing handler -> failEffect (fatal). -->
   - [ ] `storage_get`; <!-- audited-drop interim, not fatal — see top note (needs 5.1 + conversation_id). -->
@@ -225,6 +225,8 @@
 ## Phase 5 — Storage Effects and Memory Hardening
 
 ### 5.1 Storage Effect Handlers
+
+<!-- UNBLOCKED (Pass 55): the storage_put effect now carries conversation_id end-to-end (claw-schema Effect::StoragePut + RuntimeState.pending_conversation, populated by claw-core, mirrored in effectTypes.ts + referenceRuntime.ts, wasm rebuilt). So a real handler can now persist a correctly-scoped MessageRow. Remaining work for 5.1: implement the storage port (store->Dexie table, validate collection/row, audit failures), wire it in main.tsx, REMOVE the redundant db.messages.put in llmRunner so the runtime's storage_put is the single source of truth, then flip the executor's storage branch from audited-drop to fatal-on-missing (completes the storage half of 1.2). -->
 
 - [ ] Implement real handlers for:
   - [ ] `storage_get`;

@@ -11,6 +11,12 @@ export interface RuntimeSnapshot {
   next_effect_id: number;
   message_count: number;
   pending: Record<string, string>;
+  /**
+   * Outstanding effect id -> originating conversation id, so an effect resolved
+   * later (e.g. a stored assistant message) stays conversation scoped. Additive
+   * + defaulted: snapshots predating this field restore with it empty.
+   */
+  pending_conversation: Record<string, string>;
 }
 
 /**
@@ -53,8 +59,15 @@ export function createReferenceRuntime(
         next_effect_id: initial.next_effect_id,
         message_count: initial.message_count,
         pending: { ...initial.pending },
+        // Tolerate snapshots written before this field existed.
+        pending_conversation: { ...(initial.pending_conversation ?? {}) },
       }
-    : { next_effect_id: 0, message_count: 0, pending: {} };
+    : {
+        next_effect_id: 0,
+        message_count: 0,
+        pending: {},
+        pending_conversation: {},
+      };
 
   function nextId(): string {
     state.next_effect_id += 1;
@@ -68,6 +81,9 @@ export function createReferenceRuntime(
         const auditId = nextId();
         const llmId = nextId();
         state.pending[llmId] = 'llm_request';
+        // Remember the conversation so the message stored when this resolves
+        // stays correctly scoped.
+        state.pending_conversation[llmId] = command.conversation_id;
         return [
           {
             type: 'audit_append',
@@ -87,6 +103,8 @@ export function createReferenceRuntime(
 
       const kind = state.pending[command.id];
       delete state.pending[command.id];
+      const conversationId = state.pending_conversation[command.id] ?? '';
+      delete state.pending_conversation[command.id];
       if (kind === 'llm_request') {
         // A failed provider call stores no assistant message — it is audited
         // as a failure so the runtime never claims a reply it didn't get.
@@ -108,6 +126,7 @@ export function createReferenceRuntime(
           {
             type: 'storage_put',
             id: putId,
+            conversation_id: conversationId,
             store: 'messages',
             key: `m${state.message_count}`,
             value: { role: 'assistant', content: readText(command.result) },
@@ -129,6 +148,7 @@ export function createReferenceRuntime(
         next_effect_id: state.next_effect_id,
         message_count: state.message_count,
         pending: { ...state.pending },
+        pending_conversation: { ...state.pending_conversation },
       };
     },
   };

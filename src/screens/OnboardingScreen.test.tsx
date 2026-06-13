@@ -11,6 +11,7 @@ import storageReducer from '../store/slices/storageSlice.ts';
 import OnboardingScreen from './OnboardingScreen.tsx';
 import { db } from '../db/db.ts';
 import { getOnboardingComplete } from '../settings/appSettings.ts';
+import { getActiveProviderId } from '../providers/providerProfiles.ts';
 
 function renderOnboarding() {
   const store = configureStore({
@@ -65,6 +66,29 @@ describe('OnboardingScreen', () => {
     // reload — not just held in Redux for this session.
     await waitFor(async () =>
       expect(await getOnboardingComplete(db)).toBe(true),
+    );
+  });
+
+  it('persists the remote provider selection durably', async () => {
+    const user = userEvent.setup();
+    renderOnboarding();
+
+    // Pick the remote (OpenAI/Anthropic) mode, then walk to the finish step.
+    await user.click(
+      screen.getByRole('button', { name: /Use OpenAI \/ Anthropic/i }),
+    );
+    await user.click(screen.getByRole('button', { name: /continue/i })); // -> storage
+    await user.click(screen.getByRole('button', { name: /continue/i })); // -> configure
+    expect(
+      screen.getByRole('combobox', { name: /provider/i }),
+    ).toHaveValue('anthropic');
+    await user.click(screen.getByRole('button', { name: /continue/i })); // -> finish
+    await user.click(screen.getByRole('button', { name: /finish setup/i }));
+
+    expect(await screen.findByText('Chat screen')).toBeInTheDocument();
+    // The selected provider is the durable active provider after reload.
+    await waitFor(async () =>
+      expect(await getActiveProviderId(db)).toBe('anthropic'),
     );
   });
 

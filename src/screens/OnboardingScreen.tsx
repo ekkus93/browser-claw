@@ -24,6 +24,7 @@ import {
 } from '../services/storageService.ts';
 import { db } from '../db/db.ts';
 import { setOnboardingComplete } from '../settings/appSettings.ts';
+import { setActiveProviderId } from '../providers/providerProfiles.ts';
 
 type InferenceMode = 'wllama' | 'local' | 'remote';
 
@@ -181,6 +182,9 @@ export default function OnboardingScreen() {
     await setOnboardingComplete(db, true);
     dispatch(onboardingCompleted());
     if (mode === 'remote') {
+      // Persist the choice durably (not just in Redux) so restoreActiveProvider
+      // picks it up after a reload — otherwise the onboarding selection is lost.
+      await setActiveProviderId(db, provider);
       dispatch(
         activeProviderSet({
           id: provider,

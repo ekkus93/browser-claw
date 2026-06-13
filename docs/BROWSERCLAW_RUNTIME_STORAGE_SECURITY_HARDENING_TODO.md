@@ -456,7 +456,7 @@
 
 - [x] Persist onboarding completion. <!-- OnboardingScreen.finish() -> setOnboardingComplete(db,true) writes app_settings['onboardingComplete']; src/settings/appSettings.ts getSetting/setSetting + getOnboardingComplete/setOnboardingComplete -->
 - [ ] Persist selected inference mode. <!-- still local useState(mode); not yet written to app_settings -->
-- [ ] Persist selected active provider. <!-- partial: remote mode dispatches activeProviderSet (Redux); onboarding does not yet call setActiveProviderId(db) durably -->
+- [x] Persist selected active provider. <!-- OnboardingScreen.finish() remote branch calls setActiveProviderId(db, provider) so restoreActiveProvider picks it up after reload; OnboardingScreen.test "persists the remote provider selection durably" asserts getActiveProviderId(db) -->
 - [ ] Persist storage persistence result. <!-- requestPersistentStorage updates Redux only; not persisted to app_settings -->
 - [ ] Persist selected/default model.
 - [x] On refresh, do not repeat onboarding if completed. <!-- main.tsx restoreOnboardingState() reads the flag at boot, dispatches onboardingCompleted() then hydrated(); IndexRedirect (index route) sends completed users to /chat, first-run to /onboarding; only the index route is gated so deep links are untouched -->
@@ -466,7 +466,7 @@
   - [ ] selected mode persists;
   - [ ] refresh resumes incomplete onboarding.
 
-<!-- 9.1 status: completion now persists durably + drives the index route (first-run vs returning) via IndexRedirect + boot rehydrate (hydrated gate avoids a first-paint bounce). Remaining: persist inference mode / active provider / storage result / step index — each a small app_settings write once the durable settings service (appSettings.ts, landed this pass) is wired into those controls. -->
+<!-- 9.1 status: completion + active provider now persist durably; completion drives the index route (first-run vs returning) via IndexRedirect + boot rehydrate (hydrated gate avoids a first-paint bounce). Remaining: persist storage-persistence result + step index (small app_settings writes). Inference mode is deliberately NOT persisted — nothing consumes it post-onboarding yet, so storing it would be a speculative/inert field (revisit when a consumer exists). -->
 
 ### 9.2 Settings
 

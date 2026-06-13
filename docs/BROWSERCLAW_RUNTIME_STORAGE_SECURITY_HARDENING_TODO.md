@@ -21,23 +21,24 @@
 
 ### 1.1 WASM Runtime Startup
 
-- [ ] Replace silent WASM-to-reference fallback in runtime startup.
-- [ ] Default behavior:
-  - [ ] try to load WASM runtime;
-  - [ ] on success, dispatch runtime loaded;
-  - [ ] on failure, dispatch runtime error;
-  - [ ] on failure, append durable audit event;
-  - [ ] on failure, show blocking UI error.
-- [ ] Add explicit dev flag:
-  - [ ] `VITE_ALLOW_REFERENCE_RUNTIME_FALLBACK=true`.
-- [ ] If dev fallback is enabled:
-  - [ ] show persistent warning banner;
-  - [ ] set runtime mode to `reference`;
-  - [ ] append `runtime.reference_fallback_used` audit event.
-- [ ] Tests:
-  - [ ] WASM load failure blocks in default mode.
-  - [ ] WASM load failure uses reference runtime only with explicit flag.
-  - [ ] UI displays the correct runtime mode.
+- [x] Replace silent WASM-to-reference fallback in runtime startup. <!-- runtimeBoot.ts loadRuntimePort: WASM failure with dev flag off returns { port:null, mode:null }, never createReference -->
+- [x] Default behavior:
+  - [x] try to load WASM runtime; <!-- deps.createWasm(snapshot) -->
+  - [x] on success, dispatch runtime loaded; <!-- main.tsx onLoaded -> runtimeLoaded({ mode }) -->
+  - [x] on failure, dispatch runtime error; <!-- main.tsx onFailed -> runtimeFailed (status 'error', fatal true) -->
+  - [x] on failure, append durable audit event; <!-- appendAudit('runtime.load_failed', ...) -> recordAudit -> db.audit_events -->
+  - [x] on failure, show blocking UI error. <!-- AppLayout: if runtimeFatal return <RuntimeBlockedScreen /> -->
+- [x] Add explicit dev flag:
+  - [x] `VITE_ALLOW_REFERENCE_RUNTIME_FALLBACK=true`. <!-- appConfig.ts isDevFallbackAllowed = isDemoMode || VITE_ALLOW_REFERENCE_RUNTIME_FALLBACK -->
+- [x] If dev fallback is enabled:
+  - [x] show persistent warning banner; <!-- SafetyOverrideBanner lists "reference-runtime fallback" -->
+  - [x] set runtime mode to `reference`; <!-- onFallback -> runtimeLoaded({ mode:'reference' }) -->
+  - [x] append `runtime.reference_fallback_used` audit event. <!-- main.tsx appendAudit('runtime.reference_fallback_used', ...) -->
+- [x] Tests:
+  - [x] WASM load failure blocks in default mode. <!-- runtimeBoot.test "fails closed (no fallback) when WASM fails and the dev flag is off" + RuntimeBlockedScreen.test -->
+  - [x] WASM load failure uses reference runtime only with explicit flag. <!-- runtimeBoot.test "uses the reference runtime only when the dev flag is on" + appConfig.test -->
+  - [x] UI displays the correct runtime mode. <!-- Pass 25: SettingsScreen.test "shows the actual runtime mode, not a hardcoded label" (ready (wasm) vs ready (reference)) -->
+
 
 ### 1.2 Remove No-Op Effect Ports
 

@@ -28,6 +28,7 @@ afterEach(async () => {
   vi.unstubAllGlobals();
   await db.provider_profiles.clear();
   await db.app_settings.clear();
+  await db.audit_events.clear();
 });
 
 describe('ModelsScreen', () => {
@@ -65,6 +66,67 @@ describe('ModelsScreen', () => {
     await waitFor(() =>
       expect(store.getState().providers.health.openai).toBe('cors_error'),
     );
+  });
+
+  it('writes a durable audit event when a provider is tested', async () => {
+    // A user-initiated test is a real action and must land in the durable audit
+    // log — with only the provider id and verdict, never the API key.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({ choices: [{ message: { content: 'ok' } }] }),
+            { status: 200, headers: { 'content-type': 'application/json' } },
+          ),
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderModels();
+    await screen.findByRole('heading', { name: 'OpenAI' });
+
+    await user.click(screen.getAllByRole('button', { name: 'Test' })[0]!);
+
+    await waitFor(async () => {
+      const rows = await db.audit_events
+        .where('type')
+        .equals('provider.test_succeeded')
+        .toArray();
+      expect(rows).toHaveLength(1);
+    });
+    const [event] = await db.audit_events
+      .where('type')
+      .equals('provider.test_succeeded')
+      .toArray();
+    expect(event?.source).toBe('provider');
+    expect(event?.status).toBe('success');
+    expect(event?.providerId).toBe('openai');
+    // The verdict is recorded; no credential material ever is.
+    expect(JSON.stringify(event)).not.toContain('sk-');
+  });
+
+  it('writes a failure audit event when a provider test fails', async () => {
+    // OpenAI is cross-origin, so a thrown fetch is a CORS-class failure — the
+    // test must record that honest failure, not a success.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new TypeError('network down'))),
+    );
+    const user = userEvent.setup();
+    renderModels();
+    await screen.findByRole('heading', { name: 'OpenAI' });
+
+    await user.click(screen.getAllByRole('button', { name: 'Test' })[0]!);
+
+    await waitFor(async () => {
+      const rows = await db.audit_events
+        .where('type')
+        .equals('provider.test_failed')
+        .toArray();
+      expect(rows).toHaveLength(1);
+      expect(rows[0]?.status).toBe('failure');
+    });
   });
 
   it('persists an edited base URL to IndexedDB', async () => {

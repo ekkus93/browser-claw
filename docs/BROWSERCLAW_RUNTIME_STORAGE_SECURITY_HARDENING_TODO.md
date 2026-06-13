@@ -142,50 +142,59 @@
 
 ### 3.1 Audit Service
 
-- [ ] Implement durable audit service backed by IndexedDB.
-- [ ] Add APIs:
-  - [ ] `appendAuditEvent`;
-  - [ ] `queryAuditEvents`;
-  - [ ] `getAuditEvent`;
-  - [ ] `exportAuditCsv`.
-- [ ] Enforce sensitive data redaction.
-- [ ] Add source/status/risk fields.
-- [ ] Add schema migration if needed.
-- [ ] Tests:
-  - [ ] audit events persist after reload;
-  - [ ] audit events query by type;
-  - [ ] audit events query by risk;
-  - [ ] audit CSV exports real durable events.
+- [x] Implement durable audit service backed by IndexedDB. <!-- src/audit/auditService.ts + auditSink.ts write to db.audit_events (Dexie); AuditScreen reads from the durable table -->
+- [x] Add APIs:
+  - [x] `appendAuditEvent`; <!-- auditService.ts:130 -->
+  - [x] `queryAuditEvents`; <!-- auditService.ts:140 (type/risk/source/status/limit) -->
+  - [x] `getAuditEvent`; <!-- auditService.ts:157 -->
+  - [x] `exportAuditCsv`. <!-- auditService.ts:191; auditEventsToCsv never emits `details` -->
+- [x] Enforce sensitive data redaction. <!-- redactDetails() strips credential-like keys at any depth; auditService.ts:56 -->
+- [x] Add source/status/risk fields. <!-- AuditEventRow in db/types.ts:146; AuditSource/AuditStatus/AuditRiskLevel -->
+- [x] Add schema migration if needed. <!-- db.ts v3 adds source/status indices + backfillAuditDefaults() backfill -->
+- [x] Tests:
+  - [x] audit events persist after reload; <!-- auditService.test.ts reads back from durable table; effectExecutor.test.ts asserts durable persistence -->
+  - [x] audit events query by type; <!-- auditService.test.ts queryAuditEvents type filter -->
+  - [x] audit events query by risk; <!-- auditService.test.ts queryAuditEvents risk filter -->
+  - [x] audit CSV exports real durable events. <!-- auditService.test.ts exportAuditCsv from durable rows, escaping, no details -->
+
+<!-- NOTE: appendAuditEvent (auditService) is durable-only; recordAudit (auditSink) does Redux live-tail + durable put. -->
+
 
 ### 3.2 Remove Fake Audit Seeding
 
-- [ ] Remove fake audit seeding from Audit screen.
-- [ ] Replace with empty state.
+- [x] Remove fake audit seeding from Audit screen. <!-- AuditScreen.tsx reads db.audit_events via useLiveQuery only; no seed path. db.ts populate() seeds ONLY app_settings.schemaVersion — never audit rows. Verified by Explore against source. -->
+- [x] Replace with empty state. <!-- AuditScreen shows "No audit events." when the durable table is empty -->
 - [ ] If demo data is desired:
   - [ ] gate behind explicit demo mode;
-  - [ ] mark records as demo;
+  - [ ] mark records as demo; <!-- AuditEventRow.demo flag + buildAuditRow honor it, but no demo seeding path is wired (intentionally unused) -->
   - [ ] show demo banner.
 - [ ] Tests:
-  - [ ] empty DB shows empty audit state;
-  - [ ] fake audit is not inserted in default mode;
-  - [ ] demo mode marks seeded events as demo.
+  - [x] empty DB shows empty audit state; <!-- AuditScreen.test.tsx "shows an empty state when there are no events" -->
+  - [ ] fake audit is not inserted in default mode; <!-- partial: db.test.ts asserts only schemaVersion is seeded; no explicit "audit_events empty after boot" assertion yet -->
+  - [ ] demo mode marks seeded events as demo. <!-- not implemented: no demo audit seeding exists to mark -->
+
+<!-- 3.2 status: the dishonesty risk (fake seeded audit) does not exist in source — the screen was built clean. Demo-mode subitems are deliberately unimplemented; mark this fully resolved only if demo seeding is ever added. -->
+
 
 ### 3.3 Wire Audit Events Across App
 
 - [ ] Append audit events for:
-  - [ ] runtime loaded;
-  - [ ] runtime failed;
-  - [ ] fallback runtime used;
-  - [ ] provider test success/failure;
-  - [ ] LLM request start/success/failure;
-  - [ ] effect emitted/resolved/failed;
-  - [ ] tool proposed/approved/rejected/edited;
-  - [ ] memory created/updated/deleted;
-  - [ ] skill installed/enabled/disabled/import failed;
-  - [ ] secret unlocked/locked/deleted;
-  - [ ] backup export/import success/failure;
-  - [ ] model download/load/delete success/failure.
-- [ ] Ensure no raw secrets or large content bodies are recorded.
+  - [x] runtime loaded; <!-- main.tsx:119 'runtime.loaded' -->
+  - [x] runtime failed; <!-- main.tsx:142 'runtime.load_failed' -->
+  - [x] fallback runtime used; <!-- main.tsx:131 'runtime.reference_fallback_used' -->
+  - [x] provider test success/failure; <!-- ModelsScreen.tsx handleTest: 'provider.test_succeeded' / 'provider.test_failed' (incl. unresolvable provider); ModelsScreen.test.tsx durable-audit tests -->
+  - [x] LLM request start/success/failure; <!-- referenceRuntime.ts 'llm_request_sent'/'llm_response_received'/'llm_request_failed'; llmRunner.ts 'provider.request_failed' -->
+  - [ ] effect emitted/resolved/failed; <!-- partial: audit_append effect routes durably (effectExecutor); generic effect lifecycle events not yet wired — tied to effect-port contract (Phase 1.2, blocked) -->
+  - [ ] tool proposed/approved/rejected/edited; <!-- not wired; depends on tool effect ports (Phase 7.4, contract-blocked) -->
+  - [ ] memory created/updated/deleted; <!-- not wired in app code (memory_created appears only as a test fixture) -->
+  - [ ] skill installed/enabled/disabled/import failed; <!-- partial: skillManager.ts 'skill_import_failed' + skillRunner.ts 'skill.permission_denied'; install/enable/disable not wired -->
+  - [ ] secret unlocked/locked/deleted; <!-- not wired -->
+  - [ ] backup export/import success/failure; <!-- partial: backupService.ts 'backup.exported'/'backup.export_failed'; import path not wired -->
+  - [ ] model download/load/delete success/failure; <!-- not wired (wllama model manager — Phase 8) -->
+- [x] Ensure no raw secrets or large content bodies are recorded. <!-- redactDetails() in auditService.ts; provider/runtime audit summaries carry ids + verdicts only, never keys or message bodies; guardrail in ModelsScreen.test asserts no 'sk-' in the row -->
+
+<!-- 3.3 status: core runtime/provider/LLM events wired + secret-safe. Remaining items (effect/tool/memory/skill-lifecycle/secret/backup-import/model) are partial or blocked on the effect-port contract (Phase 1.2/7.4) and Phase 8 model manager — wire incrementally as those land. -->
+
 
 ## Phase 4 — Runtime Snapshot Persistence
 

@@ -17,6 +17,7 @@ import {
   setActiveProviderId,
 } from '../providers/providerProfiles.ts';
 import { appConfig } from '../config/appConfig.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 import { db } from '../db/db.ts';
 import type { ProviderProfileRow } from '../db/types.ts';
 import { Button } from '../components/ui/Button.tsx';
@@ -113,6 +114,16 @@ function ProviderCard({
         dispatch(
           providerHealthSet({ providerId: profile.id, health: 'unreachable' }),
         );
+        // A test the user explicitly ran is a real event, even when it cannot
+        // resolve a provider — record the honest failure (no secrets, id only).
+        void recordAudit(db, dispatch, {
+          type: 'provider.test_failed',
+          summary: `Provider test for ${profile.label} could not run (${resolved.reason})`,
+          source: 'provider',
+          risk: 'low',
+          status: 'failure',
+          providerId: profile.id,
+        });
         return;
       }
       // Use a stored key if the vault is unlocked; an unauthenticated health
@@ -124,7 +135,18 @@ function ProviderCard({
           : undefined;
       const result = await resolved.provider.checkHealth(callOptions);
       dispatch(providerHealthSet({ providerId: profile.id, health: result }));
-      if (result === 'connected') {
+      const connected = result === 'connected';
+      // Audit the real outcome of a user-initiated provider test. The summary
+      // carries only the provider id and the health verdict — never the key.
+      void recordAudit(db, dispatch, {
+        type: connected ? 'provider.test_succeeded' : 'provider.test_failed',
+        summary: `Provider test for ${profile.label}: ${result}`,
+        source: 'provider',
+        risk: connected ? 'info' : 'low',
+        status: connected ? 'success' : 'failure',
+        providerId: profile.id,
+      });
+      if (connected) {
         dispatch(
           activeProviderSet({
             id: profile.id,

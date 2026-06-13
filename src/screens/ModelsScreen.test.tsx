@@ -127,6 +127,12 @@ describe('ModelsScreen', () => {
       expect(rows).toHaveLength(1);
       expect(rows[0]?.status).toBe('failure');
     });
+
+    // The failure must also be VISIBLE, not just audited: the provider's health
+    // badge reflects the CORS-class failure (cors_error -> "CORS issue").
+    expect((await screen.findAllByText('CORS issue')).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it('keys llama-server health by its provider id, not its kind', async () => {

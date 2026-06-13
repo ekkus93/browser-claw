@@ -556,7 +556,7 @@
 ### 11.3 Add Integration Tests
 
 - [ ] Onboarding -> provider setup -> chat.
-- [ ] Provider failure -> visible error -> audit failure.
+- [x] Provider failure -> visible error -> audit failure. <!-- ModelsScreen.test.tsx "writes a failure audit event when a provider test fails": a thrown fetch (CORS-class) on the OpenAI Test -> a durable provider.test_failed audit (status failure) AND a visible health badge "CORS issue" (cors_error) on the provider card/sidebar. Both the visible error and the audit failure are asserted. -->
 - [ ] Memory write approval -> memory persisted -> audit persisted.
 - [x] Backup export -> import preview -> restore. <!-- StorageScreen.test.tsx "imports a backup file: shows a preview, then restore writes it back": builds a real backup file (serializeBackup(exportBackup(db))), uploads it via the file input, asserts the "Restore backup?" preview Dialog appears (no silent restore), wipes the db, clicks Restore, and asserts the "Backup restored" toast + the memory is re-created. Export path also covered by "exports a backup over Dexie". -->
 - [ ] Skill import -> permission review -> enable -> audit.

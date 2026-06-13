@@ -430,13 +430,13 @@
 - [x] Handle quota failure during download. <!-- the preflight is the primary guard; if the engine still hits a quota error mid-download (e.g. OPFS) it's caught and audited as model.download_failed with status 'error' (existing behavior). -->
 - [ ] Avoid corrupt cache metadata on failed download.
 - [ ] Delete cache removes actual cached data and metadata.
-- [ ] Load/unload status must reflect real engine state.
+- [x] Load/unload status must reflect real engine state. <!-- modelManager.remove() now reconciles the models slice with the engine: it captures engine.loadedModelId()===model.id BEFORE deleteCache (which unloads), and if the deleted model was the loaded one it dispatches activeModelSet(null) so the UI (top-bar label, Settings, health) stops claiming a model is active that the engine no longer has loaded. Previously remove() only cleared the downloads entry, leaving a stale active selection. -->
 - [ ] Tests:
   - [x] quota preflight blocks too-large model; <!-- wllama.test.ts: "blocks a download that would exceed the storage quota" injects estimate()->{used:0,quota:1024}, downloads a ~105MB model, asserts it rejects InsufficientStorageError, engine.download is never called (spy), status is 'error', and a model.download_blocked failure audit lands; paired with "allows a download when the quota is sufficient" (large quota -> ready). -->
   - [ ] failed download does not mark model cached;
   - [ ] cancel updates state honestly;
   - [ ] delete cache removes cache record;
-  - [ ] loaded status requires actual loaded model.
+  - [x] loaded status requires actual loaded model. <!-- wllama.test.ts: "clears the active model when the loaded model is deleted" (engine.loadedModelId()===id -> remove clears activeModelId/Label) and "keeps the active model when a different model is deleted" (deleting a non-loaded model leaves the active selection intact). The slice's active selection now tracks the engine's real loaded id. -->
 
 ### 8.3 User Hugging Face Model Support
 

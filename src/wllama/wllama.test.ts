@@ -138,6 +138,37 @@ describe('modelManager', () => {
     expect(event?.modelId).toBe(model.id);
   });
 
+  it('clears the active model when the loaded model is deleted', async () => {
+    // Honest state: deleting the model the engine has loaded must stop the UI
+    // from reporting it as active.
+    const s = store();
+    const manager = createModelManager(
+      db,
+      s.dispatch,
+      fakeEngine({ loadedModelId: () => model.id }),
+    );
+    await manager.load(model);
+    expect(s.getState().models.activeModelId).toBe(model.id);
+
+    await manager.remove(model);
+    expect(s.getState().models.activeModelId).toBeNull();
+    expect(s.getState().models.activeModelLabel).toBeNull();
+  });
+
+  it('keeps the active model when a different model is deleted', async () => {
+    const s = store();
+    const other = MODEL_CATALOG[1]!;
+    const manager = createModelManager(
+      db,
+      s.dispatch,
+      fakeEngine({ loadedModelId: () => model.id }),
+    );
+    await manager.load(model);
+
+    await manager.remove(other);
+    expect(s.getState().models.activeModelId).toBe(model.id);
+  });
+
   it('audits load and delete operations', async () => {
     const s = store();
     const manager = createModelManager(db, s.dispatch, fakeEngine());

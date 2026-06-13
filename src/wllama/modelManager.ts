@@ -165,6 +165,9 @@ export function createModelManager(
     },
 
     async remove(model: CatalogModel): Promise<void> {
+      // Capture whether this is the runtime's actually-loaded model before the
+      // delete (deleteCache unloads it, clearing the engine's loaded id).
+      const wasLoaded = engine.loadedModelId() === model.id;
       try {
         await engine.deleteCache(model.id);
       } catch (error) {
@@ -178,6 +181,9 @@ export function createModelManager(
         throw error;
       }
       dispatch(modelDownloadRemoved(model.id));
+      // Keep the active-model selection honest: deleting the loaded model
+      // unloads it in the engine, so the UI must stop claiming it's active.
+      if (wasLoaded) dispatch(activeModelSet(null));
       audit(
         'model.deleted',
         `Deleted local model ${model.name}`,

@@ -13,6 +13,14 @@ export type RuntimeStatus = 'initializing' | 'ready' | 'busy' | 'error';
  */
 export type RuntimeMode = 'wasm' | 'reference';
 
+/**
+ * A non-fatal problem restoring the persisted session snapshot on boot:
+ * `incompatible` = the snapshot was from an incompatible build and was
+ * discarded; `restore_failed` = it could not be read. Either way the app starts
+ * fresh, but the user is told rather than silently losing their session.
+ */
+export type SnapshotRestoreIssue = 'incompatible' | 'restore_failed';
+
 export interface RuntimeState {
   status: RuntimeStatus;
   /** Set once a runtime is loaded; null while initializing or after a failure. */
@@ -20,6 +28,8 @@ export interface RuntimeState {
   message: string | null;
   /** A fatal boot failure: no runtime is available, so the app blocks. */
   fatal: boolean;
+  /** A snapshot restore problem to surface until the user dismisses it. */
+  snapshotIssue: SnapshotRestoreIssue | null;
 }
 
 const initialState: RuntimeState = {
@@ -27,6 +37,7 @@ const initialState: RuntimeState = {
   mode: null,
   message: null,
   fatal: false,
+  snapshotIssue: null,
 };
 
 const runtimeSlice = createSlice({
@@ -65,6 +76,21 @@ const runtimeSlice = createSlice({
       state.mode = null;
       state.message = null;
       state.fatal = false;
+      state.snapshotIssue = null;
+    },
+    /**
+     * Flag a non-fatal snapshot restore problem. Dispatched at boot before
+     * `runtimeLoaded`, which deliberately does not clear it, so the warning
+     * survives a successful (fresh) runtime load until the user dismisses it.
+     */
+    snapshotRestoreWarned(
+      state,
+      action: PayloadAction<SnapshotRestoreIssue>,
+    ) {
+      state.snapshotIssue = action.payload;
+    },
+    snapshotWarningDismissed(state) {
+      state.snapshotIssue = null;
     },
   },
 });
@@ -76,5 +102,7 @@ export const {
   runtimeErrored,
   runtimeFailed,
   runtimeReset,
+  snapshotRestoreWarned,
+  snapshotWarningDismissed,
 } = runtimeSlice.actions;
 export default runtimeSlice.reducer;

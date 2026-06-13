@@ -2,6 +2,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { AppShell } from './components/shell/AppShell.tsx';
 import { RightInspectorPanel } from './components/shell/RightInspectorPanel.tsx';
 import { SafetyOverrideBanner } from './components/shell/SafetyOverrideBanner.tsx';
+import { SnapshotRestoreBanner } from './components/shell/SnapshotRestoreBanner.tsx';
 import { RuntimeBlockedScreen } from './components/shell/RuntimeBlockedScreen.tsx';
 import { useAppSelector } from './store/hooks.ts';
 import { APP_VERSION } from './lib/appMeta.ts';
@@ -47,6 +48,7 @@ export default function AppLayout() {
       sidebar={{ footer: { status: runtimeStatus, version: APP_VERSION } }}
     >
       <SafetyOverrideBanner />
+      <SnapshotRestoreBanner />
       <Outlet />
     </AppShell>
   );

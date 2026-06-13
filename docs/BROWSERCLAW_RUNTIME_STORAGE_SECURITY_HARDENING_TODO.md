@@ -208,7 +208,7 @@
   - [x] before unload when possible. <!-- main.tsx 'pagehide' listener -> host.flushSnapshot() -->
 - [x] Add snapshot compatibility check. <!-- SNAPSHOT_SCHEMA_VERSION (referenceRuntime.ts) stamped on every write (runtimeHost.saveSnapshot + effectExecutor); loadLatestSnapshot gates on version and discards mismatches -->
 - [x] Add corrupted snapshot handling. <!-- main.tsx withSnapshotRestore() try/catch -> start fresh + audit; loadLatestSnapshot drops incompatible/unversioned rows so they can't retry forever -->
-- [ ] Add visible restore warning if snapshot incompatible/corrupted. <!-- TODO next: incompatible/restore_failed are audited + console-logged but not surfaced in the UI yet (no toast/banner) -->
+- [x] Add visible restore warning if snapshot incompatible/corrupted. <!-- runtimeSlice.snapshotIssue ('incompatible'|'restore_failed') set at boot (main.tsx) before runtimeLoaded (which deliberately doesn't clear it); SnapshotRestoreBanner (dismissible, role=alert) rendered in AppLayout; runtimeReset/dismiss clear it -->
 - [ ] Add audit events:
   - [ ] snapshot saved; <!-- intentionally omitted: a per-turn save audit would spam the log; revisit if a discrete save signal is wanted -->
   - [x] snapshot restore success; <!-- main.tsx 'runtime.snapshot_restored' -->
@@ -219,7 +219,7 @@
   - [x] corrupted snapshot does not crash silently; <!-- runtimeHost.test.ts discards incompatible + pre-versioning snapshots; withSnapshotRestore catches deserialize throws -->
   - [x] incompatible snapshot is audited. <!-- main.tsx emits 'runtime.snapshot_incompatible'; runtimeHost.test.ts asserts the load reports 'incompatible' + drops the row -->
 
-<!-- Phase 4 status: core save/restore + compatibility gate + corruption handling + audit all wired. Remaining: a VISIBLE (UI) restore warning, and per-effect/idle/error save triggers (blocked on the effect-port contract, Phase 1.2). -->
+<!-- Phase 4 status: core save/restore + compatibility gate + corruption handling + audit + VISIBLE restore warning all wired. Remaining: per-effect/idle/error save triggers (blocked on the effect-port contract, Phase 1.2) and the deliberately-omitted per-turn 'snapshot_saved' audit. -->
 
 
 ## Phase 5 — Storage Effects and Memory Hardening

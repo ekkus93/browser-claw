@@ -6,6 +6,8 @@ import runtimeReducer, {
   runtimeErrored,
   runtimeFailed,
   runtimeReset,
+  snapshotRestoreWarned,
+  snapshotWarningDismissed,
 } from './runtimeSlice.ts';
 
 describe('runtimeSlice', () => {
@@ -16,6 +18,7 @@ describe('runtimeSlice', () => {
       mode: null,
       message: null,
       fatal: false,
+      snapshotIssue: null,
     });
   });
 
@@ -26,6 +29,7 @@ describe('runtimeSlice', () => {
       mode: 'wasm',
       message: null,
       fatal: false,
+      snapshotIssue: null,
     });
 
     const ref = runtimeReducer(undefined, runtimeLoaded({ mode: 'reference' }));
@@ -51,6 +55,7 @@ describe('runtimeSlice', () => {
       mode: null,
       message: null,
       fatal: false,
+      snapshotIssue: null,
     });
   });
 
@@ -62,6 +67,32 @@ describe('runtimeSlice', () => {
       mode: null,
       message: 'WASM failed to load',
       fatal: true,
+      snapshotIssue: null,
     });
+  });
+
+  it('flags a snapshot restore issue and survives a later runtime load', () => {
+    // The boot sequence warns BEFORE the (fresh) runtime loads, so a successful
+    // load must not wipe the warning — the user still needs to see it.
+    let state = runtimeReducer(undefined, snapshotRestoreWarned('incompatible'));
+    expect(state.snapshotIssue).toBe('incompatible');
+    state = runtimeReducer(state, runtimeLoaded({ mode: 'wasm' }));
+    expect(state.snapshotIssue).toBe('incompatible');
+  });
+
+  it('clears the snapshot issue on dismiss and on reset', () => {
+    let state = runtimeReducer(
+      undefined,
+      snapshotRestoreWarned('restore_failed'),
+    );
+    expect(state.snapshotIssue).toBe('restore_failed');
+    state = runtimeReducer(state, snapshotWarningDismissed());
+    expect(state.snapshotIssue).toBeNull();
+
+    const reset = runtimeReducer(
+      runtimeReducer(undefined, snapshotRestoreWarned('incompatible')),
+      runtimeReset(),
+    );
+    expect(reset.snapshotIssue).toBeNull();
   });
 });

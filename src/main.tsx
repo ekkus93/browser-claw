@@ -31,7 +31,11 @@ import { resolveApiKey } from './providers/providerKey.ts';
 import { secretVault } from './secrets/vault.ts';
 import { activeProviderSet } from './store/slices/providersSlice.ts';
 import { appConfig } from './config/appConfig.ts';
-import { runtimeLoaded, runtimeFailed } from './store/slices/runtimeSlice.ts';
+import {
+  runtimeLoaded,
+  runtimeFailed,
+  snapshotRestoreWarned,
+} from './store/slices/runtimeSlice.ts';
 import { recordAudit } from './audit/auditSink.ts';
 import type { AuditRiskLevel, AuditStatus } from './db/types.ts';
 
@@ -85,6 +89,9 @@ function withSnapshotRestore<T extends ClawRuntimePort>(
         'medium',
         'failure',
       );
+      // Surface a visible, dismissible warning so the user knows their previous
+      // session was dropped rather than silently lost.
+      store.dispatch(snapshotRestoreWarned('restore_failed'));
       return create(undefined);
     }
   };
@@ -119,6 +126,8 @@ async function bootRuntime(): Promise<void> {
       'medium',
       'failure',
     );
+    // Tell the user their previous session was discarded (not silently lost).
+    store.dispatch(snapshotRestoreWarned('incompatible'));
   }
   const snapshot = load.status === 'ok' ? load.snapshot : undefined;
   const { port } = await loadRuntimePort(

@@ -514,24 +514,24 @@
   - [ ] mark it as coming later.
 - [ ] Remove or gate fake/demo UI data.
 - [ ] Add empty states for:
-  - [ ] no providers;
-  - [ ] no memories;
-  - [ ] no audit events;
-  - [ ] no skills;
-  - [ ] no backups;
-  - [ ] no downloaded models.
+  - [x] no providers; <!-- N/A-by-design: ModelsScreen merges DEFAULT_PROVIDER_PROFILES (mergeProviderProfiles), so the provider list is never empty — the honest state is the always-present default cards; an empty-state message would be unreachable dead UI. -->
+  - [x] no memories; <!-- MemoriesScreen EmptyState "No memories yet." (MemoriesScreen.tsx); tested MemoriesScreen.test.tsx "a fresh non-demo DB shows the empty state". Sidebar "Recently used"/"Retrieval history" also now show honest empty messages ("No memories used yet."/"No retrievals yet.") instead of blank boxes, tested in the same file. -->
+  - [x] no audit events; <!-- AuditScreen renders "No audit events." row; tested AuditScreen.test.tsx. -->
+  - [x] no skills; <!-- SkillsScreen renders "No skills installed." when db.skills is empty (rarely hit since bundled skills auto-seed). -->
+  - [x] no backups; <!-- StorageScreen renders "No backups yet."; tested StorageScreen.test.tsx. -->
+  - [x] no downloaded models. <!-- ModelsScreen browser-local table always lists the catalog with an honest per-row status ("Not downloaded" / "downloading N%" / "ready") and the downloads panel shows "No downloads in progress." (asserted in ModelsScreen.test.tsx) — so the not-downloaded state is explicit, not silent. -->
 - [ ] Add error states for:
-  - [ ] runtime failed;
-  - [ ] storage unavailable;
-  - [ ] provider missing;
-  - [ ] secret locked;
-  - [ ] model unavailable;
-  - [ ] backup import failed;
-  - [ ] skill import failed.
+  - [x] runtime failed; <!-- AppLayout runtimeFatal -> RuntimeBlockedScreen (ErrorState "Runtime unavailable" + Reload). -->
+  - [ ] storage unavailable; <!-- still missing: StorageScreen has no explicit error UI if the estimate/query fails. -->
+  - [x] provider missing; <!-- ChatScreen EmptyState "No provider configured" with an action link to /models when !isProviderConfigured. -->
+  - [x] secret locked; <!-- SecurityScreen shows a Locked badge + unlock/setup form gated on state.secrets.vaultLocked. -->
+  - [ ] model unavailable; <!-- partial: failed download/load surfaces a danger toast + audited model.*_failed + an 'error' row status, but there's no persistent per-model error/recovery affordance in the table. -->
+  - [x] backup import failed; <!-- StorageScreen surfaces a danger toast "Import failed" on parse/validate failure (validateBackup rejection incl. raw-secret refusal). -->
+  - [x] skill import failed; <!-- SkillsScreen danger toast "Import failed" + durable skill_import_failed audit. -->
 - [ ] Tests:
   - [ ] no-op buttons are absent/disabled;
-  - [ ] empty states render honestly;
-  - [ ] error states render visibly.
+  - [x] empty states render honestly; <!-- MemoriesScreen.test.tsx (main "No memories yet." + sidebar "No memories used yet."/"No retrievals yet."), AuditScreen.test.tsx (no audit events), StorageScreen.test.tsx (no backups yet). -->
+  - [ ] error states render visibly. <!-- partially covered (runtime/provider/secret/backup/skill); left unticked until storage-unavailable + model-unavailable error states exist + are tested. -->
 
 ## Phase 11 — QA and Test Hardening
 

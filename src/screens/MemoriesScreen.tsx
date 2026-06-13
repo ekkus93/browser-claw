@@ -95,6 +95,13 @@ export default function MemoriesScreen() {
   }
 
   const pinnedCount = memories.filter((m) => m.pinned).length;
+  // Memories that have actually been retrieved into a chat (drives the two
+  // sidebar lists). Kept honest: when nothing has been used yet the lists show
+  // an explicit empty message instead of a blank, ambiguous box.
+  const usedMemories = memories.filter((m) => m.lastUsedAt != null);
+  const recentlyRetrieved = [...usedMemories].sort(
+    (a, b) => (b.lastUsedAt ?? 0) - (a.lastUsedAt ?? 0),
+  );
 
   return (
     <div className="overflow-y-auto">
@@ -356,13 +363,15 @@ export default function MemoriesScreen() {
               Recently used
             </h2>
             <ul className="flex flex-col gap-1 text-sm text-muted">
-              {memories
-                .filter((m) => m.lastUsedAt != null)
-                .map((m) => (
+              {usedMemories.length === 0 ? (
+                <li className="text-muted-subtle">No memories used yet.</li>
+              ) : (
+                usedMemories.map((m) => (
                   <li key={m.id} className="truncate">
                     {m.title}
                   </li>
-                ))}
+                ))
+              )}
             </ul>
           </div>
 
@@ -371,10 +380,10 @@ export default function MemoriesScreen() {
               Retrieval history
             </h2>
             <ul className="flex flex-col gap-1.5 text-sm">
-              {[...memories]
-                .filter((m) => m.lastUsedAt != null)
-                .sort((a, b) => (b.lastUsedAt ?? 0) - (a.lastUsedAt ?? 0))
-                .map((m) => (
+              {recentlyRetrieved.length === 0 ? (
+                <li className="text-muted-subtle">No retrievals yet.</li>
+              ) : (
+                recentlyRetrieved.map((m) => (
                   <li
                     key={m.id}
                     className="flex items-center justify-between gap-2"
@@ -384,7 +393,8 @@ export default function MemoriesScreen() {
                       #{m.lastUsedAt}
                     </span>
                   </li>
-                ))}
+                ))
+              )}
             </ul>
           </div>
         </aside>

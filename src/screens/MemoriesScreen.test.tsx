@@ -44,6 +44,26 @@ describe('MemoriesScreen', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('shows honest sidebar empty states when no memory has been used', async () => {
+    // Memories exist but none have been retrieved into a chat (no lastUsedAt):
+    // the "Recently used" / "Retrieval history" boxes must say so, not render a
+    // blank, ambiguous panel.
+    await db.memories.clear();
+    await db.memories.bulkPut(
+      SAMPLE_MEMORIES.map((m) => {
+        const copy = { ...m };
+        delete copy.lastUsedAt;
+        return copy;
+      }),
+    );
+    renderMemories();
+
+    expect(
+      await screen.findByText('No memories used yet.'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('No retrievals yet.')).toBeInTheDocument();
+  });
+
   it('lists memories, then filters by search', async () => {
     const user = userEvent.setup();
     renderMemories();

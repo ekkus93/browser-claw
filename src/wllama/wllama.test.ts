@@ -1,8 +1,11 @@
 import 'fake-indexeddb/auto';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import modelsReducer from '../store/slices/modelsSlice.ts';
-import { createModelManager } from './modelManager.ts';
+import {
+  createModelManager,
+  InsufficientStorageError,
+} from './modelManager.ts';
 import { isWllamaSupported, type WllamaEngine } from './engine.ts';
 import { createWllamaProvider } from '../providers/wllamaProvider.ts';
 import { MODEL_CATALOG } from './catalog.ts';
@@ -39,6 +42,43 @@ describe('modelManager', () => {
   it('downloads with progress and marks the model ready', async () => {
     const s = store();
     await createModelManager(db, s.dispatch, fakeEngine()).download(model);
+    expect(s.getState().models.downloads[model.id]).toEqual({
+      status: 'ready',
+      progress: 100,
+    });
+  });
+
+  it('blocks a download that would exceed the storage quota', async () => {
+    // Fail closed: a model far larger than the remaining quota must never start
+    // downloading — it's refused up front, marked error, and audited.
+    const s = store();
+    const downloadSpy = vi.fn(() => Promise.resolve());
+    const manager = createModelManager(
+      db,
+      s.dispatch,
+      fakeEngine({ download: downloadSpy }),
+      () => Promise.resolve({ usedBytes: 0, quotaBytes: 1024 }),
+    );
+
+    await expect(manager.download(model)).rejects.toBeInstanceOf(
+      InsufficientStorageError,
+    );
+    expect(downloadSpy).not.toHaveBeenCalled();
+    expect(s.getState().models.downloads[model.id]?.status).toBe('error');
+
+    const events = await queryAuditEvents(db, { source: 'model' });
+    const blocked = events.find((e) => e.type === 'model.download_blocked');
+    expect(blocked?.status).toBe('failure');
+    expect(blocked?.modelId).toBe(model.id);
+  });
+
+  it('allows a download when the quota is sufficient', async () => {
+    const s = store();
+    const manager = createModelManager(db, s.dispatch, fakeEngine(), () =>
+      Promise.resolve({ usedBytes: 0, quotaBytes: 10 * 1024 * 1024 * 1024 }),
+    );
+
+    await manager.download(model);
     expect(s.getState().models.downloads[model.id]).toEqual({
       status: 'ready',
       progress: 100,

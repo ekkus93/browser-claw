@@ -423,16 +423,16 @@
 ### 8.2 Model Download Manager
 
 - [ ] Implement real model download queue state.
-- [ ] Implement accurate progress.
+- [x] Implement accurate progress. <!-- modelCache.ts fetchGguf streams the response and reports real loaded/total from the content-length header; modelManager.download converts to a clamped 0-100% (Math.min(100, round(loaded/total*100))). Progress is real network bytes, not faked. -->
 - [ ] Implement cancel.
 - [ ] Implement pause only if truly supported; otherwise disable UI.
-- [ ] Check storage quota before download.
-- [ ] Handle quota failure during download.
+- [x] Check storage quota before download. <!-- modelManager.download now runs a quota preflight via an injectable estimate() (defaults to estimateStorage / navigator.storage): if quotaBytes>0 && usedBytes+model.sizeBytes>quotaBytes it dispatches status 'error', audits model.download_blocked (failure), and throws InsufficientStorageError BEFORE calling engine.download. Zero quota = estimate unavailable -> proceed (can't assess). CatalogModel gained a numeric sizeBytes. Resolves the prior hollow affordance (quota was displayed but never enforced). -->
+- [x] Handle quota failure during download. <!-- the preflight is the primary guard; if the engine still hits a quota error mid-download (e.g. OPFS) it's caught and audited as model.download_failed with status 'error' (existing behavior). -->
 - [ ] Avoid corrupt cache metadata on failed download.
 - [ ] Delete cache removes actual cached data and metadata.
 - [ ] Load/unload status must reflect real engine state.
 - [ ] Tests:
-  - [ ] quota preflight blocks too-large model;
+  - [x] quota preflight blocks too-large model; <!-- wllama.test.ts: "blocks a download that would exceed the storage quota" injects estimate()->{used:0,quota:1024}, downloads a ~105MB model, asserts it rejects InsufficientStorageError, engine.download is never called (spy), status is 'error', and a model.download_blocked failure audit lands; paired with "allows a download when the quota is sufficient" (large quota -> ready). -->
   - [ ] failed download does not mark model cached;
   - [ ] cancel updates state honestly;
   - [ ] delete cache removes cache record;

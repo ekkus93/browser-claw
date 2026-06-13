@@ -9,6 +9,25 @@ import { recordAudit } from '../audit/auditSink.ts';
 import type { AuditRiskLevel, AuditStatus } from '../db/types.ts';
 import type { CatalogModel } from './catalog.ts';
 import type { WllamaEngine } from './engine.ts';
+import {
+  estimateStorage,
+  type StorageUsage,
+} from '../services/storageService.ts';
+
+/**
+ * Thrown by the download preflight when the model wouldn't fit in the remaining
+ * storage quota. The app fails closed: we never start a multi-hundred-MB
+ * download that can't complete (TODO Phase 8.2).
+ */
+export class InsufficientStorageError extends Error {
+  constructor(model: CatalogModel) {
+    super(
+      `Not enough storage to download ${model.name} (${model.sizeLabel}). ` +
+        'Free up space or clear unused model caches, then try again.',
+    );
+    this.name = 'InsufficientStorageError';
+  }
+}
 
 /**
  * Drives the wllama engine and reflects download/load/delete progress into the
@@ -23,6 +42,9 @@ export function createModelManager(
   db: BrowserClawDB,
   dispatch: AppDispatch,
   engine: WllamaEngine,
+  // Injectable so the quota preflight is unit-testable without a real browser;
+  // defaults to the live navigator.storage estimate.
+  estimate: () => Promise<StorageUsage> = estimateStorage,
 ) {
   function audit(
     type: string,
@@ -43,6 +65,30 @@ export function createModelManager(
 
   return {
     async download(model: CatalogModel): Promise<void> {
+      // Quota preflight: refuse a download that can't fit in the remaining
+      // quota instead of starting it and surprising the user with a failure
+      // partway through. A zero quota means the estimate is unavailable (e.g.
+      // jsdom / privacy mode), so we can't assess it — proceed and let the real
+      // download surface any error.
+      const { usedBytes, quotaBytes } = await estimate();
+      if (quotaBytes > 0 && usedBytes + model.sizeBytes > quotaBytes) {
+        dispatch(
+          modelDownloadUpdated({
+            modelId: model.id,
+            status: 'error',
+            progress: 0,
+          }),
+        );
+        audit(
+          'model.download_blocked',
+          `Blocked download of ${model.name}: not enough storage quota`,
+          'failure',
+          'low',
+          model.id,
+        );
+        throw new InsufficientStorageError(model);
+      }
+
       dispatch(
         modelDownloadUpdated({
           modelId: model.id,

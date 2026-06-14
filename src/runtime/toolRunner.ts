@@ -5,6 +5,7 @@ import { approvalRequested } from '../store/slices/approvalsSlice.ts';
 import type { SkillPermissions } from '../skills/skillTypes.ts';
 import type { Command, Effect } from './effectTypes.ts';
 import { normalizeApprovalRisk } from './effectExecutor.ts';
+import { runToolCall, type ToolContext } from '../tools/tools.ts';
 
 type ToolEffect = Extract<Effect, { type: 'tool_call_proposal' }>;
 
@@ -82,7 +83,92 @@ export function createToolEffectHandler(deps: ToolEffectDeps) {
         risk: normalizeApprovalRisk(effect.risk),
         summary: `Tool call: ${effect.name}`,
         payloadPreview: JSON.stringify(effect.args),
+        toolName: effect.name,
+        toolArgs: effect.args,
       }),
     );
   };
+}
+
+export interface ApprovedToolCall {
+  id: string;
+  status: 'approved' | 'rejected';
+  toolName?: string;
+  toolArgs?: unknown;
+}
+
+export interface RunApprovedToolDeps {
+  db: BrowserClawDB;
+  dispatch: AppDispatch;
+  submit: (command: Command) => Promise<void>;
+  /** Tool execution context (e.g. injectable fetch). Defaults to {}. */
+  ctx?: ToolContext;
+}
+
+/**
+ * Run (or decline) a tool call the user resolved on the approval card, then
+ * resolve the effect back into the runtime so it continues the turn. A
+ * rejection or a tool error resolves as a failure — the runtime never proceeds
+ * as if a declined/failed tool succeeded. Permission was already enforced when
+ * the call was queued (see createToolEffectHandler).
+ */
+export async function runApprovedToolCall(
+  deps: RunApprovedToolDeps,
+  approval: ApprovedToolCall,
+): Promise<void> {
+  const name = approval.toolName ?? '';
+  if (approval.status !== 'approved') {
+    void recordAudit(deps.db, deps.dispatch, {
+      type: 'tool.rejected',
+      summary: `Tool '${name}' rejected by the user`,
+      source: 'skill',
+      risk: 'low',
+      status: 'failure',
+      toolName: name,
+    });
+    await deps.submit({
+      type: 'resolve_effect',
+      id: approval.id,
+      result: { ok: false, error: { kind: 'user_rejected' } },
+    });
+    return;
+  }
+  const args =
+    typeof approval.toolArgs === 'object' && approval.toolArgs !== null
+      ? (approval.toolArgs as Record<string, unknown>)
+      : {};
+  try {
+    const output = await runToolCall(
+      { name, args },
+      { allowedTools: [name], ctx: deps.ctx ?? {} },
+    );
+    void recordAudit(deps.db, deps.dispatch, {
+      type: 'tool.executed',
+      summary: `Tool '${name}' executed`,
+      source: 'skill',
+      risk: 'info',
+      status: 'success',
+      toolName: name,
+    });
+    await deps.submit({
+      type: 'resolve_effect',
+      id: approval.id,
+      result: { ok: true, text: output },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    void recordAudit(deps.db, deps.dispatch, {
+      type: 'tool.failed',
+      summary: `Tool '${name}' failed: ${message}`,
+      source: 'skill',
+      risk: 'low',
+      status: 'failure',
+      toolName: name,
+    });
+    await deps.submit({
+      type: 'resolve_effect',
+      id: approval.id,
+      result: { ok: false, error: { kind: 'tool_failed', message } },
+    });
+  }
 }

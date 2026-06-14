@@ -4,7 +4,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import auditReducer from '../store/slices/auditSlice.ts';
 import approvalsReducer from '../store/slices/approvalsSlice.ts';
 import { BrowserClawDB } from '../db/db.ts';
-import { createToolEffectHandler } from './toolRunner.ts';
+import { createToolEffectHandler, runApprovedToolCall } from './toolRunner.ts';
 import type { Effect } from './effectTypes.ts';
 
 const db = new BrowserClawDB();
@@ -135,5 +135,88 @@ describe('createToolEffectHandler — permission enforcement (fail closed)', () 
     await handler(proposal('ghost', 'Page Reader'));
     await handler(proposal('', 'Page Reader'));
     expect(submit).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('runApprovedToolCall', () => {
+  it('runs an approved tool and resolves the effect with its output', async () => {
+    await db.open();
+    const { store, submit } = makeHandler();
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(new Response('<p>hello</p>')),
+    ) as unknown as typeof fetch;
+
+    await runApprovedToolCall(
+      { db, dispatch: store.dispatch, submit, ctx: { fetchImpl } },
+      {
+        id: 'eff-3',
+        status: 'approved',
+        toolName: 'Page Reader',
+        toolArgs: { url: 'https://example.com' },
+      },
+    );
+
+    expect(submit).toHaveBeenCalledWith({
+      type: 'resolve_effect',
+      id: 'eff-3',
+      result: { ok: true, text: 'hello' },
+    });
+    const audited = await db.audit_events
+      .where('type')
+      .equals('tool.executed')
+      .toArray();
+    expect(audited[0]?.status).toBe('success');
+  });
+
+  it('resolves a rejected tool call as a failure (never runs it)', async () => {
+    await db.open();
+    const { store, submit } = makeHandler();
+    const fetchImpl = vi.fn() as unknown as typeof fetch;
+
+    await runApprovedToolCall(
+      { db, dispatch: store.dispatch, submit, ctx: { fetchImpl } },
+      {
+        id: 'eff-3',
+        status: 'rejected',
+        toolName: 'Page Reader',
+        toolArgs: {},
+      },
+    );
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(submit).toHaveBeenCalledWith({
+      type: 'resolve_effect',
+      id: 'eff-3',
+      result: { ok: false, error: { kind: 'user_rejected' } },
+    });
+  });
+
+  it('resolves a tool error as a failure and audits it', async () => {
+    await db.open();
+    const { store, submit } = makeHandler();
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(new Response('nope', { status: 500 })),
+    ) as unknown as typeof fetch;
+
+    await runApprovedToolCall(
+      { db, dispatch: store.dispatch, submit, ctx: { fetchImpl } },
+      {
+        id: 'eff-3',
+        status: 'approved',
+        toolName: 'Page Reader',
+        toolArgs: { url: 'https://example.com' },
+      },
+    );
+
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    const failed = await db.audit_events
+      .where('type')
+      .equals('tool.failed')
+      .toArray();
+    expect(failed[0]?.status).toBe('failure');
   });
 });

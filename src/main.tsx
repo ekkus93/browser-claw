@@ -228,7 +228,7 @@ async function bootRuntime(): Promise<void> {
       submit: (command) => host.submit(command),
     }),
   };
-  registerRuntimeListeners(startAppListening, host);
+  registerRuntimeListeners(startAppListening, host, { db });
 }
 
 bootRuntime().catch((error: unknown) => {

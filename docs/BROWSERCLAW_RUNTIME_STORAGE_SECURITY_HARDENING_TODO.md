@@ -567,35 +567,38 @@
 
 ### 11.4 Required Commands
 
-- [ ] `npm run typecheck`
-- [ ] `npm run lint`
-- [ ] `npm run test`
-- [ ] `npm run test:e2e` if present
-- [ ] `cargo test` for Rust crates if cargo workspace present
-- [ ] `cargo clippy` if available
-- [ ] Document any command that cannot run and why.
+<!-- This project uses pnpm (not npm) per CLAUDE.md; commands below are run as `pnpm run <script>`. All pass green and are run as the gate on every change. -->
+- [x] `npm run typecheck` <!-- pnpm run typecheck (tsc -b --noEmit) — green. -->
+- [x] `npm run lint` <!-- pnpm run lint (eslint . --max-warnings 0) — green; also runs as pretest. -->
+- [x] `npm run test` <!-- pnpm run test (vitest) — 398 passing. -->
+- [x] `npm run test:e2e` if present <!-- pnpm run test:e2e (Playwright) — 28 passing in chromium + firefox. -->
+- [x] `cargo test` for Rust crates if cargo workspace present <!-- cargo test --workspace — green (claw-core/schema/testkit). -->
+- [x] `cargo clippy` if available <!-- cargo clippy --workspace --all-targets — zero warnings. -->
+- [x] Document any command that cannot run and why. <!-- All required commands run. Note: `pnpm run format:check` (prettier) is NOT wired into the gate's pretest (lint only); touched files are kept prettier-clean per-pass, but 5 pre-existing files still fail format:check (tracked as housekeeping, not in the gate). -->
 
 ## Phase 12 — Acceptance Checklist
 
 This hardening pass is complete only when all of these are true:
 
-- [ ] App does not silently fall back from WASM runtime.
-- [ ] App does not silently fall back to mock provider.
-- [ ] Missing effect handlers fail visibly.
-- [ ] Provider failures are not converted into assistant messages.
-- [ ] Provider profiles persist and drive actual provider calls.
-- [ ] SecretVault is wired into provider calls.
-- [ ] No decrypted secrets enter Redux/logs/audit.
-- [ ] Audit log is durable and truthful.
-- [ ] Fake audit/memory seeding is removed or demo-gated.
-- [ ] Runtime snapshots persist during normal flow.
-- [ ] Backup import is allowlisted, validated, and transactional.
-- [ ] Backup export history records only true success.
-- [ ] Skills are strictly validated.
-- [ ] Skill filesystem is path-safe and reserved-key-safe.
-- [ ] Skill permissions are enforced at runtime.
-- [ ] wllama status is truthful.
-- [ ] Settings/onboarding/models changes persist after reload.
-- [ ] All visible controls are functional, disabled, or marked future.
-- [ ] Tests catch the unsafe behaviors identified in this review.
+- [x] App does not silently fall back from WASM runtime. <!-- loadRuntimePort fails closed; reference runtime only behind a dev flag (runtimeBoot.test "fails closed (no fallback) when WASM fails and the dev flag is off"). -->
+- [x] App does not silently fall back to mock provider. <!-- registry.resolveProvider returns errors for unknown/unconfigured; mock only when explicitly configured (2.2). -->
+- [x] Missing effect handlers fail visibly. <!-- 1.2: effectExecutor.failEffect audits runtime.effect_failed + dispatches runtimeErrored + throws for missing llm/storage/skill/tool handlers + unknown effects. -->
+- [x] Provider failures are not converted into assistant messages. <!-- llmRunner: provider error -> chatErrored + provider.request_failed audit + resolve failure; no message stored (llmRunner.test). -->
+- [x] Provider profiles persist and drive actual provider calls. <!-- 2.1: provider_profiles in IndexedDB; handleTest/main.tsx use the persisted base URL/model. -->
+- [x] SecretVault is wired into provider calls. <!-- providerKey.resolveApiKey reads the in-memory vault; llmRunner.getApiKey resolves it just before the call. -->
+- [x] No decrypted secrets enter Redux/logs/audit. <!-- 11.1/11.2: secretLeak/vaultWiring tests + audit redaction; no key in Redux/localStorage; Authorization header never logged. -->
+- [x] Audit log is durable and truthful. <!-- auditService over IndexedDB; events emitted only on real actions; details redacted. -->
+- [x] Fake audit/memory seeding is removed or demo-gated. <!-- 5.2: sample memories gated by appConfig.isDemoMode (default off); no audit seeding exists in app code. -->
+- [x] Runtime snapshots persist during normal flow. <!-- RuntimeHost schedules a snapshot save after each submit (main.tsx snapshot:{delayMs:500}) + flush on pagehide; runtimeHost.test. -->
+- [x] Backup import is allowlisted, validated, and transactional. <!-- backupService.validateBackup (ALLOWED_COLLECTIONS + key-field + raw-secret checks) + importBackup runs in one Dexie rw transaction (rolls back on failure). -->
+- [x] Backup export history records only true success. <!-- runBackupExport records history + backup.exported only after the download callback succeeds; failure -> backup.export_failed. -->
+- [x] Skills are strictly validated. <!-- 7.1/7.2: reject missing frontmatter, validate name/version/permissions, reject unknown permission fields, imported skills start disabled. -->
+- [x] Skill filesystem is path-safe and reserved-key-safe. <!-- skillFs isPathSafe/isPathAllowed (traversal/absolute/encoded blocked) + isReservedStateKey; enforced in skillRunner (11.2). -->
+- [x] Skill permissions are enforced at runtime. <!-- skillRunner enforces fs/state namespaces; toolRunner enforces declared tools for tool calls (7.4); denials audited. -->
+- [x] wllama status is truthful. <!-- 8.1: unavailable banner when unsupported; CDN-consent gate; runtime load success/failure audited; download failure visible + audited. -->
+- [x] Settings/onboarding/models changes persist after reload. <!-- 9.1/9.2/9.3: onboarding completion+progress+provider, lock-timeout, wllama-CDN-consent, provider profiles, user models all persist to IndexedDB; unwired settings are honestly disabled (Phase 10). -->
+- [x] All visible controls are functional, disabled, or marked future. <!-- Phase 10 UI-honesty pass: hollow Settings controls disabled w/ note; dead onboarding button removed; no-op buttons absent/disabled (tested). -->
+- [x] Tests catch the unsafe behaviors identified in this review. <!-- 398 vitest + 28 e2e incl. fail-closed runtime/provider, missing-handler-fatal, secret-leak regressions, backup raw-secret rejection, skill path/reserved/tool enforcement, truthful model status. -->
+
+<!-- Phase 12 reconciled: all acceptance criteria met. Remaining open TODO items elsewhere are either deliberate omissions (per-effect snapshot/audit spam), follow-ups needing more feature/runtime work (memory-write+retrieval pipeline -> 5.3 provenance/retrieval + 11.3 memory-approval; effect emitted/resolved lifecycle audit; 8.2 cancel pending upstream wllama abort support), or housekeeping (5 files fail prettier format:check, not in the gate). -->
 

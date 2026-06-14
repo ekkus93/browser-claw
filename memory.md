@@ -1148,3 +1148,9 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate GREEN: typecheck clean; pnpm test 408 (+7: 6 retrieveMemories + 1 llmRunner); e2e 28.
 - TODO ticks (Phase 5.3): "Implement retrieval history based on real retrieval events" DONE; "retrieval history records real retrieval" DONE; "last used at" note updated (now actually written).
 - Design note / future: ranking is keyword-overlap only (no embeddings/semantic search); pinned-first means many pinned memories could crowd out keyword matches (acceptable v1, documented). A WASM StorageSearch effect remains an optional future path if the runtime itself should decide what to retrieve.
+
+## 2026-06-14T20:52:19Z - Claude Opus 4.8 - Audit memory updated/deleted in MemoriesScreen (closes 3.3 memory line)
+- MemoriesScreen now audits its memory mutations: saveEdit -> memory.updated (source:user, "Memory edited: <title>"), togglePin -> memory.updated ("Memory pinned/unpinned: <title>"), remove -> memory.deleted (risk:low, captures title before delete). Imported recordAudit from auditSink.
+- This completes Phase 3.3 "memory created/updated/deleted": created (Remember tool), updated+deleted (this pass), plus memory.retrieved from the retrieval pass — every memory mutation now emits an audit event.
+- Tests: MemoriesScreen.test.tsx beforeEach now clears db.audit_events; extended the edit test to assert a memory.updated audit with the new title; added a delete test asserting memory.deleted (status success, summary contains the title). No central audit-type registry — 'type' is a free string.
+- Gate GREEN: typecheck clean; pnpm test 409 (+1); e2e 28.

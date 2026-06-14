@@ -13,6 +13,7 @@ import MemoriesScreen from './MemoriesScreen.tsx';
 beforeEach(async () => {
   await db.open();
   await db.memories.clear();
+  await db.audit_events.clear();
   await db.memories.bulkPut(SAMPLE_MEMORIES);
 });
 
@@ -137,5 +138,33 @@ describe('MemoriesScreen', () => {
         screen.getByRole('heading', { name: 'Rust/WASM (edited)' }),
       ).toBeInTheDocument(),
     );
+
+    // Editing a memory is a meaningful action — it must be audited.
+    await waitFor(async () => {
+      const updated = await db.audit_events
+        .where('type')
+        .equals('memory.updated')
+        .toArray();
+      expect(
+        updated.some((e) => e.summary.includes('Rust/WASM (edited)')),
+      ).toBe(true);
+    });
+  });
+
+  it('deletes the selected memory and audits memory.deleted', async () => {
+    const user = userEvent.setup();
+    renderMemories();
+    await screen.findByRole('button', { name: /Rust\/WASM architecture/ });
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+
+    await waitFor(async () => {
+      const deleted = await db.audit_events
+        .where('type')
+        .equals('memory.deleted')
+        .toArray();
+      expect(deleted[0]?.status).toBe('success');
+      expect(deleted[0]?.summary).toContain('Rust/WASM architecture');
+    });
   });
 });

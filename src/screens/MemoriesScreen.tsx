@@ -27,6 +27,7 @@ import { EmptyState } from '../components/ui/EmptyState.tsx';
 import { cn } from '../lib/cn.ts';
 import { appConfig } from '../config/appConfig.ts';
 import { SAMPLE_MEMORIES } from '../memories/sampleMemories.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 
 export default function MemoriesScreen() {
   const dispatch = useAppDispatch();
@@ -81,16 +82,39 @@ export default function MemoriesScreen() {
     filtered.find((memory) => memory.id === selectedMemoryId) ?? filtered[0];
 
   function togglePin(memory: MemoryRow) {
-    void db.memories.update(memory.id, { pinned: !memory.pinned });
+    const pinned = !memory.pinned;
+    void db.memories.update(memory.id, { pinned });
+    void recordAudit(db, dispatch, {
+      type: 'memory.updated',
+      summary: `Memory ${pinned ? 'pinned' : 'unpinned'}: ${memory.title}`,
+      source: 'user',
+      risk: 'info',
+      status: 'success',
+    });
   }
 
   function remove(id: string) {
+    const title = memories.find((memory) => memory.id === id)?.title ?? id;
     void db.memories.delete(id);
+    void recordAudit(db, dispatch, {
+      type: 'memory.deleted',
+      summary: `Memory deleted: ${title}`,
+      source: 'user',
+      risk: 'low',
+      status: 'success',
+    });
     if (selectedMemoryId === id) dispatch(selectedMemorySet(null));
   }
 
   function saveEdit(id: string, title: string, text: string) {
     void db.memories.update(id, { title, text });
+    void recordAudit(db, dispatch, {
+      type: 'memory.updated',
+      summary: `Memory edited: ${title}`,
+      source: 'user',
+      risk: 'info',
+      status: 'success',
+    });
     setEditing(false);
   }
 

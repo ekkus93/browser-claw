@@ -61,25 +61,39 @@ describe('executeEffect', () => {
     expect(durable[0]).toMatchObject({ source: 'runtime', risk: 'low' });
   });
 
-  it('routes tool_call_proposal into the approval queue', async () => {
-    const { store, ctx } = makeCtx();
+  it('routes tool_call_proposal to the injected tool port', async () => {
+    const tool = vi.fn();
+    const { ctx } = makeCtx({ tool });
     await executeEffect(
       {
         type: 'tool_call_proposal',
         id: 't1',
         skill_id: 'web-search',
-        name: 'writeFile',
-        args: { path: '/x' },
-        risk: 'high',
+        name: 'Page Reader',
+        args: { url: 'https://example.com' },
+        risk: 'medium',
       },
       ctx,
     );
-    expect(store.getState().approvals.queue[0]).toMatchObject({
-      id: 't1',
-      kind: 'tool_call',
-      risk: 'high',
-      status: 'pending',
-    });
+    expect(tool).toHaveBeenCalledOnce();
+  });
+
+  it('fails when the tool handler is missing', async () => {
+    const { store, ctx } = makeCtx(); // no tool port
+    await expect(
+      executeEffect(
+        {
+          type: 'tool_call_proposal',
+          id: 't1',
+          skill_id: 'web-search',
+          name: 'Page Reader',
+          args: {},
+          risk: 'medium',
+        },
+        ctx,
+      ),
+    ).rejects.toThrow(/tool/);
+    expect(store.getState().runtime.status).toBe('error');
   });
 
   it('persists runtime_snapshot_save to Dexie', async () => {

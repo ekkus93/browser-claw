@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -40,6 +40,9 @@ function renderOnboarding() {
 
 describe('OnboardingScreen', () => {
   afterEach(async () => {
+    // Unmount BEFORE clearing so a still-in-flight progress write can't land
+    // after the clear (the screen's alive-ref skips writes once unmounted).
+    cleanup();
     await db.app_settings.clear();
   });
 

@@ -4,10 +4,7 @@ import type { Effect } from './effectTypes.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { normalizeRiskLevel } from '../audit/auditService.ts';
 import { SNAPSHOT_SCHEMA_VERSION } from './referenceRuntime.ts';
-import {
-  approvalRequested,
-  type ApprovalRisk,
-} from '../store/slices/approvalsSlice.ts';
+import { type ApprovalRisk } from '../store/slices/approvalsSlice.ts';
 import { runtimeErrored } from '../store/slices/runtimeSlice.ts';
 
 /**
@@ -32,6 +29,9 @@ export interface EffectPorts {
       { type: 'skill_fs_read_text' | 'skill_state_get' | 'skill_state_put' }
     >,
   ): void | Promise<void>;
+  tool?(
+    effect: Extract<Effect, { type: 'tool_call_proposal' }>,
+  ): void | Promise<void>;
 }
 
 export interface EffectContext {
@@ -42,7 +42,7 @@ export interface EffectContext {
   ports?: EffectPorts;
 }
 
-function normalizeApprovalRisk(risk: string): ApprovalRisk {
+export function normalizeApprovalRisk(risk: string): ApprovalRisk {
   return risk === 'high' || risk === 'medium' ? risk : 'low';
 }
 
@@ -99,18 +99,16 @@ export async function executeEffect(
         snapshot: effect.snapshot,
       });
       return;
-    case 'tool_call_proposal':
-      ctx.dispatch(
-        approvalRequested({
-          id: effect.id,
-          kind: 'tool_call',
-          title: effect.name,
-          risk: normalizeApprovalRisk(effect.risk),
-          summary: `Tool call: ${effect.name}`,
-          payloadPreview: JSON.stringify(effect.args),
-        }),
-      );
+    case 'tool_call_proposal': {
+      // Routed to the tool port, which enforces skill permissions (fail closed)
+      // before queuing the call for inline approval (Phase 7.4).
+      const handler = ctx.ports?.tool;
+      if (!handler) {
+        return failEffect(ctx, effect.type, 'no tool handler is wired', now);
+      }
+      await handler(effect);
       return;
+    }
     case 'llm_request': {
       const handler = ctx.ports?.llmRequest;
       if (!handler) {

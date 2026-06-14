@@ -7,6 +7,10 @@ import type { LlmProvider, ChatMessage } from '../providers/types.ts';
 import { describeProviderError } from '../providers/errors.ts';
 import type { ApiKeyResolution } from '../providers/providerKey.ts';
 import { parseToolCall } from '../tools/tools.ts';
+import {
+  selectMemoriesForContext,
+  formatMemoryContext,
+} from '../memories/retrieveMemories.ts';
 
 export interface LlmRequestDeps {
   db: BrowserClawDB;
@@ -77,6 +81,44 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
     }
     const callOptions =
       keyResult.apiKey !== undefined ? { apiKey: keyResult.apiKey } : undefined;
+
+    // Surface relevant saved memories into the prompt as a system message. This
+    // runs only once the call is actually going out (the key resolved), so we
+    // never mark a memory used or audit a retrieval for a request that fails to
+    // launch. Sensitive memories are excluded by selectMemoriesForContext.
+    const lastUserText =
+      [...history].reverse().find((message) => message.role === 'user')
+        ?.content ?? effect.prompt;
+    const retrieved = selectMemoriesForContext(
+      await deps.db.memories.toArray(),
+      lastUserText,
+    );
+    if (retrieved.length > 0) {
+      messages.unshift({
+        role: 'system',
+        content: formatMemoryContext(retrieved),
+      });
+      const usedAt = Date.now();
+      await Promise.all(
+        retrieved.map((memory) =>
+          deps.db.memories.update(memory.id, { lastUsedAt: usedAt }),
+        ),
+      );
+      void recordAudit(deps.db, deps.dispatch, {
+        type: 'memory.retrieved',
+        summary: `Surfaced ${retrieved.length} ${
+          retrieved.length === 1 ? 'memory' : 'memories'
+        } into context`,
+        source: 'runtime',
+        risk: 'info',
+        status: 'success',
+        conversationId: effect.conversation_id,
+        details: {
+          memoryIds: retrieved.map((memory) => memory.id),
+          count: retrieved.length,
+        },
+      });
+    }
 
     let text: string;
     try {

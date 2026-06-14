@@ -273,12 +273,12 @@
   - [x] created by; <!-- already persisted on MemoryRow (Remember sets createdBy:'assistant'). -->
   - [x] skill/tool source; <!-- Remember persists MemoryRow.skillId (the skill that called it); toolRunner.test asserts it. -->
   - [x] created at; <!-- already persisted on MemoryRow -->
-  - [x] last used at. <!-- field persists; not yet *written* by a real retrieval (see below) -->
-- [ ] Implement retrieval history based on real retrieval events. <!-- BLOCKED: no memory-retrieval pipeline exists. lastUsedAt is never written by any real code path (grep confirms only demo seeds set it), so the "Recently used"/"Retrieval history" panels are correctly EMPTY in a normal build (honest-when-empty) and only show demo seed data in demo mode. Wiring real retrieval needs the runtime memory-read effect first. -->
+  - [x] last used at. <!-- now WRITTEN by a real retrieval: llmRunner stamps lastUsedAt on every memory it surfaces into a prompt (llmRunner.test "surfaces a relevant memory ... marks it used"). -->
+- [x] Implement retrieval history based on real retrieval events. <!-- Done TS-only in llmRunner (no Rust/WASM change): before each provider call, selectMemoriesForContext ranks saved memories by keyword overlap with the user's latest message (pinned always candidates; SENSITIVE memories never surfaced), the chosen rows are injected as a leading system message, each is stamped lastUsedAt=now, and a memory.retrieved audit (source:runtime, details:{memoryIds,count}) is recorded. The "Recently used"/"Retrieval history" panels now reflect real retrievals, not just demo seeds. Tested: retrieveMemories.test.ts (ranking + sensitive-exclusion + pinned + limit) and llmRunner.test "surfaces a relevant memory into the prompt, marks it used, and audits the retrieval". -->
 - [ ] Tests:
   - [x] each filter works; <!-- filterMemories.test.ts (unit, per-filter + AND) + MemoriesScreen.test.tsx (wired created-by filter + clear) -->
   - [x] provenance persists after reload; <!-- toolRunner.test "Remember persists a provenance-tagged memory": the saved MemoryRow has conversationId + skillId in IndexedDB (survives reload). -->
-  - [ ] retrieval history records real retrieval. <!-- blocked with retrieval pipeline above -->
+  - [x] retrieval history records real retrieval. <!-- llmRunner.test "surfaces a relevant memory into the prompt, marks it used, and audits the retrieval": asserts the injected system message, the lastUsedAt stamp on the surfaced row (and none on the untouched row), and a memory.retrieved audit event. -->
 
 ## Phase 6 — Backup / Restore Hardening
 

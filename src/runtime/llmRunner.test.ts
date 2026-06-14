@@ -271,6 +271,85 @@ describe('createLlmRequestHandler', () => {
     });
   });
 
+  it('surfaces a relevant memory into the prompt, marks it used, and audits the retrieval', async () => {
+    await db.open();
+    await db.messages.clear();
+    await db.memories.clear();
+    const store = configureStore({
+      reducer: { chat: chatReducer, audit: auditReducer },
+    });
+    await db.messages.put({
+      id: 'u7',
+      conversationId: 'c7',
+      role: 'user',
+      content: 'remind me about rust ownership',
+      createdAt: 1,
+    });
+    await db.memories.bulkPut([
+      {
+        id: 'mem-rust',
+        title: 'Rust ownership',
+        text: 'the borrow checker enforces ownership',
+        tags: ['rust'],
+        source: 'skill',
+        createdBy: 'assistant',
+        createdAt: 1,
+        pinned: false,
+        sensitivity: 'normal',
+      },
+      {
+        id: 'mem-other',
+        title: 'Pasta',
+        text: 'boil water and add salt',
+        tags: [],
+        source: 'user',
+        createdBy: 'user',
+        createdAt: 1,
+        pinned: false,
+        sensitivity: 'normal',
+      },
+    ]);
+
+    const complete = vi
+      .fn<LlmProvider['complete']>()
+      .mockResolvedValue({ text: 'sure' });
+    const handler = createLlmRequestHandler({
+      db,
+      dispatch: store.dispatch,
+      getProvider: () => ({
+        id: 'mock',
+        complete,
+        checkHealth: () => Promise.resolve('connected'),
+      }),
+      submit: vi
+        .fn<(c: unknown) => Promise<void>>()
+        .mockResolvedValue(undefined),
+    });
+
+    await handler({
+      type: 'llm_request',
+      id: 'eff-7',
+      conversation_id: 'c7',
+      prompt: 'remind me about rust ownership',
+    });
+
+    // The relevant memory is injected as a leading system message; the
+    // irrelevant one is not.
+    const sent = complete.mock.calls[0]?.[0].messages ?? [];
+    expect(sent[0]?.role).toBe('system');
+    expect(sent[0]?.content).toContain('Rust ownership');
+    expect(sent[0]?.content).not.toContain('Pasta');
+
+    // The surfaced memory is marked used; the untouched one is not.
+    expect((await db.memories.get('mem-rust'))?.lastUsedAt).toBeGreaterThan(0);
+    expect((await db.memories.get('mem-other'))?.lastUsedAt).toBeUndefined();
+
+    // The retrieval is audited.
+    expect(
+      store.getState().audit.recent.some((e) => e.type === 'memory.retrieved'),
+    ).toBe(true);
+  });
+
   it('feeds a prior tool result back into the model as context', async () => {
     await db.open();
     await db.messages.clear();

@@ -212,14 +212,20 @@ export default function OnboardingScreen() {
   // Persist progress on every change (after restore) so a reload resumes here.
   // Writes are serialized through a chain so rapid changes can't land out of
   // order (overlapping puts to the same key resolve in fire order → the latest
-  // state always wins).
+  // state always wins). A queued write that hasn't run by the time the screen
+  // unmounts is skipped, so a stale progress write can't resurrect after
+  // finish() cleared it (and can't leak across test boundaries).
   const writeChain = useRef<Promise<unknown>>(Promise.resolve());
+  const alive = useRef(true);
+  useEffect(() => () => void (alive.current = false), []);
   useEffect(() => {
     if (!restored) return;
     const snapshot = { step, mode, endpoint, provider };
     writeChain.current = writeChain.current
       .catch(() => undefined)
-      .then(() => setOnboardingProgress(db, snapshot));
+      .then(() =>
+        alive.current ? setOnboardingProgress(db, snapshot) : undefined,
+      );
   }, [restored, step, mode, endpoint, provider]);
 
   async function finish() {

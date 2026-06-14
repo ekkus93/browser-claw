@@ -509,12 +509,12 @@
 
 ## Phase 10 — UI Honesty Pass
 
-- [ ] Audit all visible buttons/actions.
-- [ ] For each action:
-  - [ ] implement it; or
-  - [ ] disable it; or
-  - [ ] mark it as coming later.
-- [ ] Remove or gate fake/demo UI data.
+- [x] Audit all visible buttons/actions. <!-- Swept all screens for hollow affordances. Findings + fixes: SettingsScreen had 12 controls that flipped/accepted input but had no consumer (theme/auto-start/default-provider/default-model/key-storage-mode/require-approval/warn-keys/auto-backup/allow-unsigned/auto-update/log-level/dev-mode) and OnboardingScreen had a "View setup guide" button with no onClick. The genuinely-wired controls (lock-timeout, Load-runtime-from-CDN, Reset-runtime) were confirmed real. -->
+- [x] For each action:
+  - [ ] implement it; or <!-- the wired ones already did; the rest had no consumer to implement against yet (would be speculative). -->
+  - [x] disable it; or <!-- SettingsScreen's 12 unwired controls are now `disabled` with an honest header note ("Disabled controls are placeholders … don't take effect yet"); a test asserts representative ones are disabled while a wired one is not. -->
+  - [x] mark it as coming later. <!-- OnboardingScreen's dead "View setup guide" button replaced with "Setup guide coming soon." text. -->
+- [x] Remove or gate fake/demo UI data. <!-- Removed the fake "Up to date" version badge (no update check) from SettingsScreen; earlier passes replaced StorageScreen's hardcoded all-green health panel + "0 B" model-cache with real derived values. Seeded demo data (sample memories/audit) is env-gated via appConfig.isDemoMode (default off). -->
 - [ ] Add empty states for:
   - [x] no providers; <!-- N/A-by-design: ModelsScreen merges DEFAULT_PROVIDER_PROFILES (mergeProviderProfiles), so the provider list is never empty — the honest state is the always-present default cards; an empty-state message would be unreachable dead UI. -->
   - [x] no memories; <!-- MemoriesScreen EmptyState "No memories yet." (MemoriesScreen.tsx); tested MemoriesScreen.test.tsx "a fresh non-demo DB shows the empty state". Sidebar "Recently used"/"Retrieval history" also now show honest empty messages ("No memories used yet."/"No retrievals yet.") instead of blank boxes, tested in the same file. -->

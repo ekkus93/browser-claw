@@ -396,12 +396,9 @@ export default function OnboardingScreen() {
           </div>
           <div className="rounded-card border border-border bg-surface p-4">
             <h2 className="text-sm font-semibold text-text">Need help?</h2>
-            <button
-              type="button"
-              className="mt-1 text-sm font-medium text-primary hover:text-primary/80"
-            >
-              View setup guide
-            </button>
+            <p className="mt-1 text-sm text-muted-subtle">
+              Setup guide coming soon.
+            </p>
           </div>
         </aside>
       </div>

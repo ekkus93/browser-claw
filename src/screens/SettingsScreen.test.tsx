@@ -77,16 +77,24 @@ describe('SettingsScreen', () => {
     expect(screen.queryByText('ready (wasm)')).not.toBeInTheDocument();
   });
 
-  it('toggles a setting and resets the runtime', async () => {
+  it('shows unwired preferences as disabled placeholders, not fake switches', async () => {
+    renderSettings();
+    // These have no consumer yet, so they must be visibly inactive rather than
+    // switches that flip but change nothing (Phase 10 honesty).
+    expect(
+      screen.getByRole('switch', { name: 'Require approval by default' }),
+    ).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Auto-backup' })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Dev mode' })).toBeDisabled();
+    // The genuinely-wired control is NOT disabled, for contrast.
+    expect(
+      screen.getByRole('switch', { name: 'Load runtime from CDN' }),
+    ).not.toBeDisabled();
+  });
+
+  it('resets the runtime (a real action)', async () => {
     const user = userEvent.setup();
     const store = renderSettings();
-
-    const approval = screen.getByRole('switch', {
-      name: 'Require approval by default',
-    });
-    expect(approval).toHaveAttribute('aria-checked', 'true');
-    await user.click(approval);
-    expect(approval).toHaveAttribute('aria-checked', 'false');
 
     expect(store.getState().runtime.status).toBe('ready');
     await user.click(screen.getByRole('button', { name: 'Reset runtime' }));

@@ -17,15 +17,10 @@ import { Input } from '../components/ui/Input.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
 
-interface Flags {
-  autoStart: boolean;
-  requireApproval: boolean;
-  keyWarning: boolean;
-  autoBackup: boolean;
-  allowUnsigned: boolean;
-  autoUpdate: boolean;
-  devMode: boolean;
-}
+// No-op for placeholder controls that are shown disabled until their behavior
+// is implemented (Phase 10 honesty: a control either works or is visibly
+// inactive — never a switch that flips but changes nothing).
+const noop = (): void => undefined;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -53,18 +48,6 @@ export default function SettingsScreen() {
   const model = useAppSelector((state) => state.models.activeModelLabel);
   const runtimeStatus = useAppSelector((state) => state.runtime.status);
   const runtimeMode = useAppSelector((state) => state.runtime.mode);
-
-  const [flags, setFlags] = useState<Flags>({
-    autoStart: false,
-    requireApproval: true,
-    keyWarning: true,
-    autoBackup: true,
-    allowUnsigned: false,
-    autoUpdate: true,
-    devMode: false,
-  });
-  const toggle = (key: keyof Flags) =>
-    setFlags((prev) => ({ ...prev, [key]: !prev[key] }));
 
   // Lock timeout is a real, persisted setting: it drives the SecretVault's
   // auto-lock timer. Read the durable value on mount and write changes back to
@@ -125,6 +108,11 @@ export default function SettingsScreen() {
             <p className="text-sm text-muted">
               Configure workflow and security preferences.
             </p>
+            <p className="mt-1 text-xs text-muted-subtle">
+              Disabled controls are placeholders for upcoming preferences and
+              don&apos;t take effect yet. Lock timeout and &ldquo;Load runtime
+              from CDN&rdquo; are active.
+            </p>
           </header>
 
           <div className="grid gap-4 md:grid-cols-2">
@@ -132,7 +120,7 @@ export default function SettingsScreen() {
               <Field
                 label="Theme"
                 control={
-                  <Select defaultValue="light" className="w-40">
+                  <Select defaultValue="light" className="w-40" disabled>
                     <option value="light">Light</option>
                     <option value="dark">Dark</option>
                   </Select>
@@ -142,8 +130,9 @@ export default function SettingsScreen() {
                 label="Auto-start runtime"
                 control={
                   <Toggle
-                    checked={flags.autoStart}
-                    onCheckedChange={() => toggle('autoStart')}
+                    checked={false}
+                    onCheckedChange={noop}
+                    disabled
                     ariaLabel="Auto-start runtime"
                   />
                 }
@@ -154,7 +143,7 @@ export default function SettingsScreen() {
               <Field
                 label="Default provider"
                 control={
-                  <Select defaultValue="wllama" className="w-40">
+                  <Select defaultValue="wllama" className="w-40" disabled>
                     <option value="wllama">wllama</option>
                     <option value="anthropic">Anthropic</option>
                     <option value="openai">OpenAI</option>
@@ -163,7 +152,9 @@ export default function SettingsScreen() {
               />
               <Field
                 label="Default model"
-                control={<Input defaultValue="SmolLM2" className="w-40" />}
+                control={
+                  <Input defaultValue="SmolLM2" className="w-40" disabled />
+                }
               />
               <Field
                 label="Load runtime from CDN"
@@ -181,7 +172,7 @@ export default function SettingsScreen() {
               <Field
                 label="Key storage mode"
                 control={
-                  <Select defaultValue="encrypted" className="w-40">
+                  <Select defaultValue="encrypted" className="w-40" disabled>
                     <option value="session">Session only</option>
                     <option value="encrypted">Encrypted</option>
                   </Select>
@@ -206,8 +197,9 @@ export default function SettingsScreen() {
                 label="Require approval by default"
                 control={
                   <Toggle
-                    checked={flags.requireApproval}
-                    onCheckedChange={() => toggle('requireApproval')}
+                    checked={true}
+                    onCheckedChange={noop}
+                    disabled
                     ariaLabel="Require approval by default"
                   />
                 }
@@ -216,8 +208,9 @@ export default function SettingsScreen() {
                 label="Warn on browser-direct keys"
                 control={
                   <Toggle
-                    checked={flags.keyWarning}
-                    onCheckedChange={() => toggle('keyWarning')}
+                    checked={true}
+                    onCheckedChange={noop}
+                    disabled
                     ariaLabel="Warn on browser-direct keys"
                   />
                 }
@@ -233,8 +226,9 @@ export default function SettingsScreen() {
                 label="Auto-backup"
                 control={
                   <Toggle
-                    checked={flags.autoBackup}
-                    onCheckedChange={() => toggle('autoBackup')}
+                    checked={false}
+                    onCheckedChange={noop}
+                    disabled
                     ariaLabel="Auto-backup"
                   />
                 }
@@ -246,8 +240,9 @@ export default function SettingsScreen() {
                 label="Allow unsigned skills"
                 control={
                   <Toggle
-                    checked={flags.allowUnsigned}
-                    onCheckedChange={() => toggle('allowUnsigned')}
+                    checked={false}
+                    onCheckedChange={noop}
+                    disabled
                     ariaLabel="Allow unsigned skills"
                   />
                 }
@@ -256,8 +251,9 @@ export default function SettingsScreen() {
                 label="Auto-update skills"
                 control={
                   <Toggle
-                    checked={flags.autoUpdate}
-                    onCheckedChange={() => toggle('autoUpdate')}
+                    checked={true}
+                    onCheckedChange={noop}
+                    disabled
                     ariaLabel="Auto-update skills"
                   />
                 }
@@ -268,7 +264,7 @@ export default function SettingsScreen() {
               <Field
                 label="Log level"
                 control={
-                  <Select defaultValue="info" className="w-40">
+                  <Select defaultValue="info" className="w-40" disabled>
                     <option value="error">Error</option>
                     <option value="info">Info</option>
                     <option value="debug">Debug</option>
@@ -279,8 +275,9 @@ export default function SettingsScreen() {
                 label="Dev mode"
                 control={
                   <Toggle
-                    checked={flags.devMode}
-                    onCheckedChange={() => toggle('devMode')}
+                    checked={false}
+                    onCheckedChange={noop}
+                    disabled
                     ariaLabel="Dev mode"
                   />
                 }
@@ -323,9 +320,6 @@ export default function SettingsScreen() {
               <Row label="BrowserClaw" value={APP_VERSION} />
               <Row label="Runtime" value={APP_VERSION} />
             </dl>
-            <Badge tone="success" dot>
-              Up to date
-            </Badge>
           </div>
         </aside>
       </div>

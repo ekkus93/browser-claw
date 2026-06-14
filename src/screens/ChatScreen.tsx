@@ -6,6 +6,7 @@ import type { MessageRow } from '../db/types.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
 import {
   composerDraftSet,
+  activeSkillSet,
   userMessageSubmitted,
 } from '../store/slices/chatSlice.ts';
 import { isProviderConfigured } from '../providers/registry.ts';
@@ -17,6 +18,7 @@ import {
 } from '../store/slices/approvalsSlice.ts';
 import { EmptyState } from '../components/ui/EmptyState.tsx';
 import { ErrorState } from '../components/ui/ErrorState.tsx';
+import { Select } from '../components/ui/Select.tsx';
 import { MessageBubble } from './chat/MessageBubble.tsx';
 import { ApprovalCard } from './chat/ApprovalCard.tsx';
 import { ChatComposer } from './chat/ChatComposer.tsx';
@@ -29,6 +31,11 @@ export default function ChatScreen() {
   );
   const approvalQueue = useAppSelector((state) => state.approvals.queue);
   const pendingApprovals = approvalQueue.filter((a) => a.status === 'pending');
+  const activeSkillId = useAppSelector((state) => state.chat.activeSkillId);
+  // Enabled skills can be made the conversation's active skill; their declared
+  // tools are then the only ones a tool call may use (fail closed otherwise).
+  const enabledSkills =
+    useLiveQuery(() => db.skills.filter((s) => s.enabled).toArray(), []) ?? [];
   const activeProviderId = useAppSelector(
     (state) => state.providers.activeProviderId,
   );
@@ -147,7 +154,24 @@ export default function ChatScreen() {
       </div>
 
       <div className="border-t border-border px-6 py-4">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto flex max-w-3xl flex-col gap-2">
+          {enabledSkills.length > 0 && (
+            <Select
+              label="Active skill"
+              className="w-56"
+              value={activeSkillId ?? ''}
+              onChange={(event) =>
+                dispatch(activeSkillSet(event.target.value || null))
+              }
+            >
+              <option value="">No skill (tools disabled)</option>
+              {enabledSkills.map((skill) => (
+                <option key={skill.id} value={skill.id}>
+                  {skill.name}
+                </option>
+              ))}
+            </Select>
+          )}
           <ChatComposer
             value={draft}
             onChange={(value) => dispatch(composerDraftSet(value))}

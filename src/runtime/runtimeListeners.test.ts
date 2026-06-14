@@ -3,6 +3,7 @@ import { configureStore, createListenerMiddleware } from '@reduxjs/toolkit';
 import { describe, expect, it, vi } from 'vitest';
 import chatReducer, {
   userMessageSubmitted,
+  activeSkillSet,
 } from '../store/slices/chatSlice.ts';
 import approvalsReducer, {
   approvalRequested,
@@ -42,7 +43,20 @@ describe('registerRuntimeListeners', () => {
       type: 'submit_user_message',
       conversation_id: 'c1',
       text: 'hello',
+      skill_id: '',
     });
+  });
+
+  it('attributes the turn to the chat active skill', async () => {
+    const { submit, store } = setup();
+    store.dispatch(activeSkillSet('web-search'));
+
+    store.dispatch(userMessageSubmitted({ conversationId: 'c1', text: 'hi' }));
+
+    await vi.waitFor(() => expect(submit).toHaveBeenCalled());
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({ skill_id: 'web-search' }),
+    );
   });
 
   it('resolves a rejected tool-call approval back into the runtime', async () => {

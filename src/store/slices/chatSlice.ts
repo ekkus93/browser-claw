@@ -25,6 +25,12 @@ export interface ChatState {
   streamingMessageId: string | null;
   /** Set when the last turn failed; shown as an error card, never as a reply. */
   error: ChatError | null;
+  /**
+   * The skill active in this chat (null = none). Tool calls are attributed to
+   * it and enforced against its declared tools; with no active skill, every
+   * tool call is denied (fail closed).
+   */
+  activeSkillId: string | null;
 }
 
 const initialState: ChatState = {
@@ -33,6 +39,7 @@ const initialState: ChatState = {
   runState: 'idle',
   streamingMessageId: null,
   error: null,
+  activeSkillId: null,
 };
 
 const chatSlice = createSlice({
@@ -61,6 +68,9 @@ const chatSlice = createSlice({
       state.error = null;
       if (state.runState === 'error') state.runState = 'idle';
     },
+    activeSkillSet(state, action: PayloadAction<string | null>) {
+      state.activeSkillId = action.payload;
+    },
     /** User sent a message — picked up by the runtime listener. */
     userMessageSubmitted(
       state,
@@ -81,6 +91,7 @@ export const {
   streamingMessageSet,
   chatErrored,
   chatErrorCleared,
+  activeSkillSet,
   userMessageSubmitted,
 } = chatSlice.actions;
 export default chatSlice.reducer;

@@ -25,11 +25,15 @@ export function registerRuntimeListeners(
 ): void {
   startListening({
     actionCreator: userMessageSubmitted,
-    effect: async (action) => {
+    effect: async (action, api) => {
+      // Attribute this turn's tool calls to the chat's active skill (if any) so
+      // they're enforced against that skill's declared tools.
+      const skillId = api.getState().chat.activeSkillId ?? '';
       await host.submit({
         type: 'submit_user_message',
         conversation_id: action.payload.conversationId,
         text: action.payload.text,
+        skill_id: skillId,
       });
     },
   });

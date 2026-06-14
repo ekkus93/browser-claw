@@ -6,6 +6,7 @@ import chatReducer, {
   streamingMessageSet,
   chatErrored,
   chatErrorCleared,
+  activeSkillSet,
   userMessageSubmitted,
 } from './chatSlice.ts';
 
@@ -18,7 +19,13 @@ describe('chatSlice', () => {
       runState: 'idle',
       streamingMessageId: null,
       error: null,
+      activeSkillId: null,
     });
+  });
+
+  it('sets the active skill', () => {
+    const state = chatReducer(undefined, activeSkillSet('web-search'));
+    expect(state.activeSkillId).toBe('web-search');
   });
 
   it('records a chat error and clears it on the next submit', () => {

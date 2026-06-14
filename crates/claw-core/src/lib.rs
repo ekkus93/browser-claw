@@ -46,6 +46,7 @@ impl Runtime {
             Command::SubmitUserMessage {
                 conversation_id,
                 text,
+                skill_id,
             } => {
                 self.state.message_count += 1;
                 let audit_id = self.next_id();
@@ -58,6 +59,11 @@ impl Runtime {
                 self.state
                     .pending_conversation
                     .insert(llm_id.clone(), conversation_id.clone());
+                // Remember the active skill so any tool call this turn produces
+                // is attributed to it for permission enforcement.
+                self.state
+                    .pending_skill
+                    .insert(llm_id.clone(), skill_id);
                 vec![
                     Effect::AuditAppend {
                         id: audit_id,
@@ -80,6 +86,8 @@ impl Runtime {
                     .pending_conversation
                     .remove(&id)
                     .unwrap_or_default();
+                let skill_id =
+                    self.state.pending_skill.remove(&id).unwrap_or_default();
                 match self.state.pending.remove(&id).as_deref() {
                     Some("llm_request") => {
                         // A failed provider call (host marks `ok: false` or
@@ -94,6 +102,41 @@ impl Runtime {
                                 id: audit_id,
                                 event_type: "llm_request_failed".to_string(),
                                 summary: "Provider request failed".to_string(),
+                                risk: "medium".to_string(),
+                            }];
+                        }
+                        // The model asked to run a tool: propose it (attributed
+                        // to the active skill) instead of storing a reply. The
+                        // host enforces the skill's tool permissions and gates
+                        // it behind approval before running it.
+                        if let Some(tool_call) =
+                            result.get("tool_call").and_then(Value::as_object)
+                        {
+                            let name = tool_call
+                                .get("name")
+                                .and_then(Value::as_str)
+                                .unwrap_or_default()
+                                .to_string();
+                            let args = tool_call
+                                .get("args")
+                                .cloned()
+                                .unwrap_or(Value::Null);
+                            let proposal_id = self.next_id();
+                            self.state.pending.insert(
+                                proposal_id.clone(),
+                                "tool_call".to_string(),
+                            );
+                            self.state
+                                .pending_conversation
+                                .insert(proposal_id.clone(), conversation_id);
+                            self.state
+                                .pending_skill
+                                .insert(proposal_id.clone(), skill_id.clone());
+                            return vec![Effect::ToolCallProposal {
+                                id: proposal_id,
+                                skill_id,
+                                name,
+                                args,
                                 risk: "medium".to_string(),
                             }];
                         }
@@ -136,6 +179,46 @@ mod tests {
         Command::SubmitUserMessage {
             conversation_id: "c1".to_string(),
             text: text.to_string(),
+            skill_id: String::new(),
+        }
+    }
+
+    fn submit_with_skill(text: &str, skill_id: &str) -> Command {
+        Command::SubmitUserMessage {
+            conversation_id: "c1".to_string(),
+            text: text.to_string(),
+            skill_id: skill_id.to_string(),
+        }
+    }
+
+    #[test]
+    fn resolving_an_llm_request_with_a_tool_call_proposes_it_for_the_skill() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit_with_skill("search the web", "web-search"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({
+                "tool_call": {
+                    "name": "Page Reader",
+                    "args": { "url": "https://example.com" }
+                }
+            }),
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::ToolCallProposal {
+                skill_id,
+                name,
+                args,
+                ..
+            } => {
+                // The proposal is attributed to the active skill so the host
+                // can enforce that skill's declared tools.
+                assert_eq!(skill_id, "web-search");
+                assert_eq!(name, "Page Reader");
+                assert_eq!(args["url"], "https://example.com");
+            }
+            other => panic!("expected ToolCallProposal, got {other:?}"),
         }
     }
 

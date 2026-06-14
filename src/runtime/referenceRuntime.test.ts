@@ -38,6 +38,34 @@ describe('referenceRuntime', () => {
     }
   });
 
+  it('proposes a tool call (attributed to the active skill) when the model asks', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch({
+      type: 'submit_user_message',
+      conversation_id: 'c1',
+      text: 'search the web',
+      skill_id: 'web-search',
+    });
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        tool_call: {
+          name: 'Page Reader',
+          args: { url: 'https://example.com' },
+        },
+      },
+    });
+    expect(effects).toHaveLength(1);
+    const proposal = effects[0];
+    expect(proposal?.type).toBe('tool_call_proposal');
+    if (proposal?.type === 'tool_call_proposal') {
+      expect(proposal.skill_id).toBe('web-search');
+      expect(proposal.name).toBe('Page Reader');
+      expect(proposal.args).toEqual({ url: 'https://example.com' });
+    }
+  });
+
   it('stores no message and audits a failure when the llm_request fails', () => {
     const runtime = createReferenceRuntime();
     runtime.dispatch(submit('hi'));

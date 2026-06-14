@@ -20,6 +20,7 @@ pub fn user_message(conversation_id: &str, text: &str) -> Command {
     Command::SubmitUserMessage {
         conversation_id: conversation_id.to_string(),
         text: text.to_string(),
+        skill_id: String::new(),
     }
 }
 

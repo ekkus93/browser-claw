@@ -42,6 +42,11 @@ pub enum Effect {
     },
     ToolCallProposal {
         id: String,
+        /// The skill that requested the tool, so the host can enforce that the
+        /// skill actually declared this tool before running it (fail closed).
+        /// Empty means "no active skill" — such a call is denied.
+        #[serde(default)]
+        skill_id: String,
         name: String,
         args: Value,
         risk: String,
@@ -81,6 +86,10 @@ pub enum Command {
     SubmitUserMessage {
         conversation_id: String,
         text: String,
+        /// The skill active in this conversation, if any. Tool calls in the
+        /// resulting turn are attributed to it for permission enforcement.
+        #[serde(default)]
+        skill_id: String,
     },
     /// Deliver the result of a previously emitted effect back to the runtime.
     ResolveEffect { id: String, result: Value },
@@ -101,4 +110,9 @@ pub struct RuntimeState {
     /// with it empty.
     #[serde(default)]
     pub pending_conversation: BTreeMap<String, String>,
+    /// Outstanding effect id -> originating skill id, so a tool call proposed
+    /// from a turn stays attributed to the skill that may run it. Additive +
+    /// defaulted.
+    #[serde(default)]
+    pub pending_skill: BTreeMap<String, String>,
 }

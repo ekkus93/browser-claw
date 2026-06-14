@@ -67,6 +67,7 @@ describe('executeEffect', () => {
       {
         type: 'tool_call_proposal',
         id: 't1',
+        skill_id: 'web-search',
         name: 'writeFile',
         args: { path: '/x' },
         risk: 'high',

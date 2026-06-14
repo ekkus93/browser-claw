@@ -21,6 +21,8 @@ export type Effect =
   | {
       type: 'tool_call_proposal';
       id: string;
+      /** Skill that requested the tool; the host enforces its declared tools. */
+      skill_id: string;
       name: string;
       args: unknown;
       risk: string;
@@ -44,5 +46,11 @@ export type Effect =
   | { type: 'runtime_snapshot_save'; id: string; snapshot: unknown };
 
 export type Command =
-  | { type: 'submit_user_message'; conversation_id: string; text: string }
+  | {
+      type: 'submit_user_message';
+      conversation_id: string;
+      text: string;
+      /** Skill active in this conversation, if any (tool-call attribution). */
+      skill_id?: string;
+    }
   | { type: 'resolve_effect'; id: string; result: unknown };

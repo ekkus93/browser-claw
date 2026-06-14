@@ -1,5 +1,6 @@
 import type { BrowserClawDB } from '../db/db.ts';
 import type { CatalogModel } from './catalog.ts';
+import { hfDownloadUrl } from './hfReference.ts';
 
 /**
  * Cache for downloaded GGUF model bytes, used when wllama's own OPFS cache is
@@ -32,7 +33,9 @@ export async function fetchGguf(
   fetchImpl: typeof fetch = fetch,
   onProgress?: (loaded: number, total: number) => void,
 ): Promise<Blob> {
-  const url = `https://huggingface.co/${model.repo}/resolve/main/${model.file}`;
+  // Built via hfDownloadUrl so the bytes always come straight from HF — never
+  // proxied through an app server (TODO 8.3).
+  const url = hfDownloadUrl(model);
   const response = await fetchImpl(url);
   if (!response.ok || !response.body) {
     throw new Error(`Model download failed (${response.status})`);

@@ -442,15 +442,15 @@
 
 ### 8.3 User Hugging Face Model Support
 
-- [ ] Add form for user-provided Hugging Face GGUF repo/file.
-- [ ] Validate URL/repo/file shape.
-- [ ] Show size/license if discoverable.
-- [ ] Warn when metadata cannot be fetched.
-- [ ] Do not proxy model downloads through app server.
+- [ ] Add form for user-provided Hugging Face GGUF repo/file. <!-- follow-up: the validator (hfReference.ts) is ready; the ModelsScreen add-model form UI that calls it is the next slice. -->
+- [x] Validate URL/repo/file shape. <!-- src/wllama/hfReference.ts validateHfReference: accepts only a bare repo id "owner/name" + a ".gguf" file path within the repo; rejects empty, malformed repo, URLs/schemes, wrong extension, absolute paths, and ".." traversal. Tested in hfReference.test.ts (incl. all built-in catalog entries validate). -->
+- [ ] Show size/license if discoverable. <!-- follow-up: needs an HF metadata fetch (with the "warn when unavailable" path). -->
+- [ ] Warn when metadata cannot be fetched. <!-- follow-up: pairs with size/license metadata. -->
+- [x] Do not proxy model downloads through app server. <!-- hfReference.hfDownloadUrl is the single URL builder (always https://huggingface.co/<repo>/resolve/main/<file>); modelCache.fetchGguf now uses it, so bytes come straight from HF. Tested: hfReference.test.ts asserts the URL origin is huggingface.co. -->
 - [ ] Tests:
-  - [ ] valid HF reference accepted;
-  - [ ] invalid HF reference rejected;
-  - [ ] download URL points to HF, not app server.
+  - [x] valid HF reference accepted; <!-- hfReference.test.ts: well-formed repo+file, subdirectory file, and every MODEL_CATALOG entry validate. -->
+  - [x] invalid HF reference rejected; <!-- hfReference.test.ts it.each: empty/malformed repo, URL, wrong extension, absolute path, ".." traversal all rejected with a reason. -->
+  - [x] download URL points to HF, not app server. <!-- hfReference.test.ts: hfDownloadUrl origin is https://huggingface.co. -->
 
 ## Phase 9 — Onboarding, Settings, and Models UI Persistence
 

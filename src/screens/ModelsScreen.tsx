@@ -27,6 +27,12 @@ import { Select } from '../components/ui/Select.tsx';
 import { Progress } from '../components/ui/Progress.tsx';
 import { useToast } from '../components/ui/toastContext.ts';
 import { MODEL_CATALOG } from '../wllama/catalog.ts';
+import {
+  listUserModels,
+  addUserModel,
+  removeUserModel,
+  isUserModelId,
+} from '../wllama/userModels.ts';
 import { isWllamaSupported, getWllamaEngine } from '../wllama/engine.ts';
 import { createModelManager } from '../wllama/modelManager.ts';
 
@@ -259,6 +265,27 @@ export default function ModelsScreen() {
     );
   }
 
+  // User-added Hugging Face models, merged in after the built-in catalog so they
+  // share the same download/load/delete path.
+  const userModels = useLiveQuery(() => listUserModels(db), []) ?? [];
+  const localModels = [...MODEL_CATALOG, ...userModels];
+
+  const [repoDraft, setRepoDraft] = useState('');
+  const [fileDraft, setFileDraft] = useState('');
+  const [addError, setAddError] = useState<string | null>(null);
+
+  async function handleAddModel() {
+    const result = await addUserModel(db, repoDraft, fileDraft);
+    if (!result.ok) {
+      setAddError(result.reason);
+      return;
+    }
+    setAddError(null);
+    setRepoDraft('');
+    setFileDraft('');
+    toast({ tone: 'success', title: `Added ${result.model.name}` });
+  }
+
   return (
     <div className="overflow-y-auto">
       <div className="grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -335,9 +362,10 @@ export default function ModelsScreen() {
                   </tr>
                 </thead>
                 <tbody>
-                  {MODEL_CATALOG.map((model) => {
+                  {localModels.map((model) => {
                     const dl = downloads[model.id];
                     const ready = dl?.status === 'ready';
+                    const isUser = isUserModelId(model.id);
                     return (
                       <tr
                         key={model.id}
@@ -357,32 +385,18 @@ export default function ModelsScreen() {
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-1">
                             {ready ? (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    runModelAction(
-                                      manager.load(model),
-                                      'Could not load the model.',
-                                    )
-                                  }
-                                >
-                                  Load
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    runModelAction(
-                                      manager.remove(model),
-                                      'Could not delete the model.',
-                                    )
-                                  }
-                                >
-                                  Delete
-                                </Button>
-                              </>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  runModelAction(
+                                    manager.load(model),
+                                    'Could not load the model.',
+                                  )
+                                }
+                              >
+                                Load
+                              </Button>
                             ) : (
                               <Button
                                 variant="ghost"
@@ -401,6 +415,38 @@ export default function ModelsScreen() {
                                 Download
                               </Button>
                             )}
+                            {ready && !isUser && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  runModelAction(
+                                    manager.remove(model),
+                                    'Could not delete the model.',
+                                  )
+                                }
+                              >
+                                Delete
+                              </Button>
+                            )}
+                            {isUser && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  runModelAction(
+                                    manager
+                                      .remove(model)
+                                      .then(() =>
+                                        removeUserModel(db, model.id),
+                                      ),
+                                    'Could not remove the model.',
+                                  )
+                                }
+                              >
+                                Remove
+                              </Button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -408,6 +454,47 @@ export default function ModelsScreen() {
                   })}
                 </tbody>
               </table>
+            </div>
+
+            <div className="mt-4 rounded-card border border-border bg-surface p-4">
+              <h3 className="mb-2 text-sm font-semibold text-text">
+                Add a Hugging Face model
+              </h3>
+              <div className="flex flex-wrap items-end gap-3">
+                <Input
+                  label="Hugging Face repo"
+                  value={repoDraft}
+                  onChange={(event) => setRepoDraft(event.target.value)}
+                  placeholder="owner/name"
+                  className="w-56"
+                />
+                <Input
+                  label="GGUF file"
+                  value={fileDraft}
+                  onChange={(event) => setFileDraft(event.target.value)}
+                  placeholder="model.gguf"
+                  className="w-56"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void handleAddModel()}
+                >
+                  Add model
+                </Button>
+              </div>
+              {addError && (
+                <p className="mt-2 flex items-center gap-2 text-sm text-danger">
+                  <AlertTriangle
+                    className="size-4 shrink-0"
+                    aria-hidden="true"
+                  />
+                  {addError}
+                </p>
+              )}
+              <p className="mt-2 text-xs text-muted-subtle">
+                Models download directly from huggingface.co.
+              </p>
             </div>
           </section>
         </main>

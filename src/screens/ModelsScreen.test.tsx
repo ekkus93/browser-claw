@@ -29,6 +29,7 @@ afterEach(async () => {
   await db.provider_profiles.clear();
   await db.app_settings.clear();
   await db.audit_events.clear();
+  await db.model_catalog.clear();
 });
 
 describe('ModelsScreen', () => {
@@ -166,6 +167,39 @@ describe('ModelsScreen', () => {
     expect(store.getState().providers.health['llama-server']).not.toBe(
       'unconfigured',
     );
+  });
+
+  it('adds a user-provided HF model to the table', async () => {
+    const user = userEvent.setup();
+    renderModels();
+
+    await user.type(screen.getByLabelText('Hugging Face repo'), 'owner/name');
+    await user.type(screen.getByLabelText('GGUF file'), 'model.gguf');
+    await user.click(screen.getByRole('button', { name: 'Add model' }));
+
+    // It appears in the browser-local models table...
+    expect(
+      await screen.findByText('owner/name · model.gguf'),
+    ).toBeInTheDocument();
+    // ...and is persisted to the catalog so it survives a reload.
+    await waitFor(async () => {
+      const rows = await db.model_catalog.toArray();
+      expect(
+        rows.some((r) => r.repo === 'owner/name' && r.file === 'model.gguf'),
+      ).toBe(true);
+    });
+  });
+
+  it('rejects an invalid HF model with a reason and persists nothing', async () => {
+    const user = userEvent.setup();
+    renderModels();
+
+    await user.type(screen.getByLabelText('Hugging Face repo'), 'not-a-repo');
+    await user.type(screen.getByLabelText('GGUF file'), 'model.gguf');
+    await user.click(screen.getByRole('button', { name: 'Add model' }));
+
+    expect(await screen.findByText(/must look like/i)).toBeInTheDocument();
+    expect(await db.model_catalog.count()).toBe(0);
   });
 
   it('persists an edited base URL to IndexedDB', async () => {

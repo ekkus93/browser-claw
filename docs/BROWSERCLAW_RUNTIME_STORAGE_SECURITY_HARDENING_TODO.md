@@ -442,7 +442,7 @@
 
 ### 8.3 User Hugging Face Model Support
 
-- [ ] Add form for user-provided Hugging Face GGUF repo/file. <!-- follow-up: the validator (hfReference.ts) is ready; the ModelsScreen add-model form UI that calls it is the next slice. -->
+- [x] Add form for user-provided Hugging Face GGUF repo/file. <!-- ModelsScreen "Add a Hugging Face model" form (repo + file inputs + Add button) runs validateHfReference: invalid -> shows the reason inline + persists nothing; valid -> addUserModel persists a ModelCatalogRow (src/wllama/userModels.ts) to db.model_catalog, which useLiveQuery merges into the Browser-Local Models table next to the built-ins (same download/load path; user models get a "Remove" action that drops the catalog row + cache). The model persists in db.model_catalog (provider 'wllama') so it survives reload. Tested in ModelsScreen.test.tsx (adds-to-table+persists, rejects-with-reason+persists-nothing). -->
 - [x] Validate URL/repo/file shape. <!-- src/wllama/hfReference.ts validateHfReference: accepts only a bare repo id "owner/name" + a ".gguf" file path within the repo; rejects empty, malformed repo, URLs/schemes, wrong extension, absolute paths, and ".." traversal. Tested in hfReference.test.ts (incl. all built-in catalog entries validate). -->
 - [ ] Show size/license if discoverable. <!-- follow-up: needs an HF metadata fetch (with the "warn when unavailable" path). -->
 - [ ] Warn when metadata cannot be fetched. <!-- follow-up: pairs with size/license metadata. -->

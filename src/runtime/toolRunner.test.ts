@@ -64,6 +64,7 @@ afterEach(async () => {
   await db.skills.clear();
   await db.skill_state.clear();
   await db.audit_events.clear();
+  await db.memories.clear();
 });
 
 describe('createToolEffectHandler — permission enforcement (fail closed)', () => {
@@ -196,6 +197,74 @@ describe('runApprovedToolCall', () => {
       id: 'eff-3',
       result: { ok: false, error: { kind: 'user_rejected' } },
     });
+  });
+
+  it('Remember persists a provenance-tagged memory and audits memory.created', async () => {
+    await db.open();
+    await db.memories.clear();
+    const { store, submit } = makeHandler();
+
+    await runApprovedToolCall(
+      { db, dispatch: store.dispatch, submit },
+      {
+        id: 'eff-5',
+        status: 'approved',
+        toolName: 'Remember',
+        argsJson: JSON.stringify({
+          title: 'Rust ownership',
+          text: 'borrow checker basics',
+          tags: ['rust'],
+        }),
+        conversationId: 'c1',
+        skillId: 'web-search',
+      },
+    );
+
+    const rows = await db.memories.toArray();
+    expect(rows[0]).toMatchObject({
+      title: 'Rust ownership',
+      text: 'borrow checker basics',
+      tags: ['rust'],
+      createdBy: 'assistant',
+      conversationId: 'c1',
+      skillId: 'web-search',
+    });
+    const created = await db.audit_events
+      .where('type')
+      .equals('memory.created')
+      .toArray();
+    expect(created[0]?.status).toBe('success');
+    expect(created[0]?.skillId).toBe('web-search');
+    expect(submit).toHaveBeenCalledWith({
+      type: 'resolve_effect',
+      id: 'eff-5',
+      result: { ok: true, text: 'Saved memory: Rust ownership' },
+    });
+  });
+
+  it('Remember with missing fields fails (no memory written)', async () => {
+    await db.open();
+    await db.memories.clear();
+    const { store, submit } = makeHandler();
+
+    await runApprovedToolCall(
+      { db, dispatch: store.dispatch, submit },
+      {
+        id: 'eff-6',
+        status: 'approved',
+        toolName: 'Remember',
+        argsJson: JSON.stringify({ title: 'no body' }),
+        conversationId: 'c1',
+        skillId: 'web-search',
+      },
+    );
+
+    expect(await db.memories.count()).toBe(0);
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
   });
 
   it('resolves a tool error as a failure and audits it', async () => {

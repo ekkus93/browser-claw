@@ -51,6 +51,10 @@ export function registerRuntimeListeners(
         .getOriginalState()
         .approvals.queue.find((a) => a.id === action.payload.id);
       if (!approval || approval.kind !== 'tool_call') return;
+      // Provenance for a persisting tool: the skill that requested it and the
+      // conversation it was approved in.
+      const conversationId =
+        api.getOriginalState().chat.activeConversationId ?? '';
       await runApprovedToolCall(
         { db: deps.db, dispatch: api.dispatch, submit: (c) => host.submit(c) },
         {
@@ -58,8 +62,12 @@ export function registerRuntimeListeners(
           status: action.payload.status,
           // The (possibly edited) args the user reviewed are the source of truth.
           argsJson: approval.payloadPreview,
+          conversationId,
           ...(approval.toolName !== undefined
             ? { toolName: approval.toolName }
+            : {}),
+          ...(approval.skillId !== undefined
+            ? { skillId: approval.skillId }
             : {}),
         },
       );

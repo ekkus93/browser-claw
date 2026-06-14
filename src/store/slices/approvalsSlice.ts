@@ -35,6 +35,8 @@ export interface ApprovalRequest {
    * actually runs.
    */
   toolName?: string;
+  /** The skill that requested the tool — provenance for what the tool persists. */
+  skillId?: string;
 }
 
 export interface ApprovalsState {

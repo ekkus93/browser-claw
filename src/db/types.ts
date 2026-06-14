@@ -70,6 +70,9 @@ export interface MemoryRow {
   sensitivity: 'normal' | 'sensitive';
   /** True for memories seeded as demo data (only in demo mode). */
   demo?: boolean;
+  /** Provenance: the conversation/skill a runtime-written memory came from. */
+  conversationId?: string;
+  skillId?: string;
 }
 
 export interface TodoRow {

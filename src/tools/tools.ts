@@ -1,9 +1,9 @@
 /**
  * Agent tools: the registry, the parser for tool calls the model emits, and a
- * permission-enforcing runner. This is the foundation of the tool-execution
- * loop (TODO 7.x). A tool call is only ever performed after inline approval
- * (wired in a later pass); this module is the parse + permission-check +
- * execute core, with no UI or runtime coupling so it's fully unit-testable.
+ * permission-enforcing runner (TODO 7.x). A tool call is only ever performed
+ * after inline approval. Most of this module is the pure parse + permission +
+ * execute core; tools that persist (e.g. Remember) receive db/dispatch +
+ * provenance through ToolContext.
  *
  * Protocol: the model requests a tool by emitting a fenced block in its reply:
  *
@@ -11,6 +11,10 @@
  *   { "tool": "Page Reader", "args": { "url": "https://example.com" } }
  *   ```
  */
+import type { BrowserClawDB } from '../db/db.ts';
+import type { AppDispatch } from '../store/store.ts';
+import type { MemoryRow } from '../db/types.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 
 export interface ToolCall {
   name: string;
@@ -20,6 +24,13 @@ export interface ToolCall {
 export interface ToolContext {
   /** Injectable fetch so network tools are testable. Defaults to global fetch. */
   fetchImpl?: typeof fetch;
+  /** Durable store — present for tools that persist (e.g. Remember). */
+  db?: BrowserClawDB;
+  /** Dispatch for tools that audit their effect. */
+  dispatch?: AppDispatch;
+  /** Provenance for a persisted record: the originating conversation/skill. */
+  conversationId?: string;
+  skillId?: string;
 }
 
 export interface Tool {
@@ -116,8 +127,59 @@ export const pageReaderTool: Tool = {
   },
 };
 
+/**
+ * Remember: persist a memory the agent proposed. Goes through the same
+ * propose -> skill-permission -> inline-approval (editable) -> run path as any
+ * tool; on run it writes a MemoryRow tagged with its provenance (the active
+ * conversation + the skill that called it) and audits memory.created.
+ */
+export const rememberTool: Tool = {
+  name: 'Remember',
+  description: 'Save a memory (title, text, optional tags) for later recall.',
+  async run(args, ctx) {
+    if (!ctx.db) {
+      throw new Error('Remember is unavailable (no store).');
+    }
+    const title = typeof args.title === 'string' ? args.title.trim() : '';
+    const text = typeof args.text === 'string' ? args.text.trim() : '';
+    if (!title || !text) {
+      throw new Error('Remember needs a non-empty title and text.');
+    }
+    const tags = Array.isArray(args.tags)
+      ? args.tags.filter((t): t is string => typeof t === 'string')
+      : [];
+    const memory: MemoryRow = {
+      id: crypto.randomUUID(),
+      title,
+      text,
+      tags,
+      source: 'skill',
+      createdBy: 'assistant',
+      createdAt: Date.now(),
+      pinned: false,
+      sensitivity: 'normal',
+      ...(ctx.conversationId ? { conversationId: ctx.conversationId } : {}),
+      ...(ctx.skillId ? { skillId: ctx.skillId } : {}),
+    };
+    await ctx.db.memories.put(memory);
+    if (ctx.dispatch) {
+      void recordAudit(ctx.db, ctx.dispatch, {
+        type: 'memory.created',
+        summary: `Memory saved: ${title}`,
+        source: 'skill',
+        risk: 'info',
+        status: 'success',
+        ...(ctx.skillId ? { skillId: ctx.skillId } : {}),
+        ...(ctx.conversationId ? { conversationId: ctx.conversationId } : {}),
+      });
+    }
+    return `Saved memory: ${title}`;
+  },
+};
+
 export const TOOL_REGISTRY: Record<string, Tool> = {
   [pageReaderTool.name]: pageReaderTool,
+  [rememberTool.name]: rememberTool,
 };
 
 export interface RunToolOptions {

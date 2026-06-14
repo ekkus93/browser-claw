@@ -95,6 +95,7 @@ export function createToolEffectHandler(deps: ToolEffectDeps) {
         summary: `Tool call: ${effect.name}`,
         payloadPreview: JSON.stringify(effect.args),
         toolName: effect.name,
+        skillId: effect.skill_id,
       }),
     );
   };
@@ -106,6 +107,9 @@ export interface ApprovedToolCall {
   toolName?: string;
   /** The (possibly user-edited) args JSON from the approval card. */
   argsJson?: string;
+  /** Provenance threaded to the tool (e.g. for a persisted memory). */
+  conversationId?: string;
+  skillId?: string;
 }
 
 function parseArgs(argsJson: string | undefined): Record<string, unknown> {
@@ -159,10 +163,21 @@ export async function runApprovedToolCall(
     return;
   }
   const args = parseArgs(approval.argsJson);
+  // The tool gets db/dispatch + provenance so a persisting tool (Remember) can
+  // write a correctly-attributed, audited record.
+  const ctx: ToolContext = {
+    ...(deps.ctx ?? {}),
+    db: deps.db,
+    dispatch: deps.dispatch,
+    ...(approval.conversationId
+      ? { conversationId: approval.conversationId }
+      : {}),
+    ...(approval.skillId ? { skillId: approval.skillId } : {}),
+  };
   try {
     const output = await runToolCall(
       { name, args },
-      { allowedTools: [name], ctx: deps.ctx ?? {} },
+      { allowedTools: [name], ctx },
     );
     void recordAudit(deps.db, deps.dispatch, {
       type: 'tool.executed',

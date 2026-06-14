@@ -11,6 +11,8 @@ export interface CatalogModel {
    * never start a download that can't fit (TODO Phase 8.2).
    */
   sizeBytes: number;
+  /** License id, if discoverable (user models, from Hugging Face metadata). */
+  license?: string;
 }
 
 const MB = 1024 * 1024;

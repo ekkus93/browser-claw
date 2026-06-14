@@ -169,7 +169,23 @@ describe('ModelsScreen', () => {
     );
   });
 
-  it('adds a user-provided HF model to the table', async () => {
+  it('adds a user-provided HF model and discovers its size/license', async () => {
+    // Stub HF: HEAD -> size, models API -> license.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init?: RequestInit) =>
+        init?.method === 'HEAD'
+          ? Promise.resolve(
+              new Response(null, { headers: { 'content-length': '2048' } }),
+            )
+          : Promise.resolve(
+              new Response(JSON.stringify({ cardData: { license: 'mit' } }), {
+                status: 200,
+                headers: { 'content-type': 'application/json' },
+              }),
+            ),
+      ),
+    );
     const user = userEvent.setup();
     renderModels();
 
@@ -181,13 +197,35 @@ describe('ModelsScreen', () => {
     expect(
       await screen.findByText('owner/name · model.gguf'),
     ).toBeInTheDocument();
-    // ...and is persisted to the catalog so it survives a reload.
+    // ...the discovered license shows and the size persists for the quota check.
+    expect(await screen.findByText(/License: mit/i)).toBeInTheDocument();
     await waitFor(async () => {
-      const rows = await db.model_catalog.toArray();
-      expect(
-        rows.some((r) => r.repo === 'owner/name' && r.file === 'model.gguf'),
-      ).toBe(true);
+      const row = await db.model_catalog.get('hf:owner/name/model.gguf');
+      expect(row?.sizeBytes).toBe(2048);
+      expect(row?.license).toBe('mit');
     });
+  });
+
+  it('still adds a model but warns when HF metadata is unavailable', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.reject(new TypeError('network down'))),
+    );
+    const user = userEvent.setup();
+    renderModels();
+
+    await user.type(screen.getByLabelText('Hugging Face repo'), 'owner/name');
+    await user.type(screen.getByLabelText('GGUF file'), 'model.gguf');
+    await user.click(screen.getByRole('button', { name: 'Add model' }));
+
+    // The model is still added (validation passed)...
+    expect(
+      await screen.findByText('owner/name · model.gguf'),
+    ).toBeInTheDocument();
+    // ...but the user is warned that metadata couldn't be fetched.
+    expect(
+      await screen.findByText('Model metadata unavailable'),
+    ).toBeInTheDocument();
   });
 
   it('rejects an invalid HF model with a reason and persists nothing', async () => {

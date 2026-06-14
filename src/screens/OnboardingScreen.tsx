@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Check,
@@ -210,9 +210,16 @@ export default function OnboardingScreen() {
   }, []);
 
   // Persist progress on every change (after restore) so a reload resumes here.
+  // Writes are serialized through a chain so rapid changes can't land out of
+  // order (overlapping puts to the same key resolve in fire order → the latest
+  // state always wins).
+  const writeChain = useRef<Promise<unknown>>(Promise.resolve());
   useEffect(() => {
     if (!restored) return;
-    void setOnboardingProgress(db, { step, mode, endpoint, provider });
+    const snapshot = { step, mode, endpoint, provider };
+    writeChain.current = writeChain.current
+      .catch(() => undefined)
+      .then(() => setOnboardingProgress(db, snapshot));
   }, [restored, step, mode, endpoint, provider]);
 
   async function finish() {

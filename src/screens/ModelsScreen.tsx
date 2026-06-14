@@ -31,8 +31,10 @@ import {
   listUserModels,
   addUserModel,
   removeUserModel,
+  updateUserModelMetadata,
   isUserModelId,
 } from '../wllama/userModels.ts';
+import { fetchHfModelMetadata } from '../wllama/hfMetadata.ts';
 import { isWllamaSupported, getWllamaEngine } from '../wllama/engine.ts';
 import { createModelManager } from '../wllama/modelManager.ts';
 
@@ -284,6 +286,20 @@ export default function ModelsScreen() {
     setRepoDraft('');
     setFileDraft('');
     toast({ tone: 'success', title: `Added ${result.model.name}` });
+
+    // Best-effort: discover size/license from Hugging Face. Size feeds the
+    // table + quota preflight; if metadata can't be fetched we warn rather than
+    // silently show "Unknown size".
+    const meta = await fetchHfModelMetadata(result.model);
+    if (meta.ok) {
+      await updateUserModelMetadata(db, result.model.id, meta.metadata);
+    } else {
+      toast({
+        tone: 'warning',
+        title: 'Model metadata unavailable',
+        description: meta.reason,
+      });
+    }
   }
 
   return (
@@ -373,6 +389,11 @@ export default function ModelsScreen() {
                       >
                         <td className="px-4 py-3 font-medium text-text">
                           {model.name}
+                          {model.license && (
+                            <span className="block text-xs font-normal text-muted-subtle">
+                              License: {model.license}
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-muted">
                           {model.sizeLabel}

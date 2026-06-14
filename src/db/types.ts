@@ -185,6 +185,8 @@ export interface ModelCatalogRow {
   repo?: string;
   file?: string;
   sizeBytes?: number;
+  /** SPDX-ish license id discovered from Hugging Face metadata, if available. */
+  license?: string;
 }
 
 export interface ModelCacheIndexRow {

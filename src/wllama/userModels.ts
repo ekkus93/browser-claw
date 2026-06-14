@@ -35,7 +35,29 @@ export function toCatalogModel(row: ModelCatalogRow): CatalogModel {
     sizeLabel: formatSize(row.sizeBytes),
     // Unknown until metadata is fetched; 0 makes the quota preflight skip.
     sizeBytes: row.sizeBytes ?? 0,
+    ...(row.license !== undefined ? { license: row.license } : {}),
   };
+}
+
+/**
+ * Persist discovered Hugging Face metadata (size/license) onto a user model so
+ * the table shows the real size and the quota preflight has a real figure.
+ * No-op if the model row is gone (e.g. removed before metadata arrived).
+ */
+export async function updateUserModelMetadata(
+  db: BrowserClawDB,
+  id: string,
+  metadata: { sizeBytes?: number; license?: string },
+): Promise<void> {
+  const row = await db.model_catalog.get(id);
+  if (!row) return;
+  await db.model_catalog.put({
+    ...row,
+    ...(metadata.sizeBytes !== undefined
+      ? { sizeBytes: metadata.sizeBytes }
+      : {}),
+    ...(metadata.license !== undefined ? { license: metadata.license } : {}),
+  });
 }
 
 export async function listUserModels(

@@ -224,4 +224,101 @@ describe('createLlmRequestHandler', () => {
       apiKey: 'sk-runtime',
     });
   });
+
+  it('resolves with a tool_call when the reply contains a tool block', async () => {
+    await db.open();
+    await db.messages.clear();
+    const store = configureStore({ reducer: { chat: chatReducer } });
+    await db.messages.put({
+      id: 'u5',
+      conversationId: 'c5',
+      role: 'user',
+      content: 'read the page',
+      createdAt: 1,
+    });
+    const provider: LlmProvider = {
+      id: 'mock',
+      complete: () =>
+        Promise.resolve({
+          text: '```tool\n{ "tool": "Page Reader", "args": { "url": "https://x" } }\n```',
+        }),
+      checkHealth: () => Promise.resolve('connected'),
+    };
+    const submit = vi
+      .fn<(command: unknown) => Promise<void>>()
+      .mockResolvedValue(undefined);
+    const handler = createLlmRequestHandler({
+      db,
+      dispatch: store.dispatch,
+      getProvider: () => provider,
+      submit,
+    });
+
+    await handler({
+      type: 'llm_request',
+      id: 'eff-2',
+      conversation_id: 'c5',
+      prompt: 'read the page',
+    });
+
+    expect(submit.mock.calls[0]?.[0]).toMatchObject({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        ok: true,
+        tool_call: { name: 'Page Reader', args: { url: 'https://x' } },
+      },
+    });
+  });
+
+  it('feeds a prior tool result back into the model as context', async () => {
+    await db.open();
+    await db.messages.clear();
+    const store = configureStore({ reducer: { chat: chatReducer } });
+    await db.messages.bulkPut([
+      {
+        id: 'u6',
+        conversationId: 'c6',
+        role: 'user',
+        content: 'read it',
+        createdAt: 1,
+      },
+      {
+        id: 't6',
+        conversationId: 'c6',
+        role: 'tool',
+        content: 'PAGE BODY',
+        createdAt: 2,
+      },
+    ]);
+    const complete = vi
+      .fn<LlmProvider['complete']>()
+      .mockResolvedValue({ text: 'done' });
+    const handler = createLlmRequestHandler({
+      db,
+      dispatch: store.dispatch,
+      getProvider: () => ({
+        id: 'mock',
+        complete,
+        checkHealth: () => Promise.resolve('connected'),
+      }),
+      submit: vi
+        .fn<(c: unknown) => Promise<void>>()
+        .mockResolvedValue(undefined),
+    });
+
+    await handler({
+      type: 'llm_request',
+      id: 'eff-2',
+      conversation_id: 'c6',
+      prompt: '',
+    });
+
+    const sent = complete.mock.calls[0]?.[0].messages ?? [];
+    // The tool result is included (as user-prefixed context), not dropped.
+    expect(sent).toContainEqual({
+      role: 'user',
+      content: 'Tool result:\nPAGE BODY',
+    });
+  });
 });

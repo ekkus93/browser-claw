@@ -6,6 +6,7 @@ import type { Command, Effect } from './effectTypes.ts';
 import type { LlmProvider, ChatMessage } from '../providers/types.ts';
 import { describeProviderError } from '../providers/errors.ts';
 import type { ApiKeyResolution } from '../providers/providerKey.ts';
+import { parseToolCall } from '../tools/tools.ts';
 
 export interface LlmRequestDeps {
   db: BrowserClawDB;
@@ -34,12 +35,17 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
       .equals(effect.conversation_id)
       .sortBy('createdAt');
 
-    const messages: ChatMessage[] = history
-      .filter((message) => message.role !== 'tool')
-      .map((message) => ({
-        role: message.role as ChatMessage['role'],
-        content: message.content,
-      }));
+    // Include prior tool results in context so the model can use them on a
+    // follow-up turn. ChatMessage has no 'tool' role, so a tool message is fed
+    // back as user input with a clear prefix.
+    const messages: ChatMessage[] = history.map((message) =>
+      message.role === 'tool'
+        ? { role: 'user', content: `Tool result:\n${message.content}` }
+        : {
+            role: message.role as ChatMessage['role'],
+            content: message.content,
+          },
+    );
 
     // Retrieve the API key from the SecretVault just before the call. A locked
     // vault or a missing key fails closed with a specific reason — never a
@@ -102,14 +108,19 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
 
     deps.dispatch(runStateSet('idle'));
 
-    // Resolve the effect with the reply; the deterministic runtime then emits
-    // the storage_put that persists the assistant message (the single source of
-    // truth, handled by the storage effect port). We deliberately do NOT write
-    // db.messages here — doing both would store the reply twice.
+    // If the reply is a tool call, resolve with it so the runtime proposes the
+    // tool (subject to skill-permission enforcement + approval) rather than
+    // storing the raw block as an assistant message. Otherwise resolve with the
+    // reply text; the runtime then emits the storage_put that persists the
+    // assistant message (single source of truth — we don't write db.messages
+    // here, which would store the reply twice).
+    const toolCall = parseToolCall(text);
     await deps.submit({
       type: 'resolve_effect',
       id: effect.id,
-      result: { ok: true, text },
+      result: toolCall
+        ? { ok: true, tool_call: { name: toolCall.name, args: toolCall.args } }
+        : { ok: true, text },
     });
   };
 }

@@ -2,7 +2,11 @@ import type { TypedStartListening } from '@reduxjs/toolkit';
 import type { RootState, AppDispatch } from '../store/store.ts';
 import type { BrowserClawDB } from '../db/db.ts';
 import { userMessageSubmitted } from '../store/slices/chatSlice.ts';
-import { approvalResolved } from '../store/slices/approvalsSlice.ts';
+import {
+  approvalResolved,
+  approvalEdited,
+} from '../store/slices/approvalsSlice.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 import type { RuntimeHost } from './runtimeHost.ts';
 import { runApprovedToolCall } from './toolRunner.ts';
 
@@ -52,12 +56,33 @@ export function registerRuntimeListeners(
         {
           id: approval.id,
           status: action.payload.status,
+          // The (possibly edited) args the user reviewed are the source of truth.
+          argsJson: approval.payloadPreview,
           ...(approval.toolName !== undefined
             ? { toolName: approval.toolName }
             : {}),
-          toolArgs: approval.toolArgs,
         },
       );
+    },
+  });
+
+  startListening({
+    actionCreator: approvalEdited,
+    effect: (action, api) => {
+      // The edit already updated payloadPreview; record that the user changed
+      // the proposed tool's args before approving (audited tool lifecycle).
+      const approval = api
+        .getState()
+        .approvals.queue.find((a) => a.id === action.payload.id);
+      if (!approval || approval.kind !== 'tool_call') return;
+      void recordAudit(deps.db, api.dispatch, {
+        type: 'tool.edited',
+        summary: `Tool '${approval.toolName ?? approval.title}' arguments edited`,
+        source: 'skill',
+        risk: 'info',
+        status: 'pending',
+        toolName: approval.toolName ?? approval.title,
+      });
     },
   });
 }

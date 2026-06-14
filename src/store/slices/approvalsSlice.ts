@@ -29,9 +29,12 @@ export interface ApprovalRequest {
   summary: string;
   payloadPreview: string;
   status: ApprovalStatus;
-  /** For tool_call approvals: the tool to run and its args, set when queued. */
+  /**
+   * For tool_call approvals: the tool to run. Its args are the payloadPreview
+   * JSON (which the user may edit), so there's one source of truth for what
+   * actually runs.
+   */
   toolName?: string;
-  toolArgs?: unknown;
 }
 
 export interface ApprovalsState {

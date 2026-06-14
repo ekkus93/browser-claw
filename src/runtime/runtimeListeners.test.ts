@@ -8,6 +8,7 @@ import chatReducer, {
 import approvalsReducer, {
   approvalRequested,
   approvalResolved,
+  approvalEdited,
 } from '../store/slices/approvalsSlice.ts';
 import { registerRuntimeListeners } from './runtimeListeners.ts';
 import type { RuntimeHost } from './runtimeHost.ts';
@@ -70,7 +71,6 @@ describe('registerRuntimeListeners', () => {
         summary: 'Tool call: Page Reader',
         payloadPreview: '{}',
         toolName: 'Page Reader',
-        toolArgs: {},
       }),
     );
 
@@ -81,6 +81,35 @@ describe('registerRuntimeListeners', () => {
       type: 'resolve_effect',
       id: 'eff-3',
       result: { ok: false, error: { kind: 'user_rejected' } },
+    });
+  });
+
+  it('audits an edit to a tool-call approval', async () => {
+    await db.open();
+    await db.audit_events.clear();
+    const { store } = setup();
+    store.dispatch(
+      approvalRequested({
+        id: 'eff-9',
+        kind: 'tool_call',
+        title: 'Page Reader',
+        risk: 'medium',
+        summary: 'Tool call: Page Reader',
+        payloadPreview: '{}',
+        toolName: 'Page Reader',
+      }),
+    );
+
+    store.dispatch(
+      approvalEdited({ id: 'eff-9', payloadPreview: '{"url":"https://y"}' }),
+    );
+
+    await vi.waitFor(async () => {
+      const edits = await db.audit_events
+        .where('type')
+        .equals('tool.edited')
+        .toArray();
+      expect(edits.length).toBeGreaterThan(0);
     });
   });
 });

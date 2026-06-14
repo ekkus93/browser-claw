@@ -85,6 +85,13 @@ describe('createToolEffectHandler — permission enforcement (fail closed)', () 
     });
     // Nothing resolved/ran — it awaits the user's approval.
     expect(submit).not.toHaveBeenCalled();
+    // The proposal is audited (pending) before approval.
+    const proposed = await db.audit_events
+      .where('type')
+      .equals('tool.proposed')
+      .toArray();
+    expect(proposed[0]?.status).toBe('pending');
+    expect(proposed[0]?.toolName).toBe('Page Reader');
   });
 
   it('denies a tool the skill did not declare (audited + resolved failure)', async () => {
@@ -152,7 +159,7 @@ describe('runApprovedToolCall', () => {
         id: 'eff-3',
         status: 'approved',
         toolName: 'Page Reader',
-        toolArgs: { url: 'https://example.com' },
+        argsJson: '{"url":"https://example.com"}',
       },
     );
 
@@ -179,7 +186,7 @@ describe('runApprovedToolCall', () => {
         id: 'eff-3',
         status: 'rejected',
         toolName: 'Page Reader',
-        toolArgs: {},
+        argsJson: '{}',
       },
     );
 
@@ -204,7 +211,7 @@ describe('runApprovedToolCall', () => {
         id: 'eff-3',
         status: 'approved',
         toolName: 'Page Reader',
-        toolArgs: { url: 'https://example.com' },
+        argsJson: '{"url":"https://example.com"}',
       },
     );
 

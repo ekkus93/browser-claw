@@ -75,6 +75,17 @@ export function createToolEffectHandler(deps: ToolEffectDeps) {
     }
 
     // Permitted — surface it for inline approval; nothing runs until approved.
+    // The payloadPreview is the exact args JSON the user reviews and may EDIT;
+    // it's the single source of truth for what actually runs.
+    void recordAudit(deps.db, deps.dispatch, {
+      type: 'tool.proposed',
+      summary: `Tool '${effect.name}' proposed`,
+      source: 'skill',
+      risk: 'info',
+      status: 'pending',
+      toolName: effect.name,
+      skillId: effect.skill_id,
+    });
     deps.dispatch(
       approvalRequested({
         id: effect.id,
@@ -84,7 +95,6 @@ export function createToolEffectHandler(deps: ToolEffectDeps) {
         summary: `Tool call: ${effect.name}`,
         payloadPreview: JSON.stringify(effect.args),
         toolName: effect.name,
-        toolArgs: effect.args,
       }),
     );
   };
@@ -94,7 +104,22 @@ export interface ApprovedToolCall {
   id: string;
   status: 'approved' | 'rejected';
   toolName?: string;
-  toolArgs?: unknown;
+  /** The (possibly user-edited) args JSON from the approval card. */
+  argsJson?: string;
+}
+
+function parseArgs(argsJson: string | undefined): Record<string, unknown> {
+  if (!argsJson) return {};
+  try {
+    const parsed: unknown = JSON.parse(argsJson);
+    return typeof parsed === 'object' &&
+      parsed !== null &&
+      !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
 }
 
 export interface RunApprovedToolDeps {
@@ -133,10 +158,7 @@ export async function runApprovedToolCall(
     });
     return;
   }
-  const args =
-    typeof approval.toolArgs === 'object' && approval.toolArgs !== null
-      ? (approval.toolArgs as Record<string, unknown>)
-      : {};
+  const args = parseArgs(approval.argsJson);
   try {
     const output = await runToolCall(
       { name, args },

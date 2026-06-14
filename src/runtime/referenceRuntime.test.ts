@@ -66,6 +66,32 @@ describe('referenceRuntime', () => {
     }
   });
 
+  it('stores an approved tool result and asks the model again', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch({
+      type: 'submit_user_message',
+      conversation_id: 'c1',
+      text: 'search',
+      skill_id: 'web-search',
+    });
+    runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { tool_call: { name: 'Page Reader', args: {} } },
+    });
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-3',
+      result: { text: 'page contents' },
+    });
+    const put = effects.find((e) => e.type === 'storage_put');
+    expect(put?.type).toBe('storage_put');
+    if (put?.type === 'storage_put') {
+      expect(put.value).toEqual({ role: 'tool', content: 'page contents' });
+    }
+    expect(effects.some((e) => e.type === 'llm_request')).toBe(true);
+  });
+
   it('stores no message and audits a failure when the llm_request fails', () => {
     const runtime = createReferenceRuntime();
     runtime.dispatch(submit('hi'));

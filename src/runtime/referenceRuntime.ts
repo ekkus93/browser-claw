@@ -182,6 +182,60 @@ export function createReferenceRuntime(
           },
         ];
       }
+      if (kind === 'tool_call') {
+        state.message_count += 1;
+        // A rejected/failed tool stores a note and ends the turn.
+        if (isFailure(command.result)) {
+          return [
+            {
+              type: 'storage_put',
+              id: nextId(),
+              conversation_id: conversationId,
+              store: 'messages',
+              key: `m${state.message_count}`,
+              value: { role: 'tool', content: 'Tool call was not completed.' },
+            },
+            {
+              type: 'audit_append',
+              id: nextId(),
+              event_type: 'tool_call_rejected',
+              summary: 'Tool call rejected',
+              risk: 'low',
+            },
+          ];
+        }
+        // Approved: store the tool result, then ask the model again with it in
+        // context.
+        const putId = nextId();
+        const llmId = nextId();
+        const auditId = nextId();
+        state.pending[llmId] = 'llm_request';
+        state.pending_conversation[llmId] = conversationId;
+        state.pending_skill[llmId] = skillId;
+        return [
+          {
+            type: 'storage_put',
+            id: putId,
+            conversation_id: conversationId,
+            store: 'messages',
+            key: `m${state.message_count}`,
+            value: { role: 'tool', content: readText(command.result) },
+          },
+          {
+            type: 'llm_request',
+            id: llmId,
+            conversation_id: conversationId,
+            prompt: '',
+          },
+          {
+            type: 'audit_append',
+            id: auditId,
+            event_type: 'tool_result_stored',
+            summary: 'Tool result stored',
+            risk: 'info',
+          },
+        ];
+      }
       return [];
     },
 

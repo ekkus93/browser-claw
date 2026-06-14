@@ -164,6 +164,78 @@ impl Runtime {
                             },
                         ]
                     }
+                    Some("tool_call") => {
+                        // A rejected/failed tool stores a note and ends the turn
+                        // (no second provider call).
+                        if result.get("ok") == Some(&Value::Bool(false))
+                            || result.get("error").is_some()
+                        {
+                            self.state.message_count += 1;
+                            let put_id = self.next_id();
+                            let audit_id = self.next_id();
+                            return vec![
+                                Effect::StoragePut {
+                                    id: put_id,
+                                    conversation_id,
+                                    store: "messages".to_string(),
+                                    key: format!(
+                                        "m{}",
+                                        self.state.message_count
+                                    ),
+                                    value: json!({
+                                        "role": "tool",
+                                        "content": "Tool call was not completed."
+                                    }),
+                                },
+                                Effect::AuditAppend {
+                                    id: audit_id,
+                                    event_type: "tool_call_rejected".to_string(),
+                                    summary: "Tool call rejected".to_string(),
+                                    risk: "low".to_string(),
+                                },
+                            ];
+                        }
+                        // Approved: store the tool's result as a tool message,
+                        // then ask the model again with that result in context.
+                        let content = result
+                            .get("text")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                            .to_string();
+                        self.state.message_count += 1;
+                        let put_id = self.next_id();
+                        let llm_id = self.next_id();
+                        let audit_id = self.next_id();
+                        self.state
+                            .pending
+                            .insert(llm_id.clone(), "llm_request".to_string());
+                        self.state
+                            .pending_conversation
+                            .insert(llm_id.clone(), conversation_id.clone());
+                        self.state
+                            .pending_skill
+                            .insert(llm_id.clone(), skill_id);
+                        vec![
+                            Effect::StoragePut {
+                                id: put_id,
+                                conversation_id: conversation_id.clone(),
+                                store: "messages".to_string(),
+                                key: format!("m{}", self.state.message_count),
+                                value: json!({ "role": "tool", "content": content }),
+                            },
+                            Effect::LlmRequest {
+                                id: llm_id,
+                                conversation_id,
+                                prompt: String::new(),
+                            },
+                            Effect::AuditAppend {
+                                id: audit_id,
+                                event_type: "tool_result_stored".to_string(),
+                                summary: "Tool result stored".to_string(),
+                                risk: "info".to_string(),
+                            },
+                        ]
+                    }
                     _ => Vec::new(),
                 }
             }
@@ -220,6 +292,32 @@ mod tests {
             }
             other => panic!("expected ToolCallProposal, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn resolving_an_approved_tool_call_stores_the_result_and_asks_again() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit_with_skill("search", "web-search"));
+        // llm_request resolves with a tool call -> proposal eff-3.
+        rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "tool_call": { "name": "Page Reader", "args": {} } }),
+        });
+        // The host ran the tool and resolves the proposal with its output.
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-3".to_string(),
+            result: json!({ "text": "page contents" }),
+        });
+        // Tool result stored as a 'tool' message + a follow-up llm_request.
+        let stored = effects.iter().find_map(|e| match e {
+            Effect::StoragePut { value, .. } => Some(value),
+            _ => None,
+        });
+        assert_eq!(stored.expect("storage_put")["role"], "tool");
+        assert_eq!(stored.expect("storage_put")["content"], "page contents");
+        assert!(effects
+            .iter()
+            .any(|e| matches!(e, Effect::LlmRequest { .. })));
     }
 
     #[test]

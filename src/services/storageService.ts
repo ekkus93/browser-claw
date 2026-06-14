@@ -1,4 +1,6 @@
 import type { AppDispatch } from '../store/store.ts';
+import type { BrowserClawDB } from '../db/db.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 import {
   storageEstimateSet,
   storagePersistedSet,
@@ -85,6 +87,32 @@ export function assessStorageHealth(
   }
 
   return { level, usedRatio, persisted, recommendations };
+}
+
+/**
+ * Request persistent storage, audit the outcome, and refresh the storage slice.
+ * The grant itself is durable in the browser (navigator.storage.persisted()
+ * remains authoritative across reloads), so we don't mirror it into a settings
+ * row; the audit event is the durable RECORD of the request and its result.
+ * Returns whether persistence was granted.
+ */
+export async function requestStoragePersistence(
+  db: BrowserClawDB,
+  dispatch: AppDispatch,
+  manager: StorageManager | undefined = defaultManager(),
+): Promise<boolean> {
+  const granted = await requestPersistentStorage(manager);
+  void recordAudit(db, dispatch, {
+    type: 'storage.persist_requested',
+    summary: granted
+      ? 'Persistent storage granted'
+      : 'Persistent storage request denied',
+    source: 'storage',
+    risk: 'info',
+    status: granted ? 'success' : 'failure',
+  });
+  await refreshStorageInfo(dispatch, manager);
+  return granted;
 }
 
 /**

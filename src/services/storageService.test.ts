@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import 'fake-indexeddb/auto';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import {
   estimateStorage,
   isStoragePersisted,
   requestPersistentStorage,
+  requestStoragePersistence,
   assessStorageHealth,
   refreshStorageInfo,
 } from './storageService.ts';
@@ -10,6 +12,7 @@ import {
   storageEstimateSet,
   storagePersistedSet,
 } from '../store/slices/storageSlice.ts';
+import { db } from '../db/db.ts';
 
 function fakeManager(
   overrides: Partial<{
@@ -86,6 +89,54 @@ describe('assessStorageHealth', () => {
     );
     expect(health.level).toBe('warning');
     expect(health.recommendations.join(' ')).toMatch(/persistent storage/i);
+  });
+});
+
+describe('requestStoragePersistence', () => {
+  afterEach(async () => {
+    await db.open();
+    await db.audit_events.clear();
+  });
+  afterAll(() => {
+    db.close();
+  });
+
+  it('audits a granted request and refreshes the slice', async () => {
+    await db.open();
+    const dispatch = vi.fn();
+    const granted = await requestStoragePersistence(
+      db,
+      dispatch as never,
+      fakeManager({ persist: () => Promise.resolve(true) }),
+    );
+
+    expect(granted).toBe(true);
+    expect(dispatch).toHaveBeenCalledWith(storagePersistedSet(true));
+    const events = await db.audit_events
+      .where('type')
+      .equals('storage.persist_requested')
+      .toArray();
+    expect(events[0]?.status).toBe('success');
+  });
+
+  it('audits a denied request as a failure', async () => {
+    await db.open();
+    const dispatch = vi.fn();
+    const granted = await requestStoragePersistence(
+      db,
+      dispatch as never,
+      fakeManager({
+        persist: () => Promise.resolve(false),
+        persisted: () => Promise.resolve(false),
+      }),
+    );
+
+    expect(granted).toBe(false);
+    const events = await db.audit_events
+      .where('type')
+      .equals('storage.persist_requested')
+      .toArray();
+    expect(events[0]?.status).toBe('failure');
   });
 });
 

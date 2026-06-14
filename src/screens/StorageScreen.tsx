@@ -11,7 +11,7 @@ import { db } from '../db/db.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
 import {
   refreshStorageInfo,
-  requestPersistentStorage,
+  requestStoragePersistence,
   assessStorageHealth,
 } from '../services/storageService.ts';
 import {
@@ -248,9 +248,7 @@ export default function StorageScreen() {
                     variant="secondary"
                     size="sm"
                     onClick={() => {
-                      void requestPersistentStorage().then(() =>
-                        refreshStorageInfo(dispatch),
-                      );
+                      void requestStoragePersistence(db, dispatch);
                     }}
                   >
                     Request

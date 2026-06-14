@@ -1154,3 +1154,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - This completes Phase 3.3 "memory created/updated/deleted": created (Remember tool), updated+deleted (this pass), plus memory.retrieved from the retrieval pass — every memory mutation now emits an audit event.
 - Tests: MemoriesScreen.test.tsx beforeEach now clears db.audit_events; extended the edit test to assert a memory.updated audit with the new title; added a delete test asserting memory.deleted (status success, summary contains the title). No central audit-type registry — 'type' is a free string.
 - Gate GREEN: typecheck clean; pnpm test 409 (+1); e2e 28.
+
+## 2026-06-14T21:38:07Z - Claude Opus 4.8 - Audit persistent-storage requests (Phase 9.1 "Persist storage persistence result")
+- Closed the item by recording the result as a durable AUDIT event rather than an inert app_settings field: the browser already persists the grant (navigator.storage.persisted() is authoritative across reloads), so mirroring it to settings would be a speculative/inert field — which this project avoids (same reasoning as not persisting inference mode).
+- New storageService.requestStoragePersistence(db, dispatch, manager?): requests persistence, audits storage.persist_requested (source:storage; status success when granted / failure when denied), refreshes the storage slice, returns granted. Both callers (StorageScreen Request button + OnboardingScreen "Enable persistent storage") now route through it, removing duplicated request->refresh logic.
+- Tests: storageService.test.ts gained 2 cases (granted->audit success + storagePersistedSet(true); denied->audit failure). Added fake-indexeddb + db cleanup.
+- Gate GREEN: typecheck clean; pnpm test 411 (+2); e2e 28.
+- Design principle reaffirmed: don't persist values the browser/runtime already holds authoritatively; record the meaningful ACTION as an audit event instead.

@@ -18,10 +18,7 @@ import { cn } from '../lib/cn.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
 import { onboardingCompleted } from '../store/slices/appSlice.ts';
 import { activeProviderSet } from '../store/slices/providersSlice.ts';
-import {
-  requestPersistentStorage,
-  refreshStorageInfo,
-} from '../services/storageService.ts';
+import { requestStoragePersistence } from '../services/storageService.ts';
 import { db } from '../db/db.ts';
 import {
   setOnboardingComplete,
@@ -285,9 +282,7 @@ export default function OnboardingScreen() {
             variant="secondary"
             size="sm"
             onClick={() => {
-              void requestPersistentStorage().then(() =>
-                refreshStorageInfo(dispatch),
-              );
+              void requestStoragePersistence(db, dispatch);
             }}
           >
             Enable persistent storage

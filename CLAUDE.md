@@ -37,13 +37,13 @@ State ownership boundaries (enforce these): Redux = transient UI/session/run sta
 
 - **Package manager: pnpm.** Use `pnpm install` / `pnpm run <script>`. Do not use npm or yarn.
 - **Git: solo workflow on `master`.** Commit directly to master; no PR process yet.
-- **Linting is part of testing and is zero-tolerance.** `pnpm test` lints all files first (`pretest` → `eslint . --max-warnings 0`) before running Vitest. **Lint warnings are errors** — any warning fails the run and must be *fixed*, never suppressed. Do not add `eslint-disable` comments or downgrade/disable rules to silence a finding; change the code instead. (If a rule is genuinely wrong for this project, raise it explicitly rather than quietly suppressing.)
+- **Linting and formatting are part of testing and are zero-tolerance.** `pnpm test` runs `pretest` → `eslint . --max-warnings 0 && prettier --check .` before Vitest, so any lint warning or unformatted file fails the run. **Lint warnings are errors** — fix them, never suppress. Do not add `eslint-disable` comments or downgrade/disable rules to silence a finding; change the code instead. (If a rule is genuinely wrong for this project, raise it explicitly rather than quietly suppressing.) Run `pnpm run format` to auto-format.
 - No meaningful side effect happens silently — side effects go through inline approval cards (approve/edit/reject, show risk, show exact data).
 - Every meaningful action emits an audit event (see the audit event list in `BROWSERCLAW_UI_SPEC.md`).
 
-## Not yet configured
+## Tooling
 
-No formatter, linter, or test framework exists yet (Phase 0 adds them). Once Phase 0 lands a formatter (Prettier/Biome) and lint scripts, add a format-on-edit hook — re-run `/init` to set it up.
+Formatter (Prettier), linter (ESLint flat config), and test frameworks (Vitest + Playwright) are configured. The gate is `pnpm run typecheck`, `pnpm test` (runs lint + `prettier --check` then Vitest), and `pnpm run test:e2e`; `cargo test`/`cargo clippy` when Rust/WASM changes. A format-on-edit hook could still be added — re-run `/init` to set it up.
 
 ## Memory file
 

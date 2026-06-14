@@ -574,7 +574,7 @@
 - [x] `npm run test:e2e` if present <!-- pnpm run test:e2e (Playwright) — 28 passing in chromium + firefox. -->
 - [x] `cargo test` for Rust crates if cargo workspace present <!-- cargo test --workspace — green (claw-core/schema/testkit). -->
 - [x] `cargo clippy` if available <!-- cargo clippy --workspace --all-targets — zero warnings. -->
-- [x] Document any command that cannot run and why. <!-- All required commands run. Note: `pnpm run format:check` (prettier) is NOT wired into the gate's pretest (lint only); touched files are kept prettier-clean per-pass, but 5 pre-existing files still fail format:check (tracked as housekeeping, not in the gate). -->
+- [x] Document any command that cannot run and why. <!-- All required commands run and pass. `pnpm run format:check` (prettier) is now wired into the gate: pretest = `pnpm run lint && pnpm run format:check`, so `pnpm test` fails on any unformatted file; the repo is prettier-clean. -->
 
 ## Phase 12 — Acceptance Checklist
 
@@ -600,5 +600,5 @@ This hardening pass is complete only when all of these are true:
 - [x] All visible controls are functional, disabled, or marked future. <!-- Phase 10 UI-honesty pass: hollow Settings controls disabled w/ note; dead onboarding button removed; no-op buttons absent/disabled (tested). -->
 - [x] Tests catch the unsafe behaviors identified in this review. <!-- 398 vitest + 28 e2e incl. fail-closed runtime/provider, missing-handler-fatal, secret-leak regressions, backup raw-secret rejection, skill path/reserved/tool enforcement, truthful model status. -->
 
-<!-- Phase 12 reconciled: all acceptance criteria met. Remaining open TODO items elsewhere are either deliberate omissions (per-effect snapshot/audit spam), follow-ups needing more feature/runtime work (memory-write+retrieval pipeline -> 5.3 provenance/retrieval + 11.3 memory-approval; effect emitted/resolved lifecycle audit; 8.2 cancel pending upstream wllama abort support), or housekeeping (5 files fail prettier format:check, not in the gate). -->
+<!-- Phase 12 reconciled: all acceptance criteria met. Remaining open TODO items elsewhere are either deliberate omissions (per-effect snapshot/audit spam), follow-ups needing more feature/runtime work (memory-write+retrieval pipeline -> 5.3 provenance/retrieval + 11.3 memory-approval; effect emitted/resolved lifecycle audit; 8.2 cancel pending upstream wllama abort support). Housekeeping done: prettier format:check is now wired into the gate (pretest) and the repo is clean. -->
 

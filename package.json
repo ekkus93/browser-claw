@@ -11,7 +11,7 @@
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "pretest": "pnpm run lint",
+    "pretest": "pnpm run lint && pnpm run format:check",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

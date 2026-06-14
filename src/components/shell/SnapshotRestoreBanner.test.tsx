@@ -34,7 +34,9 @@ describe('SnapshotRestoreBanner', () => {
     expect(
       await screen.findByTestId('snapshot-restore-banner'),
     ).toBeInTheDocument();
-    expect(screen.getByText(/incompatible version of BrowserClaw/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/incompatible version of BrowserClaw/i),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(store.getState().runtime.snapshotIssue).toBeNull();

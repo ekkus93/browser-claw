@@ -83,7 +83,9 @@ export class RuntimeHost {
  * so the caller can audit it and start fresh — restoring it could silently
  * corrupt runtime state. Dropping it also stops it failing the same way forever.
  */
-export async function loadLatestSnapshot(db: BrowserClawDB): Promise<SnapshotLoad> {
+export async function loadLatestSnapshot(
+  db: BrowserClawDB,
+): Promise<SnapshotLoad> {
   const row = await db.runtime_snapshots.get(LATEST_SNAPSHOT_ID);
   if (!row || row.snapshot === undefined) return { status: 'none' };
   if (row.version !== SNAPSHOT_SCHEMA_VERSION) {

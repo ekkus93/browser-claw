@@ -74,7 +74,10 @@ describe('runtimeSlice', () => {
   it('flags a snapshot restore issue and survives a later runtime load', () => {
     // The boot sequence warns BEFORE the (fresh) runtime loads, so a successful
     // load must not wipe the warning — the user still needs to see it.
-    let state = runtimeReducer(undefined, snapshotRestoreWarned('incompatible'));
+    let state = runtimeReducer(
+      undefined,
+      snapshotRestoreWarned('incompatible'),
+    );
     expect(state.snapshotIssue).toBe('incompatible');
     state = runtimeReducer(state, runtimeLoaded({ mode: 'wasm' }));
     expect(state.snapshotIssue).toBe('incompatible');

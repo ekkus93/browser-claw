@@ -83,10 +83,7 @@ const runtimeSlice = createSlice({
      * `runtimeLoaded`, which deliberately does not clear it, so the warning
      * survives a successful (fresh) runtime load until the user dismisses it.
      */
-    snapshotRestoreWarned(
-      state,
-      action: PayloadAction<SnapshotRestoreIssue>,
-    ) {
+    snapshotRestoreWarned(state, action: PayloadAction<SnapshotRestoreIssue>) {
       state.snapshotIssue = action.payload;
     },
     snapshotWarningDismissed(state) {

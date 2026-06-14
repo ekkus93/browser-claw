@@ -185,7 +185,7 @@
   - [x] provider test success/failure; <!-- ModelsScreen.tsx handleTest: 'provider.test_succeeded' / 'provider.test_failed' (incl. unresolvable provider); ModelsScreen.test.tsx durable-audit tests -->
   - [x] LLM request start/success/failure; <!-- referenceRuntime.ts 'llm_request_sent'/'llm_response_received'/'llm_request_failed'; llmRunner.ts 'provider.request_failed' -->
   - [ ] effect emitted/resolved/failed; <!-- partial: audit_append effect routes durably (effectExecutor); generic effect lifecycle events not yet wired — tied to effect-port contract (Phase 1.2, blocked) -->
-  - [ ] tool proposed/approved/rejected/edited; <!-- not wired; depends on tool effect ports (Phase 7.4, contract-blocked) -->
+  - [ ] tool proposed/approved/rejected/edited; <!-- BLOCKED: no tool-execution loop exists (see 7.4) — nothing emits tool_call_proposal and approvals are UI-only, so there are no real tool lifecycle events to audit yet. -->
   - [ ] memory created/updated/deleted; <!-- not wired in app code (memory_created appears only as a test fixture) -->
   - [x] skill installed/enabled/disabled/import failed; <!-- skillManager.ts audits skill_installed/skill_reinstalled, skill_enabled/skill_disabled, skill_uninstalled, and skill_import_failed (all source 'skill', skillId); SkillsScreen.test.tsx "imports a skill ... and audits" asserts skill_installed + skill_enabled. (Prior annotation was stale.) -->
   - [ ] secret unlocked/locked/deleted; <!-- partial: secretVault.ts audits secret_unlocked (unlock) + secret_locked (lock/auto-lock) via the vault observer (secretVault.test.ts). Secret deletion isn't a wired action yet, so its audit is pending that feature. -->
@@ -397,7 +397,7 @@
 
 ### 7.4 Runtime Permission Enforcement
 
-- [ ] Enforce skill permissions during tool execution. <!-- BLOCKED: the tool_call_proposal effect carries no skill_id (effectTypes.ts), so the runtime tool path can't be tied to a skill's declared tools yet. Needs a claw-schema/WASM contract change to add skill_id, like the 5.1 storage-handler gap. -->
+- [ ] Enforce skill permissions during tool execution. <!-- BLOCKED — and it's NOT just a one-field schema gap (verified Pass 63): there is no tool-execution loop to enforce on. (a) claw-core never emits Effect::ToolCallProposal (only handles SubmitUserMessage/ResolveEffect; never parses LLM results for tool calls). (b) the approval flow is UI-only — effectExecutor turns tool_call_proposal into approvalRequested but ApprovalCard/approvalsSlice/ChatScreen only mutate Redux; nothing resolves an approval back to RuntimeHost. (c) no tool registry/runner exists — skills' declared permissions.tools is only DISPLAYED, never executed/checked. Unblocking needs the whole loop, in order: (1) runtime parses tool calls + emits ToolCallProposal{skill_id} + tracks pending; (2) an approval listener that sends ResolveEffect back on approve/reject; (3) a tool registry/runner (real security design: web/page/file tools = network/CORS/sandbox). Adding skill_id alone would be inert dead code. -->
 - [x] Enforce skill filesystem permissions during reads/writes. <!-- skillRunner.ts routes skill_fs_read_text/skill_state_get/skill_state_put through the permission-scoped SkillFs; wired as ctx.ports.skill in main.tsx (was an unwired no-op). -->
 - [x] Do not rely only on UI display. <!-- enforcement lives in SkillFs/skillRunner data layer; disabled/unknown skills fail closed. -->
 - [ ] Tests:

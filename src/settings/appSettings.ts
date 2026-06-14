@@ -1,4 +1,5 @@
 import type { BrowserClawDB } from '../db/db.ts';
+import { normalizeTheme, type Theme } from './theme.ts';
 
 /**
  * Durable key/value app settings backed by the IndexedDB `app_settings` table.
@@ -36,6 +37,17 @@ export async function setOnboardingComplete(
   value: boolean,
 ): Promise<void> {
   await setSetting(db, ONBOARDING_COMPLETE_KEY, value);
+}
+
+/** UI color theme; applied to <html data-theme> and restored on every boot. */
+export const THEME_KEY = 'theme';
+
+export async function getTheme(db: BrowserClawDB): Promise<Theme> {
+  return normalizeTheme(await getSetting<Theme>(db, THEME_KEY));
+}
+
+export async function setTheme(db: BrowserClawDB, theme: Theme): Promise<void> {
+  await setSetting(db, THEME_KEY, theme);
 }
 
 /** SecretVault auto-lock idle timeout, in minutes (drives a real lock timer). */

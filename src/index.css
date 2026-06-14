@@ -51,6 +51,32 @@
 }
 
 /*
+ * Dark theme. applyTheme() sets `data-theme="dark"` on <html>; these overrides
+ * redefine only the color tokens (typography, radii, and layout are unchanged).
+ * Every Tailwind color utility reads its token via `var(--color-*)`, and custom
+ * properties inherit, so overriding them on the root re-themes the whole app.
+ */
+[data-theme='dark'] {
+  --color-background: #0b0f17;
+  --color-surface: #131a26;
+  --color-surface-subtle: #0f1722;
+  --color-border: #26303f;
+  --color-text: #e6edf6;
+  --color-muted: #9aa7b8;
+  --color-muted-subtle: #6b7889;
+  --color-primary: #3b82f6;
+  --color-primary-subtle: #16243d;
+  --color-success: #22c55e;
+  --color-success-subtle: #102b1c;
+  --color-warning: #f59e0b;
+  --color-warning-subtle: #2c2410;
+  --color-danger: #ef4444;
+  --color-danger-subtle: #2c1717;
+  --color-purple: #8b5cf6;
+  --color-purple-subtle: #1e1833;
+}
+
+/*
  * Fixed layout dimensions from design_tokens.json. Kept as plain custom
  * properties (not utility-generating) for use in the AppShell via
  * arbitrary values, e.g. `w-[var(--bc-left-nav-width)]`.

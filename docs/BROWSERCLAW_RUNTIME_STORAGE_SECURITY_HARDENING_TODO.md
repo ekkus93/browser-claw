@@ -475,12 +475,12 @@
 - [ ] Make Settings screen read from IndexedDB.
 - [ ] Make Settings controls write to IndexedDB.
 - [ ] Implement settings for:
-  - [ ] theme;
+  - [x] theme; <!-- Wired END-TO-END and no longer a hollow control: added real dark tokens. src/settings/theme.ts (applyTheme sets <html data-theme>; normalizeTheme) + index.css `[data-theme='dark']` overrides the color custom properties (every Tailwind color utility reads var(--color-*), so the override re-themes the whole app). SettingsScreen Theme Select reads getTheme(db) on mount and on change applies it live + writes setTheme(db,...); main.tsx restoreTheme() applies the persisted theme at boot. Tested: theme.test.ts (applyTheme/normalizeTheme), appSettings.test.ts (default light + durable round-trip), SettingsScreen.test.tsx ("loads the persisted theme, applies it to <html>, and writes changes back"). -->
   - [ ] default provider;
   - [ ] fallback provider;
   - [x] lock timeout; <!-- First setting wired END-TO-END: SettingsScreen lock-timeout Select now reads the durable value from app_settings on mount (getLockTimeoutMinutes) and writes changes back (setLockTimeoutMinutes); main.tsx restoreLockTimeout applies the persisted value to the SecretVault at boot; SecretVault.setLockTimeout(ms) re-arms the real auto-lock timer (the genuine consumer — secretVault.ts:243). Not a hollow control: it drives actual idle-locking. -->
-        <!-- Remaining settings still decorative/local-only: theme (BLOCKED — app is single-theme, no dark tokens/darkMode config; persisting a theme that has no visual effect would itself be a hollow affordance), default/fallback provider, approval policy, backup, skill install policy, dev/demo/fallback mode (the last is env-gated via VITE_DEMO_MODE/appConfig, not runtime-mutable). -->
-        <!-- The two umbrella boxes above (read-from / write-to IndexedDB) stay UNTICKED until more controls are wired — only the lock-timeout control reads/writes so far. -->
+        <!-- Theme + lock timeout are now wired end-to-end (read on mount, write on change, applied at boot). Remaining settings still decorative/local-only: default/fallback provider, approval policy, backup, skill install policy, dev/demo/fallback mode (the last is env-gated via VITE_DEMO_MODE/appConfig, not runtime-mutable). -->
+        <!-- The two umbrella boxes above (read-from / write-to IndexedDB) stay UNTICKED until more controls are wired — only theme + lock-timeout read/write so far. -->
 
   - [ ] approval policy;
   - [ ] backup settings;

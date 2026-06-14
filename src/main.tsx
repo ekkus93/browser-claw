@@ -42,7 +42,9 @@ import { hydrated, onboardingCompleted } from './store/slices/appSlice.ts';
 import {
   getOnboardingComplete,
   getLockTimeoutMinutes,
+  getTheme,
 } from './settings/appSettings.ts';
+import { applyTheme } from './settings/theme.ts';
 import { recordAudit } from './audit/auditSink.ts';
 import type { AuditRiskLevel, AuditStatus } from './db/types.ts';
 
@@ -273,6 +275,14 @@ async function restoreLockTimeout(): Promise<void> {
 }
 
 void restoreLockTimeout();
+
+// Apply the user's persisted color theme so a reload honours their choice
+// instead of always starting on the default light theme.
+async function restoreTheme(): Promise<void> {
+  applyTheme(await getTheme(db));
+}
+
+void restoreTheme();
 
 // Restore durable first-run state, then mark the session hydrated so the index
 // route can decide between onboarding and chat. onboardingComplete is dispatched

@@ -1161,3 +1161,11 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Tests: storageService.test.ts gained 2 cases (granted->audit success + storagePersistedSet(true); denied->audit failure). Added fake-indexeddb + db cleanup.
 - Gate GREEN: typecheck clean; pnpm test 411 (+2); e2e 28.
 - Design principle reaffirmed: don't persist values the browser/runtime already holds authoritatively; record the meaningful ACTION as an audit event instead.
+
+## 2026-06-14T21:58:37Z - Claude Opus 4.8 - Theme setting wired end-to-end (Phase 9.2 theme; real dark mode)
+- Built a real dark theme (was previously single-theme/light-only). Mechanism: src/settings/theme.ts exports applyTheme(theme) -> sets <html data-theme="dark|light">, plus normalizeTheme() + Theme type. index.css adds a [data-theme='dark'] block overriding the @theme color custom properties; since every Tailwind v4 color utility compiles to var(--color-*) and custom properties inherit from <html>, the override re-themes the entire app with no per-component changes.
+- Persistence: appSettings.ts getTheme(db) (default 'light') / setTheme(db,theme), key 'theme'. SettingsScreen Theme Select now reads getTheme on mount and on change applies live (applyTheme) + writes setTheme. main.tsx restoreTheme() applies the persisted theme at boot (after restoreLockTimeout). Boot owns applying the persisted value; the screen applies live edits — that's why the SettingsScreen test asserts the DOM only after a change, not on mount.
+- Theme change is NOT audited (cosmetic/non-security, consistent with lock timeout; only security-relevant settings like wllama CDN consent are audited).
+- Tailwind v4 has NO config file — dark mode done purely via CSS var overrides under a data-theme selector ([data-theme='dark'] and :root have equal specificity, so source order wins → dark block placed after @theme/:root).
+- Gate GREEN: typecheck clean; pnpm test 415 (+4: theme.test 2, appSettings 1, SettingsScreen 1); e2e 28.
+- TODO: Phase 9.2 "theme" ticked end-to-end. The umbrella "read/write Settings from IndexedDB" boxes stay unticked (only theme + lock timeout wired so far). Remaining 9.2 settings (default/fallback provider, approval policy, backup, skill install policy, dev mode) still decorative/no-consumer.

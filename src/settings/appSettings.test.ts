@@ -12,6 +12,8 @@ import {
   getWllamaCdnConsent,
   setWllamaCdnConsent,
   WLLAMA_CDN_CONSENT_KEY,
+  getTheme,
+  setTheme,
   getOnboardingProgress,
   setOnboardingProgress,
   clearOnboardingProgress,
@@ -26,6 +28,12 @@ describe('appSettings', () => {
     expect(await getSetting(db, 'theme')).toBeUndefined();
     await setSetting(db, 'theme', 'dark');
     expect(await getSetting<string>(db, 'theme')).toBe('dark');
+  });
+
+  it('defaults the theme to light and persists a chosen theme durably', async () => {
+    expect(await getTheme(db)).toBe('light');
+    await setTheme(db, 'dark');
+    expect(await getTheme(db)).toBe('dark');
   });
 
   it('defaults onboarding completion to false when unset', async () => {

@@ -17,6 +17,8 @@ import {
   setLockTimeoutMinutes,
   getWllamaCdnConsent,
   setWllamaCdnConsent,
+  getTheme,
+  setTheme,
 } from '../settings/appSettings.ts';
 import { queryAuditEvents } from '../audit/auditService.ts';
 
@@ -99,6 +101,23 @@ describe('SettingsScreen', () => {
     expect(store.getState().runtime.status).toBe('ready');
     await user.click(screen.getByRole('button', { name: 'Reset runtime' }));
     expect(store.getState().runtime.status).toBe('initializing');
+  });
+
+  it('loads the persisted theme, applies it to <html>, and writes changes back', async () => {
+    await setTheme(db, 'dark');
+    const user = userEvent.setup();
+    renderSettings();
+
+    const select = await screen.findByRole('combobox', { name: 'Theme' });
+    await waitFor(() => expect(select).toHaveValue('dark'));
+
+    // Changing the control applies the theme to the document root (boot owns
+    // applying the persisted value; the screen applies live edits) and writes
+    // the new value back durably.
+    await user.selectOptions(select, 'light');
+    expect(select).toHaveValue('light');
+    expect(document.documentElement.dataset.theme).toBe('light');
+    await waitFor(async () => expect(await getTheme(db)).toBe('light'));
   });
 
   it('loads the persisted lock timeout and writes changes to IndexedDB', async () => {

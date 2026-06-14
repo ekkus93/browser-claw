@@ -7,7 +7,10 @@ import {
   setLockTimeoutMinutes,
   getWllamaCdnConsent,
   setWllamaCdnConsent,
+  getTheme,
+  setTheme,
 } from '../settings/appSettings.ts';
+import { applyTheme, normalizeTheme, type Theme } from '../settings/theme.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { secretVault } from '../secrets/vault.ts';
 import { APP_VERSION } from '../lib/appMeta.ts';
@@ -48,6 +51,25 @@ export default function SettingsScreen() {
   const model = useAppSelector((state) => state.models.activeModelLabel);
   const runtimeStatus = useAppSelector((state) => state.runtime.status);
   const runtimeMode = useAppSelector((state) => state.runtime.mode);
+
+  // Theme is a real, persisted preference: read the durable value on mount,
+  // and on change apply it to <html data-theme> immediately and write it back.
+  const [theme, setThemeState] = useState<Theme>('light');
+  useEffect(() => {
+    let active = true;
+    void getTheme(db).then((value) => {
+      if (active) setThemeState(value);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const handleThemeChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = normalizeTheme(event.target.value);
+    setThemeState(value);
+    applyTheme(value);
+    void setTheme(db, value);
+  };
 
   // Lock timeout is a real, persisted setting: it drives the SecretVault's
   // auto-lock timer. Read the durable value on mount and write changes back to
@@ -110,8 +132,8 @@ export default function SettingsScreen() {
             </p>
             <p className="mt-1 text-xs text-muted-subtle">
               Disabled controls are placeholders for upcoming preferences and
-              don&apos;t take effect yet. Lock timeout and &ldquo;Load runtime
-              from CDN&rdquo; are active.
+              don&apos;t take effect yet. Theme, lock timeout, and &ldquo;Load
+              runtime from CDN&rdquo; are active.
             </p>
           </header>
 
@@ -120,7 +142,12 @@ export default function SettingsScreen() {
               <Field
                 label="Theme"
                 control={
-                  <Select defaultValue="light" className="w-40" disabled>
+                  <Select
+                    aria-label="Theme"
+                    className="w-40"
+                    value={theme}
+                    onChange={handleThemeChange}
+                  >
                     <option value="light">Light</option>
                     <option value="dark">Dark</option>
                   </Select>

@@ -24,6 +24,7 @@ import {
   getActiveProviderId,
   setActiveProviderId,
 } from '../providers/providerProfiles.ts';
+import { getApprovalPolicy } from '../settings/appSettings.ts';
 import { queryAuditEvents } from '../audit/auditService.ts';
 
 function renderSettings() {
@@ -88,7 +89,7 @@ describe('SettingsScreen', () => {
     // These have no consumer yet, so they must be visibly inactive rather than
     // switches that flip but change nothing (Phase 10 honesty).
     expect(
-      screen.getByRole('switch', { name: 'Require approval by default' }),
+      screen.getByRole('switch', { name: 'Warn on browser-direct keys' }),
     ).toBeDisabled();
     expect(screen.getByRole('switch', { name: 'Auto-backup' })).toBeDisabled();
     expect(screen.getByRole('switch', { name: 'Dev mode' })).toBeDisabled();
@@ -145,6 +146,30 @@ describe('SettingsScreen', () => {
     await waitFor(() =>
       expect(store.getState().providers.activeProviderId).toBe('anthropic'),
     );
+  });
+
+  it('defaults the approval policy to require-all and persists + audits a relax', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const select = await screen.findByRole('combobox', {
+      name: 'Approval policy',
+    });
+    // Fail-closed default: require approval for everything.
+    await waitFor(() => expect(select).toHaveValue('require_all'));
+
+    await user.selectOptions(select, 'auto_low_medium');
+    expect(select).toHaveValue('auto_low_medium');
+    await waitFor(async () =>
+      expect(await getApprovalPolicy(db)).toBe('auto_low_medium'),
+    );
+    // Relaxing the policy is a meaningful security change and must be audited.
+    await waitFor(async () => {
+      const events = await queryAuditEvents(db, {});
+      expect(
+        events.some((e) => e.type === 'settings.approval_policy_relaxed'),
+      ).toBe(true);
+    });
   });
 
   it('loads the persisted lock timeout and writes changes to IndexedDB', async () => {

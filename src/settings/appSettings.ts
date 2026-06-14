@@ -50,6 +50,31 @@ export async function setTheme(db: BrowserClawDB, theme: Theme): Promise<void> {
   await setSetting(db, THEME_KEY, theme);
 }
 
+/**
+ * Inline-approval policy. Default `require_all` is fail-closed: every proposed
+ * side effect waits for the user's approval card (the CLAUDE.md guarantee that
+ * "no meaningful side effect happens silently"). The opt-in `auto_low_medium`
+ * relaxation auto-runs only low- and medium-risk calls — HIGH risk ALWAYS
+ * prompts, and auto-approved calls are still fully audited, so nothing is truly
+ * silent. There is no mode that can auto-approve high-risk effects.
+ */
+export type ApprovalPolicy = 'require_all' | 'auto_low_medium';
+export const APPROVAL_POLICY_KEY = 'approvalPolicy';
+
+export async function getApprovalPolicy(
+  db: BrowserClawDB,
+): Promise<ApprovalPolicy> {
+  const value = await getSetting<ApprovalPolicy>(db, APPROVAL_POLICY_KEY);
+  return value === 'auto_low_medium' ? 'auto_low_medium' : 'require_all';
+}
+
+export async function setApprovalPolicy(
+  db: BrowserClawDB,
+  policy: ApprovalPolicy,
+): Promise<void> {
+  await setSetting(db, APPROVAL_POLICY_KEY, policy);
+}
+
 /** SecretVault auto-lock idle timeout, in minutes (drives a real lock timer). */
 export const LOCK_TIMEOUT_MINUTES_KEY = 'lockTimeoutMinutes';
 const DEFAULT_LOCK_TIMEOUT_MINUTES = 15;

@@ -5,11 +5,12 @@ import auditReducer from '../store/slices/auditSlice.ts';
 import approvalsReducer from '../store/slices/approvalsSlice.ts';
 import { BrowserClawDB } from '../db/db.ts';
 import { createToolEffectHandler, runApprovedToolCall } from './toolRunner.ts';
+import { setApprovalPolicy } from '../settings/appSettings.ts';
 import type { Effect } from './effectTypes.ts';
 
 const db = new BrowserClawDB();
 
-function makeHandler() {
+function makeHandler(opts: { getConversationId?: () => string } = {}) {
   const store = configureStore({
     reducer: { audit: auditReducer, approvals: approvalsReducer },
   });
@@ -20,6 +21,9 @@ function makeHandler() {
     db,
     dispatch: store.dispatch,
     submit,
+    ...(opts.getConversationId
+      ? { getConversationId: opts.getConversationId }
+      : {}),
   });
   return { store, submit, handler };
 }
@@ -65,6 +69,7 @@ afterEach(async () => {
   await db.skill_state.clear();
   await db.audit_events.clear();
   await db.memories.clear();
+  await db.app_settings.clear();
 });
 
 describe('createToolEffectHandler — permission enforcement (fail closed)', () => {
@@ -143,6 +148,83 @@ describe('createToolEffectHandler — permission enforcement (fail closed)', () 
     await handler(proposal('ghost', 'Page Reader'));
     await handler(proposal('', 'Page Reader'));
     expect(submit).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('createToolEffectHandler — approval policy', () => {
+  it('queues even a low-risk call under the default (fail-closed) policy', async () => {
+    await db.open();
+    await installSkill({
+      id: 'web-search',
+      enabled: true,
+      tools: ['Page Reader'],
+    });
+    const { store, submit, handler } = makeHandler();
+
+    await handler({ ...proposal('web-search', 'Page Reader'), risk: 'low' });
+
+    // Default is require_all: nothing auto-runs, the user must confirm.
+    expect(store.getState().approvals.queue[0]?.status).toBe('pending');
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('auto-approves and runs a medium-risk call when the policy is relaxed', async () => {
+    await db.open();
+    await db.memories.clear();
+    await setApprovalPolicy(db, 'auto_low_medium');
+    await installSkill({ id: 'mem', enabled: true, tools: ['Remember'] });
+    const { store, submit, handler } = makeHandler({
+      getConversationId: () => 'c-auto',
+    });
+
+    await handler({
+      type: 'tool_call_proposal',
+      id: 'eff-auto',
+      skill_id: 'mem',
+      name: 'Remember',
+      args: { title: 'Auto fact', text: 'remembered without a card' },
+      risk: 'medium',
+    });
+
+    // No approval card was shown — it ran straight through and resolved.
+    expect(store.getState().approvals.queue).toHaveLength(0);
+    expect(submit).toHaveBeenCalledWith({
+      type: 'resolve_effect',
+      id: 'eff-auto',
+      result: { ok: true, text: 'Saved memory: Auto fact' },
+    });
+    // But it is NOT silent: the auto-approval and the run are both audited,
+    // and the memory carries the conversation provenance.
+    const autoApproved = await db.audit_events
+      .where('type')
+      .equals('tool.auto_approved')
+      .toArray();
+    expect(autoApproved[0]?.status).toBe('success');
+    const rows = await db.memories.toArray();
+    expect(rows[0]).toMatchObject({
+      title: 'Auto fact',
+      conversationId: 'c-auto',
+    });
+  });
+
+  it('NEVER auto-approves a high-risk call, even under the relaxed policy', async () => {
+    await db.open();
+    await setApprovalPolicy(db, 'auto_low_medium');
+    await installSkill({
+      id: 'web-search',
+      enabled: true,
+      tools: ['Page Reader'],
+    });
+    const { store, submit, handler } = makeHandler();
+
+    await handler({ ...proposal('web-search', 'Page Reader'), risk: 'high' });
+
+    // High risk always prompts: it is queued, nothing ran/resolved.
+    expect(store.getState().approvals.queue[0]).toMatchObject({
+      status: 'pending',
+      risk: 'high',
+    });
+    expect(submit).not.toHaveBeenCalled();
   });
 });
 

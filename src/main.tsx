@@ -219,6 +219,7 @@ async function bootRuntime(): Promise<void> {
       db,
       dispatch: store.dispatch,
       submit: (command) => host.submit(command),
+      getConversationId: () => store.getState().chat.activeConversationId ?? '',
     }),
     skill: createSkillEffectHandler({
       db,

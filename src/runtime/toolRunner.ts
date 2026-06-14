@@ -6,6 +6,7 @@ import type { SkillPermissions } from '../skills/skillTypes.ts';
 import type { Command, Effect } from './effectTypes.ts';
 import { normalizeApprovalRisk } from './effectExecutor.ts';
 import { runToolCall, type ToolContext } from '../tools/tools.ts';
+import { getApprovalPolicy } from '../settings/appSettings.ts';
 
 type ToolEffect = Extract<Effect, { type: 'tool_call_proposal' }>;
 
@@ -17,6 +18,12 @@ export interface ToolEffectDeps {
   dispatch: AppDispatch;
   /** Feed a command back into the runtime (host.submit) to resolve the effect. */
   submit: (command: Command) => Promise<void>;
+  /**
+   * The active conversation id, for provenance on an auto-approved tool's
+   * persisted record (e.g. Remember). Optional — when absent, an auto-approved
+   * call simply runs without conversation provenance.
+   */
+  getConversationId?: () => string;
 }
 
 /**
@@ -74,9 +81,44 @@ export function createToolEffectHandler(deps: ToolEffectDeps) {
       return;
     }
 
-    // Permitted — surface it for inline approval; nothing runs until approved.
-    // The payloadPreview is the exact args JSON the user reviews and may EDIT;
-    // it's the single source of truth for what actually runs.
+    // Permitted. The approval policy decides whether the user must confirm or
+    // the call may auto-run. Fail-closed: only the opt-in 'auto_low_medium'
+    // policy relaxes anything, and even then HIGH risk ALWAYS prompts — there is
+    // no path that auto-approves a high-risk effect.
+    const risk = normalizeApprovalRisk(effect.risk);
+    const policy = await getApprovalPolicy(deps.db);
+    if (policy === 'auto_low_medium' && risk !== 'high') {
+      // Auto-approved — but never silent: audit the auto-approval, then run it
+      // through the SAME execution path as a user approval (which audits
+      // tool.executed and resolves the effect).
+      void recordAudit(deps.db, deps.dispatch, {
+        type: 'tool.auto_approved',
+        summary: `Tool '${effect.name}' auto-approved (${risk} risk, policy)`,
+        source: 'skill',
+        risk: 'low',
+        status: 'success',
+        toolName: effect.name,
+        skillId: effect.skill_id,
+      });
+      await runApprovedToolCall(
+        { db: deps.db, dispatch: deps.dispatch, submit: deps.submit },
+        {
+          id: effect.id,
+          status: 'approved',
+          toolName: effect.name,
+          argsJson: JSON.stringify(effect.args),
+          skillId: effect.skill_id,
+          ...(deps.getConversationId
+            ? { conversationId: deps.getConversationId() }
+            : {}),
+        },
+      );
+      return;
+    }
+
+    // Surface it for inline approval; nothing runs until approved. The
+    // payloadPreview is the exact args JSON the user reviews and may EDIT; it's
+    // the single source of truth for what actually runs.
     void recordAudit(deps.db, deps.dispatch, {
       type: 'tool.proposed',
       summary: `Tool '${effect.name}' proposed`,
@@ -91,7 +133,7 @@ export function createToolEffectHandler(deps: ToolEffectDeps) {
         id: effect.id,
         kind: 'tool_call',
         title: effect.name,
-        risk: normalizeApprovalRisk(effect.risk),
+        risk,
         summary: `Tool call: ${effect.name}`,
         payloadPreview: JSON.stringify(effect.args),
         toolName: effect.name,

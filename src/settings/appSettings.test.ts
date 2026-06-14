@@ -14,6 +14,8 @@ import {
   WLLAMA_CDN_CONSENT_KEY,
   getTheme,
   setTheme,
+  getApprovalPolicy,
+  setApprovalPolicy,
   getOnboardingProgress,
   setOnboardingProgress,
   clearOnboardingProgress,
@@ -34,6 +36,15 @@ describe('appSettings', () => {
     expect(await getTheme(db)).toBe('light');
     await setTheme(db, 'dark');
     expect(await getTheme(db)).toBe('dark');
+  });
+
+  it('defaults the approval policy to require-all (fail closed) and round-trips a relax', async () => {
+    expect(await getApprovalPolicy(db)).toBe('require_all');
+    await setApprovalPolicy(db, 'auto_low_medium');
+    expect(await getApprovalPolicy(db)).toBe('auto_low_medium');
+    // An unknown stored value falls back to the safe default.
+    await setSetting(db, 'approvalPolicy', 'nonsense');
+    expect(await getApprovalPolicy(db)).toBe('require_all');
   });
 
   it('defaults onboarding completion to false when unset', async () => {

@@ -479,10 +479,10 @@
   - [x] default provider; <!-- Wired to the EXISTING active-provider machinery, not a parallel key: the Settings "Default provider" Select reads getActiveProviderId(db) (app_settings 'activeProviderId') on mount and on change calls setActiveProviderId(db,id) + dispatches activeProviderSet (resolving label/model/baseUrl from getActiveProviderProfile, mirroring main.tsx restoreActiveProvider) so the live runtime/UI switch immediately. Options come from DEFAULT_PROVIDER_PROFILES (openai/anthropic/compatible/ollama/llama-server). Same durable key Onboarding writes, so they agree. Tested: SettingsScreen.test "loads the persisted default provider, then persists + goes live on change" (control reflects 'openai', selecting 'anthropic' writes app_settings AND updates the providers slice). -->
   - [ ] fallback provider;
   - [x] lock timeout; <!-- First setting wired END-TO-END: SettingsScreen lock-timeout Select now reads the durable value from app_settings on mount (getLockTimeoutMinutes) and writes changes back (setLockTimeoutMinutes); main.tsx restoreLockTimeout applies the persisted value to the SecretVault at boot; SecretVault.setLockTimeout(ms) re-arms the real auto-lock timer (the genuine consumer — secretVault.ts:243). Not a hollow control: it drives actual idle-locking. -->
-        <!-- Theme, default provider, and lock timeout are now wired end-to-end (read on mount, write on change, applied/dispatched live + at boot). Remaining settings still decorative/local-only: fallback provider, approval policy, backup, skill install policy, dev/demo/fallback mode (the last is env-gated via VITE_DEMO_MODE/appConfig, not runtime-mutable). -->
-        <!-- The two umbrella boxes above (read-from / write-to IndexedDB) stay UNTICKED until more controls are wired — theme, default provider, and lock-timeout read/write so far. -->
+        <!-- Theme, default provider, approval policy, and lock timeout are now wired end-to-end (read on mount, write on change, applied/dispatched live + at boot; approval policy is read by createToolEffectHandler). Remaining settings still decorative/local-only: fallback provider, backup, skill install policy, dev/demo/fallback mode (the last is env-gated via VITE_DEMO_MODE/appConfig, not runtime-mutable). -->
+        <!-- The two umbrella boxes above (read-from / write-to IndexedDB) stay UNTICKED until more controls are wired — theme, default provider, approval policy, and lock-timeout read/write so far. -->
 
-  - [ ] approval policy;
+  - [x] approval policy; <!-- Real, persisted security setting that CHANGES approval behavior. appSettings getApprovalPolicy/setApprovalPolicy (key 'approvalPolicy'), default 'require_all' (fail-closed). The opt-in 'auto_low_medium' relaxation is enforced in the single approval seam (createToolEffectHandler): after permission passes, if policy is relaxed AND normalized risk !== 'high', the call is audited (tool.auto_approved) and run through the SAME path as a user approval (runApprovedToolCall -> tool.executed + resolve), with conversation provenance via deps.getConversationId (wired in main.tsx). HIGH risk ALWAYS queues — no path auto-approves it. SettingsScreen exposes it as a Select (replacing the old disabled "Require approval by default" toggle); relaxing/tightening is audited (settings.approval_policy_relaxed/strict). Tested in toolRunner.test.ts (default queues low; relaxed auto-runs medium + audits + provenance; high NEVER auto-approved) + appSettings.test.ts (default + round-trip + bad-value fallback) + SettingsScreen.test.ts (wiring + audit). -->
   - [ ] backup settings;
   - [ ] skill install policy;
   - [ ] developer/demo/fallback mode.
@@ -493,7 +493,7 @@
 
   - [x] top bar Settings button navigates; <!-- AppLayout.test.tsx: clicking the top-bar Settings button lands on /settings. -->
   - [x] top bar provider/model button navigates; <!-- AppLayout.test.tsx: clicking the top-bar provider/model button (title "Change active model or provider") lands on /models. -->
-  - [ ] approval policy affects approval behavior.
+  - [x] approval policy affects approval behavior. <!-- toolRunner.test.ts "createToolEffectHandler — approval policy": under the default policy even a low-risk call is queued (require_all); under the opt-in auto_low_medium a medium-risk call runs without an approval card (queue empty, effect resolved, tool.auto_approved audited); a high-risk call is STILL queued under the relaxed policy. The policy demonstrably changes whether the approval card appears. -->
 
 ### 9.3 Models Screen
 

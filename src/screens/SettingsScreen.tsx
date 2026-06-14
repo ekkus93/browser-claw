@@ -9,6 +9,9 @@ import {
   setWllamaCdnConsent,
   getTheme,
   setTheme,
+  getApprovalPolicy,
+  setApprovalPolicy,
+  type ApprovalPolicy,
 } from '../settings/appSettings.ts';
 import { applyTheme, normalizeTheme, type Theme } from '../settings/theme.ts';
 import {
@@ -114,6 +117,44 @@ export default function SettingsScreen() {
     })();
   };
 
+  // Approval policy is a real, persisted security setting that the tool-effect
+  // handler reads to decide whether a proposed call must be confirmed or may
+  // auto-run (low/medium only — high always prompts). Relaxing it is a
+  // meaningful security change, so the switch is audited. Default fail-closed.
+  const [approvalPolicy, setApprovalPolicyState] =
+    useState<ApprovalPolicy>('require_all');
+  useEffect(() => {
+    let active = true;
+    void getApprovalPolicy(db).then((policy) => {
+      if (active) setApprovalPolicyState(policy);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const handleApprovalPolicyChange = (
+    event: ChangeEvent<HTMLSelectElement>,
+  ) => {
+    const policy: ApprovalPolicy =
+      event.target.value === 'auto_low_medium'
+        ? 'auto_low_medium'
+        : 'require_all';
+    setApprovalPolicyState(policy);
+    void setApprovalPolicy(db, policy);
+    const relaxed = policy === 'auto_low_medium';
+    void recordAudit(db, dispatch, {
+      type: relaxed
+        ? 'settings.approval_policy_relaxed'
+        : 'settings.approval_policy_strict',
+      summary: relaxed
+        ? 'Approval policy set to auto-approve low & medium risk'
+        : 'Approval policy set to require approval for everything',
+      source: 'user',
+      status: 'success',
+      risk: relaxed ? 'medium' : 'info',
+    });
+  };
+
   // Lock timeout is a real, persisted setting: it drives the SecretVault's
   // auto-lock timer. Read the durable value on mount and write changes back to
   // IndexedDB while applying them to the live vault immediately.
@@ -175,8 +216,9 @@ export default function SettingsScreen() {
             </p>
             <p className="mt-1 text-xs text-muted-subtle">
               Disabled controls are placeholders for upcoming preferences and
-              don&apos;t take effect yet. Theme, default provider, lock timeout,
-              and &ldquo;Load runtime from CDN&rdquo; are active.
+              don&apos;t take effect yet. Theme, default provider, approval
+              policy, lock timeout, and &ldquo;Load runtime from CDN&rdquo; are
+              active.
             </p>
           </header>
 
@@ -274,14 +316,21 @@ export default function SettingsScreen() {
                 }
               />
               <Field
-                label="Require approval by default"
+                label="Approval policy"
                 control={
-                  <Toggle
-                    checked={true}
-                    onCheckedChange={noop}
-                    disabled
-                    ariaLabel="Require approval by default"
-                  />
+                  <Select
+                    aria-label="Approval policy"
+                    className="w-56"
+                    value={approvalPolicy}
+                    onChange={handleApprovalPolicyChange}
+                  >
+                    <option value="require_all">
+                      Require approval for everything
+                    </option>
+                    <option value="auto_low_medium">
+                      Auto-approve low &amp; medium risk
+                    </option>
+                  </Select>
                 }
               />
               <Field

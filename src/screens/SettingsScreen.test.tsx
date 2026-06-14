@@ -20,6 +20,10 @@ import {
   getTheme,
   setTheme,
 } from '../settings/appSettings.ts';
+import {
+  getActiveProviderId,
+  setActiveProviderId,
+} from '../providers/providerProfiles.ts';
 import { queryAuditEvents } from '../audit/auditService.ts';
 
 function renderSettings() {
@@ -118,6 +122,29 @@ describe('SettingsScreen', () => {
     expect(select).toHaveValue('light');
     expect(document.documentElement.dataset.theme).toBe('light');
     await waitFor(async () => expect(await getTheme(db)).toBe('light'));
+  });
+
+  it('loads the persisted default provider, then persists + goes live on change', async () => {
+    // Reuses the existing active-provider key (not a parallel one): the Settings
+    // dropdown reflects the durable activeProviderId and changing it both writes
+    // it back and updates the live providers slice the runtime reads.
+    await setActiveProviderId(db, 'openai');
+    const user = userEvent.setup();
+    const store = renderSettings();
+
+    const select = await screen.findByRole('combobox', {
+      name: 'Default provider',
+    });
+    await waitFor(() => expect(select).toHaveValue('openai'));
+
+    await user.selectOptions(select, 'anthropic');
+    expect(select).toHaveValue('anthropic');
+    await waitFor(async () =>
+      expect(await getActiveProviderId(db)).toBe('anthropic'),
+    );
+    await waitFor(() =>
+      expect(store.getState().providers.activeProviderId).toBe('anthropic'),
+    );
   });
 
   it('loads the persisted lock timeout and writes changes to IndexedDB', async () => {

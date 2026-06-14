@@ -11,6 +11,13 @@ import {
   setTheme,
 } from '../settings/appSettings.ts';
 import { applyTheme, normalizeTheme, type Theme } from '../settings/theme.ts';
+import {
+  getActiveProviderId,
+  setActiveProviderId,
+  getActiveProviderProfile,
+  DEFAULT_PROVIDER_PROFILES,
+} from '../providers/providerProfiles.ts';
+import { activeProviderSet } from '../store/slices/providersSlice.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { secretVault } from '../secrets/vault.ts';
 import { APP_VERSION } from '../lib/appMeta.ts';
@@ -69,6 +76,42 @@ export default function SettingsScreen() {
     setThemeState(value);
     applyTheme(value);
     void setTheme(db, value);
+  };
+
+  // Default provider is the real, persisted active provider (app_settings key
+  // 'activeProviderId') — the same one Onboarding writes and the runtime reads.
+  // Read it on mount; on change persist it AND dispatch activeProviderSet so the
+  // live UI/runtime switch immediately (mirroring main.tsx restoreActiveProvider,
+  // resolving label/model/baseUrl from the persisted-or-default profile).
+  const [activeProviderId, setActiveProviderIdState] = useState<string | null>(
+    null,
+  );
+  useEffect(() => {
+    let active = true;
+    void getActiveProviderId(db).then((id) => {
+      if (active) setActiveProviderIdState(id);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const handleProviderChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const id = event.target.value;
+    setActiveProviderIdState(id);
+    void (async () => {
+      await setActiveProviderId(db, id);
+      const profile = await getActiveProviderProfile(db);
+      if (profile) {
+        dispatch(
+          activeProviderSet({
+            id: profile.id,
+            label: profile.label,
+            ...(profile.model ? { model: profile.model } : {}),
+            ...(profile.baseUrl ? { baseUrl: profile.baseUrl } : {}),
+          }),
+        );
+      }
+    })();
   };
 
   // Lock timeout is a real, persisted setting: it drives the SecretVault's
@@ -132,8 +175,8 @@ export default function SettingsScreen() {
             </p>
             <p className="mt-1 text-xs text-muted-subtle">
               Disabled controls are placeholders for upcoming preferences and
-              don&apos;t take effect yet. Theme, lock timeout, and &ldquo;Load
-              runtime from CDN&rdquo; are active.
+              don&apos;t take effect yet. Theme, default provider, lock timeout,
+              and &ldquo;Load runtime from CDN&rdquo; are active.
             </p>
           </header>
 
@@ -170,10 +213,20 @@ export default function SettingsScreen() {
               <Field
                 label="Default provider"
                 control={
-                  <Select defaultValue="wllama" className="w-40" disabled>
-                    <option value="wllama">wllama</option>
-                    <option value="anthropic">Anthropic</option>
-                    <option value="openai">OpenAI</option>
+                  <Select
+                    aria-label="Default provider"
+                    className="w-40"
+                    value={activeProviderId ?? ''}
+                    onChange={handleProviderChange}
+                  >
+                    <option value="" disabled>
+                      Select a provider
+                    </option>
+                    {DEFAULT_PROVIDER_PROFILES.map((profile) => (
+                      <option key={profile.id} value={profile.id}>
+                        {profile.label}
+                      </option>
+                    ))}
                   </Select>
                 }
               />

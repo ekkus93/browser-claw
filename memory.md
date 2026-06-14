@@ -1133,3 +1133,9 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - TODO ticks: 11.3 "Memory write approval -> persisted -> audit" DONE; 5.3 provenance "source conversation ID" + "skill/tool source" + "provenance persists after reload" DONE (source message ID still open — no per-message context at tool-run). 3.3 memory line PARTIAL (memory.created wired; update/delete in MemoriesScreen still unaudited).
 - IMPORTANT next-use note: for Remember to be usable in-app a skill must DECLARE "Remember" in its permissions.tools — the bundled web-search skill declares Web Search/Page Reader, NOT Remember. Add a bundled skill (or extend one) before this is reachable from the UI.
 - Deferred: memory RETRIEVAL pipeline (surface memories into LLM context + record real lastUsedAt / retrieval events) — 5.3 retrieval + retrieval-history items.
+
+## 2026-06-14T20:19:23Z - Claude Opus 4.8 - Bundled memory-keeper skill makes Remember reachable
+- Added a third bundled skill `memory-keeper` (v1.0.0) in SkillsScreen.tsx BUNDLED_SKILLS that declares `tools: [Remember]`, network:false, no read/write namespaces (Remember persists to db.memories directly, not via skillFs). This closes the follow-up from the memory-write pass: previously NO bundled skill declared Remember, so the fail-closed handler would deny it.
+- Bundled skills seed DISABLED by default (skillManager.install: fresh install enabled:false). UX to use Remember: enable memory-keeper in Skills -> set it as the active skill in Chat -> agent proposes a ```tool {Remember} block -> inline approval -> persisted+audited.
+- Test added: SkillsScreen.test "seeds a memory-keeper skill that declares the Remember tool" asserts the button renders AND skill_state['memory-keeper','__permissions__'].tools contains 'Remember'. (No afterEach/clear in this test file — tests share the fake-indexeddb; established pattern.)
+- Gate GREEN: typecheck clean; pnpm test 401 pass; e2e 28 pass.

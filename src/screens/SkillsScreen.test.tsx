@@ -35,6 +35,24 @@ describe('SkillsScreen', () => {
     ).toBeInTheDocument();
   });
 
+  it('seeds a memory-keeper skill that declares the Remember tool', async () => {
+    renderSkills();
+    expect(
+      await screen.findByRole('button', { name: /memory-keeper/ }),
+    ).toBeInTheDocument();
+    // The declared permissions must include Remember so the fail-closed tool
+    // handler will let an enabled memory-keeper run it.
+    await waitFor(async () => {
+      const perms = await db.skill_state.get([
+        'memory-keeper',
+        '__permissions__',
+      ]);
+      expect(
+        (perms?.value as { tools: string[] } | undefined)?.tools,
+      ).toContain('Remember');
+    });
+  });
+
   it('imports a skill: reviews permissions, installs, enables, and audits', async () => {
     // Integration (TODO 11.3): importing a skill must show a permission-review
     // dialog before installing, and both install + enable must be audited.

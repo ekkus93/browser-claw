@@ -22,6 +22,10 @@ import { cn } from '../lib/cn.ts';
 const BUNDLED_SKILLS = [
   `---\nname: web-search\nversion: 1.0.0\ndescription: Search the web and read result pages.\ntools: [Web Search, Page Reader]\nread: skills/web-search/data/**\nwrite: skills/web-search/out/**\nnetwork: true\n---\nIssue a query and summarize the top results.`,
   `---\nname: summarize-pdf\nversion: 1.0.0\ndescription: Summarize PDF documents into structured notes.\ntools: [File Reader]\nread: skills/summarize-pdf/data/**\nwrite: skills/summarize-pdf/out/**\nnetwork: false\n---\nRead the attached PDF and produce a concise outline.`,
+  // Declares the Remember tool so the agent can save memories. No network or
+  // filesystem namespaces — Remember persists to the memories store directly,
+  // and every write still goes through inline approval before it runs.
+  `---\nname: memory-keeper\nversion: 1.0.0\ndescription: Save useful facts as memories for later recall.\ntools: [Remember]\nnetwork: false\n---\nWhen the user shares something worth keeping, propose a Remember tool call with a short title and the fact to save.`,
 ];
 
 export default function SkillsScreen() {

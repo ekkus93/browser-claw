@@ -15,7 +15,9 @@ export type ApprovalKind =
   | 'storage_write'
   | 'llm_request'
   | 'skill_install'
-  | 'network';
+  | 'network'
+  | 'workspace_write'
+  | 'workspace_delete';
 
 export type ApprovalRisk = 'low' | 'medium' | 'high';
 

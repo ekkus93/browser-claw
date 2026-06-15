@@ -398,29 +398,31 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase B6 — Workspace approval and audit
 
-- [ ] P0 Add approval cards for workspace writes.
-- [ ] P0 Add diff preview for text updates.
-- [ ] P0 Add approval cards for delete/move bulk operations.
-- [ ] P0 Implement risk classification:
-  - [ ] read low/medium;
-  - [ ] write medium;
-  - [ ] overwrite medium/high;
-  - [ ] delete high;
-  - [ ] bulk delete high/critical.
-- [ ] P0 Audit events:
-  - [ ] `workspace.file_created`;
-  - [ ] `workspace.file_read` summarized;
-  - [ ] `workspace.file_updated`;
-  - [ ] `workspace.file_deleted`;
-  - [ ] `workspace.file_moved`;
-  - [ ] `workspace.search_performed`;
-  - [ ] `workspace.permission_denied`.
-- [ ] P0 Tests:
-  - [ ] write requires approval by default;
-  - [ ] delete requires approval;
-  - [ ] approved write succeeds and audits;
-  - [ ] rejected write does nothing and audits;
-  - [ ] diff preview generated.
+<!-- src/workspace/workspaceOps.ts: WorkspaceOp, classifyWorkspaceRisk, buildWorkspaceProposal (risk/title/summary/payloadPreview + diff for updates via textDiffPreview), executeWorkspaceOp (perform + workspace.file_* audit), rejectWorkspaceOp (workspace.permission_denied). ApprovalKind += workspace_write/workspace_delete. Tests: src/workspace/workspaceOps.test.ts. The live Redux approval-card queue + resolution listener are wired in F3. Gate: typecheck/lint/prettier/vitest 581/e2e 28. -->
+
+- [x] P0 Add approval cards for workspace writes. (proposal primitives + ApprovalKind workspace_write; Redux card+listener wiring lands in F3)
+- [x] P0 Add diff preview for text updates.
+- [x] P0 Add approval cards for delete/move bulk operations. (workspace_delete kind + proposal; bulk-delete UI in F3/G)
+- [x] P0 Implement risk classification:
+  - [x] read low/medium; (reads are not proposed — no approval needed; classify covers mutations)
+  - [x] write medium;
+  - [x] overwrite medium/high; (update = medium; high reserved for bulk via audit risk)
+  - [x] delete high;
+  - [ ] bulk delete high/critical. (single-op delete = high now; multi-file bulk classification is F3/G with the bulk UI)
+- [x] P0 Audit events:
+  - [x] `workspace.file_created`;
+  - [ ] `workspace.file_read` summarized; (reads aren't proposed/executed via workspaceOps; read auditing is deferred — high-volume, summarized, with verbose-audit pref, per spec §2.8)
+  - [x] `workspace.file_updated`;
+  - [x] `workspace.file_deleted`;
+  - [x] `workspace.file_moved`; (+ file_copied)
+  - [ ] `workspace.search_performed`; (search/grep auditing deferred to when search is exposed via runtime/UI — summarized per spec)
+  - [x] `workspace.permission_denied`.
+- [x] P0 Tests:
+  - [x] write requires approval by default; (classifyWorkspaceRisk medium/high => proposal required; reuses approval policy)
+  - [x] delete requires approval;
+  - [x] approved write succeeds and audits;
+  - [x] rejected write does nothing and audits;
+  - [x] diff preview generated.
 
 ## Phase B7 — Workspace UI
 

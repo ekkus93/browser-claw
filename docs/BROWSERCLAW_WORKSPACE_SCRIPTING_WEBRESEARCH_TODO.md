@@ -1005,19 +1005,21 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase F4 — Audit events and redaction
 
-- [ ] P0 Add audit sources:
-  - [ ] `workspace`;
-  - [ ] `script`;
-  - [ ] `web`;
-  - [ ] `extension`.
-- [ ] P0 Add event builders for new domains.
-- [ ] P0 Redact:
-  - [ ] secrets;
-  - [ ] Authorization headers;
-  - [ ] huge page bodies;
-  - [ ] huge file contents;
-  - [ ] full script source beyond preview limit.
-- [ ] P0 Tests for redaction.
+- [x] P0 Add audit sources: <!-- src/db/types.ts AuditSource (added C4) -->
+  - [x] `workspace`;
+  - [x] `script`;
+  - [x] `web`;
+  - [x] `extension`.
+- [x] P0 Add event builders for new domains. <!-- src/audit/auditEvents.ts: workspaceAuditEvent/scriptAuditEvent/webAuditEvent/extensionAuditEvent (fix the source; buildAuditRow sanitizes) -->
+- [x] P0 Redact: <!-- auditService.ts redactSummary = redactText (credentials) then capText (length). Applied in buildAuditRow.summary -->
+  - [x] secrets; <!-- SECRET_TEXT_PATTERNS (sk-ant/sk-/xox/AKIA/ghp_/ya29/JWT) + redactDetails key stripping -->
+  - [x] Authorization headers; <!-- /authorization\s*:\s*\S+/ + bearer token patterns -->
+  - [x] huge page bodies; <!-- capText -> MAX_AUDIT_TEXT_CHARS (4000) with "… [N more chars truncated]" -->
+  - [x] huge file contents; <!-- same cap covers any oversized summary -->
+  - [x] full script source beyond preview limit. <!-- same cap; D6 ScriptProposal already previews code at 2000; audit summaries capped at 4000 -->
+- [x] P0 Tests for redaction. <!-- auditService.test.ts 'summary length cap (F4)' (3) + existing A2.9 redaction; auditEvents.test.ts (3) -->
+
+<!-- F4 done 2026-06-15. Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 781/105, e2e 30. No Rust. PART F: F1 done, F2 done, F3 partial (plan+sandbox+workspace wired; web_page_read/extension_permission/bulk_research remain), F4 done. -->
 
 ---
 

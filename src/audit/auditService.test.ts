@@ -8,6 +8,9 @@ import {
   auditEventsToCsv,
   buildAuditRow,
   redactDetails,
+  redactSummary,
+  capText,
+  MAX_AUDIT_TEXT_CHARS,
   backfillAuditDefaults,
   exportAuditCsv,
 } from './auditService.ts';
@@ -92,6 +95,32 @@ describe('summary redaction (A2.9)', () => {
       source: 'skill',
     });
     expect(row.summary).toBe('Installed skill task-manager v1.2.0');
+  });
+});
+
+describe('summary length cap (F4)', () => {
+  it('caps a huge page body / file content / script source summary', () => {
+    const huge = 'x'.repeat(MAX_AUDIT_TEXT_CHARS + 5000);
+    const row = buildAuditRow({
+      type: 'web.page_read',
+      summary: huge,
+      source: 'web',
+    });
+    expect(row.summary.length).toBeLessThan(huge.length);
+    expect(row.summary).toMatch(/truncated/);
+    expect(row.summary.length).toBeLessThanOrEqual(MAX_AUDIT_TEXT_CHARS + 64);
+  });
+
+  it('redacts a secret AND caps in the same summary', () => {
+    const out = redactSummary(
+      `sk-ant-abcdef0123456789abcdef ${'y'.repeat(MAX_AUDIT_TEXT_CHARS)}`,
+    );
+    expect(out).toContain('[redacted]');
+    expect(out).toMatch(/truncated/);
+  });
+
+  it('capText leaves short text unchanged', () => {
+    expect(capText('short')).toBe('short');
   });
 });
 

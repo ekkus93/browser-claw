@@ -546,3 +546,23 @@ and TODO are. Newest decisions at the bottom of each section.
 - Tests: workspaceRunner.test.ts (6) + runtimeListeners.test.ts +1. vitest 768->775.
 - F3 STATUS: plan + sandbox_script + workspace_write/delete wired. REMAINING:
   web_page_read (+ ApprovalKind), extension_permission, bulk_research.
+
+### F4 — Audit event builders + redaction (done, 2026-06-15)
+- AuditSource already had workspace/script/web/extension (C4) — verified+ticked.
+- src/audit/auditEvents.ts: workspace/script/web/extensionAuditEvent(type,
+  summary, {risk?,status?,at?}) -> AppendAuditInput with the right source fixed.
+  buildAuditRow sanitizes downstream.
+- src/audit/auditService.ts: redactText (credentials, existing A2.9) UNCHANGED;
+  NEW capText(text, max=MAX_AUDIT_TEXT_CHARS 4000) -> "… [N more chars truncated]";
+  NEW redactSummary = capText(redactText(text)). buildAuditRow.summary now uses
+  redactSummary -> huge page bodies / file contents / script source can never be
+  stored whole in the audit log (only correlation + a bounded, scrubbed preview).
+- Tests: auditService.test.ts 'summary length cap (F4)' (3: cap, redact+cap,
+  short unchanged) + auditEvents.test.ts (3). vitest 775->781.
+- PART F STATUS: F1 (capability model) done, F2 (runtime effects) done, F3
+  (approval wiring) PARTIAL [plan+sandbox+workspace_write/delete wired;
+  web_page_read/extension_permission/bulk_research remain], F4 (audit+redaction) done.
+- NEXT: finish F3 remaining (web_page_read +ApprovalKind, extension_permission,
+  bulk_research) OR move to PART G (UI: G2 plan+sandbox approval cards via
+  PlanProposal/ScriptProposal, G3 web research status). E2 (search) needs the user
+  to NAME the provider (Tavily/Brave/Exa). PART H = QA gate.

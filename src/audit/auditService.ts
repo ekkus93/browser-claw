@@ -76,6 +76,24 @@ export function redactText(text: string): string {
 }
 
 /**
+ * Maximum free-text length kept in an audit summary (Part F4). Web research page
+ * bodies, workspace file contents, and sandboxed-script source can be large; the
+ * audit log stores correlation + a bounded preview, never the whole blob.
+ */
+export const MAX_AUDIT_TEXT_CHARS = 4_000;
+
+/** Truncate over-long free text with a marker noting how much was dropped. */
+export function capText(text: string, max = MAX_AUDIT_TEXT_CHARS): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max)}… [${text.length - max} more chars truncated]`;
+}
+
+/** Redact credentials then cap length — the summary sanitizer for audit rows. */
+export function redactSummary(text: string): string {
+  return capText(redactText(text));
+}
+
+/**
  * Deep-copy `details`, replacing any value whose key looks like a credential
  * with a redaction marker. Defends the audit log against accidental secret
  * capture even when a caller passes a richer object than intended.
@@ -132,7 +150,7 @@ export function buildAuditRow(input: AppendAuditInput): AuditEventRow {
   const row: AuditEventRow = {
     id: generateId(),
     type: input.type,
-    summary: redactText(input.summary),
+    summary: redactSummary(input.summary),
     risk: input.risk ?? 'info',
     source: input.source,
     status: input.status ?? 'success',

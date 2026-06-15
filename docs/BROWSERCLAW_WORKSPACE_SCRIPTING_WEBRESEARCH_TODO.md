@@ -900,13 +900,15 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase E10 — Web research workflow
 
-- [ ] P1 Implement `web.search` plan operation.
-- [ ] P1 Implement `web.readPage` plan operation.
-- [ ] P1 Implement `web.readPages` plan operation.
-- [ ] P1 Store search results in workspace.
-- [ ] P1 Store page markdown/text in workspace.
-- [ ] P1 Generate safe slugs/paths for research bundle.
-- [ ] P1 Add approval card for reading search result pages:
+<!-- src/script/planOps.ts: PlanOpContext.web?:WebResearchService; web.search/readPage/readPages ops delegate to it (throw if absent — not faked). src/webresearch/storage.ts: researchSlug + storeResearchBundle (writes /workspace/research/<slug>-<ts>/search-results.json + pages/<host>-<n>.md via WorkspaceFs, safe slugs). Tests: src/script/planOps.test.ts (web delegate) + src/webresearch/storage.test.ts. Research approval card = F3/G3. Gate: typecheck/lint/prettier/vitest 658/e2e 30. -->
+
+- [x] P1 Implement `web.search` plan operation.
+- [x] P1 Implement `web.readPage` plan operation.
+- [x] P1 Implement `web.readPages` plan operation.
+- [x] P1 Store search results in workspace.
+- [x] P1 Store page markdown/text in workspace.
+- [x] P1 Generate safe slugs/paths for research bundle. (researchSlug + dir/host slugs)
+- [ ] P1 Add approval card for reading search result pages: (F3/G3 — buildPlanProposal already surfaces URLs/domains/risk; the research-specific card with host-permission + maxChars is UI)
   - [ ] query;
   - [ ] URLs;
   - [ ] domains;
@@ -915,12 +917,12 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
   - [ ] host permissions needed;
   - [ ] workspace output path;
   - [ ] risk.
-- [ ] P1 Tests:
-  - [ ] search -> read top result -> write workspace page;
-  - [ ] reading multiple results respects max pages;
-  - [ ] denied domain permission stops that page;
-  - [ ] page read output stored in workspace;
-  - [ ] audit events complete.
+- [x] P1 Tests:
+  - [x] search -> read top result -> write workspace page; (storeResearchBundle test + web delegate)
+  - [x] reading multiple results respects max pages; (web.readPages maxPages test)
+  - [ ] denied domain permission stops that page; (real-browser permission flow — Docker E2E)
+  - [x] page read output stored in workspace;
+  - [ ] audit events complete. (web.page_read_* via the provider onAudit; web.search_* audit is E2)
 
 ---
 

@@ -100,9 +100,38 @@ describe('executePlanOp — tool.call + web (C2)', () => {
     ).rejects.toThrow();
   });
 
-  it('web ops are not available until Part E (explicit, not faked)', async () => {
+  it('web ops throw when no web-research service is configured (not faked)', async () => {
     await expect(
       executePlanOp(ctx, 'web.search', { query: 'x' }),
     ).rejects.toBeInstanceOf(PlanOpError);
+  });
+
+  it('web ops delegate to a configured web-research service (E10)', async () => {
+    const web = {
+      search: vi.fn(() =>
+        Promise.resolve([{ title: 'A', url: 'https://x/a' }]),
+      ),
+      readPage: vi.fn(() =>
+        Promise.resolve({
+          url: 'https://x/a',
+          finalUrl: 'https://x/a',
+          text: 'body',
+          length: 4,
+        }),
+      ),
+      research: vi.fn(),
+    };
+    const withWeb = { ...ctx, web };
+    expect(await executePlanOp(withWeb, 'web.search', { query: 'q' })).toEqual([
+      { title: 'A', url: 'https://x/a' },
+    ]);
+    expect(
+      await executePlanOp(withWeb, 'web.readPage', { url: 'https://x/a' }),
+    ).toMatchObject({ text: 'body' });
+    const pages = (await executePlanOp(withWeb, 'web.readPages', {
+      urls: ['https://x/a', 'https://x/b'],
+      maxPages: 1,
+    })) as unknown[];
+    expect(pages).toHaveLength(1);
   });
 });

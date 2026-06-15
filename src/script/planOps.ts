@@ -14,6 +14,7 @@ import type { AppDispatch } from '../store/store.ts';
 import type { MemoryRow } from '../db/types.ts';
 import { runToolCall, type ToolContext } from '../tools/tools.ts';
 import { WorkspaceFs } from '../workspace/workspaceFs.ts';
+import type { WebResearchService } from '../webresearch/types.ts';
 
 export interface PlanOpContext {
   fs: WorkspaceFs;
@@ -22,6 +23,8 @@ export interface PlanOpContext {
   /** Tools the (approved) plan is allowed to call via `tool.call`. */
   allowedTools?: readonly string[];
   toolCtx?: ToolContext;
+  /** Web research service for `web.*` ops (Part E10). Absent until configured. */
+  web?: WebResearchService;
   now?: () => number;
   newId?: () => string;
 }
@@ -128,9 +131,7 @@ export async function executePlanOp(
     case 'web.search':
     case 'web.readPage':
     case 'web.readPages':
-      throw new PlanOpError(
-        `web operations are not available until the web-research providers land (Part E): ${op}`,
-      );
+      return webOp(ctx, op, args);
     default:
       throw new PlanOpError(`unknown plan op: ${op}`);
   }
@@ -172,6 +173,42 @@ async function searchMemory(
       m.title.toLowerCase().includes(query) ||
       m.text.toLowerCase().includes(query),
   );
+}
+
+async function webOp(
+  ctx: PlanOpContext,
+  op: string,
+  args: Args,
+): Promise<unknown> {
+  if (!ctx.web) {
+    throw new PlanOpError(
+      `web operations require a configured web-research service: ${op}`,
+    );
+  }
+  if (op === 'web.search') {
+    return ctx.web.search(str(args, 'query'), {
+      ...(typeof args.maxResults === 'number'
+        ? { maxResults: args.maxResults }
+        : {}),
+    });
+  }
+  if (op === 'web.readPage') {
+    return ctx.web.readPage(str(args, 'url'), {
+      url: str(args, 'url'),
+      ...(typeof args.maxChars === 'number' ? { maxChars: args.maxChars } : {}),
+    });
+  }
+  // web.readPages
+  const urls = Array.isArray(args.urls)
+    ? args.urls.filter((u): u is string => typeof u === 'string')
+    : [];
+  const maxPages =
+    typeof args.maxPages === 'number' ? args.maxPages : urls.length;
+  const pages = [];
+  for (const url of urls.slice(0, maxPages)) {
+    pages.push(await ctx.web.readPage(url, { url }));
+  }
+  return pages;
 }
 
 function callTool(ctx: PlanOpContext, args: Args): Promise<string> {

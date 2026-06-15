@@ -467,3 +467,23 @@ and TODO are. Newest decisions at the bottom of each section.
   into approvalRequested/approvalResolved listeners], audit builders F4), Part G
   (UI: G1 workspace done-ish, G2 script approval cards [plan+sandbox], G3 web
   research status), E2 (search — user names Tavily/Brave/Exa), Part H (QA gate).
+
+### F1 — Unified capability model (done, 2026-06-15)
+- src/runtime/capabilities.ts: capability vocabulary + scope + risk (no I/O, no state).
+  Names: workspace.read/write/delete/search, web.search/readPage/readCurrentTab,
+  script.plan/sandbox, skill.tool.<name> (SKILL_TOOL_PREFIX family). CapabilityName
+  union; isKnownCapabilityName (type guard); skillToolName() extracts tool (bare
+  'skill.tool.' rejected). CapabilityScope {paths[] workspace globs, domains[],
+  urls[] safe http(s), limits{} non-negative}. validateCapability/validateScope
+  fail-closed (unsafe path/url, negative limit, unknown name -> errors).
+  classifyCapabilityRisk: delete/sandbox -> high; workspace.write broad path
+  (BROAD_SCOPES) -> high else medium; read/search -> low; web/plan/skill.tool ->
+  medium. aggregateRisk = max over a set (low when empty).
+- Tests: src/runtime/capabilities.test.ts (13). vitest 736->749.
+- NOTE: scriptPolicy.ts has its OWN classifyCapabilityRisk over the ScriptCapabilities
+  MANIFEST shape; this F1 one is over individual named Capability {name,scope}. Both kept.
+- NEXT F2: runtime-effect / host-side proposal actions for workspace file op,
+  workspace search, plan proposal, sandbox script proposal, web search, web page
+  read, extension request. Missing handler FAILS CLOSED (effectExecutor failEffect
+  precedent); all failures resolve as errors + audit. Tests: missing handler,
+  success, failure. effectTypes.ts already has script_plan_proposal (C5).

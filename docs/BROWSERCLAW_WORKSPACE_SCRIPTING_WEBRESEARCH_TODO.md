@@ -952,20 +952,22 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase F1 — Capability model
 
-- [ ] P0 Define capability names:
-  - [ ] `workspace.read`;
-  - [ ] `workspace.write`;
-  - [ ] `workspace.delete`;
-  - [ ] `workspace.search`;
-  - [ ] `web.search`;
-  - [ ] `web.readPage`;
-  - [ ] `web.readCurrentTab`;
-  - [ ] `script.plan`;
-  - [ ] `script.sandbox`;
-  - [ ] `skill.tool.<name>`.
-- [ ] P0 Define scope format for paths/domains/URLs/limits.
-- [ ] P0 Add risk classifier.
-- [ ] P0 Tests for capability validation and risk classification.
+- [x] P0 Define capability names: <!-- src/runtime/capabilities.ts: WORKSPACE/WEB/SCRIPT_CAPABILITIES + SKILL_TOOL_PREFIX; CapabilityName union; isKnownCapabilityName -->
+  - [x] `workspace.read`;
+  - [x] `workspace.write`;
+  - [x] `workspace.delete`;
+  - [x] `workspace.search`;
+  - [x] `web.search`;
+  - [x] `web.readPage`;
+  - [x] `web.readCurrentTab`;
+  - [x] `script.plan`;
+  - [x] `script.sandbox`;
+  - [x] `skill.tool.<name>`. <!-- skill.tool.* family; skillToolName() extracts the tool; bare prefix rejected -->
+- [x] P0 Define scope format for paths/domains/URLs/limits. <!-- CapabilityScope {paths[] (workspace globs), domains[], urls[] (classifyFetchUrl), limits{}}; validateScope -->
+- [x] P0 Add risk classifier. <!-- classifyCapabilityRisk (delete/sandbox->high, broad write->high, bounded write/web/plan/skill->medium, read/search->low) + aggregateRisk (max) -->
+- [x] P0 Tests for capability validation and risk classification. <!-- src/runtime/capabilities.test.ts (13) -->
+
+<!-- F1 done 2026-06-15. Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 749/102, e2e 30. No Rust. F2 next: runtime-effect/proposal actions for the workspace/plan/sandbox/web/extension ops, fail-closed. -->
 
 ## Phase F2 — Runtime effects
 

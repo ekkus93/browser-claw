@@ -32,6 +32,7 @@ const COLLECTIONS = [
   'skills',
   'skill_files',
   'skill_state',
+  'skill_permissions',
   'audit_events',
   'model_catalog',
   'model_cache_index',
@@ -156,6 +157,7 @@ const KEY_FIELDS: Record<string, string[]> = {
   app_settings: ['key'],
   skill_files: ['skillId', 'path'],
   skill_state: ['skillId', 'key'],
+  skill_permissions: ['skillId'],
 };
 
 function keyFieldsFor(name: string): string[] {

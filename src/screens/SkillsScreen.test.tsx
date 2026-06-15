@@ -43,10 +43,7 @@ describe('SkillsScreen', () => {
     // The declared permissions must include Remember so the fail-closed tool
     // handler will let an enabled memory-keeper run it.
     await waitFor(async () => {
-      const perms = await db.skill_state.get([
-        'memory-keeper',
-        '__permissions__',
-      ]);
+      const perms = await db.skill_permissions.get('memory-keeper');
       expect(
         (perms?.value as { tools: string[] } | undefined)?.tools,
       ).toContain('Remember');

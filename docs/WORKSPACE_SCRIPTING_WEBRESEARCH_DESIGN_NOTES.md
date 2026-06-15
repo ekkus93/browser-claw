@@ -65,3 +65,19 @@ and TODO are. Newest decisions at the bottom of each section.
   `runApprovedToolCall` RE-CHECKS via the same helper before running, auditing
   `tool.permission_recheck_failed` and resolving `tool_not_permitted` on failure.
   Execution no longer trusts the approval/Redux state.
+
+### A1.2 — move skill permissions out of mutable skill_state (done)
+- New PROTECTED `skill_permissions` table (`db/types.ts SkillPermissionsRow`,
+  `db/db.ts` — **DB_VERSION 4 -> 5**). v5 upgrade migrates every
+  `skill_state['__permissions__']` row: valid blob (guarded by
+  `skillTypes.ts isSkillPermissions`) -> `skill_permissions`, then the old row
+  deleted; malformed blob dropped (fail closed) + `skill.permissions_migration_failed`
+  audit (written via `buildAuditRow` inside the upgrade tx).
+- `skillPermissions.ts loadSkillPermissions(db, id)` is now the SINGLE read path
+  (used by authorizeSkillTool, skillManager.fsFor, SkillsScreen). Install/reinstall
+  is the ONLY writer (skillManager). uninstall deletes it.
+- Backup: added `skill_permissions` to COLLECTIONS + KEY_FIELDS (`['skillId']`).
+- GOTCHA: `skill_state` is keyed `[skillId+key]` — `key` is NOT a standalone
+  index, so the migration must `.filter(r => r.key === '__permissions__')`, not
+  `.where('key')` (which throws SchemaError).
+- SkillFs reserved-key guard (`__`-prefix) stays as defense in depth.

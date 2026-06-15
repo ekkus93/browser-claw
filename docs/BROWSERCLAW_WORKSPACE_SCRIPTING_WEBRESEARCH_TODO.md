@@ -58,24 +58,26 @@ P2 = polish, robustness, or future-facing hardening
 
 ### A1.2 Move skill permissions out of mutable skill_state
 
-- [ ] P0 Add protected `skill_permissions` table or protected field on `SkillRow`.
-- [ ] P0 Stop writing permissions to `skill_state['__permissions__']`.
-- [ ] P0 Stop reading permissions from `skill_state['__permissions__']`.
-- [ ] P0 Add migration:
-  - [ ] read existing `__permissions__` rows;
-  - [ ] validate shape;
-  - [ ] copy to protected store;
-  - [ ] delete old `__permissions__` rows;
-  - [ ] audit migration failure if invalid.
-- [ ] P0 Update skill install/reinstall to write protected permissions.
-- [ ] P0 Update SkillFs and tool runner to read protected permissions.
-- [ ] P0 Update backup validators/import/export for protected permissions.
-- [ ] P0 Tests:
-  - [ ] skill permissions persist in protected store;
-  - [ ] `skill_state['__permissions__']` is not used;
-  - [ ] migration moves old permissions;
-  - [ ] malformed old permissions fail safely;
-  - [ ] skill cannot mutate protected permissions.
+<!-- src/db/types.ts: SkillPermissionsRow; src/db/db.ts: skill_permissions table + v5 upgrade (DB_VERSION=5) migrating __permissions__; src/skills/skillTypes.ts: isSkillPermissions; src/skills/skillPermissions.ts: loadSkillPermissions (single read path); src/skills/skillManager.ts: install/uninstall/fsFor use protected store; src/screens/SkillsScreen.tsx + src/backup/backupService.ts updated. Tests: src/db/skillPermissionsMigration.test.ts; updated toolRunner/skillRunner/SkillsScreen/db tests. Gate: typecheck/lint/prettier/vitest 462/e2e 28. -->
+
+- [x] P0 Add protected `skill_permissions` table or protected field on `SkillRow`.
+- [x] P0 Stop writing permissions to `skill_state['__permissions__']`.
+- [x] P0 Stop reading permissions from `skill_state['__permissions__']`.
+- [x] P0 Add migration:
+  - [x] read existing `__permissions__` rows;
+  - [x] validate shape;
+  - [x] copy to protected store;
+  - [x] delete old `__permissions__` rows;
+  - [x] audit migration failure if invalid.
+- [x] P0 Update skill install/reinstall to write protected permissions.
+- [x] P0 Update SkillFs and tool runner to read protected permissions.
+- [x] P0 Update backup validators/import/export for protected permissions.
+- [x] P0 Tests:
+  - [x] skill permissions persist in protected store;
+  - [x] `skill_state['__permissions__']` is not used;
+  - [x] migration moves old permissions;
+  - [x] malformed old permissions fail safely;
+  - [x] skill cannot mutate protected permissions.
 
 ### A1.3 Make skill package files read-only
 

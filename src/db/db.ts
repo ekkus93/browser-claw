@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie';
-import { backfillAuditDefaults } from '../audit/auditService.ts';
+import { backfillAuditDefaults, buildAuditRow } from '../audit/auditService.ts';
+import { isSkillPermissions } from '../skills/skillTypes.ts';
 import {
   SAMPLE_MEMORIES,
   isUnmodifiedSampleMemory,
@@ -17,6 +18,7 @@ import type {
   SkillRow,
   SkillFileRow,
   SkillStateRow,
+  SkillPermissionsRow,
   AuditEventRow,
   RuntimeSnapshotRow,
   ModelCatalogRow,
@@ -26,7 +28,10 @@ import type {
 } from './types.ts';
 
 export const DB_NAME = 'browserclaw';
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
+
+/** The old (pre-v5) key under which permissions lived inside skill_state. */
+const LEGACY_PERMISSIONS_KEY = '__permissions__';
 
 /**
  * Durable local storage (IndexedDB) via Dexie — the source of truth for
@@ -53,6 +58,7 @@ export class BrowserClawDB extends Dexie {
   skills!: Table<SkillRow, string>;
   skill_files!: Table<SkillFileRow, [string, string]>;
   skill_state!: Table<SkillStateRow, [string, string]>;
+  skill_permissions!: Table<SkillPermissionsRow, string>;
   audit_events!: Table<AuditEventRow, string>;
   runtime_snapshots!: Table<RuntimeSnapshotRow, string>;
   model_catalog!: Table<ModelCatalogRow, string>;
@@ -117,6 +123,48 @@ export class BrowserClawDB extends Dexie {
         }
       }
     });
+
+    // v5 — move skill permissions into a PROTECTED store (hardening A1.2): they
+    // must not live in the mutable `skill_state` table a skill can influence.
+    // Copy each `__permissions__` row to `skill_permissions`, validate its
+    // shape, then delete the old row. A malformed blob is NOT copied (fail
+    // closed — the skill simply has no permissions until reinstalled) and the
+    // failure is audited durably.
+    this.version(5)
+      .stores({
+        skill_permissions: 'skillId',
+      })
+      .upgrade(async (tx) => {
+        const stateTable = tx.table<SkillStateRow, [string, string]>(
+          'skill_state',
+        );
+        const permTable = tx.table<SkillPermissionsRow, string>(
+          'skill_permissions',
+        );
+        const auditTable = tx.table<AuditEventRow, string>('audit_events');
+        // `key` is not a standalone index (the store is keyed on
+        // [skillId+key]), so scan and filter rather than `.where('key')`.
+        const legacy = await stateTable
+          .filter((row) => row.key === LEGACY_PERMISSIONS_KEY)
+          .toArray();
+        for (const row of legacy) {
+          if (isSkillPermissions(row.value)) {
+            await permTable.put({ skillId: row.skillId, value: row.value });
+          } else {
+            await auditTable.add(
+              buildAuditRow({
+                type: 'skill.permissions_migration_failed',
+                summary: `Dropped malformed permissions for skill ${row.skillId} during migration`,
+                source: 'skill',
+                risk: 'medium',
+                status: 'failure',
+                skillId: row.skillId,
+              }),
+            );
+          }
+          await stateTable.delete([row.skillId, LEGACY_PERMISSIONS_KEY]);
+        }
+      });
 
     // First-run seed (only fires when the database is created).
     this.on('populate', (tx) => {

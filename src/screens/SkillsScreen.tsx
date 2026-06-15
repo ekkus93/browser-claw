@@ -5,6 +5,7 @@ import { db } from '../db/db.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
 import { selectedSkillSet } from '../store/slices/skillsSlice.ts';
 import { createSkillManager } from '../skills/skillManager.ts';
+import { loadSkillPermissions } from '../skills/skillPermissions.ts';
 import { parseSkillMd, parseClawskill } from '../skills/parseSkill.ts';
 import {
   emptyPermissions,
@@ -61,14 +62,13 @@ export default function SkillsScreen() {
 
   const detail = useLiveQuery(async () => {
     if (!selected) return null;
-    const permRow = await db.skill_state.get([selected.id, '__permissions__']);
+    const permissions = await loadSkillPermissions(db, selected.id);
     const files = await db.skill_files
       .where('skillId')
       .equals(selected.id)
       .toArray();
     return {
-      permissions:
-        (permRow?.value as SkillPermissions | undefined) ?? emptyPermissions(),
+      permissions,
       files: files.map((f) => f.path),
     };
   }, [selected?.id]);

@@ -3,10 +3,9 @@ import type { AppDispatch } from '../store/store.ts';
 import type { AuditRiskLevel, AuditStatus, SkillSource } from '../db/types.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { SkillFs } from './skillFs.ts';
-import { emptyPermissions, type ParsedSkill } from './skillTypes.ts';
+import { type ParsedSkill } from './skillTypes.ts';
+import { loadSkillPermissions } from './skillPermissions.ts';
 import { validateSkillImport } from './validateSkill.ts';
-
-const PERMISSIONS_KEY = '__permissions__';
 
 export interface SkillManagerDeps {
   db: BrowserClawDB;
@@ -19,7 +18,8 @@ export interface InstallOptions {
   /**
    * On reinstall, clear the skill's persisted state instead of preserving it.
    * Defaults to preserving so a version bump keeps the user's accumulated data.
-   * Either way the `__permissions__` record is refreshed from the new manifest.
+   * Either way the protected permissions record is refreshed from the new
+   * manifest.
    */
   clearState?: boolean;
 }
@@ -102,11 +102,11 @@ export function createSkillManager(deps: SkillManagerDeps) {
         content,
       }));
       if (files.length > 0) await db.skill_files.bulkPut(files);
-      // Persist declared permissions in private skill state (always refreshed
-      // from the new manifest, even when other state is preserved).
-      await db.skill_state.put({
+      // Persist declared permissions in the PROTECTED store (hardening A1.2),
+      // always refreshed from the new manifest even when other state is
+      // preserved. Install/reinstall is the ONLY writer of this store.
+      await db.skill_permissions.put({
         skillId: id,
-        key: PERMISSIONS_KEY,
         value: parsed.manifest.permissions,
       });
       audit(
@@ -146,16 +146,14 @@ export function createSkillManager(deps: SkillManagerDeps) {
       await db.skills.delete(id);
       await db.skill_files.where('skillId').equals(id).delete();
       await db.skill_state.where('skillId').equals(id).delete();
+      await db.skill_permissions.delete(id);
       audit(deps, 'skill_uninstalled', `Uninstalled skill ${id}`, {
         skillId: id,
       });
     },
 
     async fsFor(id: string): Promise<SkillFs> {
-      const row = await db.skill_state.get([id, PERMISSIONS_KEY]);
-      const permissions =
-        (row?.value as ReturnType<typeof emptyPermissions> | undefined) ??
-        emptyPermissions();
+      const permissions = await loadSkillPermissions(db, id);
       return new SkillFs(db, id, permissions);
     },
   };

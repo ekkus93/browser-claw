@@ -1,17 +1,25 @@
 import type { BrowserClawDB } from '../db/db.ts';
-import type { SkillPermissions } from './skillTypes.ts';
-
-/**
- * Where a skill's declared permissions currently live in its private state.
- *
- * NOTE (hardening A1.2): permissions living in the mutable `skill_state` table
- * is itself a known issue — they will be relocated to a protected store. This
- * module is the single read path for tool authorization, so that move only has
- * to change here.
- */
-const PERMISSIONS_KEY = '__permissions__';
+import {
+  emptyPermissions,
+  isSkillPermissions,
+  type SkillPermissions,
+} from './skillTypes.ts';
 
 export type SkillToolAuthz = { ok: true } | { ok: false; reason: string };
+
+/**
+ * Read a skill's declared permissions from the PROTECTED `skill_permissions`
+ * store (hardening A1.2 — they no longer live in the mutable `skill_state`
+ * table a skill could influence). This is the single read path for permissions;
+ * a malformed/absent blob fails closed to no permissions.
+ */
+export async function loadSkillPermissions(
+  db: BrowserClawDB,
+  skillId: string,
+): Promise<SkillPermissions> {
+  const row = await db.skill_permissions.get(skillId);
+  return isSkillPermissions(row?.value) ? row.value : emptyPermissions();
+}
 
 /**
  * Authorize a tool call against the skill that requested it, reading the
@@ -35,8 +43,7 @@ export async function authorizeSkillTool(
   if (!skill.enabled) {
     return { ok: false, reason: `skill ${skillId} is disabled` };
   }
-  const permRow = await db.skill_state.get([skillId, PERMISSIONS_KEY]);
-  const tools = (permRow?.value as SkillPermissions | undefined)?.tools ?? [];
+  const { tools } = await loadSkillPermissions(db, skillId);
   if (!tools.includes(toolName)) {
     return {
       ok: false,

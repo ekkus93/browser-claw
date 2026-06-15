@@ -56,9 +56,8 @@ async function installSkill(opts: {
     enabled: opts.enabled,
     installedAt: 1,
   });
-  await db.skill_state.put({
+  await db.skill_permissions.put({
     skillId: opts.id,
-    key: '__permissions__',
     value: { tools: opts.tools, read: [], write: [], network: false },
   });
 }
@@ -67,6 +66,7 @@ afterEach(async () => {
   await db.open();
   await db.skills.clear();
   await db.skill_state.clear();
+  await db.skill_permissions.clear();
   await db.audit_events.clear();
   await db.memories.clear();
   await db.app_settings.clear();

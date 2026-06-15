@@ -52,6 +52,7 @@ describe('createSkillEffectHandler', () => {
     await db.skills.clear();
     await db.skill_files.clear();
     await db.skill_state.clear();
+    await db.skill_permissions.clear();
   });
 
   it('serves an in-namespace read and resolves the effect', async () => {
@@ -112,8 +113,9 @@ describe('createSkillEffectHandler', () => {
     expect(store.getState().audit.recent.map((e) => e.type)).toContain(
       'skill.permission_denied',
     );
-    // The real permissions row must be untouched by the rejected write.
-    const row = await db.skill_state.get(['notes', '__permissions__']);
+    // The real permissions row must be untouched by the rejected write — it
+    // lives in the protected store, which skill_state writes can never reach.
+    const row = await db.skill_permissions.get('notes');
     expect(row?.value).toMatchObject({ network: false });
   });
 

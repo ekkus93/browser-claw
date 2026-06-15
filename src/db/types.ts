@@ -121,6 +121,17 @@ export interface SkillStateRow {
   value: unknown;
 }
 
+/**
+ * A skill's declared permissions, kept in a PROTECTED store separate from the
+ * mutable `skill_state` table (hardening A1.2). Only skill install/reinstall
+ * writes this; a skill can never reach it through SkillFs/skill_state. `value`
+ * is a `SkillPermissions` (see skills/skillTypes.ts).
+ */
+export interface SkillPermissionsRow {
+  skillId: string;
+  value: unknown;
+}
+
 export type AuditRiskLevel = 'info' | 'low' | 'medium' | 'high' | 'critical';
 
 export type AuditStatus =

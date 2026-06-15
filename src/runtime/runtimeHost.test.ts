@@ -52,6 +52,57 @@ describe('RuntimeHost', () => {
     expect(store.getState().audit.recent[0]?.type).toBe('llm_request_sent');
   });
 
+  it('records effect emitted/resolved lifecycle audits only when verbose is on', async () => {
+    await db.open();
+    await db.audit_events.clear();
+    const { store, ctx } = makeContext();
+    const host = new RuntimeHost(createReferenceRuntime(), ctx, {
+      auditEffects: () => true,
+    });
+
+    // A user message emits an audit_append (terminal, excluded) + an llm_request.
+    await host.submit({
+      type: 'submit_user_message',
+      conversation_id: 'c1',
+      text: 'hi',
+    });
+    const emitted = store
+      .getState()
+      .audit.recent.filter((e) => e.type === 'runtime.effect_emitted');
+    // The llm_request is audited as emitted; the audit_append is NOT (terminal).
+    expect(emitted).toHaveLength(1);
+
+    // Resolving that effect with a failure records a failed lifecycle event.
+    await host.submit({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { ok: false, error: { kind: 'auth' } },
+    });
+    expect(
+      store
+        .getState()
+        .audit.recent.some((e) => e.type === 'runtime.effect_failed'),
+    ).toBe(true);
+  });
+
+  it('records no lifecycle audits when verbose is off (default)', async () => {
+    await db.open();
+    await db.audit_events.clear();
+    const { store, ctx } = makeContext();
+    const host = createRuntimeHost(ctx); // no auditEffects predicate
+
+    await host.submit({
+      type: 'submit_user_message',
+      conversation_id: 'c1',
+      text: 'hi',
+    });
+    expect(
+      store
+        .getState()
+        .audit.recent.some((e) => e.type.startsWith('runtime.effect_')),
+    ).toBe(false);
+  });
+
   it('schedules a snapshot save after a submit when enabled', async () => {
     await db.open();
     const { ctx } = makeContext();

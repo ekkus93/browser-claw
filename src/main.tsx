@@ -50,6 +50,10 @@ import {
   getFallbackProviderId,
 } from './settings/appSettings.ts';
 import { applyTheme } from './settings/theme.ts';
+import {
+  loadEffectAuditPref,
+  isEffectAuditEnabled,
+} from './settings/runtimeAuditPref.ts';
 import { recordAudit } from './audit/auditSink.ts';
 import type { AuditRiskLevel, AuditStatus } from './db/types.ts';
 
@@ -188,6 +192,9 @@ async function bootRuntime(): Promise<void> {
   const ctx: EffectContext = { dispatch: store.dispatch, db };
   const host = new RuntimeHost(port, ctx, {
     snapshot: { delayMs: 500, onError: onSnapshotSaveError },
+    // Verbose, opt-in effect-lifecycle audit (default off). Read synchronously
+    // from the cached preference so the per-effect path needn't await IndexedDB.
+    auditEffects: () => isEffectAuditEnabled(),
   });
   // Persist any pending snapshot when the page is being hidden/unloaded.
   window.addEventListener('pagehide', () => {
@@ -312,6 +319,10 @@ async function restoreTheme(): Promise<void> {
 }
 
 void restoreTheme();
+
+// Load the verbose effect-audit preference into its synchronous cache so the
+// runtime host honours the user's Settings choice from the first turn.
+void loadEffectAuditPref(db);
 
 // Restore durable first-run state, then mark the session hydrated so the index
 // route can decide between onboarding and chat. onboardingComplete is dispatched

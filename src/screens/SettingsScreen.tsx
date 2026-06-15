@@ -17,6 +17,10 @@ import {
 } from '../settings/appSettings.ts';
 import { applyTheme, normalizeTheme, type Theme } from '../settings/theme.ts';
 import {
+  loadEffectAuditPref,
+  setEffectAuditEnabled,
+} from '../settings/runtimeAuditPref.ts';
+import {
   getActiveProviderId,
   setActiveProviderId,
   getActiveProviderProfile,
@@ -178,6 +182,23 @@ export default function SettingsScreen() {
     const id = event.target.value === '' ? null : event.target.value;
     setFallbackProviderIdState(id);
     void setFallbackProviderId(db, id);
+  };
+
+  // Verbose runtime audit: opt-in diagnostic that makes the runtime host emit
+  // an audit per non-terminal effect (emitted/resolved). Off by default.
+  const [effectAudit, setEffectAuditState] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void loadEffectAuditPref(db).then((value) => {
+      if (active) setEffectAuditState(value);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const handleEffectAuditChange = (value: boolean) => {
+    setEffectAuditState(value);
+    void setEffectAuditEnabled(db, value);
   };
 
   // Lock timeout is a real, persisted setting: it drives the SecretVault's
@@ -451,6 +472,16 @@ export default function SettingsScreen() {
                     onCheckedChange={noop}
                     disabled
                     ariaLabel="Dev mode"
+                  />
+                }
+              />
+              <Field
+                label="Verbose runtime audit"
+                control={
+                  <Toggle
+                    checked={effectAudit}
+                    onCheckedChange={handleEffectAuditChange}
+                    ariaLabel="Verbose runtime audit"
                   />
                 }
               />

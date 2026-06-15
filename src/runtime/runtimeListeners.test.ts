@@ -16,7 +16,9 @@ import { BrowserClawDB } from '../db/db.ts';
 
 const db = new BrowserClawDB();
 
-function setup() {
+function setup(
+  deps: Partial<Parameters<typeof registerRuntimeListeners>[2]> = {},
+) {
   const submit = vi.fn<RuntimeHost['submit']>().mockResolvedValue(undefined);
   const host = { submit } as unknown as RuntimeHost;
   const listener = createListenerMiddleware();
@@ -24,7 +26,10 @@ function setup() {
     reducer: { chat: chatReducer, approvals: approvalsReducer },
     middleware: (getDefault) => getDefault().prepend(listener.middleware),
   });
-  registerRuntimeListeners(listener.startListening as never, host, { db });
+  registerRuntimeListeners(listener.startListening as never, host, {
+    db,
+    ...deps,
+  });
   return { submit, store };
 }
 
@@ -81,6 +86,50 @@ describe('registerRuntimeListeners', () => {
       type: 'resolve_effect',
       id: 'eff-3',
       result: { ok: false, error: { kind: 'user_rejected' } },
+    });
+  });
+
+  it('routes a plan approval to the plan resolver (F3)', async () => {
+    const resolvePlanApproval = vi.fn().mockResolvedValue(undefined);
+    const { store } = setup({ resolvePlanApproval });
+    store.dispatch(
+      approvalRequested({
+        id: 'plan-1',
+        kind: 'plan',
+        title: 'P',
+        risk: 'medium',
+        summary: 'a plan',
+        payloadPreview: '{"type":"browserclaw_plan"}',
+      }),
+    );
+    store.dispatch(approvalResolved({ id: 'plan-1', status: 'approved' }));
+    await vi.waitFor(() => expect(resolvePlanApproval).toHaveBeenCalled());
+    expect(resolvePlanApproval).toHaveBeenCalledWith({
+      id: 'plan-1',
+      status: 'approved',
+      payloadPreview: '{"type":"browserclaw_plan"}',
+    });
+  });
+
+  it('routes a sandbox-script approval to the sandbox resolver (F3)', async () => {
+    const resolveSandboxApproval = vi.fn().mockResolvedValue(undefined);
+    const { store } = setup({ resolveSandboxApproval });
+    store.dispatch(
+      approvalRequested({
+        id: 'sbx-1',
+        kind: 'sandbox_script',
+        title: 'S',
+        risk: 'high',
+        summary: 'a script',
+        payloadPreview: '{"type":"browserclaw_script_request"}',
+      }),
+    );
+    store.dispatch(approvalResolved({ id: 'sbx-1', status: 'rejected' }));
+    await vi.waitFor(() => expect(resolveSandboxApproval).toHaveBeenCalled());
+    expect(resolveSandboxApproval).toHaveBeenCalledWith({
+      id: 'sbx-1',
+      status: 'rejected',
+      payloadPreview: '{"type":"browserclaw_script_request"}',
     });
   });
 

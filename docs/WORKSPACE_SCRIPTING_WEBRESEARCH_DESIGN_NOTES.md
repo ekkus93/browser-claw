@@ -506,3 +506,28 @@ and TODO are. Newest decisions at the bottom of each section.
   Dispatch approvalRequested in the proposal path; run/reject in the
   approvalResolved listener (runtimeListeners.ts tool_call precedent). ApprovalKind
   already has workspace_write/workspace_delete/plan/sandbox_script.
+
+### F3 (partial) — script-runtime approval wiring (done, 2026-06-15)
+- src/runtime/sandboxScriptRunner.ts (D6 analog of C5 planRunner.ts):
+  createSandboxScriptEffectHandler(deps) -> validates via proposeScript (audits
+  sandbox_requested|sandbox_rejected) -> dispatch approvalRequested(kind
+  'sandbox_script', payloadPreview=JSON request) | resolve_effect failure if
+  invalid. runApprovedSandboxScriptEffect(deps, approval) -> approved:
+  runApprovedScript + resolve_effect(result); rejected: rejectScript +
+  resolve_effect(user_rejected). deps {ctx: ScriptRuntimeContext, submit}.
+- runtimeListeners.ts approvalResolved now ROUTES BY KIND: plan ->
+  deps.resolvePlanApproval, sandbox_script -> deps.resolveSandboxApproval (both
+  injected, optional), else tool_call (existing). RuntimeListenerDeps +=
+  resolvePlanApproval?/resolveSandboxApproval?. This is the seam to extend for
+  workspace/web/extension/bulk approvals.
+- Tests: sandboxScriptRunner.test.ts (4) + runtimeListeners.test.ts +2 (plan +
+  sandbox routing). vitest 762->768.
+- GOTCHA: SANDBOXED_SCRIPT_RUNTIME is exported from scriptPolicy.ts (NOT
+  scriptRequest.ts); SCRIPT_REQUEST_TYPE/VERSION from scriptRequest.ts.
+- KEY FACT: registerRuntimeListeners is NOT yet called by live app wiring
+  (effect-port + listener host assembly is a later step). All bridges are built
+  + tested in isolation. The plan/sandbox handlers are provided by whoever
+  assembles the host (deps injection).
+- F3 REMAINING: workspace_write/workspace_delete (wire B6 workspaceOps +
+  listener route), web_page_read (+ add ApprovalKind 'web_page_read'),
+  extension_permission, bulk_research. Same router/injected-deps pattern.

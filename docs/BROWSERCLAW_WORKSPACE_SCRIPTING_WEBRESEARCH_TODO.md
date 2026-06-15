@@ -988,16 +988,19 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 ## Phase F3 — Approval system extensions
 
 - [ ] P1 Support approval types:
-  - [ ] workspace write/delete;
-  - [ ] plan execution;
-  - [ ] sandbox script execution;
-  - [ ] web page read;
-  - [ ] extension host permission request;
-  - [ ] bulk research.
-- [ ] P1 Approval cards must show enough detail for informed decision.
-- [ ] P1 Support approve/reject.
-- [ ] P2 Support edit capabilities/limits before approval.
-- [ ] P1 Tests for each approval type.
+  - [ ] workspace write/delete; <!-- TODO: workspace effect handler (B6 workspaceOps) + listener route for workspace_write/workspace_delete kinds -->
+  - [x] plan execution; <!-- planRunner.ts createPlanEffectHandler/runApprovedPlanEffect (C5) now ROUTED via runtimeListeners.approvalResolved kind 'plan' (F3) -->
+  - [x] sandbox script execution; <!-- src/runtime/sandboxScriptRunner.ts createSandboxScriptEffectHandler/runApprovedSandboxScriptEffect + routed via approvalResolved kind 'sandbox_script' -->
+  - [ ] web page read; <!-- TODO: web effect handler (WebResearchService) + approval kind (needs 'web_page_read' added to ApprovalKind) -->
+  - [ ] extension host permission request; <!-- TODO: extension handler + 'extension_permission' kind; real chrome.permissions flow is real-browser -->
+  - [ ] bulk research. <!-- TODO: 'bulk_research' kind + handler (query/URLs/domains/maxPages preview) -->
+- [x] P1 Approval cards must show enough detail for informed decision. <!-- plan: PlanProposal (steps/files/urls/caps/risk); sandbox: ScriptProposal (runtime/reason/code/caps/limits/risk/scopes). payloadPreview carries the full request JSON. Card UI = G2. -->
+- [x] P1 Support approve/reject. <!-- runApproved{Plan,SandboxScript}Effect run on approve; reject -> reject{Plan,Script} + resolve_effect user_rejected -->
+- [ ] P2 Support edit capabilities/limits before approval. <!-- DEFERRED -> G2 UI; approvalEdited updates payloadPreview and runApproved* re-validates the edited JSON -->
+- [ ] P1 Tests for each approval type. <!-- DONE for plan + sandbox (sandboxScriptRunner.test.ts + runtimeListeners.test.ts routing); workspace/web/extension/bulk pending with their handlers -->
+
+<!-- F3 (partial) 2026-06-15: wired the two SCRIPT-runtime approval types (plan + sandbox_script) end-to-end through runtimeListeners.approvalResolved (deps.resolvePlanApproval / resolveSandboxApproval, injected). Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 768/103, e2e 30. No Rust. -->
+<!-- F3 REMAINING (next increments): workspace_write/workspace_delete handler (wire B6 workspaceOps + listener route), web_page_read (+ add ApprovalKind), extension_permission, bulk_research. The runtimeListeners.approvalResolved router + injected-deps pattern is the seam to extend. NOTE: registerRuntimeListeners is not yet called by live app wiring (host assembly is a later step). -->
 
 ## Phase F4 — Audit events and redaction
 

@@ -9,9 +9,15 @@ import {
 import { recordAudit } from '../audit/auditSink.ts';
 import type { RuntimeHost } from './runtimeHost.ts';
 import { runApprovedToolCall } from './toolRunner.ts';
+import type { ApprovedPlan } from './planRunner.ts';
+import type { ApprovedSandboxScript } from './sandboxScriptRunner.ts';
 
 export interface RuntimeListenerDeps {
   db: BrowserClawDB;
+  /** Resolves a `plan` approval through the plan effect bridge (Part C5/F3). */
+  resolvePlanApproval?: (approval: ApprovedPlan) => Promise<void>;
+  /** Resolves a `sandbox_script` approval through the sandbox bridge (F3). */
+  resolveSandboxApproval?: (approval: ApprovedSandboxScript) => Promise<void>;
 }
 
 /**
@@ -50,7 +56,33 @@ export function registerRuntimeListeners(
       const approval = api
         .getOriginalState()
         .approvals.queue.find((a) => a.id === action.payload.id);
-      if (!approval || approval.kind !== 'tool_call') return;
+      if (!approval) return;
+
+      // A plan or sandboxed-script approval resolves through its own effect
+      // bridge (F3); each runs (or declines) the proposal and resolves the
+      // runtime effect so the turn continues.
+      if (approval.kind === 'plan') {
+        await deps.resolvePlanApproval?.({
+          id: approval.id,
+          status: action.payload.status,
+          ...(approval.payloadPreview !== undefined
+            ? { payloadPreview: approval.payloadPreview }
+            : {}),
+        });
+        return;
+      }
+      if (approval.kind === 'sandbox_script') {
+        await deps.resolveSandboxApproval?.({
+          id: approval.id,
+          status: action.payload.status,
+          ...(approval.payloadPreview !== undefined
+            ? { payloadPreview: approval.payloadPreview }
+            : {}),
+        });
+        return;
+      }
+
+      if (approval.kind !== 'tool_call') return;
       // Provenance for a persisting tool: the skill that requested it and the
       // conversation it was approved in.
       const conversationId =

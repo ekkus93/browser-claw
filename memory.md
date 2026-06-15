@@ -1269,3 +1269,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - GOTCHA: eslint react-hooks rule "Calling setState synchronously within an effect" flagged a reconcile line (setOnline(navigator.onLine) inside useEffect). Removed it — the initial useState already reads navigator.onLine. (vitest was green; only lint caught it — the gate's lint step is load-bearing.)
 - Gate GREEN: typecheck clean; pnpm test 455 (+2); e2e 28.
 - TODO now 29 unchecked, all deliberate omissions / no-consumer / test-suite-audit-needed (11.1 542-545) / source-message-ID provenance / reload-snapshot integration. No buildable consumer-backed items remain.
+
+## 2026-06-15T05:01:35Z - Claude Opus 4.8 - Phase 11.1 test-suite audit: already satisfied (reconcile)
+- Audited the suite for the 4 "remove tests that enshrine bad behavior" items. ALL already satisfied — the suite enforces fail-closed and has the negative tests; nothing to remove/update:
+  * unknown->mock: providers.test "does NOT fall back to mock for null or unknown ids" (resolveProvider unknown -> {ok:false,'unknown_provider'}).
+  * mock-by-default: "resolves the mock only when explicitly allowed" + isProviderConfigured + defaultActiveProviderId gating.
+  * fake-seeded-data reliance: every SAMPLE_MEMORIES test seeds explicitly; MemoriesScreen.test "fresh non-demo DB ... seeds nothing" + db.test.ts assert the opposite.
+  * negative fallback: providers.test describe('registry — fails closed') + runtimeBoot.test fail-closed/dev-flag tests + appConfig.test flags-default-off.
+- Ticked all 4 (542-545) with evidence. No code change.
+- Gate GREEN (doc-only): pnpm test passed. TODO now 25 unchecked — ALL remaining are deliberate omissions / no-consumer / genuinely-minor (source-message-ID provenance; reload-snapshot integration whose host-level restore is already tested). No buildable, consumer-backed, or test-gap items remain.

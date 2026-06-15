@@ -539,10 +539,10 @@
 
 ### 11.1 Remove Tests That Enshrine Bad Behavior
 
-- [ ] Update tests expecting unknown provider to become mock.
-- [ ] Update tests expecting mock response unless explicit mock provider selected.
-- [ ] Remove tests that rely on fake seeded audit/memory data.
-- [ ] Add negative tests for unsafe fallback behavior.
+- [x] Update tests expecting unknown provider to become mock. <!-- Audited the suite: no test expects unknown->mock. The implementation already fails closed (resolveProvider unknown -> {ok:false,'unknown_provider'}, null -> not_configured) and providers.test.ts "does NOT fall back to mock for null or unknown ids" asserts exactly that. Nothing to update. -->
+- [x] Update tests expecting mock response unless explicit mock provider selected. <!-- No such test. The mock is gated everywhere: providers.test.ts "resolves the mock only when explicitly allowed" (resolveProvider('mock',{off}) -> not_configured; ('mock',{on}) -> mock), "isProviderConfigured gates the mock behind the flag", and "defaultActiveProviderId fails closed unless the mock is allowed" (null without the flag). -->
+- [x] Remove tests that rely on fake seeded audit/memory data. <!-- Audited: NO test relies on auto-seeded data. Every SAMPLE_MEMORIES test seeds it explicitly (MemoriesScreen.test beforeEach bulkPut; StorageScreen.test builds a backup from an explicitly-put row; sampleMemories.test tests the constant itself). Two tests actively assert the opposite — MemoriesScreen.test "a fresh non-demo DB shows the empty state and seeds nothing" and db.test.ts "inserts NO fake audit/memory data on a fresh (non-demo) database". Nothing to remove. -->
+- [x] Add negative tests for unsafe fallback behavior. <!-- Present: providers.test.ts describe('registry — fails closed') (null/unknown never -> mock; mock only when allowed) + runtimeBoot.test.ts "fails closed (no fallback) when WASM fails and the dev flag is off" and "uses the reference runtime only when the dev flag is on". appConfig.test.ts asserts isDemoMode/dev/mock flags default off. -->
 
 ### 11.2 Add Security Regression Tests
 

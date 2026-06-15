@@ -196,17 +196,19 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ### A2.4 Provider Test saves before activation
 
-- [ ] P1 Change Models screen test flow:
-  - [ ] save provider profile first;
-  - [ ] test persisted profile;
-  - [ ] activate only after successful persisted test.
-- [ ] P1 If save fails, do not test.
-- [ ] P1 If test fails, do not activate.
-- [ ] P1 Tests:
-  - [ ] editing base URL then Test persists base URL;
-  - [ ] reload after successful Test keeps same URL/model;
-  - [ ] failed Test does not activate provider;
-  - [ ] failed save does not run provider test.
+<!-- src/screens/ModelsScreen.tsx handleTest: saveProviderProfile(buildRow()) FIRST (on failure: toast + return, no test); then resolve/test; activeProviderSet only on connected. Tests: src/screens/ModelsScreen.test.tsx ("tests the provider using the edited values" now asserts the baseUrl was persisted; "does not run the provider test when saving fails"). Gate: typecheck/lint/prettier/vitest 503/e2e 28. -->
+
+- [x] P1 Change Models screen test flow:
+  - [x] save provider profile first;
+  - [x] test persisted profile;
+  - [x] activate only after successful persisted test.
+- [x] P1 If save fails, do not test.
+- [x] P1 If test fails, do not activate.
+- [x] P1 Tests:
+  - [x] editing base URL then Test persists base URL;
+  - [x] reload after successful Test keeps same URL/model; (= the persisted-baseUrl assertion; reload reads the same persisted row)
+  - [x] failed Test does not activate provider; (activeProviderSet only on connected — covered by the failure-audit tests where health != connected)
+  - [x] failed save does not run provider test.
 
 ### A2.5 Backup import self-validation
 

@@ -1361,3 +1361,9 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - secretVault is a module singleton (src/secrets/vault.ts), starts LOCKED in tests; setup/unlock use PBKDF2 250k (slow — avoid stacking).
 - Gate ALL GREEN: typecheck, lint, prettier, vitest 502/77, e2e 28. No Rust touched.
 - NEXT: A2.4 — provider Test saves profile before activation (save -> test persisted -> activate only on success). Currently handleTest activates from form state without saving first; reload could mismatch. P1.
+
+## 2026-06-15T07:48:31Z - Claude Opus 4.8 - Ralph: A2.4 (provider Test saves before activation)
+- A2.4 DONE. `ModelsScreen.handleTest` now persists the profile FIRST: `await saveProviderProfile(db, buildRow())` in its own try — on failure shows 'Save failed' toast + returns (no test). Then resolve/resolveApiKey/checkHealth; activeProviderSet + setActiveProviderId only on `connected`. Prevents session/reload mismatch (tested+activated config == stored config).
+- Tests: extended "tests the provider using the edited (not default) values" to assert db.provider_profiles.get('openai').baseUrl === edited; NEW "does not run the provider test when saving fails" — vi.spyOn(db.provider_profiles,'put').mockRejectedValueOnce -> assert fetch NOT called + activeProviderId null. (providers slice field is activeProviderId, not 'active'.) vitest 502->503.
+- Gate ALL GREEN: typecheck, lint, prettier, vitest 503/77, e2e 28. No Rust touched.
+- Phase A2 progress: A2.1 A2.2 A2.3 A2.4 done. NEXT: A2.5 — importBackup() must self-validate (call validateBackup internally; reject unknown collection/malformed row/raw-secret/size regardless of caller). backupService.ts importBackup currently relies on caller. P1.

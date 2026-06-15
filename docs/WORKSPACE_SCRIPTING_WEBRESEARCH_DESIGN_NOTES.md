@@ -170,3 +170,13 @@ and TODO are. Newest decisions at the bottom of each section.
   API key needed"). New test switches to 'encrypted' to exercise fail-closed.
 - Default profile apiKeyModes (providerProfiles.ts): openai/anthropic/compatible =
   'encrypted'; ollama/llama-server = 'none'.
+
+### A2.4 — provider Test saves before activation (done)
+- `ModelsScreen.handleTest` now `await saveProviderProfile(db, buildRow())` FIRST
+  (inside its own try: on failure -> toast 'Save failed' + return, no test). Then
+  resolve/key-check/checkHealth; activeProviderSet only on `connected`. So a
+  reload can't show a config different from what was tested/activated.
+- Tests: extended "tests ... edited values" to assert the baseUrl persisted to
+  db.provider_profiles; new "does not run the provider test when saving fails"
+  (spies db.provider_profiles.put -> reject; asserts fetch not called +
+  activeProviderId null).

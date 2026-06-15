@@ -115,6 +115,20 @@ function ProviderCard({
   async function handleTest() {
     setTesting(true);
     try {
+      // Persist the edited profile BEFORE testing (hardening A2.4) so the test —
+      // and any activation that follows a success — reflect what is stored, not
+      // unsaved form state. A reload then can't show a different config than was
+      // tested/activated. If the save fails, do not test.
+      try {
+        await saveProviderProfile(db, buildRow());
+      } catch {
+        toast({
+          tone: 'danger',
+          title: 'Save failed',
+          description: `Could not save ${profile.label}; provider not tested.`,
+        });
+        return;
+      }
       const resolved = resolveProvider(profile.id, appConfig, {
         baseUrl,
         ...(variant === 'remote' ? { model } : {}),

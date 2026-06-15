@@ -421,5 +421,35 @@ describe('ModelsScreen', () => {
     await waitFor(() => expect(fetchImpl).toHaveBeenCalled());
     const [url] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('https://edited.example/v1/chat/completions');
+    // A2.4: the edited base URL is persisted before testing, so a reload keeps it.
+    await waitFor(async () => {
+      const saved = await db.provider_profiles.get('openai');
+      expect(saved?.baseUrl).toBe('https://edited.example/v1');
+    });
+  });
+
+  it('does not run the provider test when saving the profile fails (A2.4)', async () => {
+    const fetchSpy = vi.fn(() =>
+      Promise.reject(new TypeError('should not be called')),
+    );
+    vi.stubGlobal('fetch', fetchSpy);
+    const putSpy = vi
+      .spyOn(db.provider_profiles, 'put')
+      .mockRejectedValueOnce(new Error('disk full'));
+    const user = userEvent.setup();
+    const store = renderModels();
+    await screen.findByRole('heading', { name: 'OpenAI' });
+    await user.selectOptions(
+      screen.getAllByLabelText('API key mode')[0]!,
+      'none',
+    );
+
+    await user.click(screen.getAllByRole('button', { name: 'Test' })[0]!);
+
+    await screen.findByText(/Save failed/);
+    // Save failed -> the provider was never tested or activated.
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(store.getState().providers.activeProviderId).toBeNull();
+    putSpy.mockRestore();
   });
 });

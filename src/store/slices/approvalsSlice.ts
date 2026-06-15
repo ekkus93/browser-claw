@@ -17,7 +17,9 @@ export type ApprovalKind =
   | 'skill_install'
   | 'network'
   | 'workspace_write'
-  | 'workspace_delete';
+  | 'workspace_delete'
+  | 'plan'
+  | 'sandbox_script';
 
 export type ApprovalRisk = 'low' | 'medium' | 'high';
 

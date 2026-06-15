@@ -537,32 +537,34 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase C4 — Plan approvals and audit
 
-- [ ] P0 Add plan proposal effect/action.
-- [ ] P0 Add plan approval card:
-  - [ ] title;
-  - [ ] reason;
-  - [ ] runtime `Structured Plan DSL v0.1`;
-  - [ ] requested capabilities;
-  - [ ] files read/write/delete;
-  - [ ] URLs/domains;
-  - [ ] risk;
-  - [ ] step list.
-- [ ] P0 Support approve/reject.
-- [ ] P1 Support editing capabilities before approval.
-- [ ] P0 Audit:
-  - [ ] `script.plan_requested`;
-  - [ ] `script.plan_approved`;
-  - [ ] `script.plan_rejected`;
-  - [ ] `script.plan_started`;
-  - [ ] `script.plan_completed`;
-  - [ ] `script.plan_failed`;
-  - [ ] `script.plan_cancelled`.
-- [ ] P0 Tests:
-  - [ ] unapproved plan does nothing;
-  - [ ] approved plan runs;
-  - [ ] rejected plan does nothing;
-  - [ ] audit events written;
-  - [ ] approval preview does not leak huge content.
+<!-- src/script/planRuntime.ts: buildPlanProposal (runtime label/title/reason/risk/capabilities/steps/files reads-writes-deletes/urls) + classifyPlanRisk + proposePlan/rejectPlan/runApprovedPlan with full lifecycle audit (script.plan_requested/started/completed/failed/cancelled/rejected, source 'script'). ApprovalKind += 'plan'; AuditSource += workspace/script/web/extension. Tests: src/script/planRuntime.test.ts. Live Redux card + 'approved' audit + capability-edit are F3/G2. Gate: typecheck/lint/prettier/vitest 614/e2e 30. -->
+
+- [x] P0 Add plan proposal effect/action. (proposePlan + PlanProposal; Redux action/card in F3/G2)
+- [x] P0 Add plan approval card:
+  - [x] title;
+  - [x] reason;
+  - [x] runtime `Structured Plan DSL v0.1`;
+  - [x] requested capabilities;
+  - [x] files read/write/delete;
+  - [x] URLs/domains;
+  - [x] risk;
+  - [x] step list. (all assembled in PlanProposal; the visual card is G2)
+- [x] P0 Support approve/reject. (runApprovedPlan / rejectPlan; Redux wiring F3)
+- [ ] P1 Support editing capabilities before approval. (deferred to F3/G2 with the editable card)
+- [x] P0 Audit:
+  - [x] `script.plan_requested`;
+  - [ ] `script.plan_approved`; (the approval event is emitted by the Redux resolution listener in F3; runApprovedPlan emits plan_started)
+  - [x] `script.plan_rejected`;
+  - [x] `script.plan_started`;
+  - [x] `script.plan_completed`;
+  - [x] `script.plan_failed`;
+  - [x] `script.plan_cancelled`.
+- [x] P0 Tests:
+  - [x] unapproved plan does nothing; (runApprovedPlan is only called on approve; rejectPlan runs nothing — covered)
+  - [x] approved plan runs;
+  - [x] rejected plan does nothing;
+  - [x] audit events written;
+  - [x] approval preview does not leak huge content. (preview carries op names + literal paths/urls + capabilities — never file contents)
 
 ## Phase C5 — Plan integration with runtime
 

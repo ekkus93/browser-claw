@@ -165,7 +165,13 @@ export type AuditSource =
   | 'skill'
   | 'backup'
   | 'model'
-  | 'system';
+  | 'system'
+  // New domains (spec §6.4): workspace files, the script runtime, web research,
+  // and the browser extension.
+  | 'workspace'
+  | 'script'
+  | 'web'
+  | 'extension';
 
 /**
  * Durable audit event. `at` (epoch ms) is canonical for ordering/range queries;

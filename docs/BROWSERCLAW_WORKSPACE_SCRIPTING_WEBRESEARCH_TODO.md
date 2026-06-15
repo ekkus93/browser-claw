@@ -290,9 +290,11 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ### A2.11 Cleanup stale comments/docs
 
-- [ ] P2 Remove comments claiming effect handlers are injectable no-ops.
-- [ ] P2 Update hardening TODO status to avoid fully checked acceptance while subtasks remain open.
-- [ ] P2 Update docs for incomplete storage_get/storage_search/model queue/default model settings.
+<!-- src/runtime/effectExecutor.ts EffectPorts doc rewritten: handlers are real (NOT no-ops), a missing required handler is FATAL via failEffect, and storage_get/storage_search are explicitly noted as not-implemented/fail-closed. Gate: typecheck/lint/prettier/vitest 527/e2e 28 (comment-only). -->
+
+- [x] P2 Remove comments claiming effect handlers are injectable no-ops.
+- [ ] P2 Update hardening TODO status to avoid fully checked acceptance while subtasks remain open. (N/A this pass — refers to the prior `BROWSERCLAW_RUNTIME_STORAGE_SECURITY_HARDENING_TODO.md`, already reconciled in that pass; this TODO is ticked honestly with unchecked-noted exceptions)
+- [x] P2 Update docs for incomplete storage_get/storage_search/model queue/default model settings. (storage_get/search documented as fail-closed in effectExecutor.ts + storageRunner.ts; no false "done" claim exists for model queue / default model)
 
 ---
 

@@ -8,10 +8,16 @@ import { type ApprovalRisk } from '../store/slices/approvalsSlice.ts';
 import { runtimeErrored } from '../store/slices/runtimeSlice.ts';
 
 /**
- * Host-side effect handlers for effects the runtime can't perform itself.
- * Provider calls (llm_request), durable storage, and skill filesystem access
- * are filled in by their respective phases (7, 3/later, 10); until then they
- * are injectable no-ops.
+ * Host-side effect handlers for effects the runtime can't perform itself
+ * (provider calls, durable storage, skill filesystem, tool calls). These are
+ * the real wired handlers — NOT no-ops. A handler the runtime needs but that is
+ * missing is FATAL: `executeEffect` calls `failEffect` (audited + visible
+ * runtime error + throw), so a side effect the runtime asked for is never
+ * silently skipped. The ports are optional only so tests can wire a subset.
+ *
+ * Note: the storage port currently implements `storage_put` only; `storage_get`
+ * and `storage_search` are not backed by a real query yet and fail closed (see
+ * storageRunner.ts) rather than returning fake data.
  */
 export interface EffectPorts {
   llmRequest?(

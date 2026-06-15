@@ -24,7 +24,10 @@ import {
   getActiveProviderId,
   setActiveProviderId,
 } from '../providers/providerProfiles.ts';
-import { getApprovalPolicy } from '../settings/appSettings.ts';
+import {
+  getApprovalPolicy,
+  getFallbackProviderId,
+} from '../settings/appSettings.ts';
 import { queryAuditEvents } from '../audit/auditService.ts';
 
 function renderSettings() {
@@ -170,6 +173,22 @@ describe('SettingsScreen', () => {
         events.some((e) => e.type === 'settings.approval_policy_relaxed'),
       ).toBe(true);
     });
+  });
+
+  it('defaults the fallback provider to None and persists a selection', async () => {
+    const user = userEvent.setup();
+    renderSettings();
+
+    const select = await screen.findByRole('combobox', {
+      name: 'Fallback provider',
+    });
+    await waitFor(() => expect(select).toHaveValue(''));
+
+    await user.selectOptions(select, 'anthropic');
+    expect(select).toHaveValue('anthropic');
+    await waitFor(async () =>
+      expect(await getFallbackProviderId(db)).toBe('anthropic'),
+    );
   });
 
   it('loads the persisted lock timeout and writes changes to IndexedDB', async () => {

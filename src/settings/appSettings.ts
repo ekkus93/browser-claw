@@ -75,6 +75,28 @@ export async function setApprovalPolicy(
   await setSetting(db, APPROVAL_POLICY_KEY, policy);
 }
 
+/**
+ * Optional fallback provider id. When set, an LLM request whose primary call
+ * fails with a reachability/transient error retries once on this provider (see
+ * llmRunner). null = no fallback (default). Stored as the provider id, reusing
+ * the same provider-profile ids as the active provider.
+ */
+export const FALLBACK_PROVIDER_KEY = 'fallbackProviderId';
+
+export async function getFallbackProviderId(
+  db: BrowserClawDB,
+): Promise<string | null> {
+  const value = await getSetting<string>(db, FALLBACK_PROVIDER_KEY);
+  return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+export async function setFallbackProviderId(
+  db: BrowserClawDB,
+  id: string | null,
+): Promise<void> {
+  await setSetting(db, FALLBACK_PROVIDER_KEY, id);
+}
+
 /** SecretVault auto-lock idle timeout, in minutes (drives a real lock timer). */
 export const LOCK_TIMEOUT_MINUTES_KEY = 'lockTimeoutMinutes';
 const DEFAULT_LOCK_TIMEOUT_MINUTES = 15;

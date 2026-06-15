@@ -16,6 +16,8 @@ import {
   setTheme,
   getApprovalPolicy,
   setApprovalPolicy,
+  getFallbackProviderId,
+  setFallbackProviderId,
   getOnboardingProgress,
   setOnboardingProgress,
   clearOnboardingProgress,
@@ -45,6 +47,15 @@ describe('appSettings', () => {
     // An unknown stored value falls back to the safe default.
     await setSetting(db, 'approvalPolicy', 'nonsense');
     expect(await getApprovalPolicy(db)).toBe('require_all');
+  });
+
+  it('defaults the fallback provider to none and round-trips a selection', async () => {
+    expect(await getFallbackProviderId(db)).toBeNull();
+    await setFallbackProviderId(db, 'anthropic');
+    expect(await getFallbackProviderId(db)).toBe('anthropic');
+    // Clearing it (None) returns to null.
+    await setFallbackProviderId(db, null);
+    expect(await getFallbackProviderId(db)).toBeNull();
   });
 
   it('defaults onboarding completion to false when unset', async () => {

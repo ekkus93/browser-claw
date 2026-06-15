@@ -5,8 +5,10 @@ import chatReducer from '../store/slices/chatSlice.ts';
 import auditReducer from '../store/slices/auditSlice.ts';
 import { db } from '../db/db.ts';
 import { createLlmRequestHandler } from './llmRunner.ts';
+import type { FallbackTarget } from './llmRunner.ts';
 import { createMockProvider } from '../providers/mockProvider.ts';
 import { ProviderError } from '../providers/errors.ts';
+import type { ApiKeyResolution } from '../providers/providerKey.ts';
 import type { LlmProvider } from '../providers/types.ts';
 
 afterAll(() => {
@@ -398,6 +400,228 @@ describe('createLlmRequestHandler', () => {
     expect(sent).toContainEqual({
       role: 'user',
       content: 'Tool result:\nPAGE BODY',
+    });
+  });
+
+  describe('fallback provider failover', () => {
+    function fallbackTarget(
+      complete: LlmProvider['complete'],
+      key: ApiKeyResolution,
+    ): FallbackTarget {
+      return {
+        id: 'anthropic',
+        provider: {
+          id: 'anthropic',
+          complete,
+          checkHealth: () => Promise.resolve('connected' as const),
+        },
+        getApiKey: () => Promise.resolve(key),
+      };
+    }
+
+    async function seedUser(conversationId: string) {
+      await db.open();
+      await db.messages.clear();
+      await db.memories.clear();
+      await db.messages.put({
+        id: `u-${conversationId}`,
+        conversationId,
+        role: 'user',
+        content: 'hi',
+        createdAt: 1,
+      });
+    }
+
+    it('fails over to the fallback on an unreachable primary error', async () => {
+      await seedUser('cf1');
+      const store = configureStore({
+        reducer: { chat: chatReducer, audit: auditReducer },
+      });
+      const primary: LlmProvider = {
+        id: 'openai',
+        complete: () =>
+          Promise.reject(new ProviderError('unreachable', 'down')),
+        checkHealth: () => Promise.resolve('connected'),
+      };
+      const fallbackComplete = vi
+        .fn<LlmProvider['complete']>()
+        .mockResolvedValue({ text: 'from fallback' });
+      const submit = vi
+        .fn<(c: unknown) => Promise<void>>()
+        .mockResolvedValue(undefined);
+      const handler = createLlmRequestHandler({
+        db,
+        dispatch: store.dispatch,
+        getProvider: () => primary,
+        resolveFallback: () =>
+          Promise.resolve(
+            fallbackTarget(fallbackComplete, { ok: true, apiKey: 'sk-fb' }),
+          ),
+        submit,
+      });
+
+      await handler({
+        type: 'llm_request',
+        id: 'eff-f1',
+        conversation_id: 'cf1',
+        prompt: 'hi',
+      });
+
+      // The fallback ran (with its OWN key) and its reply resolved the effect.
+      expect(fallbackComplete).toHaveBeenCalledWith(expect.anything(), {
+        apiKey: 'sk-fb',
+      });
+      expect(submit).toHaveBeenCalledWith({
+        type: 'resolve_effect',
+        id: 'eff-f1',
+        result: { ok: true, text: 'from fallback' },
+      });
+      // Failover is never silent — it's audited.
+      expect(
+        store
+          .getState()
+          .audit.recent.some((e) => e.type === 'provider.failover_used'),
+      ).toBe(true);
+      expect(store.getState().chat.runState).toBe('idle');
+    });
+
+    it('does NOT fail over on an auth error (surfaces it, fallback untouched)', async () => {
+      await seedUser('cf2');
+      const store = configureStore({
+        reducer: { chat: chatReducer, audit: auditReducer },
+      });
+      const primary: LlmProvider = {
+        id: 'openai',
+        complete: () => Promise.reject(new ProviderError('auth', 'bad key')),
+        checkHealth: () => Promise.resolve('auth_failed'),
+      };
+      const resolveFallback = vi.fn();
+      const submit = vi
+        .fn<(c: unknown) => Promise<void>>()
+        .mockResolvedValue(undefined);
+      const handler = createLlmRequestHandler({
+        db,
+        dispatch: store.dispatch,
+        getProvider: () => primary,
+        resolveFallback,
+        submit,
+      });
+
+      await handler({
+        type: 'llm_request',
+        id: 'eff-f2',
+        conversation_id: 'cf2',
+        prompt: 'hi',
+      });
+
+      expect(resolveFallback).not.toHaveBeenCalled();
+      expect(submit).toHaveBeenCalledWith({
+        type: 'resolve_effect',
+        id: 'eff-f2',
+        result: { ok: false, error: expect.objectContaining({ kind: 'auth' }) },
+      });
+      expect(
+        store
+          .getState()
+          .audit.recent.some((e) => e.type === 'provider.failover_used'),
+      ).toBe(false);
+    });
+
+    it('skips failover when the fallback key is locked (surfaces the original error)', async () => {
+      await seedUser('cf3');
+      const store = configureStore({
+        reducer: { chat: chatReducer, audit: auditReducer },
+      });
+      const primary: LlmProvider = {
+        id: 'openai',
+        complete: () =>
+          Promise.reject(new ProviderError('unreachable', 'down')),
+        checkHealth: () => Promise.resolve('connected'),
+      };
+      const fallbackComplete = vi.fn<LlmProvider['complete']>();
+      const submit = vi
+        .fn<(c: unknown) => Promise<void>>()
+        .mockResolvedValue(undefined);
+      const handler = createLlmRequestHandler({
+        db,
+        dispatch: store.dispatch,
+        getProvider: () => primary,
+        resolveFallback: () =>
+          Promise.resolve(
+            fallbackTarget(fallbackComplete, {
+              ok: false,
+              kind: 'secret_locked',
+              message: 'locked',
+            }),
+          ),
+        submit,
+      });
+
+      await handler({
+        type: 'llm_request',
+        id: 'eff-f3',
+        conversation_id: 'cf3',
+        prompt: 'hi',
+      });
+
+      // Fail-closed: no unauthenticated fallback call, original error surfaced.
+      expect(fallbackComplete).not.toHaveBeenCalled();
+      expect(submit).toHaveBeenCalledWith({
+        type: 'resolve_effect',
+        id: 'eff-f3',
+        result: {
+          ok: false,
+          error: expect.objectContaining({ kind: 'unreachable' }),
+        },
+      });
+    });
+
+    it("surfaces the fallback's error when the fallback also fails", async () => {
+      await seedUser('cf4');
+      const store = configureStore({
+        reducer: { chat: chatReducer, audit: auditReducer },
+      });
+      const primary: LlmProvider = {
+        id: 'openai',
+        complete: () =>
+          Promise.reject(new ProviderError('unreachable', 'down')),
+        checkHealth: () => Promise.resolve('connected'),
+      };
+      const fallbackComplete = vi
+        .fn<LlmProvider['complete']>()
+        .mockRejectedValue(new ProviderError('cors', 'blocked'));
+      const submit = vi
+        .fn<(c: unknown) => Promise<void>>()
+        .mockResolvedValue(undefined);
+      const handler = createLlmRequestHandler({
+        db,
+        dispatch: store.dispatch,
+        getProvider: () => primary,
+        resolveFallback: () =>
+          Promise.resolve(
+            fallbackTarget(fallbackComplete, { ok: true, apiKey: 'sk-fb' }),
+          ),
+        submit,
+      });
+
+      await handler({
+        type: 'llm_request',
+        id: 'eff-f4',
+        conversation_id: 'cf4',
+        prompt: 'hi',
+      });
+
+      // The last attempt's (fallback's) error is what the user sees.
+      expect(submit).toHaveBeenCalledWith({
+        type: 'resolve_effect',
+        id: 'eff-f4',
+        result: { ok: false, error: expect.objectContaining({ kind: 'cors' }) },
+      });
+      expect(
+        store
+          .getState()
+          .audit.recent.some((e) => e.type === 'provider.failover_used'),
+      ).toBe(false);
     });
   });
 });

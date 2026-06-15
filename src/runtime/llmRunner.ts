@@ -4,7 +4,10 @@ import { runStateSet, chatErrored } from '../store/slices/chatSlice.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import type { Command, Effect } from './effectTypes.ts';
 import type { LlmProvider, ChatMessage } from '../providers/types.ts';
-import { describeProviderError } from '../providers/errors.ts';
+import {
+  describeProviderError,
+  isFailoverEligible,
+} from '../providers/errors.ts';
 import type { ApiKeyResolution } from '../providers/providerKey.ts';
 import { parseToolCall } from '../tools/tools.ts';
 import {
@@ -23,6 +26,70 @@ export interface LlmRequestDeps {
   getApiKey?: () => Promise<ApiKeyResolution>;
   /** Feed a command back into the runtime (host.submit). */
   submit: (command: Command) => Promise<void>;
+  /**
+   * Resolve the configured fallback provider (and its own key resolver), or null
+   * when none is set / it equals the active provider. Optional — when absent
+   * there is no failover. Used only when the primary fails with a
+   * reachability/transient error (see isFailoverEligible).
+   */
+  resolveFallback?: () => Promise<FallbackTarget | null>;
+}
+
+/** A fallback provider plus its own SecretVault-backed key resolver. */
+export interface FallbackTarget {
+  id: string;
+  provider: LlmProvider;
+  getApiKey: () => Promise<ApiKeyResolution>;
+}
+
+type FailoverOutcome =
+  | { status: 'ok'; text: string }
+  /** Not attempted: no fallback configured, or its key is locked/missing. */
+  | { status: 'unavailable' }
+  /** Fallback ran but also failed — surface ITS error, not the primary's. */
+  | {
+      status: 'failed';
+      failure: ReturnType<typeof describeProviderError>;
+      providerId: string;
+    };
+
+/**
+ * Try the configured fallback provider once. Fail-closed on the key: a locked
+ * vault or missing fallback key yields 'unavailable' (never a silent
+ * unauthenticated call), so the caller surfaces the original primary error. A
+ * successful failover is audited (provider.failover_used) — never silent.
+ */
+async function attemptFallback(
+  deps: LlmRequestDeps,
+  messages: ChatMessage[],
+  conversationId: string,
+  primaryKind: string,
+): Promise<FailoverOutcome> {
+  const fallback = deps.resolveFallback ? await deps.resolveFallback() : null;
+  if (!fallback) return { status: 'unavailable' };
+  const keyResult = await fallback.getApiKey();
+  if (!keyResult.ok) return { status: 'unavailable' };
+  const callOptions =
+    keyResult.apiKey !== undefined ? { apiKey: keyResult.apiKey } : undefined;
+  try {
+    const result = await fallback.provider.complete({ messages }, callOptions);
+    void recordAudit(deps.db, deps.dispatch, {
+      type: 'provider.failover_used',
+      summary: `Primary provider failed (${primaryKind}); used fallback ${fallback.id}`,
+      source: 'provider',
+      risk: 'info',
+      status: 'success',
+      conversationId,
+      providerId: fallback.id,
+    });
+    return { status: 'ok', text: result.text };
+  } catch (error) {
+    return {
+      status: 'failed',
+      failure: describeProviderError(error),
+      providerId: fallback.id,
+    };
+  }
 }
 
 /**
@@ -127,25 +194,47 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
         .complete({ messages }, callOptions);
       text = result.text;
     } catch (error) {
-      // Provider failures are NOT written as a fake assistant reply. Surface an
-      // error card, audit the failure, and resolve the effect as a failure so
+      // Provider failures are NOT written as a fake assistant reply. For a
+      // reachability/transient failure, try the configured fallback once before
+      // giving up; otherwise (or if the fallback is unavailable/also fails)
+      // surface an error card, audit it, and resolve the effect as a failure so
       // the runtime records it (and stores no message). See HARDENING_NOTES.md.
-      const failure = describeProviderError(error);
-      deps.dispatch(chatErrored(failure));
-      void recordAudit(deps.db, deps.dispatch, {
-        type: 'provider.request_failed',
-        summary: `Provider request failed (${failure.kind})`,
-        source: 'provider',
-        risk: 'medium',
-        status: 'failure',
-        conversationId: effect.conversation_id,
-      });
-      await deps.submit({
-        type: 'resolve_effect',
-        id: effect.id,
-        result: { ok: false, error: failure },
-      });
-      return;
+      const primaryFailure = describeProviderError(error);
+      const outcome: FailoverOutcome =
+        isFailoverEligible(primaryFailure.kind) && deps.resolveFallback
+          ? await attemptFallback(
+              deps,
+              messages,
+              effect.conversation_id,
+              primaryFailure.kind,
+            )
+          : { status: 'unavailable' };
+      if (outcome.status === 'ok') {
+        text = outcome.text;
+      } else {
+        // 'failed' surfaces the fallback's error (the last attempt); otherwise
+        // the original primary error.
+        const failure =
+          outcome.status === 'failed' ? outcome.failure : primaryFailure;
+        deps.dispatch(chatErrored(failure));
+        void recordAudit(deps.db, deps.dispatch, {
+          type: 'provider.request_failed',
+          summary: `Provider request failed (${failure.kind})`,
+          source: 'provider',
+          risk: 'medium',
+          status: 'failure',
+          conversationId: effect.conversation_id,
+          ...(outcome.status === 'failed'
+            ? { providerId: outcome.providerId }
+            : {}),
+        });
+        await deps.submit({
+          type: 'resolve_effect',
+          id: effect.id,
+          result: { ok: false, error: failure },
+        });
+        return;
+      }
     }
 
     deps.dispatch(runStateSet('idle'));

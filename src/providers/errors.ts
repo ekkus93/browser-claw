@@ -21,6 +21,17 @@ export class ProviderError extends Error {
   }
 }
 
+/**
+ * Whether a failed primary request should be retried on the fallback provider.
+ * Only reachability/transient failures qualify (cors, unreachable, and unknown
+ * — where 429/5xx land). Config errors (auth, model_not_found) are NOT eligible:
+ * a second provider won't fix a bad key or a wrong model, and silently shifting
+ * to another key on an auth failure would mask the real problem.
+ */
+export function isFailoverEligible(kind: ProviderErrorKind): boolean {
+  return kind === 'cors' || kind === 'unreachable' || kind === 'unknown';
+}
+
 /** Map an HTTP status to a provider error kind. */
 export function httpStatusToKind(status: number): ProviderErrorKind {
   if (status === 401 || status === 403) return 'auth';

@@ -28,7 +28,11 @@ import {
   resolveProvider,
   defaultActiveProviderId,
 } from './providers/registry.ts';
-import { getActiveProviderProfile } from './providers/providerProfiles.ts';
+import {
+  getActiveProviderProfile,
+  getProviderProfile,
+  defaultProviderProfile,
+} from './providers/providerProfiles.ts';
 import { resolveApiKey } from './providers/providerKey.ts';
 import { secretVault } from './secrets/vault.ts';
 import { activeProviderSet } from './store/slices/providersSlice.ts';
@@ -43,6 +47,7 @@ import {
   getOnboardingComplete,
   getLockTimeoutMinutes,
   getTheme,
+  getFallbackProviderId,
 } from './settings/appSettings.ts';
 import { applyTheme } from './settings/theme.ts';
 import { recordAudit } from './audit/auditSink.ts';
@@ -212,6 +217,29 @@ async function bootRuntime(): Promise<void> {
         getActiveProviderProfile(db).then((profile) =>
           resolveApiKey(secretVault, profile),
         ),
+      // Resolve the configured fallback provider for failover. Skipped when none
+      // is set or it equals the active provider (no point retrying the same one).
+      resolveFallback: async () => {
+        const fallbackId = await getFallbackProviderId(db);
+        if (!fallbackId) return null;
+        if (fallbackId === store.getState().providers.activeProviderId) {
+          return null;
+        }
+        const profile =
+          (await getProviderProfile(db, fallbackId)) ??
+          defaultProviderProfile(fallbackId);
+        if (!profile) return null;
+        const resolved = resolveProvider(fallbackId, appConfig, {
+          ...(profile.baseUrl ? { baseUrl: profile.baseUrl } : {}),
+          ...(profile.model ? { model: profile.model } : {}),
+        });
+        if (!resolved.ok) return null;
+        return {
+          id: fallbackId,
+          provider: resolved.provider,
+          getApiKey: () => resolveApiKey(secretVault, profile),
+        };
+      },
       submit: (command) => host.submit(command),
     }),
     storage: createStorageEffectHandler({ db, dispatch: store.dispatch }),

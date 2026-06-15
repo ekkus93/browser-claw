@@ -12,6 +12,8 @@ import {
   getApprovalPolicy,
   setApprovalPolicy,
   type ApprovalPolicy,
+  getFallbackProviderId,
+  setFallbackProviderId,
 } from '../settings/appSettings.ts';
 import { applyTheme, normalizeTheme, type Theme } from '../settings/theme.ts';
 import {
@@ -155,6 +157,29 @@ export default function SettingsScreen() {
     });
   };
 
+  // Fallback provider is a real, persisted setting the runtime reads: if the
+  // active provider fails with a reachability error, llmRunner retries once on
+  // this provider. '' = None (no failover). Read on mount; write on change.
+  const [fallbackProviderId, setFallbackProviderIdState] = useState<
+    string | null
+  >(null);
+  useEffect(() => {
+    let active = true;
+    void getFallbackProviderId(db).then((id) => {
+      if (active) setFallbackProviderIdState(id);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const handleFallbackProviderChange = (
+    event: ChangeEvent<HTMLSelectElement>,
+  ) => {
+    const id = event.target.value === '' ? null : event.target.value;
+    setFallbackProviderIdState(id);
+    void setFallbackProviderId(db, id);
+  };
+
   // Lock timeout is a real, persisted setting: it drives the SecretVault's
   // auto-lock timer. Read the durable value on mount and write changes back to
   // IndexedDB while applying them to the live vault immediately.
@@ -216,9 +241,9 @@ export default function SettingsScreen() {
             </p>
             <p className="mt-1 text-xs text-muted-subtle">
               Disabled controls are placeholders for upcoming preferences and
-              don&apos;t take effect yet. Theme, default provider, approval
-              policy, lock timeout, and &ldquo;Load runtime from CDN&rdquo; are
-              active.
+              don&apos;t take effect yet. Theme, default provider, fallback
+              provider, approval policy, lock timeout, and &ldquo;Load runtime
+              from CDN&rdquo; are active.
             </p>
           </header>
 
@@ -264,6 +289,24 @@ export default function SettingsScreen() {
                     <option value="" disabled>
                       Select a provider
                     </option>
+                    {DEFAULT_PROVIDER_PROFILES.map((profile) => (
+                      <option key={profile.id} value={profile.id}>
+                        {profile.label}
+                      </option>
+                    ))}
+                  </Select>
+                }
+              />
+              <Field
+                label="Fallback provider"
+                control={
+                  <Select
+                    aria-label="Fallback provider"
+                    className="w-40"
+                    value={fallbackProviderId ?? ''}
+                    onChange={handleFallbackProviderChange}
+                  >
+                    <option value="">None</option>
                     {DEFAULT_PROVIDER_PROFILES.map((profile) => (
                       <option key={profile.id} value={profile.id}>
                         {profile.label}

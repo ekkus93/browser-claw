@@ -797,30 +797,32 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase E6 — Extension messaging protocol
 
-- [ ] P0 Define message protocol version.
-- [ ] P0 BrowserClaw request types:
-  - [ ] `ping`;
-  - [ ] `read_current_tab`;
-  - [ ] `read_page`;
-  - [ ] `read_pages`;
-  - [ ] `request_host_permission`;
-  - [ ] `get_status`.
-- [ ] P0 Extension response types:
-  - [ ] success;
-  - [ ] permission denied;
-  - [ ] timeout;
-  - [ ] navigation failed;
-  - [ ] extraction failed;
-  - [ ] unsupported URL;
-  - [ ] internal error.
-- [ ] P0 Include `requestId` in all messages/responses.
-- [ ] P0 Validate all messages on both sides.
-- [ ] P0 Reject messages from non-BrowserClaw origins.
-- [ ] P0 Tests:
-  - [ ] ping works;
-  - [ ] unknown message rejected;
-  - [ ] malformed message rejected;
-  - [ ] wrong origin rejected.
+<!-- src/extension/protocol.ts: EXTENSION_PROTOCOL_VERSION; ExtensionRequest union (ping/get_status/read_page/read_pages/read_current_tab/request_host_permission, all with requestId); ExtensionError kinds (permission_denied/timeout/navigation_failed/extraction_failed/unsupported_url/extension_missing/unsupported/forbidden/internal_error); ExtensionResponse (ok|error); parseExtensionRequest + isExtensionResponse validators; isAllowedSenderUrl (origin allowlist w/ slash boundary); newRequestId. Mirrored in extension/.../service-worker.js. Tests: src/extension/protocol.test.ts. Gate: typecheck/lint/prettier/vitest 645/e2e 30. -->
+
+- [x] P0 Define message protocol version.
+- [x] P0 BrowserClaw request types:
+  - [x] `ping`;
+  - [x] `read_current_tab`;
+  - [x] `read_page`;
+  - [x] `read_pages`;
+  - [x] `request_host_permission`;
+  - [x] `get_status`.
+- [x] P0 Extension response types:
+  - [x] success;
+  - [x] permission denied;
+  - [x] timeout;
+  - [x] navigation failed;
+  - [x] extraction failed;
+  - [x] unsupported URL;
+  - [x] internal error.
+- [x] P0 Include `requestId` in all messages/responses.
+- [x] P0 Validate all messages on both sides. (parseExtensionRequest/isExtensionResponse; worker mirrors)
+- [x] P0 Reject messages from non-BrowserClaw origins. (isAllowedSenderUrl + worker isAllowedSender)
+- [x] P0 Tests:
+  - [x] ping works;
+  - [x] unknown message rejected;
+  - [x] malformed message rejected;
+  - [x] wrong origin rejected.
 
 ## Phase E7 — Extension page reading
 

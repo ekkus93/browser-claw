@@ -241,3 +241,13 @@ and TODO are. Newest decisions at the bottom of each section.
   "task-manager"). Applied to `summary` in buildAuditRow (single choke point;
   the Redux live-tail uses the already-redacted row.summary). details redaction
   unchanged.
+
+### A2.10 — runtime boot outer-catch updates UI (done)
+- main.tsx boots on import (not unit-testable), so the catch BODY moved to a
+  testable helper `reportRuntimeBootFailure({dispatch,db}, error)` in
+  runtimeBoot.ts (no import side-effects, already tested). It console.errors,
+  dispatches runtimeFailed (status error + fatal -> app-wide block), and does a
+  best-effort durable audit (runtime.boot_failed). main.tsx's
+  `bootRuntime().catch` calls it (was console.error only).
+- This handles UNEXPECTED boot failures outside the runtime's own onFailed path
+  (DB open, snapshot read, host wiring throwing).

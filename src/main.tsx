@@ -23,7 +23,10 @@ import {
   type RuntimeSnapshot,
 } from './runtime/referenceRuntime.ts';
 import { createWasmRuntime } from './runtime/wasmRuntime.ts';
-import { loadRuntimePort } from './runtime/runtimeBoot.ts';
+import {
+  loadRuntimePort,
+  reportRuntimeBootFailure,
+} from './runtime/runtimeBoot.ts';
 import {
   resolveProvider,
   defaultActiveProviderId,
@@ -270,7 +273,9 @@ async function bootRuntime(): Promise<void> {
 }
 
 bootRuntime().catch((error: unknown) => {
-  console.error('Runtime boot failed', error);
+  // Unexpected boot failure outside the runtime's own onFailed path: surface a
+  // blocking runtime error and audit it instead of only logging (A2.10).
+  reportRuntimeBootFailure({ dispatch: store.dispatch, db }, error);
 });
 
 // Restore the persisted active provider so its base URL/model drive real calls

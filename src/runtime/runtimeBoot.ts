@@ -1,6 +1,39 @@
 import type { AppConfig } from '../config/appConfig.ts';
-import type { RuntimeMode } from '../store/slices/runtimeSlice.ts';
+import type { AppDispatch } from '../store/store.ts';
+import type { BrowserClawDB } from '../db/db.ts';
+import {
+  runtimeFailed,
+  type RuntimeMode,
+} from '../store/slices/runtimeSlice.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 import type { ClawRuntimePort, RuntimeSnapshot } from './referenceRuntime.ts';
+
+/** Shown when the runtime boot sequence throws unexpectedly (A2.10). */
+export const RUNTIME_BOOT_FAILED_MESSAGE =
+  'The BrowserClaw runtime could not start (an unexpected error occurred during boot). Reload to try again.';
+
+/**
+ * Handle an UNEXPECTED runtime-boot failure — one thrown outside the normal
+ * `onFailed` path (e.g. opening the database, reading a snapshot, or wiring the
+ * host threw). Never fail silently to the console (hardening A2.10): surface a
+ * blocking, app-wide runtime error AND attempt a durable audit. The audit write
+ * is best-effort (if the DB itself is the failure it may also fail, which is
+ * fine — the UI error still shows).
+ */
+export function reportRuntimeBootFailure(
+  deps: { dispatch: AppDispatch; db: BrowserClawDB },
+  error: unknown,
+): void {
+  console.error('Runtime boot failed', error);
+  deps.dispatch(runtimeFailed(RUNTIME_BOOT_FAILED_MESSAGE));
+  void recordAudit(deps.db, deps.dispatch, {
+    type: 'runtime.boot_failed',
+    summary: 'Unexpected error while starting the runtime',
+    source: 'runtime',
+    risk: 'high',
+    status: 'failure',
+  });
+}
 
 /**
  * Resolves which runtime backs the app, failing closed.

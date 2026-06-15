@@ -1407,3 +1407,11 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Tests: auditService.test "summary redaction (A2.9)" +3 (leaked sk-ant scrubbed; Authorization: Bearer scrubbed; ordinary untouched). vitest 523->526.
 - Gate ALL GREEN: typecheck, lint, prettier, vitest 526/78, e2e 28. No Rust touched.
 - NEXT: A2.10 — runtime boot outer catch updates UI. bootRuntime().catch should dispatch runtimeFailed + attempt durable audit + show blocking runtime error (not console-only). Check src/main.tsx bootRuntime + its .catch. P1.
+
+## 2026-06-15T08:20:20Z - Claude Opus 4.8 - Ralph: A2.10 (runtime boot outer-catch updates UI)
+- A2.10 DONE. main.tsx `bootRuntime().catch` was console.error-only for UNEXPECTED boot failures (outside the runtime's own onFailed path — e.g. DB open, snapshot read, host wiring throwing).
+- main.tsx boots on import (top-level side effects) -> NOT unit-testable. So extracted the catch behavior to a testable helper `reportRuntimeBootFailure({dispatch, db}, error)` in src/runtime/runtimeBoot.ts (pure module, no import side-effects, already has a test file). It: console.error + dispatch(runtimeFailed(RUNTIME_BOOT_FAILED_MESSAGE)) [status 'error' + fatal:true => app-wide block] + best-effort recordAudit runtime.boot_failed (high/failure). main.tsx catch now calls it.
+- runtimeBoot.ts now imports runtimeFailed + recordAudit (value imports; was types-only). No cycle.
+- Tests: runtimeBoot.test "reportRuntimeBootFailure (A2.10)" — asserts runtime state error+fatal+message and a durable runtime.boot_failed audit (vi.waitFor for the async put). vitest 526->527.
+- Gate ALL GREEN: typecheck, lint, prettier, vitest 527/78, e2e 28. No Rust touched.
+- NEXT: A2.11 (P2, last of Part A) — cleanup stale comments/docs: remove comments claiming effect handlers are injectable no-ops (effectExecutor failEffect makes missing handlers fatal now); ensure hardening TODO doesn't claim full acceptance while subtasks open; update docs for incomplete storage_get/storage_search/model-queue/default-model. Mostly doc/comment cleanup.

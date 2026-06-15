@@ -1,5 +1,14 @@
+import 'fake-indexeddb/auto';
 import { describe, expect, it, vi } from 'vitest';
-import { loadRuntimePort, type RuntimeBootDeps } from './runtimeBoot.ts';
+import { configureStore } from '@reduxjs/toolkit';
+import runtimeReducer from '../store/slices/runtimeSlice.ts';
+import {
+  loadRuntimePort,
+  reportRuntimeBootFailure,
+  RUNTIME_BOOT_FAILED_MESSAGE,
+  type RuntimeBootDeps,
+} from './runtimeBoot.ts';
+import { BrowserClawDB } from '../db/db.ts';
 import type { ClawRuntimePort } from './referenceRuntime.ts';
 
 const fakePort = (tag: string): ClawRuntimePort => ({
@@ -57,5 +66,35 @@ describe('loadRuntimePort', () => {
     expect(deps.onFallback).toHaveBeenCalledOnce();
     expect(deps.onFailed).not.toHaveBeenCalled();
     expect(deps.onLoaded).not.toHaveBeenCalled();
+  });
+});
+
+describe('reportRuntimeBootFailure (A2.10)', () => {
+  it('shows a blocking runtime error and audits an unexpected boot failure', async () => {
+    const store = configureStore({ reducer: { runtime: runtimeReducer } });
+    const db = new BrowserClawDB();
+    await db.open();
+    await db.audit_events.clear();
+
+    reportRuntimeBootFailure(
+      { dispatch: store.dispatch, db },
+      new Error('indexedDB exploded'),
+    );
+
+    const state = store.getState().runtime;
+    expect(state.status).toBe('error');
+    expect(state.fatal).toBe(true);
+    expect(state.message).toBe(RUNTIME_BOOT_FAILED_MESSAGE);
+
+    // Best-effort durable audit landed.
+    await vi.waitFor(async () => {
+      const rows = await db.audit_events
+        .where('type')
+        .equals('runtime.boot_failed')
+        .toArray();
+      expect(rows[0]?.status).toBe('failure');
+      expect(rows[0]?.source).toBe('runtime');
+    });
+    db.close();
   });
 });

@@ -279,12 +279,14 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ### A2.10 Runtime boot outer catch updates UI
 
-- [ ] P1 In outer `bootRuntime().catch`, dispatch runtime failure.
-- [ ] P1 Attempt durable audit of unexpected boot failure.
-- [ ] P1 Show blocking runtime error UI.
-- [ ] P1 Tests:
-  - [ ] unexpected boot exception shows runtime error;
-  - [ ] unexpected boot exception audited if audit available.
+<!-- src/runtime/runtimeBoot.ts: reportRuntimeBootFailure({dispatch,db}, error) -> console.error + dispatch(runtimeFailed(RUNTIME_BOOT_FAILED_MESSAGE)) (status error+fatal, app-wide block) + best-effort recordAudit runtime.boot_failed. src/main.tsx: bootRuntime().catch now calls it (was console.error only). Tests: src/runtime/runtimeBoot.test.ts "reportRuntimeBootFailure (A2.10)". Gate: typecheck/lint/prettier/vitest 527/e2e 28. -->
+
+- [x] P1 In outer `bootRuntime().catch`, dispatch runtime failure.
+- [x] P1 Attempt durable audit of unexpected boot failure.
+- [x] P1 Show blocking runtime error UI.
+- [x] P1 Tests:
+  - [x] unexpected boot exception shows runtime error;
+  - [x] unexpected boot exception audited if audit available.
 
 ### A2.11 Cleanup stale comments/docs
 

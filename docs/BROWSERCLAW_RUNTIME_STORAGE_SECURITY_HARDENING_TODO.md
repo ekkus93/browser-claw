@@ -170,7 +170,7 @@
   - [ ] show demo banner.
 - [ ] Tests:
   - [x] empty DB shows empty audit state; <!-- AuditScreen.test.tsx "shows an empty state when there are no events" -->
-  - [ ] fake audit is not inserted in default mode; <!-- partial: db.test.ts asserts only schemaVersion is seeded; no explicit "audit_events empty after boot" assertion yet -->
+  - [x] fake audit is not inserted in default mode; <!-- db.test.ts "inserts NO fake audit/memory data on a fresh (non-demo) database": a freshly-created DB has audit_events.count()===0 and memories.count()===0 (only the schemaVersion app_setting is written on create). There is no demo audit-seeding path in app code; sample data is env-gated (appConfig.isDemoMode, default off). -->
   - [ ] demo mode marks seeded events as demo. <!-- not implemented: no demo audit seeding exists to mark -->
 
 <!-- 3.2 status: the dishonesty risk (fake seeded audit) does not exist in source — the screen was built clean. Demo-mode subitems are deliberately unimplemented; mark this fully resolved only if demo seeding is ever added. -->
@@ -415,7 +415,7 @@
   - [ ] bundle/vendor wllama runtime asset; or
   - [x] pin exact version and verify integrity; or <!-- version is pinned to @wllama/wllama@3.4.1 in WASM_URL; full SRI/hash verification of the fetched bytes is still TODO (vendoring or SRI is a future pass). -->
   - [x] require explicit user consent for CDN loading. <!-- chosen approach: durable getWllamaCdnConsent/setWllamaCdnConsent (default false = fail closed) + a Settings > Models "Load runtime from CDN" toggle gates the engine; the consent change is audited (model.* settings.wllama_cdn_consent_granted/revoked). -->
-- [ ] Add offline/runtime availability status.
+- [x] Add offline/runtime availability status. <!-- useOnlineStatus() hook (src/lib/useOnlineStatus.ts) tracks navigator.onLine + the window online/offline events. ModelsScreen shows a role=status offline banner ("You're offline — downloading models, fetching the runtime, and testing remote providers won't work until you reconnect") when offline; the existing wllama-unsupported banner already covers runtime availability. Tested: ModelsScreen.test "shows an offline status banner when the browser is offline" (stubs navigator.onLine=false). -->
 - [x] Audit wllama runtime load success/failure. <!-- engine.ts getInstance() try/catches the dynamic import + new Wllama() and fires options.onRuntimeLoad(true/false); getWllamaEngine() wires it to appendAuditEvent as runtime.wllama_load_succeeded / runtime.wllama_load_failed (source 'runtime'). This is distinct from the model.* audits: it records whether the WASM runtime itself loaded, not a specific model op. A consent-gate block does NOT fire it (deliberate policy block, already captured at model level). engineConsent.test.ts: grant->onRuntimeLoad(true) once; ctor throw->onRuntimeLoad(false) + rethrow; deny->not called; integration: getWllamaEngine load writes a durable runtime-source success event. -->
 - [x] Tests:
   - [x] wllama unavailable state shown; <!-- ModelsScreen.test.tsx "shows the unavailable banner when wllama is unsupported": stubs WebAssembly undefined so isWllamaSupported() is false and asserts the "browser-local models can't run here" warning renders (and the Download button is disabled via !wllamaSupported). -->

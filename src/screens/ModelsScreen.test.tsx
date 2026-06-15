@@ -26,6 +26,11 @@ function renderModels() {
 
 afterEach(async () => {
   vi.unstubAllGlobals();
+  // Reset the online flag so an offline-status test can't leak into others.
+  Object.defineProperty(navigator, 'onLine', {
+    configurable: true,
+    value: true,
+  });
   await db.provider_profiles.clear();
   await db.app_settings.clear();
   await db.audit_events.clear();
@@ -46,6 +51,17 @@ describe('ModelsScreen', () => {
       screen.getByText('SmolLM2-1.7B Instruct (Q4_K_M)'),
     ).toBeInTheDocument();
     expect(screen.getByText('No downloads in progress.')).toBeInTheDocument();
+  });
+
+  it('shows an offline status banner when the browser is offline', async () => {
+    // Honest availability status (Phase 8.1): when offline, downloads / runtime
+    // fetch / remote provider tests can't work, so the screen says so.
+    Object.defineProperty(navigator, 'onLine', {
+      configurable: true,
+      value: false,
+    });
+    renderModels();
+    expect(await screen.findByText(/You're offline/)).toBeInTheDocument();
   });
 
   it('runs a real health check when tested (no API key needed)', async () => {

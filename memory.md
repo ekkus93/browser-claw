@@ -1262,3 +1262,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
   * Genuinely buildable, small: "fake audit not inserted in default mode" (a boot-empty-audit test); "offline/runtime availability status" (small feature).
   * Open/needs verification or larger: provenance "source message ID" (no per-message context at tool-run); Phase 11.1 test-suite cleanup items 542-545 (need an audit of existing tests — may already hold); 11.3 "reload -> snapshot restored" integration (host-level restore IS tested; boot wiring in main.tsx isn't export-testable).
 - No genuinely contract-blocked items remain that have a consumer. The deterministic-runtime status enum is the only real Rust/WASM contract item and it's correctly deferred (no consumer).
+
+## 2026-06-15T04:56:04Z - Claude Opus 4.8 - Knocked out the two small buildable items (29 unchecked)
+- (1) "fake audit not inserted in default mode" (Phase 2/3): added db.test.ts "inserts NO fake audit/memory data on a fresh (non-demo) database" — fresh DB has audit_events.count()===0 + memories.count()===0 (only schemaVersion seeded). Placed before any data-writing test so the shared fake-indexeddb is genuinely empty.
+- (2) "offline/runtime availability status" (Phase 8.1): new src/lib/useOnlineStatus.ts hook (navigator.onLine + window online/offline events). ModelsScreen shows a role=status offline banner when offline; wllama-unsupported banner already covers runtime availability. Test: ModelsScreen "shows an offline status banner when the browser is offline" (stubs navigator.onLine=false; afterEach resets it).
+- GOTCHA: eslint react-hooks rule "Calling setState synchronously within an effect" flagged a reconcile line (setOnline(navigator.onLine) inside useEffect). Removed it — the initial useState already reads navigator.onLine. (vitest was green; only lint caught it — the gate's lint step is load-bearing.)
+- Gate GREEN: typecheck clean; pnpm test 455 (+2); e2e 28.
+- TODO now 29 unchecked, all deliberate omissions / no-consumer / test-suite-audit-needed (11.1 542-545) / source-message-ID provenance / reload-snapshot integration. No buildable consumer-backed items remain.

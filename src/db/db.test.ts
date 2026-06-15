@@ -43,6 +43,15 @@ describe('BrowserClawDB', () => {
     expect(setting?.value).toBe(DB_VERSION);
   });
 
+  it('inserts NO fake audit/memory data on a fresh (non-demo) database', async () => {
+    // Honesty (Phase 2/3): a default build must never seed sample audit events
+    // or memories — only the schemaVersion app_setting is written on create. A
+    // fresh DB's user-facing tables are genuinely empty until the user acts.
+    await db.open();
+    expect(await db.audit_events.count()).toBe(0);
+    expect(await db.memories.count()).toBe(0);
+  });
+
   it('round-trips a conversation and its messages', async () => {
     await db.open();
     await db.conversations.put({

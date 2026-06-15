@@ -36,6 +36,7 @@ import {
 } from '../wllama/userModels.ts';
 import { fetchHfModelMetadata } from '../wllama/hfMetadata.ts';
 import { isWllamaSupported, getWllamaEngine } from '../wllama/engine.ts';
+import { useOnlineStatus } from '../lib/useOnlineStatus.ts';
 import { createModelManager } from '../wllama/modelManager.ts';
 
 const HEALTH_META: Record<ProviderHealth, { label: string; tone: BadgeTone }> =
@@ -239,6 +240,7 @@ export default function ModelsScreen() {
   const health = useAppSelector((state) => state.providers.health);
   const downloads = useAppSelector((state) => state.models.downloads);
   const wllamaSupported = isWllamaSupported();
+  const online = useOnlineStatus();
 
   const manager = useMemo(
     () => createModelManager(db, dispatch, getWllamaEngine()),
@@ -312,6 +314,20 @@ export default function ModelsScreen() {
               Configure AI providers and manage local models.
             </p>
           </header>
+
+          {!online && (
+            <p
+              role="status"
+              className="flex items-center gap-2 rounded-button bg-warning-subtle p-3 text-sm text-text"
+            >
+              <AlertTriangle
+                className="size-4 shrink-0 text-warning"
+                aria-hidden="true"
+              />
+              You&apos;re offline — downloading models, fetching the runtime,
+              and testing remote providers won&apos;t work until you reconnect.
+            </p>
+          )}
 
           <section>
             <h2 className="mb-3 text-sm font-semibold text-text">

@@ -779,19 +779,21 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase E5 — Extension permissions
 
-- [ ] P0 Use least-privilege permissions.
-- [ ] P0 Required permissions only:
-  - [ ] `tabs`;
-  - [ ] `scripting`;
-  - [ ] `storage` if needed.
-- [ ] P0 Use `optional_host_permissions` for `http://*/*` and `https://*/*`.
-- [ ] P0 Do not request `<all_urls>` as required install permission.
-- [ ] P0 Implement host permission request flow per origin/domain.
+<!-- Manifest least-privilege done+tested in E4 (config.test). src/extension/hostPermissions.ts: originPattern(url)/originPatternsFor(urls) compute per-origin optional-host-permission match patterns via the SSRF validator (refuses private/loopback). The service worker's chrome.permissions.request flow is real-browser (Docker E2E / manual). Tests: src/extension/hostPermissions.test.ts. Gate: typecheck/lint/prettier/vitest 639/e2e 30. -->
+
+- [x] P0 Use least-privilege permissions.
+- [x] P0 Required permissions only:
+  - [x] `tabs`;
+  - [x] `scripting`;
+  - [x] `storage` if needed.
+- [x] P0 Use `optional_host_permissions` for `http://*/*` and `https://*/*`.
+- [x] P0 Do not request `<all_urls>` as required install permission.
+- [x] P0 Implement host permission request flow per origin/domain. (originPattern helper computes the per-origin pattern; the chrome.permissions.request call is real-browser — wired in the service worker for E7)
 - [ ] P0 Tests/manual test checklist:
-  - [ ] no broad host permission on install;
-  - [ ] permission requested when reading new domain;
-  - [ ] denial returns `permission_denied`;
-  - [ ] grant allows page read.
+  - [x] no broad host permission on install; (manifest test)
+  - [x] permission requested when reading new domain; (per-origin pattern via originPattern; request call = real-browser)
+  - [ ] denial returns `permission_denied`; (real-browser / Docker E2E — manual until E9 lane)
+  - [ ] grant allows page read. (real-browser / Docker E2E)
 
 ## Phase E6 — Extension messaging protocol
 

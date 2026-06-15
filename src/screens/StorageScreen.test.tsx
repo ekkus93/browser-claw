@@ -126,4 +126,28 @@ describe('StorageScreen', () => {
       await screen.findByText('Overwrites existing records'),
     ).toBeInTheDocument();
   });
+
+  it('preview notes that the backup references models, not model files', async () => {
+    // A backup carries model references (catalog/cache index) but never model
+    // binaries, so the preview must say referenced models may need redownloading.
+    const user = userEvent.setup();
+    await db.model_catalog.clear();
+    await db.model_catalog.put({
+      id: 'model-1',
+      provider: 'wllama',
+      label: 'Model 1',
+    });
+    const file = new File(
+      [serializeBackup(await exportBackup(db))],
+      'data.clawbackup',
+      { type: 'application/json' },
+    );
+
+    renderStorage();
+    await user.upload(screen.getByLabelText('Import backup file'), file);
+
+    expect(
+      await screen.findByText(/model files are not included/),
+    ).toBeTruthy();
+  });
 });

@@ -13,6 +13,7 @@ import {
   runBackupExport,
   containsLikelyRawSecret,
   summarizeConflicts,
+  summarizeModelReferences,
   type ClawBackup,
 } from './backupService.ts';
 import type { AppDispatch } from '../store/store.ts';
@@ -314,6 +315,19 @@ describe('summarizeConflicts', () => {
 
     expect(conflicts.memories).toBeUndefined();
     expect(Object.keys(conflicts)).toHaveLength(0);
+  });
+});
+
+describe('summarizeModelReferences', () => {
+  it('sums model_catalog + model_cache_index counts', () => {
+    expect(
+      summarizeModelReferences({ model_catalog: 2, model_cache_index: 3 }),
+    ).toBe(5);
+  });
+
+  it('ignores non-model collections and missing counts', () => {
+    expect(summarizeModelReferences({ memories: 9, messages: 4 })).toBe(0);
+    expect(summarizeModelReferences({})).toBe(0);
   });
 });
 

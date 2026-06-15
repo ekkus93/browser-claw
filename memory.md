@@ -1209,3 +1209,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate GREEN: typecheck clean; pnpm test 434 (+3: backupService 2, StorageScreen 1); e2e 28.
 - TODO: 6.2 "conflicts" ticked. Still deferred in 6.2: "model references" callout (a dedicated model_catalog/model_cache_index references summary). 6.3 encrypted export deferred (needs passphrase-KDF).
 - Reusing keyFieldsFor (the import's own key logic) was the key to correctness — conflict counts can't diverge from what import actually overwrites.
+
+## 2026-06-15T00:39:36Z - Claude Opus 4.8 - Backup import preview: model-references callout (Phase 6.2; completes "Show:")
+- Added backupService.summarizeModelReferences(summary) + MODEL_REFERENCE_COLLECTIONS = [model_catalog, model_cache_index]; sums those counts. StorageScreen restore preview renders a callout when >0: "References N model(s) by id — model files are not included, so referenced models may need to be downloaded again." (model_blobs are never in a backup, so a restore points at models the user may need to re-download.)
+- This completes Phase 6.2 "Show:" — all import-preview sub-items now wired (collections, record counts, conflicts, encrypted-secrets presence, model references). Ticked the parent too.
+- Gate GREEN: typecheck clean; pnpm test 437 (+3: backupService 2, StorageScreen 1); e2e 28.
+- GOTCHA repeat: vitest green but tsc failed — ModelCatalogRow requires {id, provider, label}; seed full row in tests. Always run pnpm run typecheck.
+- Remaining backup items: 6.3 encrypted export (deferred — needs passphrase-KDF). Most other remaining TODO items across phases are genuinely blocked (effect-port contract 1.2; wllama upstream 8.x) or hollow (no consumer).

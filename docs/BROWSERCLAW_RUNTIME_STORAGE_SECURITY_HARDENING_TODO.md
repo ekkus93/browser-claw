@@ -304,12 +304,12 @@
 ### 6.2 Transactional Import
 
 - [x] Implement import preview. <!-- StorageScreen restore Dialog shows the validated summary before any write. -->
-- [ ] Show:
+- [x] Show: <!-- all import-preview sub-items now wired: collections, record counts, conflicts, encrypted-secrets presence, and model references. -->
   - [x] collections;
   - [x] record counts;
   - [x] conflicts; <!-- backupService.summarizeConflicts(db, backup) counts, per collection, how many backup rows have a primary key that already exists (using the SAME keyFieldsFor() as the import, incl. composite keys like skill_state [skillId,key]), so the count matches what a restore would overwrite. StorageScreen computes it for the preview and renders an "Overwrites existing records" callout (or "No existing records would be overwritten."). Read-only — writes nothing. Tested: backupService.test "counts only rows whose key already exists, by collection" + "omits collections with no conflicts"; StorageScreen.test "previews how many existing records a restore would overwrite". -->
   - [x] encrypted secrets present or absent;
-  - [ ] model references; <!-- DEFERRED with conflicts: model_catalog/model_cache_index counts already listed; a dedicated "references" callout pending. -->
+  - [x] model references; <!-- backupService.summarizeModelReferences(summary) sums the model_catalog + model_cache_index counts (MODEL_REFERENCE_COLLECTIONS). The StorageScreen restore preview renders a dedicated callout when > 0: "References N model(s) by id — model files are not included, so referenced models may need to be downloaded again" (model_blobs are never exported, so a restore points at models the user may need to re-download). Tested: backupService.test "summarizeModelReferences" (sums catalog+cache index; ignores other collections) + StorageScreen.test "preview notes that the backup references models, not model files". -->
 - [x] Require explicit import confirmation.
 - [x] Implement merge strategy.
 - [x] Implement replace strategy.

@@ -370,6 +370,25 @@ export async function summarizeConflicts(
   return conflicts;
 }
 
+/**
+ * Backup collections that reference models by id/metadata — NOT the model
+ * binaries. Model blobs (model_blobs) are never exported, so a restored backup
+ * points at models the user may need to re-download. The preview surfaces this
+ * so "restore" is never mistaken for "restores my downloaded models too".
+ */
+export const MODEL_REFERENCE_COLLECTIONS = [
+  'model_catalog',
+  'model_cache_index',
+] as const;
+
+/** Total model-reference records in a backup summary (catalog + cache index). */
+export function summarizeModelReferences(summary: BackupSummary): number {
+  return MODEL_REFERENCE_COLLECTIONS.reduce(
+    (total, name) => total + (summary[name] ?? 0),
+    0,
+  );
+}
+
 export type RestoreStrategy = 'merge' | 'replace';
 
 /**

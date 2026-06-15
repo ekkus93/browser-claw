@@ -20,6 +20,7 @@ import {
   importBackup,
   runBackupExport,
   summarizeConflicts,
+  summarizeModelReferences,
   type ValidationResult,
   type BackupSummary,
 } from '../backup/backupService.ts';
@@ -462,6 +463,13 @@ export default function StorageScreen() {
         ) : (
           <p className="mt-3 text-xs text-muted-subtle">
             No existing records would be overwritten.
+          </p>
+        )}
+        {summarizeModelReferences(preview?.summary ?? {}) > 0 && (
+          <p className="mt-3 text-xs text-muted-subtle">
+            References {summarizeModelReferences(preview?.summary ?? {})}{' '}
+            model(s) by id — model files are not included, so referenced models
+            may need to be downloaded again.
           </p>
         )}
         <p className="mt-3 text-xs text-muted-subtle">

@@ -350,3 +350,34 @@ and TODO are. Newest decisions at the bottom of each section.
   secrets. Sandbox-escape regression tests = P0 security-critical. Inject the
   QuickJS module so the core is unit-testable headless (the escape tests run the
   real interpreter; Worker wiring may be a thin shell tested in Docker E2E).
+
+### D3 — Sandboxed script runtime (QuickJS-in-WASM) (done, 2026-06-15)
+- DEP: pnpm add quickjs-emscripten 0.32.0. Async variant via
+  newQuickJSAsyncWASMModule() (supports async host fns + top-level await).
+  Prod build: WASM bundles self-contained (no separate fetch); build OK.
+- src/script/sandbox.ts: runSandboxedScript(code, opts, injectedModule?) ->
+  SandboxResult {ok:true,value} | {ok:false,error,errorKind}. errorKind:
+  script_error|timeout|cancelled|internal_error.
+  - Fresh QuickJS context = ONLY ECMAScript built-ins. No window/document/
+    storage/indexedDB/OPFS/fetch/XHR/WebSocket/EventSource/chrome/navigator/
+    secrets — proven by escape tests run UNDER jsdom (host realm HAS them).
+  - Code wrapped `(async () => {\n<code>\n})()` -> supports await + return.
+  - Marshalling: toHandle(vm,value) recursive (string/number/bool/null/array/
+    object; fns/symbol/bigint -> undefined; dispose children). Read back via
+    vm.dump. Host args via vm.dump(argHandle).
+  - Host injection: opts.host = {namespace: {fn}}. installHostNamespace builds
+    an object of vm.newAsyncifiedFunction wrappers; host throw -> {error:
+    vm.newError(msg)} rejects the in-sandbox promise. This is D4's substrate.
+  - Timeout/cancel: vm.runtime.setInterruptHandler checks signal.aborted ->
+    'cancelled', now()-start>timeoutMs -> 'timeout' (now injected for tests).
+  - Lifecycle: evalCodeAsync -> resolvePromise + executePendingJobs -> await
+    settled. VM disposed in finally (always). Module cached singleton.
+- Tests: src/script/sandbox.test.ts (24): marshalling, host await/throw,
+  13-global FORBIDDEN escape table, no-leak-to-host, mediated-only exposure,
+  script error classify, infinite-loop timeout, abort cancel. vitest 684->708.
+- NEXT D4: capability proxy — wrap WorkspaceFs/WebResearchService/memory/tool
+  as the `host` namespaces (fs.readText/writeText/search/grep, web.search/
+  readPage, memory.search, tool.call via permission model). EVERY call
+  policy/scope-checked against the request's capabilities (fsRead/fsWrite
+  globs); denied -> explicit error + audit. Then D5 (count/byte limits in this
+  proxy), D6 (approval card + script.sandbox_* audit). DEFERRED: Worker hosting -> F2.

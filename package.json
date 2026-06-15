@@ -25,6 +25,7 @@
     "dexie": "^4.4.3",
     "dexie-react-hooks": "^4.4.0",
     "lucide-react": "^1.17.0",
+    "quickjs-emscripten": "^0.32.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-redux": "^9.3.0",

@@ -627,28 +627,33 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase D3 — Sandbox runtime implementation
 
-- [ ] P0 Pick sandbox approach:
-  - [ ] JS interpreter/constrained evaluator in Web Worker; or
-  - [ ] WASM plugin runtime with explicit host imports.
-- [ ] P0 Must not use raw app-context eval/new Function.
-- [ ] P0 Sandbox must not expose:
-  - [ ] window;
-  - [ ] document;
-  - [ ] localStorage/sessionStorage;
-  - [ ] indexedDB;
-  - [ ] OPFS handles;
-  - [ ] fetch;
-  - [ ] XMLHttpRequest;
-  - [ ] WebSocket;
-  - [ ] chrome.* APIs;
-  - [ ] cookies;
-  - [ ] secrets.
-- [ ] P0 Tests:
-  - [ ] script cannot access window/document;
-  - [ ] script cannot access indexedDB;
-  - [ ] script cannot access fetch;
-  - [ ] script cannot access localStorage;
-  - [ ] script cannot access secrets.
+- [x] P0 Pick sandbox approach: <!-- quickjs-emscripten 0.32.0: QuickJS interpreter compiled to WASM (async variant). src/script/sandbox.ts -->
+  - [ ] JS interpreter/constrained evaluator in Web Worker; or <!-- core uses the WASM interpreter; Worker hosting is the runtime-effect wiring (F2) — core is Worker-agnostic so it can run in one -->
+  - [x] WASM plugin runtime with explicit host imports. <!-- QuickJS-in-WASM; host imports are the injected SandboxHostApi namespaces (D4) — nothing else crosses the boundary -->
+- [x] P0 Must not use raw app-context eval/new Function. <!-- no eval/new Function anywhere; untrusted source is handed to a fresh QuickJS VM via evalCodeAsync -->
+- [x] P0 Sandbox must not expose: <!-- a fresh QuickJS context has only ECMAScript built-ins; escape tests assert each is undefined even though the jsdom host realm HAS them -->
+  - [x] window; <!-- sandbox.test 'cannot access window' -->
+  - [x] document; <!-- 'cannot access document' + 'cannot read document.cookie' -->
+  - [x] localStorage/sessionStorage; <!-- 'cannot access localStorage'/'sessionStorage' -->
+  - [x] indexedDB; <!-- 'cannot access indexedDB' -->
+  - [x] OPFS handles; <!-- no navigator/StorageManager; 'cannot access navigator' -->
+  - [x] fetch; <!-- 'cannot access fetch' -->
+  - [x] XMLHttpRequest; <!-- 'cannot access XMLHttpRequest' -->
+  - [x] WebSocket; <!-- 'cannot access WebSocket' + EventSource -->
+  - [x] chrome.* APIs; <!-- 'cannot access chrome' -->
+  - [x] cookies; <!-- document undefined -> no document.cookie -->
+  - [x] secrets. <!-- 'has no secrets or vault on the global'; only mediated host fns exposed -->
+- [x] P0 Tests: <!-- src/script/sandbox.test.ts (24): real QuickJS interpreter, host realm = jsdom (which HAS these globals) so isolation is proven, not absence -->
+  - [x] script cannot access window/document; <!-- + 11 other forbidden globals in a FORBIDDEN table -->
+  - [x] script cannot access indexedDB;
+  - [x] script cannot access fetch;
+  - [x] script cannot access localStorage;
+  - [x] script cannot access secrets. <!-- + 'writing a sandbox global does not leak into the host realm' + 'only exposes mediated host functions' -->
+
+<!-- D3 done 2026-06-15. Added quickjs-emscripten 0.32.0. src/script/sandbox.ts: runSandboxedScript(code, {timeoutMs, signal, host, now}, injectedModule?) -> SandboxResult. Async QuickJS VM, value marshalling (toHandle/vm.dump), interrupt-based timeout+cancel, namespaced async host-fn injection (newAsyncifiedFunction; host throw -> {error: vm.newError}). VM always disposed. Gate green: typecheck, eslint --max-warnings 0, prettier, vitest 708/98, e2e 30, prod build OK (quickjs WASM bundles self-contained). No Rust. -->
+<!-- D4 plugs the fs/web/memory/tool capability proxies into the `host` option (policy/scope-checked); D5 adds count/byte limits in that proxy layer (timeout/cancel already in the runtime). -->
+<!-- DEFERRED-WITH-NOTE: real Web Worker hosting of the VM (off-main-thread) is the F2 runtime-effect wiring; the core is Worker-agnostic. -->
+
 
 ## Phase D4 — Mediated capabilities
 

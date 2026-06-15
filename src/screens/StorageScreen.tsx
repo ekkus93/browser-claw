@@ -21,6 +21,8 @@ import {
   runBackupExport,
   summarizeConflicts,
   summarizeModelReferences,
+  isEncryptedBackup,
+  decryptBackup,
   type ValidationResult,
   type BackupSummary,
 } from '../backup/backupService.ts';
@@ -28,6 +30,7 @@ import { recordAudit } from '../audit/auditSink.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
 import { Dialog } from '../components/ui/Dialog.tsx';
+import { Input } from '../components/ui/Input.tsx';
 import { useToast } from '../components/ui/toastContext.ts';
 
 function formatBytes(bytes: number): string {
@@ -120,6 +123,16 @@ export default function StorageScreen() {
   // Per-collection count of records this restore would overwrite (keys already
   // in the DB). Computed for the preview so the user sees the impact up front.
   const [conflicts, setConflicts] = useState<BackupSummary | null>(null);
+  // Encrypted-export passphrase dialog (null = closed).
+  const [exportPass, setExportPass] = useState<{
+    pass: string;
+    confirm: string;
+    error: string;
+  } | null>(null);
+  // Raw text of an encrypted import file awaiting its passphrase (null = none).
+  const [encryptedText, setEncryptedText] = useState<string | null>(null);
+  const [importPass, setImportPass] = useState('');
+  const [importPassError, setImportPassError] = useState('');
 
   const health = assessStorageHealth(
     { usedBytes: storage.usedBytes, quotaBytes: storage.quotaBytes },
@@ -130,10 +143,11 @@ export default function StorageScreen() {
       ? Math.round((storage.usedBytes / storage.quotaBytes) * 100)
       : 0;
 
-  async function handleExport() {
+  async function handleExport(passphrase?: string) {
     const result = await runBackupExport({
       db,
       dispatch,
+      ...(passphrase ? { passphrase } : {}),
       download: (filename, json) => {
         // Throw (don't silently skip) so runBackupExport records a failure and
         // never logs a "saved" backup the user never actually downloaded.
@@ -161,21 +175,35 @@ export default function StorageScreen() {
     }
   }
 
+  // Validate already-decrypted (or plaintext) backup text and open the preview.
+  async function previewFromText(text: string) {
+    const result = validateBackup(parseBackup(text));
+    if (!result.valid) {
+      toast({
+        tone: 'danger',
+        title: 'Import failed',
+        description: result.error ?? 'Invalid backup file.',
+      });
+      return;
+    }
+    setPreview(result);
+    setConflicts(
+      result.backup ? await summarizeConflicts(db, result.backup) : null,
+    );
+  }
+
   async function handleFile(file: File) {
     try {
-      const result = validateBackup(parseBackup(await file.text()));
-      if (!result.valid) {
-        toast({
-          tone: 'danger',
-          title: 'Import failed',
-          description: result.error ?? 'Invalid backup file.',
-        });
+      const text = await file.text();
+      // An encrypted backup must be decrypted with its passphrase before we can
+      // read (or even preview) anything — prompt for it first.
+      if (isEncryptedBackup(text)) {
+        setEncryptedText(text);
+        setImportPass('');
+        setImportPassError('');
         return;
       }
-      setPreview(result);
-      setConflicts(
-        result.backup ? await summarizeConflicts(db, result.backup) : null,
-      );
+      await previewFromText(text);
     } catch {
       toast({
         tone: 'danger',
@@ -183,6 +211,49 @@ export default function StorageScreen() {
         description: 'Unreadable file.',
       });
     }
+  }
+
+  // Decrypt the pending encrypted import, then flow into the normal preview.
+  async function confirmDecrypt() {
+    if (!encryptedText) return;
+    let serialized: string;
+    try {
+      serialized = await decryptBackup(encryptedText, importPass);
+    } catch {
+      // A wrong passphrase makes AES-GCM authentication fail (decrypt throws).
+      setImportPassError('Incorrect passphrase or corrupted file.');
+      return;
+    }
+    // Decryption succeeded — close the prompt and run the normal preview path
+    // (which surfaces its own toast if the decrypted content is invalid).
+    setEncryptedText(null);
+    setImportPass('');
+    setImportPassError('');
+    try {
+      await previewFromText(serialized);
+    } catch {
+      toast({
+        tone: 'danger',
+        title: 'Import failed',
+        description: 'The decrypted backup could not be read.',
+      });
+    }
+  }
+
+  // Validate the export passphrase, then export an encrypted file.
+  async function confirmExportEncrypted() {
+    if (!exportPass) return;
+    if (exportPass.pass.length < 8) {
+      setExportPass({ ...exportPass, error: 'Use at least 8 characters.' });
+      return;
+    }
+    if (exportPass.pass !== exportPass.confirm) {
+      setExportPass({ ...exportPass, error: 'Passphrases do not match.' });
+      return;
+    }
+    const passphrase = exportPass.pass;
+    setExportPass(null);
+    await handleExport(passphrase);
   }
 
   async function confirmRestore() {
@@ -285,6 +356,15 @@ export default function StorageScreen() {
               <Button
                 variant="secondary"
                 size="sm"
+                onClick={() =>
+                  setExportPass({ pass: '', confirm: '', error: '' })
+                }
+              >
+                Export Encrypted…
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => fileInputRef.current?.click()}
               >
                 Import Backup
@@ -304,8 +384,10 @@ export default function StorageScreen() {
             </div>
 
             <p className="mt-2 text-xs text-warning">
-              Exported backups are unencrypted plaintext JSON (any included
-              secrets stay encrypted). Store the file somewhere safe.
+              &ldquo;Export Backup&rdquo; writes unencrypted plaintext JSON (any
+              included secrets stay encrypted). For a portable file protected by
+              a passphrase, use &ldquo;Export Encrypted&rdquo;. Store either
+              file somewhere safe.
             </p>
 
             <h3 className="mb-2 mt-4 text-sm font-medium text-text">
@@ -477,6 +559,120 @@ export default function StorageScreen() {
             ? 'This backup includes encrypted secrets (ciphertext only).'
             : 'This backup contains no secrets.'}
         </p>
+      </Dialog>
+
+      <Dialog
+        open={exportPass !== null}
+        onClose={() => setExportPass(null)}
+        title="Export encrypted backup"
+        description="Set a passphrase to encrypt this backup file. There is no recovery if you forget it."
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setExportPass(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                void confirmExportEncrypted();
+              }}
+            >
+              Export encrypted
+            </Button>
+          </>
+        }
+      >
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void confirmExportEncrypted();
+          }}
+        >
+          <Input
+            label="Passphrase"
+            type="password"
+            autoComplete="new-password"
+            hint="At least 8 characters."
+            value={exportPass?.pass ?? ''}
+            onChange={(event) =>
+              setExportPass((prev) =>
+                prev ? { ...prev, pass: event.target.value, error: '' } : prev,
+              )
+            }
+          />
+          <Input
+            label="Confirm passphrase"
+            type="password"
+            autoComplete="new-password"
+            value={exportPass?.confirm ?? ''}
+            onChange={(event) =>
+              setExportPass((prev) =>
+                prev
+                  ? { ...prev, confirm: event.target.value, error: '' }
+                  : prev,
+              )
+            }
+          />
+          {exportPass?.error ? (
+            <p className="text-xs text-danger">{exportPass.error}</p>
+          ) : null}
+        </form>
+      </Dialog>
+
+      <Dialog
+        open={encryptedText !== null}
+        onClose={() => {
+          setEncryptedText(null);
+          setImportPass('');
+          setImportPassError('');
+        }}
+        title="Encrypted backup"
+        description="This backup is passphrase-encrypted. Enter its passphrase to continue."
+        footer={
+          <>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setEncryptedText(null);
+                setImportPass('');
+                setImportPassError('');
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => {
+                void confirmDecrypt();
+              }}
+            >
+              Decrypt
+            </Button>
+          </>
+        }
+      >
+        <form
+          className="flex flex-col gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void confirmDecrypt();
+          }}
+        >
+          <Input
+            label="Passphrase"
+            type="password"
+            autoComplete="current-password"
+            value={importPass}
+            onChange={(event) => {
+              setImportPass(event.target.value);
+              setImportPassError('');
+            }}
+          />
+          {importPassError ? (
+            <p className="text-xs text-danger">{importPassError}</p>
+          ) : null}
+        </form>
       </Dialog>
     </div>
   );

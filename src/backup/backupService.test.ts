@@ -14,6 +14,9 @@ import {
   containsLikelyRawSecret,
   summarizeConflicts,
   summarizeModelReferences,
+  encryptBackup,
+  decryptBackup,
+  isEncryptedBackup,
   type ClawBackup,
 } from './backupService.ts';
 import type { AppDispatch } from '../store/store.ts';
@@ -331,6 +334,67 @@ describe('summarizeModelReferences', () => {
   });
 });
 
+describe('encrypted backup (encryptBackup/decryptBackup/isEncryptedBackup)', () => {
+  const serialized = '{"manifest":{"format":"clawbackup"}}\n';
+
+  it('round-trips a serialized backup through a passphrase', async () => {
+    const file = await encryptBackup(serialized, 'correct horse battery');
+    // The plaintext is gone from the on-disk file.
+    expect(file).not.toContain('clawbackup"');
+    expect(isEncryptedBackup(file)).toBe(true);
+    const back = await decryptBackup(file, 'correct horse battery');
+    expect(back).toBe(serialized);
+  });
+
+  it('fails to decrypt with the wrong passphrase', async () => {
+    const file = await encryptBackup(serialized, 'right-pass');
+    await expect(decryptBackup(file, 'wrong-pass')).rejects.toThrow();
+  });
+
+  it('uses a fresh salt + iv per export (no deterministic output)', async () => {
+    const a = JSON.parse(await encryptBackup(serialized, 'p'));
+    const b = JSON.parse(await encryptBackup(serialized, 'p'));
+    expect(a.salt).not.toBe(b.salt);
+    expect(a.iv).not.toBe(b.iv);
+    expect(a.ciphertext).not.toBe(b.ciphertext);
+  });
+
+  it('round-trips a REAL exported backup: encrypt -> decrypt -> parse -> validate', async () => {
+    await db.open();
+    await db.memories.clear();
+    await db.memories.bulkPut([
+      {
+        id: 'rt',
+        title: 't',
+        text: 'x',
+        tags: [],
+        source: 'chat',
+        createdBy: 'user',
+        createdAt: 1,
+        pinned: false,
+        sensitivity: 'normal',
+      },
+    ]);
+    const file = await encryptBackup(
+      serializeBackup(await exportBackup(db)),
+      'pp-12345678',
+    );
+    const decrypted = await decryptBackup(file, 'pp-12345678');
+    const result = validateBackup(parseBackup(decrypted));
+    expect(result.valid).toBe(true);
+    expect(result.summary?.memories).toBe(1);
+  });
+
+  it('isEncryptedBackup is false for a plaintext backup', () => {
+    expect(isEncryptedBackup(serialized)).toBe(false);
+    expect(isEncryptedBackup('not json at all')).toBe(false);
+  });
+
+  it('decryptBackup rejects a non-encrypted file', async () => {
+    await expect(decryptBackup(serialized, 'p')).rejects.toThrow();
+  });
+});
+
 describe('runBackupExport', () => {
   it('records history + a success audit only after the download succeeds', async () => {
     await db.open();
@@ -353,6 +417,37 @@ describe('runBackupExport', () => {
     expect(store.getState().audit.recent.map((e) => e.type)).toContain(
       'backup.exported',
     );
+  });
+
+  it('writes an encrypted file when a passphrase is given (decryptable back to a backup)', async () => {
+    await db.open();
+    await db.backup_history.clear();
+    const store = configureStore({ reducer: { audit: auditReducer } });
+    let written = '';
+    let writtenName = '';
+
+    const result = await runBackupExport({
+      db,
+      dispatch: store.dispatch as unknown as AppDispatch,
+      passphrase: 'export-passphrase',
+      download: (filename, json) => {
+        writtenName = filename;
+        written = json;
+      },
+      now: () => 100,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(writtenName).toBe('browserclaw-backup.encrypted.clawbackup');
+    // The downloaded file is ciphertext and decrypts back to a valid backup.
+    expect(isEncryptedBackup(written)).toBe(true);
+    const serialized = await decryptBackup(written, 'export-passphrase');
+    expect(parseBackup(serialized).manifest.format).toBe('clawbackup');
+    // Audited as encrypted, not plaintext.
+    const exported = store
+      .getState()
+      .audit.recent.find((e) => e.type === 'backup.exported');
+    expect(exported?.summary).toMatch(/passphrase-encrypted/);
   });
 
   it('does NOT record history or success when the download fails', async () => {

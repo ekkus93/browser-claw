@@ -3,6 +3,12 @@ import { DB_VERSION } from '../db/db.ts';
 import { APP_VERSION } from '../lib/appMeta.ts';
 import type { AppDispatch } from '../store/store.ts';
 import { recordAudit } from '../audit/auditSink.ts';
+import {
+  deriveKey,
+  encryptString,
+  decryptString,
+  generateSalt,
+} from '../secrets/crypto.ts';
 
 /**
  * `.clawbackup` export/import over Dexie. The backup contains durable user data
@@ -434,6 +440,80 @@ export async function recordBackupHistory(
 
 const BACKUP_FILENAME = 'browserclaw-backup.clawbackup';
 
+const ENCRYPTED_BACKUP_FORMAT = 'clawbackup-encrypted';
+const ENCRYPTED_BACKUP_VERSION = 1;
+
+/**
+ * On-disk shape of a passphrase-encrypted backup. The ENTIRE serialized backup
+ * (manifest + collections) is AES-GCM ciphertext — no plaintext metadata leaks.
+ * The salt is embedded so the file is self-contained (decryptable on any device
+ * with the passphrase); the key itself is never stored. Reuses the SecretVault
+ * crypto (PBKDF2-SHA256 250k -> AES-256-GCM) — no new crypto here.
+ */
+export interface EncryptedBackupFile {
+  format: typeof ENCRYPTED_BACKUP_FORMAT;
+  v: number;
+  salt: string;
+  iv: string;
+  ciphertext: string;
+}
+
+/** Encrypt a serialized backup with a passphrase into a self-contained file. */
+export async function encryptBackup(
+  serialized: string,
+  passphrase: string,
+): Promise<string> {
+  const salt = generateSalt();
+  const key = await deriveKey(passphrase, salt);
+  const { ciphertext, iv } = await encryptString(key, serialized);
+  const file: EncryptedBackupFile = {
+    format: ENCRYPTED_BACKUP_FORMAT,
+    v: ENCRYPTED_BACKUP_VERSION,
+    salt,
+    iv,
+    ciphertext,
+  };
+  return JSON.stringify(file);
+}
+
+/** Whether a file's text is an encrypted backup (vs a plaintext .clawbackup). */
+export function isEncryptedBackup(text: string): boolean {
+  try {
+    const parsed = JSON.parse(text) as Partial<EncryptedBackupFile>;
+    return (
+      parsed.format === ENCRYPTED_BACKUP_FORMAT &&
+      typeof parsed.salt === 'string' &&
+      typeof parsed.iv === 'string' &&
+      typeof parsed.ciphertext === 'string'
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Decrypt an encrypted backup file back to its serialized plaintext. Throws on a
+ * malformed file or a wrong passphrase (AES-GCM authentication fails) — callers
+ * surface that as "incorrect passphrase". The returned plaintext is the JSONL a
+ * caller passes to parseBackup; keep it in scope only as long as needed.
+ */
+export async function decryptBackup(
+  text: string,
+  passphrase: string,
+): Promise<string> {
+  let file: EncryptedBackupFile;
+  try {
+    file = JSON.parse(text) as EncryptedBackupFile;
+  } catch {
+    throw new Error('This is not a valid encrypted backup file.');
+  }
+  if (file.format !== ENCRYPTED_BACKUP_FORMAT) {
+    throw new Error('This is not an encrypted backup file.');
+  }
+  const key = await deriveKey(passphrase, file.salt);
+  return decryptString(key, { ciphertext: file.ciphertext, iv: file.iv });
+}
+
 export interface BackupExportDeps {
   db: BrowserClawDB;
   dispatch: AppDispatch;
@@ -443,6 +523,8 @@ export interface BackupExportDeps {
    */
   download: (filename: string, json: string) => void;
   includeSecrets?: boolean;
+  /** When set, the file is passphrase-encrypted before download (TODO 6.3). */
+  passphrase?: string;
   now?: () => number;
 }
 
@@ -469,12 +551,21 @@ export async function runBackupExport(
       : {}),
     ...(deps.now ? { now: deps.now } : {}),
   });
-  const json = serializeBackup(backup);
+  const serialized = serializeBackup(backup);
+  const encrypted = deps.passphrase
+    ? await encryptBackup(serialized, deps.passphrase)
+    : null;
+  const json = encrypted ?? serialized;
   const sizeBytes = new Blob([json]).size;
-  const plaintext = !backup.manifest.includesSecrets;
+  // "plaintext" describes the on-disk file: an encrypted export is never
+  // plaintext, even though this build doesn't include secrets by default.
+  const plaintext = encrypted === null && !backup.manifest.includesSecrets;
+  const filename = encrypted
+    ? 'browserclaw-backup.encrypted.clawbackup'
+    : BACKUP_FILENAME;
 
   try {
-    deps.download(BACKUP_FILENAME, json);
+    deps.download(filename, json);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     void recordAudit(deps.db, deps.dispatch, {
@@ -490,11 +581,14 @@ export async function runBackupExport(
 
   // Download succeeded — now (and only now) it's a real backup.
   await recordBackupHistory(deps.db, backup, sizeBytes);
+  const descriptor = encrypted
+    ? 'passphrase-encrypted'
+    : plaintext
+      ? 'plaintext'
+      : 'includes encrypted secrets';
   void recordAudit(deps.db, deps.dispatch, {
     type: 'backup.exported',
-    summary: `Backup exported (${sizeBytes} bytes, ${
-      plaintext ? 'plaintext' : 'includes encrypted secrets'
-    })`,
+    summary: `Backup exported (${sizeBytes} bytes, ${descriptor})`,
     source: 'backup',
     risk: plaintext ? 'low' : 'medium',
     status: 'success',

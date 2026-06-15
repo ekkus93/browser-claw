@@ -7,7 +7,11 @@ import { describe, expect, it } from 'vitest';
 import storageReducer from '../store/slices/storageSlice.ts';
 import { ToastProvider } from '../components/ui/Toast.tsx';
 import { db } from '../db/db.ts';
-import { exportBackup, serializeBackup } from '../backup/backupService.ts';
+import {
+  exportBackup,
+  serializeBackup,
+  encryptBackup,
+} from '../backup/backupService.ts';
 import { SAMPLE_MEMORIES } from '../memories/sampleMemories.ts';
 import StorageScreen from './StorageScreen.tsx';
 
@@ -150,4 +154,38 @@ describe('StorageScreen', () => {
       await screen.findByText(/model files are not included/),
     ).toBeTruthy();
   });
+
+  // PBKDF2 is deliberately slow; these crypto tests get a generous timeout.
+  async function encryptedFile(passphrase: string): Promise<File> {
+    const memory = SAMPLE_MEMORIES[0]!;
+    await db.memories.clear();
+    await db.memories.bulkPut([memory]);
+    const encrypted = await encryptBackup(
+      serializeBackup(await exportBackup(db)),
+      passphrase,
+    );
+    return new File([encrypted], 'data.encrypted.clawbackup', {
+      type: 'application/json',
+    });
+  }
+
+  it('prompts for a passphrase on an encrypted import and rejects a wrong one', async () => {
+    const user = userEvent.setup();
+    const file = await encryptedFile('open-sesame');
+
+    renderStorage();
+    await user.upload(screen.getByLabelText('Import backup file'), file);
+
+    // A passphrase prompt appears first — no restore preview yet.
+    expect(await screen.findByText('Encrypted backup')).toBeInTheDocument();
+    expect(screen.queryByText('Restore backup?')).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Passphrase'), 'wrong-pass');
+    await user.click(screen.getByRole('button', { name: 'Decrypt' }));
+    expect(
+      await screen.findByText(/Incorrect passphrase/, {}, { timeout: 8000 }),
+    ).toBeInTheDocument();
+    // Still no preview — a wrong passphrase reveals nothing.
+    expect(screen.queryByText('Restore backup?')).not.toBeInTheDocument();
+  }, 20000);
 });

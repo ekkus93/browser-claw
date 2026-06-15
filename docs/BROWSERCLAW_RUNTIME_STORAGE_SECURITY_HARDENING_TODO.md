@@ -328,11 +328,11 @@
   - [x] audit failure;
   - [x] do not record success.
 - [x] Label plaintext exports clearly. <!-- warning line on StorageScreen + audit summary says "plaintext" vs "includes encrypted secrets". -->
-- [ ] Add optional encrypted backup export if claiming encryption. <!-- DEFERRED: current export is labeled plaintext (not claiming encryption); a fully-encrypted .clawbackup needs a passphrase-KDF flow — separate task. -->
+- [x] Add optional encrypted backup export if claiming encryption. <!-- "Export Encrypted…" button opens a passphrase dialog (passphrase + confirm, min 8) and writes a self-contained encrypted file: backupService.encryptBackup() AES-GCM-encrypts the ENTIRE serialized backup (no plaintext metadata) into {format:'clawbackup-encrypted', v, salt, iv, ciphertext}. REUSES the SecretVault crypto (deriveKey/encryptString, PBKDF2-SHA256 250k -> AES-256-GCM) — no new crypto. Independent of the vault passphrase (so the file is portable to another device/install). runBackupExport gained an optional passphrase; audits "passphrase-encrypted". Import auto-detects via isEncryptedBackup(), prompts for the passphrase, decryptBackup()s, then flows through the existing validate/preview/restore path; a wrong passphrase fails AES-GCM auth -> "Incorrect passphrase". Tested: backupService.test (encrypt/decrypt round-trip, wrong-passphrase rejects, fresh salt+iv, full real-export encrypt->decrypt->parse->validate, runBackupExport encrypted file) + StorageScreen.test (encrypted import prompts + rejects wrong passphrase). -->
 - [x] Tests:
   - [x] export success records history;
   - [x] export failure does not record success;
-  - [ ] encrypted export can be imported if implemented. <!-- deferred with encrypted export above -->
+  - [x] encrypted export can be imported if implemented. <!-- backupService.test "round-trips a REAL exported backup: encrypt -> decrypt -> parse -> validate" asserts the encrypted file decrypts and validateBackup passes (summary.memories===1); StorageScreen.test exercises the encrypted-import passphrase prompt + wrong-passphrase rejection in the UI. -->
 
 
 ## Phase 7 — Skills and Skill Filesystem Hardening

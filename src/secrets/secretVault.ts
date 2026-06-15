@@ -22,6 +22,8 @@ export interface VaultAuditEvent {
   type: string;
   summary: string;
   risk: AuditRiskLevel;
+  /** Defaults to 'success' when omitted (e.g. unlock failure sets 'failure'). */
+  status?: 'success' | 'failure';
 }
 
 export type SecretStorageMode = 'session' | 'encrypted';
@@ -134,6 +136,7 @@ export class SecretVault {
         type: 'secret_unlock_failed',
         summary: 'Vault unlock failed (wrong passphrase)',
         risk: 'medium',
+        status: 'failure',
       });
       return false;
     }
@@ -209,10 +212,18 @@ export class SecretVault {
 
   async removeSecret(id: string): Promise<void> {
     this.#assertUnlocked();
+    // Capture the label before dropping the record so the audit names what was
+    // deleted. (The plaintext is never put in the audit — only the label.)
+    const label = this.#records.get(id)?.label ?? id;
     this.#plaintext.delete(id);
     this.#records.delete(id);
     await this.#store.deleteCiphertext(id);
     this.#observer?.secretRemoved(id);
+    this.#observer?.audit({
+      type: 'secret_deleted',
+      summary: `Secret deleted: ${label}`,
+      risk: 'medium',
+    });
     this.#touch();
   }
 

@@ -16,5 +16,5 @@ import { store } from '../store/store.ts';
  */
 export const secretVault = new SecretVault({
   store: createDexieVaultStore(db),
-  observer: createReduxVaultObserver(store.dispatch),
+  observer: createReduxVaultObserver(store.dispatch, db),
 });

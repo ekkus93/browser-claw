@@ -8,6 +8,7 @@ import {
   secretMetadataRemoved,
 } from '../store/slices/secretsSlice.ts';
 import { auditAppended } from '../store/slices/auditSlice.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 
 /** Volatile store — keeps nothing across reloads. Useful for session-only use. */
 export class InMemoryVaultStore implements VaultStore {
@@ -103,9 +104,15 @@ export function createDexieVaultStore(db: BrowserClawDB): VaultStore {
 
 /**
  * Bridges the vault to Redux. Forwards lock state, secret METADATA, and audit
- * events only — plaintext never reaches this adapter.
+ * events only — plaintext never reaches this adapter. When a `db` is provided,
+ * vault audit events (unlock/lock/unlock_failed/deleted) are persisted durably
+ * via recordAudit (which also updates the live tail); without it they go to the
+ * live tail only (used by unit tests that don't need durability).
  */
-export function createReduxVaultObserver(dispatch: AppDispatch): VaultObserver {
+export function createReduxVaultObserver(
+  dispatch: AppDispatch,
+  db?: BrowserClawDB,
+): VaultObserver {
   return {
     lockStateChanged(locked) {
       dispatch(vaultLockedSet(locked));
@@ -117,6 +124,16 @@ export function createReduxVaultObserver(dispatch: AppDispatch): VaultObserver {
       dispatch(secretMetadataRemoved(id));
     },
     audit(event) {
+      if (db) {
+        void recordAudit(db, dispatch, {
+          type: event.type,
+          summary: event.summary,
+          source: 'user',
+          risk: event.risk,
+          status: event.status ?? 'success',
+        });
+        return;
+      }
       dispatch(
         auditAppended({
           id: crypto.randomUUID(),

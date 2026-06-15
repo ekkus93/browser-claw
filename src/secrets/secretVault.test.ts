@@ -170,4 +170,26 @@ describe('SecretVault', () => {
     ]);
     expect(cap.lockStates).toEqual([false, true]);
   });
+
+  it('emits a secret_deleted audit (with the label, never the plaintext) on removeSecret', async () => {
+    const cap = capturing();
+    const vault = new SecretVault({
+      store: new InMemoryVaultStore(),
+      observer: cap.observer,
+      lockTimeoutMs: 0,
+    });
+    await vault.setup('p');
+    await vault.putEncryptedSecret('anthropic', 'Anthropic', 'sk-ant-secret');
+
+    await vault.removeSecret('anthropic');
+
+    const deleted = cap.audits.find((a) => a.type === 'secret_deleted');
+    expect(deleted).toBeDefined();
+    expect(deleted?.summary).toBe('Secret deleted: Anthropic');
+    // The plaintext is never in the audit payload.
+    expect(deleted?.summary).not.toContain('sk-ant-secret');
+    // The secret is gone from metadata and the store.
+    expect(cap.removes).toContain('anthropic');
+    expect(vault.listSecrets()).toHaveLength(0);
+  });
 });

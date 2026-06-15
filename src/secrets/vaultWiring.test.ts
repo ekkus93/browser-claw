@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import secretsReducer from '../store/slices/secretsSlice.ts';
 import auditReducer from '../store/slices/auditSlice.ts';
@@ -60,6 +60,33 @@ describe('createReduxVaultObserver', () => {
     expect(store.getState().secrets.secrets).toHaveLength(0);
     vault.lock();
     expect(store.getState().secrets.vaultLocked).toBe(true);
+  });
+
+  it('persists vault audit events durably when given a db (real secret_deleted)', async () => {
+    const db = new BrowserClawDB();
+    await db.open();
+    await db.audit_events.clear();
+    const store = makeStore();
+    const vault = new SecretVault({
+      store: new InMemoryVaultStore(),
+      observer: createReduxVaultObserver(store.dispatch, db),
+      lockTimeoutMs: 0,
+    });
+    await vault.setup('p');
+    await vault.putEncryptedSecret('id1', 'My Key', 'v');
+    await vault.removeSecret('id1');
+
+    // The delete lands in the DURABLE audit log (recordAudit), not just the
+    // live Redux tail — the audit is real, not a fixture.
+    await vi.waitFor(async () => {
+      const events = await db.audit_events
+        .where('type')
+        .equals('secret_deleted')
+        .toArray();
+      expect(events[0]?.summary).toBe('Secret deleted: My Key');
+      expect(events[0]?.status).toBe('success');
+    });
+    db.close();
   });
 });
 

@@ -338,6 +338,38 @@ export function validateBackup(
   return { valid: true, summary, backup: candidate as ClawBackup };
 }
 
+function rowKey(row: unknown, fields: string[]): string {
+  const record = (row ?? {}) as Record<string, unknown>;
+  return JSON.stringify(fields.map((field) => record[field]));
+}
+
+/**
+ * Count, per collection, how many backup rows have a primary key that ALREADY
+ * exists in the database — i.e. records a restore would overwrite (merge) or
+ * that sit in a collection a replace would clear. Uses the same key fields as
+ * the import so the count matches what actually happens. Collections with no
+ * conflicts are omitted. This is a read-only preview aid; it writes nothing.
+ */
+export async function summarizeConflicts(
+  db: BrowserClawDB,
+  backup: ClawBackup,
+): Promise<BackupSummary> {
+  const conflicts: BackupSummary = {};
+  for (const [name, rows] of Object.entries(backup.collections)) {
+    if (!ALLOWED_COLLECTIONS.has(name) || !Array.isArray(rows)) continue;
+    const fields = keyFieldsFor(name);
+    const existing = new Set(
+      (await db.table(name).toArray()).map((row) => rowKey(row, fields)),
+    );
+    let count = 0;
+    for (const row of rows) {
+      if (existing.has(rowKey(row, fields))) count += 1;
+    }
+    if (count > 0) conflicts[name] = count;
+  }
+  return conflicts;
+}
+
 export type RestoreStrategy = 'merge' | 'replace';
 
 /**

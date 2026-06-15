@@ -307,7 +307,7 @@
 - [ ] Show:
   - [x] collections;
   - [x] record counts;
-  - [ ] conflicts; <!-- DEFERRED: per-record id-collision counts need reading existing keys per collection; preview shows counts + secrets presence today. -->
+  - [x] conflicts; <!-- backupService.summarizeConflicts(db, backup) counts, per collection, how many backup rows have a primary key that already exists (using the SAME keyFieldsFor() as the import, incl. composite keys like skill_state [skillId,key]), so the count matches what a restore would overwrite. StorageScreen computes it for the preview and renders an "Overwrites existing records" callout (or "No existing records would be overwritten."). Read-only — writes nothing. Tested: backupService.test "counts only rows whose key already exists, by collection" + "omits collections with no conflicts"; StorageScreen.test "previews how many existing records a restore would overwrite". -->
   - [x] encrypted secrets present or absent;
   - [ ] model references; <!-- DEFERRED with conflicts: model_catalog/model_cache_index counts already listed; a dedicated "references" callout pending. -->
 - [x] Require explicit import confirmation.

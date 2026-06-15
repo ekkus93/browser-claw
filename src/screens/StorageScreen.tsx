@@ -19,7 +19,9 @@ import {
   validateBackup,
   importBackup,
   runBackupExport,
+  summarizeConflicts,
   type ValidationResult,
+  type BackupSummary,
 } from '../backup/backupService.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { Button } from '../components/ui/Button.tsx';
@@ -114,6 +116,9 @@ export default function StorageScreen() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<ValidationResult | null>(null);
+  // Per-collection count of records this restore would overwrite (keys already
+  // in the DB). Computed for the preview so the user sees the impact up front.
+  const [conflicts, setConflicts] = useState<BackupSummary | null>(null);
 
   const health = assessStorageHealth(
     { usedBytes: storage.usedBytes, quotaBytes: storage.quotaBytes },
@@ -167,6 +172,9 @@ export default function StorageScreen() {
         return;
       }
       setPreview(result);
+      setConflicts(
+        result.backup ? await summarizeConflicts(db, result.backup) : null,
+      );
     } catch {
       toast({
         tone: 'danger',
@@ -179,6 +187,7 @@ export default function StorageScreen() {
   async function confirmRestore() {
     const backup = preview?.backup;
     setPreview(null);
+    setConflicts(null);
     if (!backup) return;
     try {
       await importBackup(db, backup);
@@ -398,12 +407,21 @@ export default function StorageScreen() {
 
       <Dialog
         open={preview !== null}
-        onClose={() => setPreview(null)}
+        onClose={() => {
+          setPreview(null);
+          setConflicts(null);
+        }}
         title="Restore backup?"
         description="Records are merged into your local database by id."
         footer={
           <>
-            <Button variant="ghost" onClick={() => setPreview(null)}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setPreview(null);
+                setConflicts(null);
+              }}
+            >
               Cancel
             </Button>
             <Button
@@ -427,6 +445,25 @@ export default function StorageScreen() {
               </li>
             ))}
         </ul>
+        {conflicts && Object.keys(conflicts).length > 0 ? (
+          <div className="mt-3 rounded-button border border-warning/40 bg-warning-subtle p-2">
+            <p className="text-xs font-semibold text-text">
+              Overwrites existing records
+            </p>
+            <ul className="mt-1 flex flex-col gap-1 text-xs text-muted">
+              {Object.entries(conflicts).map(([name, count]) => (
+                <li key={name} className="flex justify-between">
+                  <span>{name}</span>
+                  <span className="tabular-nums text-text">{count}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-muted-subtle">
+            No existing records would be overwritten.
+          </p>
+        )}
         <p className="mt-3 text-xs text-muted-subtle">
           {(preview?.summary?.encrypted_secrets ?? 0) > 0
             ? 'This backup includes encrypted secrets (ciphertext only).'

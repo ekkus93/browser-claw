@@ -1202,3 +1202,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate GREEN: typecheck clean; pnpm test 431 (+9: errors 3, llmRunner 4, appSettings 1, SettingsScreen 1); e2e 28.
 - GOTCHA: vitest passes type-loose tests; tsc caught a test helper returning Promise<unknown> for getApiKey — typed it as ApiKeyResolution / FallbackTarget. Always run pnpm run typecheck, not just vitest.
 - 5 Settings controls now wired end-to-end: theme, default provider, fallback provider, approval policy, lock timeout. Remaining 9.2 (backup, skill install policy) lack consumers; dev mode env-gated.
+
+## 2026-06-15T00:33:09Z - Claude Opus 4.8 - Backup import preview: conflict counts (Phase 6.2 "conflicts")
+- Implemented the deferred "conflicts" item in the backup import preview. New backupService.summarizeConflicts(db, backup): for each backup collection, counts rows whose primary key ALREADY exists in the DB, reusing the existing keyFieldsFor() (handles composite keys like skill_state [skillId,key] and skill_files [skillId,path]) so the count matches exactly what a restore would overwrite. Read-only; omits zero-conflict collections.
+- StorageScreen: computes conflicts after validate (async, alongside the preview) and renders an "Overwrites existing records" warning callout in the Restore dialog (or "No existing records would be overwritten."). conflicts state cleared wherever preview is cleared (confirm/cancel/onClose).
+- Gate GREEN: typecheck clean; pnpm test 434 (+3: backupService 2, StorageScreen 1); e2e 28.
+- TODO: 6.2 "conflicts" ticked. Still deferred in 6.2: "model references" callout (a dedicated model_catalog/model_cache_index references summary). 6.3 encrypted export deferred (needs passphrase-KDF).
+- Reusing keyFieldsFor (the import's own key logic) was the key to correctness — conflict counts can't diverge from what import actually overwrites.

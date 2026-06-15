@@ -12,6 +12,7 @@ import {
   recordBackupHistory,
   runBackupExport,
   containsLikelyRawSecret,
+  summarizeConflicts,
   type ClawBackup,
 } from './backupService.ts';
 import type { AppDispatch } from '../store/store.ts';
@@ -243,6 +244,76 @@ describe('importBackup (transactional)', () => {
     expect(await db.memories.get('new')).toBeTruthy();
     // conversations was NOT in the backup -> left untouched.
     expect(await db.conversations.get('c-keep')).toBeTruthy();
+  });
+});
+
+describe('summarizeConflicts', () => {
+  function memory(id: string) {
+    return {
+      id,
+      title: id,
+      text: id,
+      tags: [],
+      source: 'chat',
+      createdBy: 'user',
+      createdAt: 1,
+      pinned: false,
+      sensitivity: 'normal' as const,
+    };
+  }
+
+  function backup(collections: Record<string, unknown[]>): ClawBackup {
+    return {
+      manifest: {
+        format: 'clawbackup',
+        schemaVersion: 1,
+        appVersion: 'test',
+        createdAt: 0,
+        includesSecrets: false,
+      },
+      collections,
+    };
+  }
+
+  it('counts only rows whose key already exists, by collection', async () => {
+    await db.open();
+    await db.memories.clear();
+    await db.skill_state.clear();
+    await db.memories.bulkPut([memory('a'), memory('b')]);
+    await db.skill_state.put({
+      skillId: 's1',
+      key: 'k1',
+      value: { x: 1 },
+    });
+
+    const conflicts = await summarizeConflicts(
+      db,
+      backup({
+        // 'a' exists (conflict), 'c' is new (no conflict) -> 1
+        memories: [memory('a'), memory('c')],
+        // composite key [skillId,key]: s1/k1 exists, s1/k2 new -> 1
+        skill_state: [
+          { skillId: 's1', key: 'k1', value: { x: 2 } },
+          { skillId: 's1', key: 'k2', value: { x: 3 } },
+        ],
+      }),
+    );
+
+    expect(conflicts.memories).toBe(1);
+    expect(conflicts.skill_state).toBe(1);
+  });
+
+  it('omits collections with no conflicts', async () => {
+    await db.open();
+    await db.memories.clear();
+
+    const conflicts = await summarizeConflicts(
+      db,
+      backup({ memories: [memory('brand-new')] }),
+    );
+
+    expect(conflicts.memories).toBeUndefined();
+    expect(Object.keys(conflicts)).toHaveLength(0);
   });
 });
 

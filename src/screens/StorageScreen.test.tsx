@@ -104,4 +104,26 @@ describe('StorageScreen', () => {
       .toArray();
     expect(audited.some((e) => e.source === 'backup')).toBe(true);
   });
+
+  it('previews how many existing records a restore would overwrite', async () => {
+    // Importing a backup of data still present in the DB must warn that the
+    // restore overwrites those records (TODO 6.2 conflicts), not silently merge.
+    const user = userEvent.setup();
+    const memory = SAMPLE_MEMORIES[0]!;
+    await db.memories.clear();
+    await db.memories.bulkPut([memory]);
+    const file = new File(
+      [serializeBackup(await exportBackup(db))],
+      'data.clawbackup',
+      { type: 'application/json' },
+    );
+
+    renderStorage();
+    await user.upload(screen.getByLabelText('Import backup file'), file);
+
+    // The memory is still in the DB, so the preview flags the overwrite.
+    expect(
+      await screen.findByText('Overwrites existing records'),
+    ).toBeInTheDocument();
+  });
 });

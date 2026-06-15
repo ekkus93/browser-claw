@@ -712,17 +712,19 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase E1 — Web research provider interfaces
 
-- [ ] P0 Define `SearchProvider` interface.
-- [ ] P0 Define `PageReaderProvider` interface.
-- [ ] P0 Define `WebResearchService` facade.
-- [ ] P0 Define data types:
-  - [ ] `SearchResult`;
-  - [ ] `PageReadRequest`;
-  - [ ] `PageReadResult`;
-  - [ ] `PageContent`;
-  - [ ] `ResearchBundle`;
-  - [ ] provider error types.
-- [ ] P0 Tests for provider facade behavior.
+<!-- src/webresearch/types.ts: SearchProvider/PageReaderProvider/WebResearchService + SearchResult/SearchOptions/PageReadRequest/PageReadResult (discriminated ok|error)/PageContent/ResearchBundle/ResearchOptions + WebResearchError(kind). src/webresearch/service.ts: createWebResearchService (fail-closed search_unavailable/reader_unavailable; readPage normalizes; research combines+caps+skips failures). Tests: src/webresearch/service.test.ts. Gate: typecheck/lint/prettier/vitest 626/e2e 30. -->
+
+- [x] P0 Define `SearchProvider` interface.
+- [x] P0 Define `PageReaderProvider` interface.
+- [x] P0 Define `WebResearchService` facade.
+- [x] P0 Define data types:
+  - [x] `SearchResult`;
+  - [x] `PageReadRequest`;
+  - [x] `PageReadResult`;
+  - [x] `PageContent`;
+  - [x] `ResearchBundle`;
+  - [x] provider error types.
+- [x] P0 Tests for provider facade behavior.
 
 ## Phase E2 — Search provider support
 

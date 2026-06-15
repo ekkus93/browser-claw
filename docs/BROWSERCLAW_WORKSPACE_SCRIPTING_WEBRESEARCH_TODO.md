@@ -162,14 +162,16 @@ NOTE: "missing args -> parse_failed" intentionally NOT implemented — omitted a
 
 ### A2.2 Audit or fail unknown `resolve_effect` IDs
 
-- [ ] P1 Update TypeScript reference runtime.
-- [ ] P1 Update Rust core runtime.
-- [ ] P1 Unknown `resolve_effect` ID emits/audits `runtime.resolve_unknown_effect`.
-- [ ] P1 Decide whether unknown resolve is fatal or recoverable; default recommended: recoverable failure audit.
-- [ ] P1 Tests:
-  - [ ] TS runtime unknown resolve audits failure;
-  - [ ] Rust runtime unknown resolve emits equivalent audit/effect;
-  - [ ] normal resolve still works.
+<!-- crates/claw-core/src/lib.rs: ResolveEffect `_` arm emits Effect::AuditAppend runtime.resolve_unknown_effect (risk medium); src/runtime/referenceRuntime.ts: same in the unknown-kind branch; src/runtime/effectExecutor.ts: RUNTIME_FAILURE_EVENTS records that event with status=failure; WASM rebuilt (src/runtime/wasm/claw_wasm_bg.wasm). Recoverable (no state change). Tests: claw-core unit tests (unknown resolve audits; updated old no-op test), referenceRuntime.test.ts, effectExecutor.test.ts. Gate: cargo test+clippy, build:wasm, typecheck/lint/prettier/vitest 501/e2e 28. -->
+
+- [x] P1 Update TypeScript reference runtime.
+- [x] P1 Update Rust core runtime.
+- [x] P1 Unknown `resolve_effect` ID emits/audits `runtime.resolve_unknown_effect`.
+- [x] P1 Decide whether unknown resolve is fatal or recoverable; default recommended: recoverable failure audit. (chose recoverable — audit only, no state change)
+- [x] P1 Tests:
+  - [x] TS runtime unknown resolve audits failure;
+  - [x] Rust runtime unknown resolve emits equivalent audit/effect;
+  - [x] normal resolve still works.
 
 ### A2.3 Provider test must fail closed on locked/missing secret
 

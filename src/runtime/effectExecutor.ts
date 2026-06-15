@@ -47,6 +47,15 @@ export function normalizeApprovalRisk(risk: string): ApprovalRisk {
 }
 
 /**
+ * Runtime-emitted audit event types that represent an anomaly and must be
+ * recorded with a `failure` status (the audit channel otherwise defaults to
+ * success). Currently the A2.2 stray-resolve event.
+ */
+const RUNTIME_FAILURE_EVENTS = new Set<string>([
+  'runtime.resolve_unknown_effect',
+]);
+
+/**
  * Fail an effect closed (TODO 1.2): record a durable failure audit, surface a
  * user-visible runtime error, and throw so the host loop stops instead of
  * silently skipping a side effect the runtime asked for. Used for unknown
@@ -88,6 +97,12 @@ export async function executeEffect(
         summary: effect.summary,
         source: 'runtime',
         risk: normalizeRiskLevel(effect.risk),
+        // The runtime signals an anomaly (e.g. a stray resolve, A2.2) as a
+        // distinct event type; record it with a failure status so it reads as a
+        // problem in the audit log rather than a normal success.
+        status: RUNTIME_FAILURE_EVENTS.has(effect.event_type)
+          ? 'failure'
+          : 'success',
         at: now(),
       });
       return;

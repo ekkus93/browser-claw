@@ -236,7 +236,17 @@ export function createReferenceRuntime(
           },
         ];
       }
-      return [];
+      // Unknown or non-pending effect id (hardening A2.2): never silently return
+      // nothing — audit it so a stray/duplicate resolve is visible. Recoverable.
+      return [
+        {
+          type: 'audit_append',
+          id: nextId(),
+          event_type: 'runtime.resolve_unknown_effect',
+          summary: `Resolve for unknown or non-pending effect ${command.id}`,
+          risk: 'medium',
+        },
+      ];
     },
 
     snapshot() {

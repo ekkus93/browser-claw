@@ -59,6 +59,31 @@ describe('executeEffect', () => {
       .equals('x')
       .toArray();
     expect(durable[0]).toMatchObject({ source: 'runtime', risk: 'low' });
+    // An ordinary runtime audit event records as success.
+    expect(durable[0]?.status).toBe('success');
+  });
+
+  it('records runtime.resolve_unknown_effect with a failure status (A2.2)', async () => {
+    const { ctx } = makeCtx();
+    await executeEffect(
+      {
+        type: 'audit_append',
+        id: 'a2',
+        event_type: 'runtime.resolve_unknown_effect',
+        summary: 'stray resolve',
+        risk: 'medium',
+      },
+      ctx,
+    );
+    const durable = await ctx.db.audit_events
+      .where('type')
+      .equals('runtime.resolve_unknown_effect')
+      .toArray();
+    expect(durable[0]).toMatchObject({
+      source: 'runtime',
+      risk: 'medium',
+      status: 'failure',
+    });
   });
 
   it('routes tool_call_proposal to the injected tool port', async () => {

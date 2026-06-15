@@ -136,3 +136,21 @@ and TODO are. Newest decisions at the bottom of each section.
   same keyed effect) upserts the same row — no duplicate message.
 - Skipped the optional "audit duplicate/replay" sub-item: a replay is meant to be
   a silent idempotent upsert; auditing every one would be noise.
+
+### A2.2 — unknown resolve_effect audited (TS + Rust + WASM) (done)
+- THE Rust item. Both runtimes' unknown/non-pending resolve arm now emits
+  `Effect::AuditAppend { event_type: "runtime.resolve_unknown_effect", risk:
+  "medium" }` instead of returning nothing: `crates/claw-core/src/lib.rs` (`_` arm
+  of the ResolveEffect match) and `src/runtime/referenceRuntime.ts` (unknown-kind
+  branch). Recoverable — no state change.
+- `effectExecutor.ts`: new `RUNTIME_FAILURE_EVENTS` set records that event with
+  `status: 'failure'` (the audit_append channel otherwise defaults to success;
+  the effect schema has no status field, so the host maps it by event type —
+  avoids churning every AuditAppend call site + the WASM ABI).
+- Rebuilt WASM: only `src/runtime/wasm/claw_wasm_bg.wasm` changed (JS bindings
+  identical — same interface).
+- Toolchain confirmed available: cargo 1.94.1, wasm-pack 0.13.1. Gate now also
+  runs `cargo test -p claw-core`, `cargo clippy -p claw-core/-p claw-wasm
+  --all-targets -D warnings`, `pnpm run build:wasm`.
+- Updated the pre-existing Rust test `resolving_an_unknown_effect_is_a_no_op` ->
+  `..._audits_a_failure_and_changes_no_state` (old test asserted the silent no-op).

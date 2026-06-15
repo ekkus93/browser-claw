@@ -92,6 +92,21 @@ describe('referenceRuntime', () => {
     expect(effects.some((e) => e.type === 'llm_request')).toBe(true);
   });
 
+  it('audits a stray resolve for an unknown effect id (A2.2)', () => {
+    const runtime = createReferenceRuntime();
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'never-emitted',
+      result: { text: 'stray' },
+    });
+    expect(effects).toHaveLength(1);
+    expect(effects[0]).toMatchObject({
+      type: 'audit_append',
+      event_type: 'runtime.resolve_unknown_effect',
+      risk: 'medium',
+    });
+  });
+
   it('stores no message and audits a failure when the llm_request fails', () => {
     const runtime = createReferenceRuntime();
     runtime.dispatch(submit('hi'));

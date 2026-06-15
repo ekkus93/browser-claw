@@ -236,7 +236,21 @@ impl Runtime {
                             },
                         ]
                     }
-                    _ => Vec::new(),
+                    // Unknown or non-pending effect id (hardening A2.2): never
+                    // silently return nothing — audit it so a stray/duplicate
+                    // resolve is visible. Recoverable: no state change.
+                    _ => {
+                        let audit_id = self.next_id();
+                        vec![Effect::AuditAppend {
+                            id: audit_id,
+                            event_type: "runtime.resolve_unknown_effect"
+                                .to_string(),
+                            summary: format!(
+                                "Resolve for unknown or non-pending effect {id}"
+                            ),
+                            risk: "medium".to_string(),
+                        }]
+                    }
                 }
             }
         }
@@ -260,6 +274,27 @@ mod tests {
             conversation_id: "c1".to_string(),
             text: text.to_string(),
             skill_id: skill_id.to_string(),
+        }
+    }
+
+    #[test]
+    fn resolving_an_unknown_effect_id_audits_instead_of_silently_ignoring() {
+        // Hardening A2.2: a resolve for an id the runtime never emitted (or
+        // already resolved) must not silently return nothing.
+        let mut rt = Runtime::new();
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "does-not-exist".to_string(),
+            result: json!({ "text": "stray" }),
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::AuditAppend {
+                event_type, risk, ..
+            } => {
+                assert_eq!(event_type, "runtime.resolve_unknown_effect");
+                assert_eq!(risk, "medium");
+            }
+            other => panic!("expected AuditAppend, got {other:?}"),
         }
     }
 
@@ -384,13 +419,20 @@ mod tests {
     }
 
     #[test]
-    fn resolving_an_unknown_effect_is_a_no_op() {
+    fn resolving_an_unknown_effect_audits_a_failure_and_changes_no_state() {
+        // Hardening A2.2: previously a no-op; now it emits a single audit effect
+        // and still makes no state change (recoverable).
         let mut rt = Runtime::new();
         let effects = rt.dispatch(Command::ResolveEffect {
             id: "missing".to_string(),
             result: json!({}),
         });
-        assert!(effects.is_empty());
+        assert_eq!(effects.len(), 1);
+        assert!(matches!(
+            &effects[0],
+            Effect::AuditAppend { event_type, .. }
+                if event_type == "runtime.resolve_unknown_effect"
+        ));
     }
 
     #[test]

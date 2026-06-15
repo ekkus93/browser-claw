@@ -135,11 +135,29 @@ function ProviderCard({
         });
         return;
       }
-      // Use a stored key if the vault is unlocked; an unauthenticated health
-      // check is still meaningful (a 401 means "reachable, needs auth").
+      // Fail closed (hardening A2.3): if the profile requires a key
+      // (apiKeyMode !== 'none') and the vault is locked or the key is missing,
+      // do NOT run an unauthenticated health check — that would silently test
+      // something other than what the user configured. Audit the specific
+      // reason (no secret material) and stop. apiKeyMode 'none' (local/mock)
+      // resolves OK with no key and still tests.
       const keyResult = await resolveApiKey(secretVault, buildRow());
+      if (!keyResult.ok) {
+        dispatch(
+          providerHealthSet({ providerId: profile.id, health: 'unreachable' }),
+        );
+        void recordAudit(db, dispatch, {
+          type: 'provider.test_failed',
+          summary: `Provider test for ${profile.label} blocked: ${keyResult.kind}`,
+          source: 'provider',
+          risk: 'low',
+          status: 'failure',
+          providerId: profile.id,
+        });
+        return;
+      }
       const callOptions =
-        keyResult.ok && keyResult.apiKey !== undefined
+        keyResult.apiKey !== undefined
           ? { apiKey: keyResult.apiKey }
           : undefined;
       const result = await resolved.provider.checkHealth(callOptions);

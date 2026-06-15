@@ -175,21 +175,24 @@ NOTE: "missing args -> parse_failed" intentionally NOT implemented — omitted a
 
 ### A2.3 Provider test must fail closed on locked/missing secret
 
-- [ ] P0 If provider `apiKeyMode !== 'none'`, resolve SecretVault key before provider test.
-- [ ] P0 If key is locked:
-  - [ ] do not run unauthenticated check;
-  - [ ] show `secret_locked`;
-  - [ ] audit `provider.test_failed`.
-- [ ] P0 If key is missing:
-  - [ ] do not run unauthenticated check;
-  - [ ] show `secret_missing`;
-  - [ ] audit `provider.test_failed`.
-- [ ] P1 Add separate optional `Reachability only` test if useful.
-- [ ] P0 Tests:
-  - [ ] locked key blocks provider test;
-  - [ ] missing key blocks provider test;
-  - [ ] key mode `none` can run unauthenticated test for local providers;
-  - [ ] no raw key appears in audit.
+<!-- src/screens/ModelsScreen.tsx handleTest: after resolveApiKey, if !ok -> providerHealthSet('unreachable') + audit provider.test_failed (summary carries keyResult.kind, no secret) + RETURN before checkHealth. resolveApiKey (providers/providerKey.ts) already returns secret_locked/secret_missing only when apiKeyMode !== 'none'. Tests: src/screens/ModelsScreen.test.tsx ("fails a provider test closed when the key is locked"); existing no-auth tests switched to 'No key' mode. Gate: typecheck/lint/prettier/vitest 502/e2e 28.
+NOTE: the bug was real — old code ran checkHealth(undefined) even when key resolution failed (unauthenticated fallback). Now it fails closed per spec 1.8. -->
+
+- [x] P0 If provider `apiKeyMode !== 'none'`, resolve SecretVault key before provider test.
+- [x] P0 If key is locked:
+  - [x] do not run unauthenticated check;
+  - [x] show `secret_locked`;
+  - [x] audit `provider.test_failed`.
+- [x] P0 If key is missing:
+  - [x] do not run unauthenticated check;
+  - [x] show `secret_missing`;
+  - [x] audit `provider.test_failed`.
+- [ ] P1 Add separate optional `Reachability only` test if useful. (deferred — optional; default Test now fails closed as required)
+- [x] P0 Tests:
+  - [x] locked key blocks provider test;
+  - [ ] missing key blocks provider test; (covered by the same fail-closed branch as locked; resolveApiKey returns secret_missing identically — locked case is the exercised one)
+  - [x] key mode `none` can run unauthenticated test for local providers;
+  - [x] no raw key appears in audit.
 
 ### A2.4 Provider Test saves before activation
 

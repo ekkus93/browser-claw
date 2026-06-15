@@ -75,8 +75,14 @@ describe('ModelsScreen', () => {
     const user = userEvent.setup();
     const store = renderModels();
 
-    // The first Test button belongs to the OpenAI card.
+    // The first Test button belongs to the OpenAI card. Use 'No key' mode so
+    // the unauthenticated health check runs (the default 'encrypted' mode would
+    // fail closed on the locked vault — that path is covered by its own test).
     await screen.findByRole('heading', { name: 'OpenAI' });
+    await user.selectOptions(
+      screen.getAllByLabelText('API key mode')[0]!,
+      'none',
+    );
     const testButtons = screen.getAllByRole('button', { name: 'Test' });
     await user.click(testButtons[0]!);
 
@@ -102,6 +108,10 @@ describe('ModelsScreen', () => {
     const user = userEvent.setup();
     renderModels();
     await screen.findByRole('heading', { name: 'OpenAI' });
+    await user.selectOptions(
+      screen.getAllByLabelText('API key mode')[0]!,
+      'none',
+    );
 
     await user.click(screen.getAllByRole('button', { name: 'Test' })[0]!);
 
@@ -150,6 +160,36 @@ describe('ModelsScreen', () => {
     expect((await screen.findAllByText('CORS issue')).length).toBeGreaterThan(
       0,
     );
+  });
+
+  it('fails a provider test closed when the key is locked (A2.3, no unauth call)', async () => {
+    // A profile that requires a key + a locked vault must NOT fall back to an
+    // unauthenticated health check — it audits the secret failure and stops.
+    const fetchSpy = vi.fn(() =>
+      Promise.reject(new TypeError('should not be called')),
+    );
+    vi.stubGlobal('fetch', fetchSpy);
+    const user = userEvent.setup();
+    const store = renderModels();
+    await screen.findByRole('heading', { name: 'OpenAI' });
+
+    // Switch the OpenAI card to an encrypted key; the vault starts locked.
+    await user.selectOptions(
+      screen.getAllByLabelText('API key mode')[0]!,
+      'encrypted',
+    );
+    await user.click(screen.getAllByRole('button', { name: 'Test' })[0]!);
+
+    await waitFor(async () => {
+      const rows = await db.audit_events
+        .where('type')
+        .equals('provider.test_failed')
+        .toArray();
+      expect(rows.some((r) => r.summary.includes('secret_locked'))).toBe(true);
+    });
+    // Fail closed: no unauthenticated network call happened.
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(store.getState().providers.health.openai).toBe('unreachable');
   });
 
   it('keys llama-server health by its provider id, not its kind', async () => {
@@ -369,6 +409,10 @@ describe('ModelsScreen', () => {
     renderModels();
     await screen.findByRole('heading', { name: 'OpenAI' });
 
+    await user.selectOptions(
+      screen.getAllByLabelText('API key mode')[0]!,
+      'none',
+    );
     const baseUrl = screen.getAllByLabelText('Base URL')[0]!;
     await user.clear(baseUrl);
     await user.type(baseUrl, 'https://edited.example/v1');

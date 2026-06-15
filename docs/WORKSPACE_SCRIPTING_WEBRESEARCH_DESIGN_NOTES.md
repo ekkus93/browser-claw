@@ -154,3 +154,19 @@ and TODO are. Newest decisions at the bottom of each section.
   --all-targets -D warnings`, `pnpm run build:wasm`.
 - Updated the pre-existing Rust test `resolving_an_unknown_effect_is_a_no_op` ->
   `..._audits_a_failure_and_changes_no_state` (old test asserted the silent no-op).
+
+### A2.3 — provider test fails closed on locked/missing secret (done)
+- responses2.md said resolveApiKey already fails closed — TRUE, but the Models
+  Test button IGNORED that and ran `checkHealth(undefined)` anyway (the old
+  comment literally said "an unauthenticated health check is still meaningful").
+  That violated spec 1.8. FIXED: `ModelsScreen.handleTest` now returns after a
+  `!keyResult.ok` with `providerHealthSet('unreachable')` + a `provider.test_failed`
+  audit (summary carries keyResult.kind, never the key). Reachability-only is the
+  spec's separate optional action, deferred.
+- TEST FALLOUT: 3 existing tests ("no API key needed", "durable audit", "edited
+  values") used the OpenAI card whose default apiKeyMode is 'encrypted' + a locked
+  vault — they were GREEN only because of the bug (unauth fallback). Fixed by
+  switching those cards to 'No key' mode before Test (their names already say "no
+  API key needed"). New test switches to 'encrypted' to exercise fail-closed.
+- Default profile apiKeyModes (providerProfiles.ts): openai/anthropic/compatible =
+  'encrypted'; ollama/llama-server = 'none'.

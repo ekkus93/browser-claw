@@ -514,24 +514,26 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase C3 — Plan executor
 
-- [ ] P0 Implement sequential plan executor.
-- [ ] P0 Store bounded step outputs.
-- [ ] P0 Support `contentFrom` / output references safely.
-- [ ] P0 Stop on first failure by default.
-- [ ] P1 Add optional `onError` policy only if needed.
-- [ ] P0 Enforce limits:
-  - [ ] total steps;
-  - [ ] total output bytes;
-  - [ ] total file reads;
-  - [ ] total file writes;
-  - [ ] total web reads;
-  - [ ] timeout/cancel.
-- [ ] P0 Tests:
-  - [ ] simple read/write plan works;
-  - [ ] failed step stops plan;
-  - [ ] output limit enforced;
-  - [ ] timeout enforced;
-  - [ ] cancellation works.
+<!-- src/script/planExecutor.ts: executePlan(ctx, plan, {limits,signal,now}) -> PlanRunResult{ok,outputs,steps,error,errorKind}. Sequential, validatePlan first, resolveStepArgs resolves *From refs (read0.markdown / s.results[0].url) against prior outputs, stop-on-first-failure, bounded output + per-category read/write/web limits + timeout + AbortSignal cancel. Tests: src/script/planExecutor.test.ts. Gate: typecheck/lint/prettier/vitest 609/e2e 30. -->
+
+- [x] P0 Implement sequential plan executor.
+- [x] P0 Store bounded step outputs.
+- [x] P0 Support `contentFrom` / output references safely.
+- [x] P0 Stop on first failure by default.
+- [ ] P1 Add optional `onError` policy only if needed. (not needed yet — stop-on-failure is the v0.1 default; revisit if a real plan needs continue-on-error)
+- [x] P0 Enforce limits:
+  - [x] total steps; (via validatePlan MAX_PLAN_STEPS)
+  - [x] total output bytes;
+  - [x] total file reads;
+  - [x] total file writes;
+  - [x] total web reads;
+  - [x] timeout/cancel.
+- [x] P0 Tests:
+  - [x] simple read/write plan works;
+  - [x] failed step stops plan;
+  - [x] output limit enforced;
+  - [x] timeout enforced;
+  - [x] cancellation works.
 
 ## Phase C4 — Plan approvals and audit
 

@@ -302,19 +302,21 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase B1 — Workspace data model and storage backend
 
-- [ ] P0 Define `WorkspaceFileMeta` type.
-- [ ] P0 Add Dexie tables/indexes for workspace metadata.
-- [ ] P0 Add content storage abstraction:
-  - [ ] OPFS implementation;
-  - [ ] fallback/error path if OPFS unavailable;
-  - [ ] no silent localStorage fallback for file bodies.
-- [ ] P0 Add workspace root namespace rules.
-- [ ] P0 Add feature availability detection.
-- [ ] P0 Tests:
-  - [ ] creates metadata row;
-  - [ ] writes bytes to content backend;
-  - [ ] OPFS unavailable is visible error;
-  - [ ] no file body stored in Redux.
+<!-- src/workspace/types.ts: WorkspaceFileMeta + WorkspaceFileSource + WORKSPACE_ROOT/WORKSPACE_DIRS. src/db/db.ts: workspace_files table (DB_VERSION=7, 'id, &path, kind, updatedAt, *tags', metadata only — bytes go to OPFS). src/workspace/contentStore.ts: ContentStore iface + OpfsContentStore/MemoryContentStore/UnavailableContentStore + isOpfsAvailable + createContentStore (OPFS or unavailable, no localStorage fallback). Tests: src/workspace/contentStore.test.ts, src/workspace/metadata.test.ts, db.test (21 stores). Gate: typecheck/lint/prettier/vitest 535/e2e 28. -->
+
+- [x] P0 Define `WorkspaceFileMeta` type.
+- [x] P0 Add Dexie tables/indexes for workspace metadata.
+- [x] P0 Add content storage abstraction:
+  - [x] OPFS implementation;
+  - [x] fallback/error path if OPFS unavailable;
+  - [x] no silent localStorage fallback for file bodies.
+- [x] P0 Add workspace root namespace rules. (WORKSPACE_ROOT/WORKSPACE_DIRS constants; full path validation is B2)
+- [x] P0 Add feature availability detection.
+- [x] P0 Tests:
+  - [x] creates metadata row;
+  - [x] writes bytes to content backend;
+  - [x] OPFS unavailable is visible error;
+  - [x] no file body stored in Redux. (by design — bytes live only in the ContentStore/OPFS; no Redux slice holds file bodies)
 
 ## Phase B2 — Path validation
 

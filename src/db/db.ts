@@ -27,9 +27,10 @@ import type {
   ModelBlobRow,
   BackupHistoryRow,
 } from './types.ts';
+import type { WorkspaceFileMeta } from '../workspace/types.ts';
 
 export const DB_NAME = 'browserclaw';
-export const DB_VERSION = 6;
+export const DB_VERSION = 7;
 
 /** The old (pre-v5) key under which permissions lived inside skill_state. */
 const LEGACY_PERMISSIONS_KEY = '__permissions__';
@@ -67,6 +68,7 @@ export class BrowserClawDB extends Dexie {
   model_cache_index!: Table<ModelCacheIndexRow, string>;
   model_blobs!: Table<ModelBlobRow, string>;
   backup_history!: Table<BackupHistoryRow, string>;
+  workspace_files!: Table<WorkspaceFileMeta, string>;
 
   constructor() {
     super(DB_NAME);
@@ -173,6 +175,13 @@ export class BrowserClawDB extends Dexie {
     // table only; no data to migrate.
     this.version(6).stores({
       skill_outputs: '[skillId+path], skillId',
+    });
+
+    // v7 — workspace filesystem metadata (Part B). File BYTES live in OPFS via
+    // the ContentStore; this table holds metadata only, keyed by id with a
+    // unique path and indexes for listing/sorting. New table; nothing to migrate.
+    this.version(7).stores({
+      workspace_files: 'id, &path, kind, updatedAt, *tags',
     });
 
     // First-run seed (only fires when the database is created).

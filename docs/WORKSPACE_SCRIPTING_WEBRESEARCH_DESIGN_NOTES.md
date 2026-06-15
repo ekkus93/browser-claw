@@ -251,3 +251,26 @@ and TODO are. Newest decisions at the bottom of each section.
   `bootRuntime().catch` calls it (was console.error only).
 - This handles UNEXPECTED boot failures outside the runtime's own onFailed path
   (DB open, snapshot read, host wiring throwing).
+
+## Part B — Workspace Filesystem
+
+### B1 — data model + storage backend (done)
+- src/workspace/types.ts: WorkspaceFileMeta (id, path, kind, sizeBytes, times,
+  createdBy/updatedBy actors, source, tags, checksum, indexedAt) + WORKSPACE_ROOT
+  ('/workspace') + WORKSPACE_DIRS.
+- DB v6->v7: `workspace_files` table `'id, &path, kind, updatedAt, *tags'` —
+  METADATA ONLY (bytes live in OPFS). &path = unique path index.
+- src/workspace/contentStore.ts: ContentStore interface (read/write/delete/has by
+  id) + OpfsContentStore (navigator.storage.getDirectory, files flat under
+  'workspace-content/') + MemoryContentStore (tests) + UnavailableContentStore
+  (every op throws WorkspaceUnavailableError) + isOpfsAvailable + createContentStore
+  (OPFS or Unavailable — NO silent localStorage fallback). Errors:
+  WorkspaceUnavailableError, WorkspaceContentMissingError.
+- GOTCHA (TS6 again): FileSystemWritableFileStream.write wants ArrayBuffer-backed;
+  pass `bytes.slice()`. And to call a 0-param Unavailable* method with args in a
+  test, type the var as `ContentStore` (fewer-params-satisfies-interface).
+- jsdom has no OPFS -> isOpfsAvailable() false -> createContentStore() returns
+  UnavailableContentStore (tested). Real OPFS path is browser-only.
+- NEXT B-phases: B2 path validation (normalizeWorkspacePath/validateWorkspacePath),
+  B3 CRUD WorkspaceFs (ties metadata + ContentStore), B4 range reads, B5 search/grep,
+  B6 approval+audit, B7 UI, B8 backup.

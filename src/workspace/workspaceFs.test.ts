@@ -177,3 +177,86 @@ describe('WorkspaceFs range reads (B4)', () => {
     );
   });
 });
+
+describe('WorkspaceFs search + grep (B5)', () => {
+  it('searches by path, extension, tag, and content', async () => {
+    await fs.createFile('/workspace/notes/todo.md', 'buy milk', {
+      tags: ['home'],
+    });
+    await fs.createFile('/workspace/notes/plan.txt', 'ship the feature');
+    await fs.createFile(
+      '/workspace/research/opfs.md',
+      'OPFS persistence notes',
+    );
+
+    expect((await fs.search({ pathContains: 'notes' })).length).toBe(2);
+    expect((await fs.search({ extension: 'md' })).map((r) => r.path)).toEqual([
+      '/workspace/notes/todo.md',
+      '/workspace/research/opfs.md',
+    ]);
+    expect((await fs.search({ tag: 'home' })).map((r) => r.path)).toEqual([
+      '/workspace/notes/todo.md',
+    ]);
+    const byText = await fs.search({ textContains: 'persistence' });
+    expect(byText.map((r) => r.path)).toEqual(['/workspace/research/opfs.md']);
+    expect(byText[0]?.snippet).toContain('persistence');
+  });
+
+  it('content search reflects updates and deletions (no stale index)', async () => {
+    await fs.createFile('/workspace/a.md', 'alpha');
+    expect((await fs.search({ textContains: 'alpha' })).length).toBe(1);
+    await fs.updateFile('/workspace/a.md', 'beta');
+    expect((await fs.search({ textContains: 'alpha' })).length).toBe(0);
+    expect((await fs.search({ textContains: 'beta' })).length).toBe(1);
+    await fs.deleteFile('/workspace/a.md');
+    expect((await fs.search({ textContains: 'beta' })).length).toBe(0);
+  });
+
+  it('greps a subtree, returning line numbers and context', async () => {
+    await fs.createFile('/workspace/src/a.txt', 'one\nTWO\nthree');
+    await fs.createFile('/workspace/src/b.txt', 'no match here');
+    await fs.createFile('/workspace/other/c.txt', 'two');
+
+    const hits = await fs.grep({
+      pattern: 'two',
+      path: '/workspace/src',
+      ignoreCase: true,
+      contextLines: 1,
+    });
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toMatchObject({
+      path: '/workspace/src/a.txt',
+      line: 2,
+      text: 'TWO',
+    });
+    expect(hits[0]?.context).toEqual(['one', 'TWO', 'three']);
+  });
+
+  it('treats the pattern literally unless isRegex is set', async () => {
+    await fs.createFile('/workspace/r.txt', 'a.b\naxb');
+    // Literal '.' matches only the first line.
+    expect((await fs.grep({ pattern: 'a.b' })).map((h) => h.line)).toEqual([1]);
+    // As a regex, '.' matches any char -> both lines.
+    expect(
+      (await fs.grep({ pattern: 'a.b', isRegex: true })).map((h) => h.line),
+    ).toEqual([1, 2]);
+  });
+
+  it('skips binary files in content search/grep', async () => {
+    await fs.createFile(
+      '/workspace/bin.dat',
+      new Uint8Array([0x68, 0x00, 0x69]),
+    );
+    await fs.createFile('/workspace/txt.txt', 'hi');
+    expect((await fs.grep({ pattern: 'hi' })).map((h) => h.path)).toEqual([
+      '/workspace/txt.txt',
+    ]);
+  });
+
+  it('throws on an invalid regex pattern', async () => {
+    await fs.createFile('/workspace/x.txt', 'x');
+    await expect(fs.grep({ pattern: '(', isRegex: true })).rejects.toThrow(
+      /invalid pattern/i,
+    );
+  });
+});

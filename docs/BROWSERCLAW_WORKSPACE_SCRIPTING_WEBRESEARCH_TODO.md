@@ -378,21 +378,23 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase B5 — Workspace search and grep
 
-- [ ] P1 Add metadata/path search.
-- [ ] P1 Add text indexing for workspace files.
-- [ ] P1 Add `grep` within one file.
-- [ ] P1 Add `grep` across workspace.
-- [ ] P1 Return snippets with path and line/context.
-- [ ] P1 Add file type filters.
-- [ ] P1 Add max result limits.
-- [ ] P1 Add reindex operation.
-- [ ] P1 Tests:
-  - [ ] search by path;
-  - [ ] search by content;
-  - [ ] grep returns line/snippet;
-  - [ ] binary/large files are skipped or handled safely;
-  - [ ] updated file updates index;
-  - [ ] deleted file removed from index.
+<!-- src/workspace/workspaceFs.ts: search(WorkspaceSearchQuery) (path/tag/extension/text, snippet, limit) + grep(GrepQuery) (literal-by-default/isRegex, ignoreCase, contextLines, path-subtree, limit); on-demand content scan (no FTS in v0.1) so it's always live; isProbablyText skips binary, MAX_SEARCH_FILE_BYTES skips large. Types in src/workspace/types.ts. Tests: src/workspace/workspaceFs.test.ts "search + grep (B5)". Gate: typecheck/lint/prettier/vitest 575/e2e 28. -->
+
+- [x] P1 Add metadata/path search.
+- [x] P1 Add text indexing for workspace files. (v0.1 = on-demand content scan over the metadata table; no separate FTS index yet — always reflects current files)
+- [x] P1 Add `grep` within one file. (via `path` pointing at a file)
+- [x] P1 Add `grep` across workspace.
+- [x] P1 Return snippets with path and line/context.
+- [x] P1 Add file type filters. (extension filter)
+- [x] P1 Add max result limits.
+- [ ] P1 Add reindex operation. (N/A in v0.1 — the scan has no persistent index to rebuild; revisit when SQLite-wasm/FTS lands)
+- [x] P1 Tests:
+  - [x] search by path;
+  - [x] search by content;
+  - [x] grep returns line/snippet;
+  - [x] binary/large files are skipped or handled safely;
+  - [x] updated file updates index;
+  - [x] deleted file removed from index.
 
 ## Phase B6 — Workspace approval and audit
 

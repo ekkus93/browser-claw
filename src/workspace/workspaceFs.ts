@@ -15,10 +15,14 @@ import type { ContentStore } from './contentStore.ts';
 import { WorkspaceContentMissingError } from './contentStore.ts';
 import { normalizeWorkspacePath } from './path.ts';
 import type {
+  GrepQuery,
+  GrepResult,
   TextSnippet,
   WorkspaceActor,
   WorkspaceFileMeta,
   WorkspaceFileSource,
+  WorkspaceSearchQuery,
+  WorkspaceSearchResult,
 } from './types.ts';
 
 export type FileStat = WorkspaceFileMeta;
@@ -29,6 +33,24 @@ export const MAX_RANGE_CHARS = 100_000;
 export const MAX_SNIPPET_LINES = 5_000;
 /** Max serialized bytes a snippet may return (B4). */
 export const MAX_SNIPPET_BYTES = 256_000;
+/** Files larger than this are skipped by content search/grep (B5). */
+export const MAX_SEARCH_FILE_BYTES = 2_000_000;
+/** Default cap on search/grep results (B5). */
+export const DEFAULT_SEARCH_LIMIT = 100;
+
+/** Escape a string for use as a literal inside a RegExp. */
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Heuristic: treat bytes with a NUL in the first 8KB as binary (skip them). */
+function isProbablyText(bytes: Uint8Array): boolean {
+  const limit = Math.min(bytes.byteLength, 8192);
+  for (let i = 0; i < limit; i++) {
+    if (bytes[i] === 0) return false;
+  }
+  return true;
+}
 
 export class WorkspacePathConflictError extends Error {
   constructor(path: string) {
@@ -291,6 +313,110 @@ export class WorkspaceFs {
           !m.path.slice(prefix.length).includes('/'),
       )
       .sort((a, b) => a.path.localeCompare(b.path));
+  }
+
+  /**
+   * Read a file's bytes as text only when it is a non-binary, not-too-large
+   * file — otherwise return null so search/grep skip it safely (B5).
+   */
+  async #readTextForScan(meta: WorkspaceFileMeta): Promise<string | null> {
+    if (meta.kind !== 'file') return null;
+    if (meta.sizeBytes > MAX_SEARCH_FILE_BYTES) return null;
+    const bytes = await this.#content.read(meta.id);
+    if (!isProbablyText(bytes)) return null;
+    return new TextDecoder().decode(bytes);
+  }
+
+  /**
+   * Search workspace files by path, tag, extension, and/or text content (B5).
+   * Content matching is an on-demand scan over the metadata table (no separate
+   * FTS index in v0.1), so it always reflects the current files — an updated
+   * file matches its new content, a deleted file is simply gone from the table.
+   */
+  async search(query: WorkspaceSearchQuery): Promise<WorkspaceSearchResult[]> {
+    const limit = query.limit ?? DEFAULT_SEARCH_LIMIT;
+    const pathNeedle = query.pathContains?.toLowerCase();
+    const textNeedle = query.textContains?.toLowerCase();
+    const ext = query.extension?.replace(/^\./, '').toLowerCase();
+    const all = (await this.#db.workspace_files.toArray()).sort((a, b) =>
+      a.path.localeCompare(b.path),
+    );
+    const results: WorkspaceSearchResult[] = [];
+    for (const meta of all) {
+      if (results.length >= limit) break;
+      if (pathNeedle && !meta.path.toLowerCase().includes(pathNeedle)) continue;
+      if (query.tag && !(meta.tags ?? []).includes(query.tag)) continue;
+      if (ext && !meta.path.toLowerCase().endsWith(`.${ext}`)) continue;
+      if (!textNeedle) {
+        results.push({ path: meta.path, meta });
+        continue;
+      }
+      const text = await this.#readTextForScan(meta);
+      if (text === null) continue;
+      const idx = text.toLowerCase().indexOf(textNeedle);
+      if (idx === -1) continue;
+      const start = Math.max(0, idx - 40);
+      results.push({
+        path: meta.path,
+        meta,
+        snippet: text.slice(start, idx + textNeedle.length + 40),
+      });
+    }
+    return results;
+  }
+
+  /**
+   * Grep for a pattern within one file or across a subtree (B5). The pattern is
+   * a literal unless `isRegex` is set (literal default avoids ReDoS). Binary and
+   * oversized files are skipped. Results are capped.
+   */
+  async grep(query: GrepQuery): Promise<GrepResult[]> {
+    const limit = query.limit ?? DEFAULT_SEARCH_LIMIT;
+    const context = Math.max(0, query.contextLines ?? 0);
+    const flags = query.ignoreCase ? 'i' : '';
+    const source = query.isRegex ? query.pattern : escapeRegExp(query.pattern);
+    let regex: RegExp;
+    try {
+      regex = new RegExp(source, flags);
+    } catch {
+      throw new Error(`grep: invalid pattern: ${query.pattern}`);
+    }
+
+    const all = (await this.#db.workspace_files.toArray()).sort((a, b) =>
+      a.path.localeCompare(b.path),
+    );
+    let scope = all;
+    if (query.path !== undefined) {
+      const target = normalizeWorkspacePath(query.path);
+      scope = all.filter(
+        (m) => m.path === target || m.path.startsWith(`${target}/`),
+      );
+    }
+
+    const results: GrepResult[] = [];
+    for (const meta of scope) {
+      if (results.length >= limit) break;
+      const text = await this.#readTextForScan(meta);
+      if (text === null) continue;
+      const lines = text.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        if (results.length >= limit) break;
+        if (!regex.test(lines[i] ?? '')) continue;
+        const result: GrepResult = {
+          path: meta.path,
+          line: i + 1,
+          text: lines[i] ?? '',
+        };
+        if (context > 0) {
+          result.context = lines.slice(
+            Math.max(0, i - context),
+            i + context + 1,
+          );
+        }
+        results.push(result);
+      }
+    }
+    return results;
   }
 
   async moveFile(from: string, to: string): Promise<FileStat> {

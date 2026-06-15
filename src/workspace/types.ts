@@ -31,6 +31,50 @@ export interface WorkspaceFileSource {
  * Durable metadata for one workspace entry. The file's bytes are addressed by
  * `id` in the ContentStore (a directory has no content). See spec §2.5.
  */
+/** Query for workspace metadata/path/content search (spec §2.7). */
+export interface WorkspaceSearchQuery {
+  /** Case-insensitive substring the path must contain. */
+  pathContains?: string;
+  /** Case-insensitive substring the file's text must contain. */
+  textContains?: string;
+  /** Restrict to files carrying this tag. */
+  tag?: string;
+  /** Restrict to a file extension, e.g. `md` (no dot). */
+  extension?: string;
+  /** Cap the number of results. */
+  limit?: number;
+}
+
+export interface WorkspaceSearchResult {
+  path: string;
+  meta: WorkspaceFileMeta;
+  /** First matching text snippet, when a `textContains` matched. */
+  snippet?: string;
+}
+
+/** Query for grep within one file or across the workspace (spec §2.7). */
+export interface GrepQuery {
+  /** The needle. Treated as a literal unless `isRegex` is set. */
+  pattern: string;
+  /** Restrict to a single file or a directory subtree (path prefix). */
+  path?: string;
+  isRegex?: boolean;
+  ignoreCase?: boolean;
+  /** Lines of surrounding context to include with each match. */
+  contextLines?: number;
+  /** Cap the total number of matches returned. */
+  limit?: number;
+}
+
+export interface GrepResult {
+  path: string;
+  /** 1-based line number of the match. */
+  line: number;
+  text: string;
+  /** Surrounding lines when `contextLines` > 0 (includes the match line). */
+  context?: string[];
+}
+
 /** A line-numbered text excerpt returned by readLines (spec §2.3/§2.7). */
 export interface TextSnippet {
   path: string;

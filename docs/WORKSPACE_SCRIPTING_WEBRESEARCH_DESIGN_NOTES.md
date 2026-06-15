@@ -531,3 +531,18 @@ and TODO are. Newest decisions at the bottom of each section.
 - F3 REMAINING: workspace_write/workspace_delete (wire B6 workspaceOps +
   listener route), web_page_read (+ add ApprovalKind 'web_page_read'),
   extension_permission, bulk_research. Same router/injected-deps pattern.
+
+### F3 (workspace increment) — workspace approval wiring (done, 2026-06-15)
+- src/runtime/workspaceRunner.ts: createWorkspaceEffectHandler(deps {ops:
+  WorkspaceOpsDeps, submit}) — workspace_search runs read-only directly + resolves;
+  workspace_file_op -> parseWorkspaceOp (validates kind + workspace paths; bad ->
+  resolve_effect failure) -> buildWorkspaceProposal -> approvalRequested kind
+  workspace_delete (delete) | workspace_write (else), payloadPreview=JSON op.
+  runApprovedWorkspaceEffect: approved -> executeWorkspaceOp + resolve_effect
+  {ok,stat}; rejected -> rejectWorkspaceOp + resolve_effect(user_rejected);
+  invalid/throw -> resolve_effect failure. parseWorkspaceOp exported + tested.
+- runtimeListeners.ts approvalResolved += route workspace_write/workspace_delete
+  -> deps.resolveWorkspaceApproval (injected). RuntimeListenerDeps += that.
+- Tests: workspaceRunner.test.ts (6) + runtimeListeners.test.ts +1. vitest 768->775.
+- F3 STATUS: plan + sandbox_script + workspace_write/delete wired. REMAINING:
+  web_page_read (+ ApprovalKind), extension_permission, bulk_research.

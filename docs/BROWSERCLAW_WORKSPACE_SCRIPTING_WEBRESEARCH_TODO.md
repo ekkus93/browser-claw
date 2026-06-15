@@ -988,7 +988,7 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 ## Phase F3 — Approval system extensions
 
 - [ ] P1 Support approval types:
-  - [ ] workspace write/delete; <!-- TODO: workspace effect handler (B6 workspaceOps) + listener route for workspace_write/workspace_delete kinds -->
+  - [x] workspace write/delete; <!-- src/runtime/workspaceRunner.ts: createWorkspaceEffectHandler (parseWorkspaceOp -> buildWorkspaceProposal -> approvalRequested workspace_write/workspace_delete; read-only workspace_search runs direct) + runApprovedWorkspaceEffect (executeWorkspaceOp / rejectWorkspaceOp). Routed via approvalResolved kinds workspace_write/workspace_delete (F3). -->
   - [x] plan execution; <!-- planRunner.ts createPlanEffectHandler/runApprovedPlanEffect (C5) now ROUTED via runtimeListeners.approvalResolved kind 'plan' (F3) -->
   - [x] sandbox script execution; <!-- src/runtime/sandboxScriptRunner.ts createSandboxScriptEffectHandler/runApprovedSandboxScriptEffect + routed via approvalResolved kind 'sandbox_script' -->
   - [ ] web page read; <!-- TODO: web effect handler (WebResearchService) + approval kind (needs 'web_page_read' added to ApprovalKind) -->
@@ -1000,7 +1000,8 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 - [ ] P1 Tests for each approval type. <!-- DONE for plan + sandbox (sandboxScriptRunner.test.ts + runtimeListeners.test.ts routing); workspace/web/extension/bulk pending with their handlers -->
 
 <!-- F3 (partial) 2026-06-15: wired the two SCRIPT-runtime approval types (plan + sandbox_script) end-to-end through runtimeListeners.approvalResolved (deps.resolvePlanApproval / resolveSandboxApproval, injected). Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 768/103, e2e 30. No Rust. -->
-<!-- F3 REMAINING (next increments): workspace_write/workspace_delete handler (wire B6 workspaceOps + listener route), web_page_read (+ add ApprovalKind), extension_permission, bulk_research. The runtimeListeners.approvalResolved router + injected-deps pattern is the seam to extend. NOTE: registerRuntimeListeners is not yet called by live app wiring (host assembly is a later step). -->
+<!-- F3 workspace increment 2026-06-15: workspace_write/workspace_delete wired via workspaceRunner.ts + approvalResolved route. Gate green (single-threaded): vitest 775/104, e2e 30. -->
+<!-- F3 REMAINING (next increments): web_page_read (+ add ApprovalKind 'web_page_read'), extension host permission ('extension_permission'), bulk_research ('bulk_research'). The runtimeListeners.approvalResolved router + injected-deps pattern is the seam to extend. NOTE: registerRuntimeListeners is not yet called by live app wiring (host assembly is a later step). -->
 
 ## Phase F4 — Audit events and redaction
 

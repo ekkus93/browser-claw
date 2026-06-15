@@ -133,6 +133,28 @@ describe('registerRuntimeListeners', () => {
     });
   });
 
+  it('routes a workspace approval to the workspace resolver (F3)', async () => {
+    const resolveWorkspaceApproval = vi.fn().mockResolvedValue(undefined);
+    const { store } = setup({ resolveWorkspaceApproval });
+    store.dispatch(
+      approvalRequested({
+        id: 'ws-1',
+        kind: 'workspace_delete',
+        title: 'W',
+        risk: 'high',
+        summary: 'delete a file',
+        payloadPreview: '{"kind":"delete","path":"/workspace/a.md"}',
+      }),
+    );
+    store.dispatch(approvalResolved({ id: 'ws-1', status: 'approved' }));
+    await vi.waitFor(() => expect(resolveWorkspaceApproval).toHaveBeenCalled());
+    expect(resolveWorkspaceApproval).toHaveBeenCalledWith({
+      id: 'ws-1',
+      status: 'approved',
+      payloadPreview: '{"kind":"delete","path":"/workspace/a.md"}',
+    });
+  });
+
   it('audits an edit to a tool-call approval', async () => {
     await db.open();
     await db.audit_events.clear();

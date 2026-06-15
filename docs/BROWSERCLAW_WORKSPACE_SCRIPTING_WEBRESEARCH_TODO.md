@@ -1054,13 +1054,15 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase G3 — Web Research UI
 
-- [ ] P1 Add Web Research settings/status area.
-- [ ] P1 Show search provider config status.
-- [ ] P1 Show Chrome extension status.
-- [ ] P1 Show install instructions when extension missing.
-- [ ] P1 Show host permission prompts/results.
-- [ ] P1 Show research bundle output paths.
-- [ ] P1 Show CORS limitation note for BrowserFetch.
+- [x] P1 Add Web Research settings/status area. <!-- src/screens/settings/WebResearchStatus.tsx, embedded as a "Web research" Section in SettingsScreen -->
+- [x] P1 Show search provider config status. <!-- searchProvider {name 'Brave Search', configured} -> Badge Configured/No API key -->
+- [x] P1 Show Chrome extension status. <!-- ExtensionStatus unknown/checking/connected/missing Badge; optional probe() = createExtensionPageReader.isAvailable when wired -->
+- [x] P1 Show install instructions when extension missing. <!-- rounded panel with chrome://extensions + Load unpacked extension/chrome-web-research steps, shown when status !== connected -->
+- [x] P1 Show host permission prompts/results. <!-- CORS/permission note: "each new site asks for permission first" (the extension_permission approval cards from F3 surface the actual prompt/result) -->
+- [x] P1 Show research bundle output paths. <!-- researchPaths[] list (/workspace/research/...) or "No research runs yet." -->
+- [x] P1 Show CORS limitation note for BrowserFetch. <!-- explicit note: in-page Browser Fetch limited by CORS; extension reads pages on your behalf -->
+
+<!-- G3 done 2026-06-15. WebResearchStatus is presentational + probe-injectable (honest: Check button only when a live checker is wired; default shows "Not checked" + install guidance). SettingsScreen passes Brave/not-configured + no probe for now (extension transport assembly is a later host-wiring step). Tests: WebResearchStatus.test.tsx (6). Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 812/109, e2e 30. No Rust. -->
 
 ---
 

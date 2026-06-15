@@ -35,6 +35,7 @@ import { Select } from '../components/ui/Select.tsx';
 import { Input } from '../components/ui/Input.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
+import { WebResearchStatus } from './settings/WebResearchStatus.tsx';
 
 // No-op for placeholder controls that are shown disabled until their behavior
 // is implemented (Phase 10 honesty: a control either works or is visibly
@@ -492,6 +493,12 @@ export default function SettingsScreen() {
               >
                 Reset runtime
               </Button>
+            </Section>
+
+            <Section title="Web research">
+              <WebResearchStatus
+                searchProvider={{ name: 'Brave Search', configured: false }}
+              />
             </Section>
           </div>
         </main>

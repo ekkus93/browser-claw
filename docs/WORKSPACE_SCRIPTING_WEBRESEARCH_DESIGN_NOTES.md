@@ -646,3 +646,21 @@ and TODO are. Newest decisions at the bottom of each section.
   research bundle output paths, CORS note for Browser Fetch (E3). Then G1
   (workspace screen — B7 WorkspaceScreen mostly exists; file tree/preview/search/
   empty/error states). Then E2 (Brave search adapter), PART H QA.
+
+### G3 — Web Research status area (done, 2026-06-15)
+- src/screens/settings/WebResearchStatus.tsx: presentational panel. Props
+  {searchProvider {name, configured}, extension? {available, version?},
+  researchPaths?, probe?}. ExtensionStatus unknown/checking/connected/missing
+  Badge; probe() (= createExtensionPageReader.isAvailable when wired) drives a
+  Check button — only rendered when probe given (HONEST: no dead button).
+  Install panel (chrome://extensions + Load unpacked extension/chrome-web-research)
+  when status !== connected. Research output paths list or "No research runs yet".
+  CORS note for in-page Browser Fetch (E3) + per-site permission note.
+- Embedded in SettingsScreen as a "Web research" Section: searchProvider
+  {name 'Brave Search', configured:false}, no probe yet (extension transport
+  assembly = later host-wiring step).
+- Tests: WebResearchStatus.test.tsx (6). vitest 806->812.
+- PART G STATUS: G2 done, G3 done. REMAINING: G1 (workspace screen — B7
+  WorkspaceScreen already exists at src/screens/WorkspaceScreen.tsx; check what's
+  missing: file tree/list, preview, search/grep UI, empty state, unavailable-
+  storage error state, disable unimplemented actions — all P2).

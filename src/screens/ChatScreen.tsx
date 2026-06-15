@@ -21,6 +21,10 @@ import { ErrorState } from '../components/ui/ErrorState.tsx';
 import { Select } from '../components/ui/Select.tsx';
 import { MessageBubble } from './chat/MessageBubble.tsx';
 import { ApprovalCard } from './chat/ApprovalCard.tsx';
+import { ScriptApprovalCard } from './chat/ScriptApprovalCard.tsx';
+
+/** The two script-runtime approval kinds use the richer script card (G2). */
+const SCRIPT_APPROVAL_KINDS = new Set(['plan', 'sandbox_script']);
 import { ChatComposer } from './chat/ChatComposer.tsx';
 
 export default function ChatScreen() {
@@ -129,17 +133,26 @@ export default function ChatScreen() {
                   at={message.createdAt}
                 />
               ))}
-              {pendingApprovals.map((approval) => (
-                <ApprovalCard
-                  key={approval.id}
-                  approval={approval}
-                  onApprove={(id) => resolve(id, 'approved')}
-                  onReject={(id) => resolve(id, 'rejected')}
-                  onEdit={(id, payloadPreview) =>
-                    dispatch(approvalEdited({ id, payloadPreview }))
-                  }
-                />
-              ))}
+              {pendingApprovals.map((approval) =>
+                SCRIPT_APPROVAL_KINDS.has(approval.kind) ? (
+                  <ScriptApprovalCard
+                    key={approval.id}
+                    approval={approval}
+                    onApprove={(id) => resolve(id, 'approved')}
+                    onReject={(id) => resolve(id, 'rejected')}
+                  />
+                ) : (
+                  <ApprovalCard
+                    key={approval.id}
+                    approval={approval}
+                    onApprove={(id) => resolve(id, 'approved')}
+                    onReject={(id) => resolve(id, 'rejected')}
+                    onEdit={(id, payloadPreview) =>
+                      dispatch(approvalEdited({ id, payloadPreview }))
+                    }
+                  />
+                ),
+              )}
             </>
           )}
           {chatError && (

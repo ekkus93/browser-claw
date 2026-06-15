@@ -1040,15 +1040,17 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase G2 — Script UI
 
-- [ ] P1 Add plan approval card.
-- [ ] P1 Add sandbox script approval card.
-- [ ] P1 Show runtime type clearly:
-  - [ ] Structured Plan DSL v0.1;
-  - [ ] Sandboxed Script Runtime v0.2.
-- [ ] P1 Show code preview for sandbox scripts.
-- [ ] P1 Show requested capabilities and limits.
-- [ ] P1 Show execution progress/results.
-- [ ] P1 Show errors visibly.
+- [x] P1 Add plan approval card. <!-- src/screens/chat/ScriptApprovalCard.tsx PlanDetails (steps/files reads-writes-deletes/urls/capabilities); rendered in ChatScreen for kind 'plan' -->
+- [x] P1 Add sandbox script approval card. <!-- ScriptApprovalCard ScriptDetails; rendered for kind 'sandbox_script' -->
+- [x] P1 Show runtime type clearly: <!-- primary Badge with the runtime label, derived from the validated payload -->
+  - [x] Structured Plan DSL v0.1; <!-- PLAN_RUNTIME_LABEL -->
+  - [x] Sandboxed Script Runtime v0.2. <!-- buildScriptProposal(...).runtime = SANDBOX_RUNTIME_LABEL -->
+- [x] P1 Show code preview for sandbox scripts. <!-- ScriptDetails Code section (codePreview + "(truncated)") -->
+- [x] P1 Show requested capabilities and limits. <!-- Chips(capabilities) + Limits section (timeout/output/reads/writes) + file scopes + network/web -->
+- [x] P1 Show execution progress/results. <!-- optional `outcome` prop (running/completed/failed) -> Result section with tone badge -->
+- [x] P1 Show errors visibly. <!-- failed outcome renders message in text-danger -->
+
+<!-- G2 done 2026-06-15. src/screens/chat/ScriptApprovalCard.tsx (+ test, 6); wired into ChatScreen (SCRIPT_APPROVAL_KINDS routes plan/sandbox_script to it, others to ApprovalCard). Derives PlanProposal/ScriptProposal from the approval payloadPreview; falls back to raw JSON if unparseable. P2 inline cap/limit edit still deferred (View raw toggle shows the JSON). Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 806/108, e2e 30. No Rust. -->
 
 ## Phase G3 — Web Research UI
 

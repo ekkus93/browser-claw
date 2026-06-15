@@ -622,3 +622,27 @@ and TODO are. Newest decisions at the bottom of each section.
   + injected-deps, F4 audit builders + redaction cap. =====
 - ONLY P2 inline cap/limit editing deferred to G2. registerRuntimeListeners + the
   effect ports are assembled into the live app in a later host-wiring step.
+
+### G2 — Script approval cards (done, 2026-06-15) — PART G started
+- src/screens/chat/ScriptApprovalCard.tsx: presentational card for kinds 'plan'
+  + 'sandbox_script'. Derives PlanProposal (validatePlan -> buildPlanProposal) /
+  ScriptProposal (validateScriptRequest -> buildScriptProposal) from
+  approval.payloadPreview; unparseable -> raw-JSON fallback (Exact data). Shows
+  runtime-label primary Badge, risk/status Badge, plan steps/files(read/write/
+  delete color-coded)/urls/caps, OR sandbox reason/code(maxh-48 scroll)/caps/
+  file scopes/network+web/limits. Optional `outcome` prop (running|completed|
+  failed) -> Result badge + danger message. View raw toggle. Approve/Reject
+  (pending only); P2 inline edit still deferred.
+- Matches design system: rounded-card/border-border/bg-surface-subtle, Badge
+  tones (low->success/medium->warning/high->danger), Button variant/size,
+  useState; no Redux inside (callbacks like ApprovalCard).
+- ChatScreen.tsx: SCRIPT_APPROVAL_KINDS set routes plan/sandbox_script ->
+  ScriptApprovalCard, all other kinds -> ApprovalCard (with onEdit). resolve()
+  unchanged (approvalResolved + approvalDismissed).
+- Tests: ScriptApprovalCard.test.tsx (6) via @testing-library/react. vitest 800->806.
+- NEXT G3: Web Research settings/status area — search provider config status
+  (Brave), Chrome extension status (createExtensionPageReader.isAvailable /
+  ping), install instructions when missing, host-permission prompts/results,
+  research bundle output paths, CORS note for Browser Fetch (E3). Then G1
+  (workspace screen — B7 WorkspaceScreen mostly exists; file tree/preview/search/
+  empty/error states). Then E2 (Brave search adapter), PART H QA.

@@ -426,13 +426,15 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase B7 — Workspace UI
 
-- [ ] P2 Add Workspace screen or panel.
-- [ ] P2 Show file tree/list.
-- [ ] P2 Show file preview.
-- [ ] P2 Add search box.
-- [ ] P2 Add create/upload/download actions if desired.
-- [ ] P2 Mark unimplemented actions disabled/future.
-- [ ] P2 Tests for honest empty/error states.
+<!-- src/screens/WorkspaceScreen.tsx (useLiveQuery on workspace_files + WorkspaceFs(createContentStore()) for previews); nav item + route ('/workspace') in navItems.ts + router.tsx; e2e route in e2e/visual.spec.ts. Honest empty state, OPFS-unavailable banner, disabled New file/Upload/Download (Coming soon). Gate: typecheck/lint/prettier/vitest 581/e2e 30. -->
+
+- [x] P2 Add Workspace screen or panel.
+- [x] P2 Show file tree/list. (flat file list with path + size)
+- [x] P2 Show file preview.
+- [x] P2 Add search box. (path filter; content search exists in WorkspaceFs.search, UI wiring later)
+- [ ] P2 Add create/upload/download actions if desired. (rendered but disabled — see next line)
+- [x] P2 Mark unimplemented actions disabled/future. (New file/Upload/Download disabled with "Coming soon")
+- [x] P2 Tests for honest empty/error states. (empty-state copy + OPFS-unavailable banner; e2e visual smoke renders the screen)
 
 ## Phase B8 — Workspace backup/restore
 

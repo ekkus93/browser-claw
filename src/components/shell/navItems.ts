@@ -7,6 +7,7 @@ import {
   ScrollText,
   ShieldCheck,
   Settings,
+  FolderTree,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -26,6 +27,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'models', label: 'Models', path: '/models', icon: Boxes },
   { id: 'storage', label: 'Storage', path: '/storage', icon: Database },
   { id: 'skills', label: 'Skills', path: '/skills', icon: Puzzle },
+  { id: 'workspace', label: 'Workspace', path: '/workspace', icon: FolderTree },
   { id: 'memories', label: 'Memories', path: '/memories', icon: Brain },
   { id: 'audit', label: 'Audit', path: '/audit', icon: ScrollText },
   { id: 'security', label: 'Security', path: '/security', icon: ShieldCheck },

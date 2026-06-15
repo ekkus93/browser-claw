@@ -12,6 +12,7 @@ import ChatScreen from './screens/ChatScreen.tsx';
 import ModelsScreen from './screens/ModelsScreen.tsx';
 import StorageScreen from './screens/StorageScreen.tsx';
 import SkillsScreen from './screens/SkillsScreen.tsx';
+import WorkspaceScreen from './screens/WorkspaceScreen.tsx';
 import MemoriesScreen from './screens/MemoriesScreen.tsx';
 import AuditScreen from './screens/AuditScreen.tsx';
 import SecurityScreen from './screens/SecurityScreen.tsx';
@@ -25,6 +26,7 @@ const SCREEN_OVERRIDES: Record<string, ReactNode> = {
   models: <ModelsScreen />,
   storage: <StorageScreen />,
   skills: <SkillsScreen />,
+  workspace: <WorkspaceScreen />,
   memories: <MemoriesScreen />,
   audit: <AuditScreen />,
   security: <SecurityScreen />,

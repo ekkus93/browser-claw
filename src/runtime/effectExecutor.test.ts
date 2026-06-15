@@ -217,4 +217,72 @@ describe('executeEffect', () => {
     ).rejects.toThrow(/storage/);
     expect(store.getState().runtime.status).toBe('error');
   });
+
+  describe('F2 subsystem proposal effects', () => {
+    const EFFECTS: {
+      effect: Effect;
+      port: keyof EffectPorts;
+      match: RegExp;
+    }[] = [
+      {
+        effect: { type: 'workspace_file_op', id: 'w1', op: {} },
+        port: 'workspace',
+        match: /workspace/,
+      },
+      {
+        effect: { type: 'workspace_search', id: 'w2', query: {} },
+        port: 'workspace',
+        match: /workspace/,
+      },
+      {
+        effect: { type: 'sandbox_script_proposal', id: 's1', request: {} },
+        port: 'sandboxScript',
+        match: /sandbox/,
+      },
+      {
+        effect: { type: 'web_search', id: 'q1', query: 'x' },
+        port: 'web',
+        match: /web/,
+      },
+      {
+        effect: { type: 'web_page_read', id: 'q2', url: 'https://x/a' },
+        port: 'web',
+        match: /web/,
+      },
+      {
+        effect: { type: 'extension_request', id: 'e1', request: {} },
+        port: 'extension',
+        match: /extension/,
+      },
+    ];
+
+    for (const { effect, port, match } of EFFECTS) {
+      it(`routes ${effect.type} to the ${port} port`, async () => {
+        const handler = vi.fn();
+        const { ctx } = makeCtx({ [port]: handler } as EffectPorts);
+        await executeEffect(effect, ctx);
+        expect(handler).toHaveBeenCalledOnce();
+      });
+
+      it(`fails closed when ${effect.type} has no handler`, async () => {
+        await db.open();
+        const { store, ctx } = makeCtx(); // no ports
+        await expect(executeEffect(effect, ctx)).rejects.toThrow(match);
+        expect(store.getState().runtime.status).toBe('error');
+        const audited = await db.audit_events
+          .where('type')
+          .equals('runtime.effect_failed')
+          .toArray();
+        expect(audited.some((e) => e.status === 'failure')).toBe(true);
+      });
+    }
+
+    it('propagates a handler failure (resolved as an error upstream)', async () => {
+      const web = vi.fn(() => Promise.reject(new Error('boom')));
+      const { ctx } = makeCtx({ web });
+      await expect(
+        executeEffect({ type: 'web_search', id: 'q9', query: 'x' }, ctx),
+      ).rejects.toThrow(/boom/);
+    });
+  });
 });

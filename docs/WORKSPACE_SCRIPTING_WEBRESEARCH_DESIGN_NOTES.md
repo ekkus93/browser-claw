@@ -487,3 +487,22 @@ and TODO are. Newest decisions at the bottom of each section.
   read, extension request. Missing handler FAILS CLOSED (effectExecutor failEffect
   precedent); all failures resolve as errors + audit. Tests: missing handler,
   success, failure. effectTypes.ts already has script_plan_proposal (C5).
+
+### F2 — Runtime effects for the new subsystems (done, 2026-06-15)
+- effectTypes.ts Effect union += HOST-SIDE proposal effects (like
+  script_plan_proposal C5): workspace_file_op{op}, workspace_search{query},
+  sandbox_script_proposal{request}, web_search{query,options?},
+  web_page_read{url,options?}, extension_request{request}.
+- effectExecutor.ts EffectPorts += workspace? (file_op|search), sandboxScript?,
+  web? (search|page_read), extension?. executeEffect routes each; a missing port
+  -> failEffect (audit runtime.effect_failed status:failure + runtimeErrored +
+  throw) = FAIL CLOSED. A handler rejection propagates to the host loop.
+- Tests: effectExecutor.test.ts 'F2 subsystem proposal effects' (12: per-effect
+  route-to-port + fail-closed-audited) + handler-failure propagation. vitest 749->762.
+- NEXT F3: wire the REAL port impls + approval. Build the port handlers backed by
+  B6 workspaceOps (buildWorkspaceProposal/executeWorkspaceOp/rejectWorkspaceOp),
+  C4 planRuntime + planRunner, D6 scriptRuntime (proposeScript/runApprovedScript/
+  rejectScript), web (WebResearchService), extension (createExtensionPageReader).
+  Dispatch approvalRequested in the proposal path; run/reject in the
+  approvalResolved listener (runtimeListeners.ts tool_call precedent). ApprovalKind
+  already has workspace_write/workspace_delete/plan/sandbox_script.

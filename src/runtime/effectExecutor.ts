@@ -41,6 +41,18 @@ export interface EffectPorts {
   plan?(
     effect: Extract<Effect, { type: 'script_plan_proposal' }>,
   ): void | Promise<void>;
+  workspace?(
+    effect: Extract<Effect, { type: 'workspace_file_op' | 'workspace_search' }>,
+  ): void | Promise<void>;
+  sandboxScript?(
+    effect: Extract<Effect, { type: 'sandbox_script_proposal' }>,
+  ): void | Promise<void>;
+  web?(
+    effect: Extract<Effect, { type: 'web_search' | 'web_page_read' }>,
+  ): void | Promise<void>;
+  extension?(
+    effect: Extract<Effect, { type: 'extension_request' }>,
+  ): void | Promise<void>;
 }
 
 export interface EffectContext {
@@ -139,6 +151,63 @@ export async function executeEffect(
       const handler = ctx.ports?.plan;
       if (!handler) {
         return failEffect(ctx, effect.type, 'no plan handler is wired', now);
+      }
+      await handler(effect);
+      return;
+    }
+    case 'workspace_file_op':
+    case 'workspace_search': {
+      // Routed to the workspace port, which validates the op/scope and gates
+      // writes/deletes behind approval before running (Part F2/F3). Fails closed.
+      const handler = ctx.ports?.workspace;
+      if (!handler) {
+        return failEffect(
+          ctx,
+          effect.type,
+          'no workspace handler is wired',
+          now,
+        );
+      }
+      await handler(effect);
+      return;
+    }
+    case 'sandbox_script_proposal': {
+      // Routed to the sandbox-script port, which validates the request and gates
+      // it behind approval before running the v0.2 sandbox (Part F2/F3).
+      const handler = ctx.ports?.sandboxScript;
+      if (!handler) {
+        return failEffect(
+          ctx,
+          effect.type,
+          'no sandbox script handler is wired',
+          now,
+        );
+      }
+      await handler(effect);
+      return;
+    }
+    case 'web_search':
+    case 'web_page_read': {
+      // Routed to the web port, which enforces the URL/domain policy and runs
+      // the mediated web-research call (Part F2). Fails closed if unwired.
+      const handler = ctx.ports?.web;
+      if (!handler) {
+        return failEffect(ctx, effect.type, 'no web handler is wired', now);
+      }
+      await handler(effect);
+      return;
+    }
+    case 'extension_request': {
+      // Routed to the extension port, which validates the protocol message and
+      // talks to the companion extension (Part F2). Fails closed if unwired.
+      const handler = ctx.ports?.extension;
+      if (!handler) {
+        return failEffect(
+          ctx,
+          effect.type,
+          'no extension handler is wired',
+          now,
+        );
       }
       await handler(effect);
       return;

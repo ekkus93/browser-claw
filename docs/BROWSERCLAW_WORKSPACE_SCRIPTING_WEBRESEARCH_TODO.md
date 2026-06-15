@@ -971,17 +971,19 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase F2 — Runtime effects
 
-- [ ] P1 Add new effect types or host-side proposal actions for:
-  - [ ] workspace file operation;
-  - [ ] workspace search;
-  - [ ] plan proposal;
-  - [ ] sandbox script proposal;
-  - [ ] web search;
-  - [ ] web page read;
-  - [ ] extension request.
-- [ ] P1 Ensure missing handler fails closed.
-- [ ] P1 Ensure all failures resolve as errors and audit.
-- [ ] P1 Tests for missing handler, success, failure.
+- [x] P1 Add new effect types or host-side proposal actions for: <!-- effectTypes.ts Effect union + effectExecutor.ts ports/routing -->
+  - [x] workspace file operation; <!-- 'workspace_file_op' -> ctx.ports.workspace -->
+  - [x] workspace search; <!-- 'workspace_search' -> ctx.ports.workspace -->
+  - [x] plan proposal; <!-- 'script_plan_proposal' (C5) -> ctx.ports.plan -->
+  - [x] sandbox script proposal; <!-- 'sandbox_script_proposal' -> ctx.ports.sandboxScript -->
+  - [x] web search; <!-- 'web_search' -> ctx.ports.web -->
+  - [x] web page read; <!-- 'web_page_read' -> ctx.ports.web -->
+  - [x] extension request. <!-- 'extension_request' -> ctx.ports.extension -->
+- [x] P1 Ensure missing handler fails closed. <!-- each routes via failEffect (audit runtime.effect_failed + runtimeErrored + throw) when its port is unwired -->
+- [x] P1 Ensure all failures resolve as errors and audit. <!-- failEffect audits+throws; a handler rejection propagates to the host loop (resolved as an effect error upstream) -->
+- [x] P1 Tests for missing handler, success, failure. <!-- effectExecutor.test.ts 'F2 subsystem proposal effects': per-effect route + fail-closed (audited) + handler-failure propagation -->
+
+<!-- F2 done 2026-06-15. Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 762/102, e2e 30. No Rust. These are HOST-SIDE proposal effects (like script_plan_proposal C5), routed to injected ports; F3 wires the real port impls + approval. -->
 
 ## Phase F3 — Approval system extensions
 

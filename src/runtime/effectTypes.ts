@@ -51,6 +51,16 @@ export type Effect =
       id: string;
       plan: unknown;
     }
+  // Host-side proposal effects for the workspace/script/web/extension subsystems
+  // (Part F2). Each is routed to an injected port that validates, gates behind
+  // approval where required, runs the effect, and resolves it with a result.
+  // A missing port FAILS CLOSED (audited + visible error + throw).
+  | { type: 'workspace_file_op'; id: string; op: unknown }
+  | { type: 'workspace_search'; id: string; query: unknown }
+  | { type: 'sandbox_script_proposal'; id: string; request: unknown }
+  | { type: 'web_search'; id: string; query: string; options?: unknown }
+  | { type: 'web_page_read'; id: string; url: string; options?: unknown }
+  | { type: 'extension_request'; id: string; request: unknown }
   | { type: 'runtime_snapshot_save'; id: string; snapshot: unknown };
 
 export type Command =

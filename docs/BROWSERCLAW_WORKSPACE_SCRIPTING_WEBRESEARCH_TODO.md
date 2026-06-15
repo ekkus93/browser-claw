@@ -1030,13 +1030,16 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase G1 — Workspace UI
 
-- [ ] P2 Add workspace navigation screen/panel.
-- [ ] P2 Add file tree/list.
-- [ ] P2 Add file preview.
-- [ ] P2 Add search/grep UI.
-- [ ] P2 Add empty state.
-- [ ] P2 Add error state for unavailable storage.
-- [ ] P2 Disable unimplemented actions.
+- [x] P2 Add workspace navigation screen/panel. <!-- src/screens/WorkspaceScreen.tsx (B7), nav 'workspace' + router SCREEN_OVERRIDES -->
+- [x] P2 Add file tree/list. <!-- left panel: workspace_files via useLiveQuery, file rows with path + size badge -->
+- [x] P2 Add file preview. <!-- right panel: fs.readText(selected) -> <pre>; preview error in text-danger -->
+- [x] P2 Add search/grep UI. <!-- path filter Input + NEW content-grep form (fs.grep ignoreCase -> hit list path:line + text; Clear); disabled when !opfs -->
+- [x] P2 Add empty state. <!-- "The workspace is empty…" / "No files match this filter." / "No matches found." -->
+- [x] P2 Add error state for unavailable storage. <!-- role=status OPFS-unavailable banner when !isOpfsAvailable() -->
+- [x] P2 Disable unimplemented actions. <!-- New file / Upload / Download buttons disabled (title "Coming soon"); content search disabled without OPFS -->
+
+<!-- G1 done 2026-06-15. B7 already covered nav/list/preview/empty/error/disabled; this added the real content search/grep UI (was only a client-side path filter). Tests: WorkspaceScreen.test.tsx (3). PART G COMPLETE (G1+G2+G3). -->
+<!-- NEXT: E2 (Brave search adapter) + PART H (QA gate). -->
 
 ## Phase G2 — Script UI
 

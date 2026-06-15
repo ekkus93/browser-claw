@@ -7,6 +7,7 @@ import {
   isOpfsAvailable,
 } from '../workspace/contentStore.ts';
 import { WorkspaceFs } from '../workspace/workspaceFs.ts';
+import type { GrepResult } from '../workspace/types.ts';
 import { Badge } from '../components/ui/Badge.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { Input } from '../components/ui/Input.tsx';
@@ -28,6 +29,10 @@ export default function WorkspaceScreen() {
   const [selected, setSelected] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [grepPattern, setGrepPattern] = useState('');
+  const [hits, setHits] = useState<GrepResult[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const files =
     useLiveQuery(() => db.workspace_files.orderBy('path').toArray(), []) ?? [];
@@ -48,6 +53,30 @@ export default function WorkspaceScreen() {
         error instanceof Error ? error.message : 'Could not read the file.',
       );
     }
+  }
+
+  async function runGrep(): Promise<void> {
+    const pattern = grepPattern.trim();
+    if (pattern.length === 0) {
+      setHits(null);
+      return;
+    }
+    setSearching(true);
+    setSearchError(null);
+    try {
+      setHits(await fs.grep({ pattern, ignoreCase: true }));
+    } catch (error) {
+      setHits([]);
+      setSearchError(error instanceof Error ? error.message : 'Search failed.');
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  function clearGrep(): void {
+    setGrepPattern('');
+    setHits(null);
+    setSearchError(null);
   }
 
   return (
@@ -88,9 +117,62 @@ export default function WorkspaceScreen() {
         placeholder="/workspace/…"
       />
 
+      <form
+        className="flex items-end gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void runGrep();
+        }}
+      >
+        <Input
+          label="Search file contents"
+          value={grepPattern}
+          onChange={(event) => setGrepPattern(event.target.value)}
+          placeholder="text to grep…"
+          className="flex-1"
+          disabled={!opfs}
+        />
+        <Button type="submit" size="sm" variant="secondary" disabled={!opfs}>
+          {searching ? 'Searching…' : 'Search'}
+        </Button>
+        {hits !== null && (
+          <Button type="button" size="sm" variant="ghost" onClick={clearGrep}>
+            Clear
+          </Button>
+        )}
+      </form>
+
       <div className="grid min-h-0 flex-1 grid-cols-[320px_1fr] gap-4">
         <div className="min-h-0 overflow-auto rounded-card border border-border bg-surface">
-          {visible.length === 0 ? (
+          {hits !== null ? (
+            searchError !== null ? (
+              <p className="p-4 text-sm text-danger">{searchError}</p>
+            ) : hits.length === 0 ? (
+              <p className="p-4 text-sm text-muted">No matches found.</p>
+            ) : (
+              <ul>
+                {hits.map((hit, index) => (
+                  <li key={`${hit.path}:${hit.line}:${index}`}>
+                    <button
+                      type="button"
+                      onClick={() => void open(hit.path)}
+                      className={cn(
+                        'flex w-full flex-col gap-0.5 border-b border-border px-3 py-2 text-left hover:bg-surface-subtle',
+                        selected === hit.path && 'bg-primary-subtle',
+                      )}
+                    >
+                      <span className="truncate text-xs text-muted">
+                        {hit.path}:{hit.line}
+                      </span>
+                      <span className="truncate font-mono text-xs text-text">
+                        {hit.text}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : visible.length === 0 ? (
             <p className="p-4 text-sm text-muted">
               {files.length === 0
                 ? 'The workspace is empty. Agent runs and research bundles will create files here.'

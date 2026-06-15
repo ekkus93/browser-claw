@@ -664,3 +664,19 @@ and TODO are. Newest decisions at the bottom of each section.
   WorkspaceScreen already exists at src/screens/WorkspaceScreen.tsx; check what's
   missing: file tree/list, preview, search/grep UI, empty state, unavailable-
   storage error state, disable unimplemented actions — all P2).
+
+### G1 — Workspace UI search/grep (done, 2026-06-15) — PART G COMPLETE
+- WorkspaceScreen (B7) already had nav/file-list/preview/empty/OPFS-error-banner/
+  disabled-actions. ADDED the real content search/grep UI (was only a client-side
+  path filter): a form with "Search file contents" Input + Search button ->
+  fs.grep({pattern, ignoreCase}) -> hit list (path:line + text snippet, click
+  opens file); Clear resets. Disabled when !isOpfsAvailable() (grep reads content
+  via ContentStore; jsdom/no-OPFS -> disabled, honest).
+- Tests: WorkspaceScreen.test.tsx (3): grep UI renders, disabled-without-OPFS +
+  banner, unimplemented actions disabled. vitest 812->815.
+- ===== PART G COMPLETE: G1 workspace UI (B7 + grep), G2 script approval cards
+  (plan+sandbox), G3 web research status. =====
+- REMAINING in this TODO: E2 (Brave search adapter) + PART H (QA gate H1 unit /
+  H2 integration / H3 manual). Also still pending: the live host-wiring step that
+  assembles registerRuntimeListeners + effect ports + extension transport into the
+  real store (the F3/G3 bridges are built + tested in isolation).

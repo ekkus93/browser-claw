@@ -702,28 +702,31 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase D6 — Script approvals and audit
 
-- [ ] P0 Add script approval card.
-- [ ] P0 Show:
-  - [ ] runtime `Sandboxed Script Runtime v0.2`;
-  - [ ] reason;
-  - [ ] code preview;
-  - [ ] capabilities;
-  - [ ] resource limits;
-  - [ ] risk;
-  - [ ] network/web permissions;
-  - [ ] file scopes.
-- [ ] P0 Support approve/reject.
-- [ ] P1 Support editing capabilities/limits before approval.
-- [ ] P0 Audit:
-  - [ ] `script.sandbox_requested`;
-  - [ ] `script.sandbox_approved`;
-  - [ ] `script.sandbox_rejected`;
-  - [ ] `script.sandbox_started`;
-  - [ ] `script.sandbox_completed`;
-  - [ ] `script.sandbox_failed`;
-  - [ ] `script.sandbox_timeout`;
-  - [ ] `script.sandbox_cancelled`.
-- [ ] P0 Tests for approval/audit flow.
+- [x] P0 Add script approval card. <!-- src/script/scriptRuntime.ts: buildScriptProposal/proposeScript/rejectScript/runApprovedScript (proposal model + audit; Redux-agnostic). Visual card = G2. -->
+- [x] P0 Show: <!-- ScriptProposal fields -->
+  - [x] runtime `Sandboxed Script Runtime v0.2`; <!-- proposal.runtime = SANDBOX_RUNTIME_LABEL -->
+  - [x] reason; <!-- proposal.reason -->
+  - [x] code preview; <!-- proposal.codePreview (CODE_PREVIEW_LIMIT 2000) + codeTruncated -->
+  - [x] capabilities; <!-- proposal.capabilities summary (workspace.read/write, web.search/readPage, memory.read, skill.tool, network.mediated) -->
+  - [x] resource limits; <!-- proposal.limits (full ScriptLimits) -->
+  - [x] risk; <!-- proposal.risk (from validateScriptRequest) -->
+  - [x] network/web permissions; <!-- proposal.network + proposal.webPermissions {search, read[]} -->
+  - [x] file scopes. <!-- proposal.fileScopes {reads[], writes[]} -->
+- [x] P0 Support approve/reject. <!-- runApprovedScript (run) / rejectScript (audit only, nothing runs) -->
+- [ ] P1 Support editing capabilities/limits before approval. <!-- DEFERRED to G2 UI: the request is re-validated in runApprovedScript, so an edited manifest is re-checked; the edit affordance itself is the approval card (G2). -->
+- [x] P0 Audit: <!-- recordAudit, source 'script' -->
+  - [x] `script.sandbox_requested`; <!-- proposeScript (valid) -->
+  - [x] `script.sandbox_approved`; <!-- runApprovedScript -->
+  - [x] `script.sandbox_rejected`; <!-- rejectScript + proposeScript (invalid) -->
+  - [x] `script.sandbox_started`; <!-- runApprovedScript -->
+  - [x] `script.sandbox_completed`; <!-- result.ok -->
+  - [x] `script.sandbox_failed`; <!-- script_error/limit_exceeded/internal_error -->
+  - [x] `script.sandbox_timeout`; <!-- errorKind 'timeout' -->
+  - [x] `script.sandbox_cancelled`; <!-- errorKind 'cancelled' -->
+- [x] P0 Tests for approval/audit flow. <!-- src/script/scriptRuntime.test.ts (10): proposal preview+truncate, requested/rejected audits, full success lifecycle, capability_used audit, timeout, cancellation, failure -->
+
+<!-- D6 done 2026-06-15 — PART D COMPLETE (D1-D6). Per-capability usage audited as script.capability_used/capability_denied. P1 inline capability/limit editing left to G2 (UI). Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 736/101, e2e 30. No Rust. -->
+<!-- NEXT: Part F (Redux wiring of the workspace/plan/script proposals + capability model + audit builders), Part G (UI cards incl. G2 script approval), E2 (search — user names Tavily/Brave/Exa), Part H (QA gate). -->
 
 ---
 

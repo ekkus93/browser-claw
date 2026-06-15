@@ -439,3 +439,31 @@ and TODO are. Newest decisions at the bottom of each section.
   All D3 escape tests + D4 + D5 pass. injectedModule param is now QuickJSWASMModule.
 - GOTCHA: erasableSyntaxOnly (TS6) forbids constructor parameter properties —
   declare the field + assign in the body (LimitTracker.limits).
+
+### D6 — Sandboxed script approvals + audit (done, 2026-06-15) — PART D COMPLETE
+- src/script/scriptRuntime.ts (mirrors planRuntime.ts; Redux-agnostic via audit sink):
+  - buildScriptProposal(request, risk) -> ScriptProposal {runtime
+    SANDBOX_RUNTIME_LABEL, title, reason, codePreview(<=2000)+codeTruncated, risk,
+    capabilities[] summary, fileScopes{reads,writes}, webPermissions{search,read},
+    network, limits}.
+  - proposeScript(ctx, input): validateScriptRequest -> audit
+    script.sandbox_requested (valid) | script.sandbox_rejected (invalid) ->
+    {ok,proposal}|{ok:false,errors}.
+  - rejectScript(ctx, request): audit script.sandbox_rejected (runs nothing).
+  - runApprovedScript(ctx, input, {signal?,now?}): re-validate -> audit
+    sandbox_approved + sandbox_started -> runSandboxWithLimits (onAudit ->
+    script.capability_used/capability_denied per call) -> terminal audit by
+    errorKind: ok=sandbox_completed, timeout=sandbox_timeout,
+    cancelled=sandbox_cancelled, else sandbox_failed.
+  - ScriptRuntimeContext = SandboxCapabilityContext (fs/db/dispatch/web?/toolCtx?).
+- Tests: src/script/scriptRuntime.test.ts (10). vitest 726->736.
+- P1 inline capability/limit editing deferred to G2 (UI); runApprovedScript
+  re-validates so an edited manifest is always re-checked.
+- ===== PART D (D1-D6) COMPLETE. Sandboxed v0.2 script runtime: policy/routing,
+  request schema, QuickJS-in-WASM sandbox (deferred-promise bridge), mediated
+  capabilities, resource limits, approvals+audit. All green, all pushed. =====
+- NEXT: Part F (Redux integration — capability model F1, runtime effects F2,
+  approval wiring F3 [wire workspaceOps + planRuntime + planRunner + scriptRuntime
+  into approvalRequested/approvalResolved listeners], audit builders F4), Part G
+  (UI: G1 workspace done-ish, G2 script approval cards [plan+sandbox], G3 web
+  research status), E2 (search — user names Tavily/Brave/Exa), Part H (QA gate).

@@ -459,28 +459,30 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase C1 — Plan schema and validator
 
-- [ ] P0 Define `BrowserClawPlan` schema.
-- [ ] P0 Define plan versioning.
-- [ ] P0 Define `PlanStep` union for supported operations.
-- [ ] P0 Validate:
-  - [ ] plan type;
-  - [ ] version;
-  - [ ] title/reason;
-  - [ ] step IDs unique;
-  - [ ] op names known;
-  - [ ] input references valid;
-  - [ ] path safety;
-  - [ ] URL safety;
-  - [ ] max steps;
-  - [ ] max outputs;
-  - [ ] capability requirements.
-- [ ] P0 Tests:
-  - [ ] valid plan accepted;
-  - [ ] unknown op rejected;
-  - [ ] duplicate step ID rejected;
-  - [ ] unsafe path rejected;
-  - [ ] invalid reference rejected;
-  - [ ] excessive step count rejected.
+<!-- src/script/planSchema.ts: BrowserClawPlan/PlanStep/PLAN_TYPE/PLAN_VERSION/KNOWN_OPS; validatePlan (type/version/title/reason/unique ids/known op/path safety via isValidWorkspacePath/url safety via classifyFetchUrl/*From refs point at earlier step/MAX_PLAN_STEPS/output ceilings) + planCapabilities. Tests: src/script/planSchema.test.ts. Gate: typecheck/lint/prettier/vitest 596/e2e 30. -->
+
+- [x] P0 Define `BrowserClawPlan` schema.
+- [x] P0 Define plan versioning.
+- [x] P0 Define `PlanStep` union for supported operations. (PlanStep = id+op(KNOWN_OPS)+fields; structural, not a per-op discriminated union — validated by op category)
+- [x] P0 Validate:
+  - [x] plan type;
+  - [x] version;
+  - [x] title/reason;
+  - [x] step IDs unique;
+  - [x] op names known;
+  - [x] input references valid;
+  - [x] path safety;
+  - [x] URL safety;
+  - [x] max steps;
+  - [x] max outputs;
+  - [x] capability requirements. (planCapabilities derives them)
+- [x] P0 Tests:
+  - [x] valid plan accepted;
+  - [x] unknown op rejected;
+  - [x] duplicate step ID rejected;
+  - [x] unsafe path rejected;
+  - [x] invalid reference rejected;
+  - [x] excessive step count rejected.
 
 ## Phase C2 — Plan operation implementations
 

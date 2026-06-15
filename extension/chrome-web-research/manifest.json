@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "BrowserClaw Web Research Companion",
+  "version": "0.1.0",
+  "description": "Reads web pages for BrowserClaw and returns sanitized text/markdown. Read-only; never fills forms, reads cookies, or scrapes logged-in pages.",
+  "permissions": ["tabs", "scripting", "storage"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "externally_connectable": {
+    "matches": ["http://localhost:5173/*", "http://127.0.0.1:5173/*"]
+  },
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  }
+}

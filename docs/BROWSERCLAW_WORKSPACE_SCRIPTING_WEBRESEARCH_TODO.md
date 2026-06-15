@@ -765,15 +765,17 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase E4 — Chrome extension project scaffold
 
-- [ ] P0 Add extension package/folder, e.g. `extension/chrome-web-research/`.
-- [ ] P0 Add Manifest V3 manifest.
-- [ ] P0 Add background service worker.
-- [ ] P0 Add content extraction script.
-- [ ] P0 Add build script.
-- [ ] P0 Add dev install instructions.
-- [ ] P0 Add extension ID/config handling for dev/prod.
-- [ ] P0 Ensure production `externally_connectable` only allows BrowserClaw origin.
-- [ ] P0 Include `http://localhost:5173/*` for dev only.
+<!-- extension/chrome-web-research/: manifest.json (MV3, least-privilege, externally_connectable dev origins), service-worker.js (sender-origin check + ping/get_status; read_page in E7), content-extract.js (extraction stub), README.md (dev install). src/extension/config.ts: EXTENSION_PROTOCOL_VERSION/DEV_ORIGINS/PROD_ORIGIN_PLACEHOLDER/allowedExternalOrigins/isValidExtensionId. tsconfig.app resolveJsonModule:true (manifest import). Tests: src/extension/config.test.ts (config + manifest invariants). eslint only lints .ts/.tsx so extension/*.js is out of the app lint program (separate build target). Gate: typecheck/lint/prettier/vitest 636/e2e 30. -->
+
+- [x] P0 Add extension package/folder, e.g. `extension/chrome-web-research/`.
+- [x] P0 Add Manifest V3 manifest.
+- [x] P0 Add background service worker.
+- [x] P0 Add content extraction script.
+- [ ] P0 Add build script. (no bundler needed for v0.1 — the extension is plain JS loaded unpacked; a manifest-substitution build for the prod origin is added with the release step / Docker E2E in E9)
+- [x] P0 Add dev install instructions. (README.md)
+- [x] P0 Add extension ID/config handling for dev/prod. (src/extension/config.ts: isValidExtensionId + allowedExternalOrigins)
+- [x] P0 Ensure production `externally_connectable` only allows BrowserClaw origin. (dev origins only in the manifest; prod appended at release via config, never a wildcard — tested)
+- [x] P0 Include `http://localhost:5173/*` for dev only.
 
 ## Phase E5 — Extension permissions
 

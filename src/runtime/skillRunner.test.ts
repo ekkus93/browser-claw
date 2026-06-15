@@ -51,6 +51,7 @@ describe('createSkillEffectHandler', () => {
     await db.open();
     await db.skills.clear();
     await db.skill_files.clear();
+    await db.skill_outputs.clear();
     await db.skill_state.clear();
     await db.skill_permissions.clear();
   });

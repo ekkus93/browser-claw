@@ -81,18 +81,20 @@ P2 = polish, robustness, or future-facing hardening
 
 ### A1.3 Make skill package files read-only
 
-- [ ] P0 Separate installed package assets from mutable skill state/output.
-- [ ] P0 Remove or restrict `SkillFs.writeText()` so it cannot write to `skill_files` package assets.
-- [ ] P0 If generated files are needed, write only to:
+<!-- src/db/types.ts: SkillOutputRow; src/db/db.ts: skill_outputs table (DB_VERSION=6); src/skills/skillFs.ts: writeText -> skill_outputs (never skill_files), readText reads output-then-package; src/skills/skillManager.ts: uninstall + clearState reinstall clear skill_outputs (install/reinstall remains the only writer of skill_files); src/backup/backupService.ts: skill_outputs in COLLECTIONS/KEY_FIELDS. Tests: src/skills/skillFs.test.ts ("writeText never mutates installed package files", "generated output shadows package asset"); db.test.ts 20 stores. Gate: typecheck/lint/prettier/vitest 464/e2e 28. -->
+
+- [x] P0 Separate installed package assets from mutable skill state/output.
+- [x] P0 Remove or restrict `SkillFs.writeText()` so it cannot write to `skill_files` package assets.
+- [x] P0 If generated files are needed, write only to:
   - [ ] `skill_state`; or
-  - [ ] explicit `skill_outputs`; or
+  - [x] explicit `skill_outputs`; or
   - [ ] approved `/workspace/...` path.
-- [ ] P0 Skill package install/reinstall remains the only path that mutates package files.
-- [ ] P0 Tests:
-  - [ ] skill cannot overwrite installed package file;
-  - [ ] skill can write allowed private state;
-  - [ ] reinstall updates package files;
-  - [ ] stale package files removed on reinstall.
+- [x] P0 Skill package install/reinstall remains the only path that mutates package files.
+- [x] P0 Tests:
+  - [x] skill cannot overwrite installed package file;
+  - [x] skill can write allowed private state;
+  - [x] reinstall updates package files;
+  - [x] stale package files removed on reinstall.
 
 ### A1.4 Harden existing Page Reader/browser fetch tool
 

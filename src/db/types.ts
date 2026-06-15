@@ -109,7 +109,23 @@ export interface SkillRow {
   installedAt: number;
 }
 
+/**
+ * Installed skill package asset — READ-ONLY (hardening A1.3). Only skill
+ * install/reinstall writes this store; SkillFs never mutates it. Generated
+ * artifacts go to `skill_outputs` instead.
+ */
 export interface SkillFileRow {
+  skillId: string;
+  path: string;
+  content: string;
+}
+
+/**
+ * Mutable skill-generated file artifact (hardening A1.3). This is where
+ * `SkillFs.writeText()` writes, keeping installed package assets (`skill_files`)
+ * immutable. Same shape as a package file but a distinct, writable store.
+ */
+export interface SkillOutputRow {
   skillId: string;
   path: string;
   content: string;

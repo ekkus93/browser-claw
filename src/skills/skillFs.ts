@@ -8,6 +8,11 @@ import type { SkillPermissions } from './skillTypes.ts';
  * double-underscore "system" namespace is reserved for the host (a skill can't
  * read or write it), so a skill can never escalate by rewriting its own
  * permissions. See BROWSERCLAW hardening TODO 7.2.
+ *
+ * Installed package assets (`skill_files`) are READ-ONLY (hardening A1.3):
+ * `writeText` writes to the separate `skill_outputs` store and never mutates a
+ * package file. `readText` returns a generated output if present, otherwise the
+ * package asset.
  */
 
 /**
@@ -87,15 +92,20 @@ export class SkillFs {
     if (!isPathAllowed(path, this.#permissions.read)) {
       throw new Error(`Skill read denied: ${path}`);
     }
-    const row = await this.#db.skill_files.get([this.#skillId, path]);
-    return row?.content ?? null;
+    // A generated output shadows a package asset at the same path; fall back to
+    // the read-only installed package file.
+    const output = await this.#db.skill_outputs.get([this.#skillId, path]);
+    if (output) return output.content;
+    const pkg = await this.#db.skill_files.get([this.#skillId, path]);
+    return pkg?.content ?? null;
   }
 
   async writeText(path: string, content: string): Promise<void> {
     if (!isPathAllowed(path, this.#permissions.write)) {
       throw new Error(`Skill write denied: ${path}`);
     }
-    await this.#db.skill_files.put({ skillId: this.#skillId, path, content });
+    // Writes go to the artifacts store — NEVER the read-only package assets.
+    await this.#db.skill_outputs.put({ skillId: this.#skillId, path, content });
   }
 
   async getState(key: string): Promise<unknown> {

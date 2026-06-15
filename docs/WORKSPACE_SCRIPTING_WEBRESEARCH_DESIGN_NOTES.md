@@ -81,3 +81,17 @@ and TODO are. Newest decisions at the bottom of each section.
   index, so the migration must `.filter(r => r.key === '__permissions__')`, not
   `.where('key')` (which throws SchemaError).
 - SkillFs reserved-key guard (`__`-prefix) stays as defense in depth.
+
+### A1.3 — installed skill package files are read-only (done)
+- New writable `skill_outputs` table (`db/types.ts SkillOutputRow`, `db/db.ts`
+  **DB_VERSION 5 -> 6**, add-table-only migration). `SkillFs.writeText` now
+  writes there and NEVER touches `skill_files`; `readText` returns a generated
+  output if present else the read-only package asset (output shadows package).
+- `skillManager` uninstall + clearState-reinstall clear skill_outputs;
+  install/reinstall remains the ONLY writer of `skill_files`.
+- Backup: `skill_outputs` added to COLLECTIONS + KEY_FIELDS (`['skillId','path']`).
+- NOTE: there is still NO `skill_fs_write_text` runtime effect, so skills can't
+  write files from the runtime yet anyway — this hardens the SkillFs API itself
+  so future wiring can't mutate package assets. The `skill_state` and
+  `/workspace` write targets in the spec are left for later (skill_state already
+  works via setState; /workspace lands in Part B).

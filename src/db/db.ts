@@ -17,6 +17,7 @@ import type {
   ScheduleRow,
   SkillRow,
   SkillFileRow,
+  SkillOutputRow,
   SkillStateRow,
   SkillPermissionsRow,
   AuditEventRow,
@@ -28,7 +29,7 @@ import type {
 } from './types.ts';
 
 export const DB_NAME = 'browserclaw';
-export const DB_VERSION = 5;
+export const DB_VERSION = 6;
 
 /** The old (pre-v5) key under which permissions lived inside skill_state. */
 const LEGACY_PERMISSIONS_KEY = '__permissions__';
@@ -57,6 +58,7 @@ export class BrowserClawDB extends Dexie {
   schedules!: Table<ScheduleRow, string>;
   skills!: Table<SkillRow, string>;
   skill_files!: Table<SkillFileRow, [string, string]>;
+  skill_outputs!: Table<SkillOutputRow, [string, string]>;
   skill_state!: Table<SkillStateRow, [string, string]>;
   skill_permissions!: Table<SkillPermissionsRow, string>;
   audit_events!: Table<AuditEventRow, string>;
@@ -165,6 +167,13 @@ export class BrowserClawDB extends Dexie {
           await stateTable.delete([row.skillId, LEGACY_PERMISSIONS_KEY]);
         }
       });
+
+    // v6 — separate, writable store for skill-generated artifacts (hardening
+    // A1.3) so installed package assets (`skill_files`) stay read-only. New
+    // table only; no data to migrate.
+    this.version(6).stores({
+      skill_outputs: '[skillId+path], skillId',
+    });
 
     // First-run seed (only fires when the database is created).
     this.on('populate', (tx) => {

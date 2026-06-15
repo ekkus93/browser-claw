@@ -94,6 +94,7 @@ export function createSkillManager(deps: SkillManagerDeps) {
         await db.skill_files.where('skillId').equals(id).delete();
         if (options.clearState) {
           await db.skill_state.where('skillId').equals(id).delete();
+          await db.skill_outputs.where('skillId').equals(id).delete();
         }
       }
       const files = Object.entries(parsed.files).map(([path, content]) => ({
@@ -145,6 +146,7 @@ export function createSkillManager(deps: SkillManagerDeps) {
     async uninstall(id: string): Promise<void> {
       await db.skills.delete(id);
       await db.skill_files.where('skillId').equals(id).delete();
+      await db.skill_outputs.where('skillId').equals(id).delete();
       await db.skill_state.where('skillId').equals(id).delete();
       await db.skill_permissions.delete(id);
       audit(deps, 'skill_uninstalled', `Uninstalled skill ${id}`, {

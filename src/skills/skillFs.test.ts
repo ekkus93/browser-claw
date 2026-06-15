@@ -68,6 +68,7 @@ describe('SkillFs — runtime enforcement', () => {
   afterEach(async () => {
     await db.skill_state.clear();
     await db.skill_files.clear();
+    await db.skill_outputs.clear();
   });
 
   it('rejects traversal on read and write', async () => {
@@ -85,6 +86,41 @@ describe('SkillFs — runtime enforcement', () => {
     await fs.writeText('skills/s/out/note.txt', 'hi');
     await fs.setState('count', 7);
     expect(await fs.getState('count')).toBe(7);
+  });
+
+  it('writeText never mutates installed package files (A1.3)', async () => {
+    // An installed package asset (read-only) at the same path.
+    await db.skill_files.put({
+      skillId: 's',
+      path: 'skills/s/out/note.txt',
+      content: 'package original',
+    });
+    const fs = new SkillFs(db, 's', permissions);
+    await fs.writeText('skills/s/out/note.txt', 'generated');
+
+    // The package file is untouched; the write landed in skill_outputs.
+    const pkg = await db.skill_files.get(['s', 'skills/s/out/note.txt']);
+    expect(pkg?.content).toBe('package original');
+    const out = await db.skill_outputs.get(['s', 'skills/s/out/note.txt']);
+    expect(out?.content).toBe('generated');
+  });
+
+  it('readText returns a package asset, and a generated output shadows it', async () => {
+    const readWrite: SkillPermissions = {
+      tools: [],
+      read: ['skills/s/shared/**'],
+      write: ['skills/s/shared/**'],
+      network: false,
+    };
+    await db.skill_files.put({
+      skillId: 's',
+      path: 'skills/s/shared/a.txt',
+      content: 'from package',
+    });
+    const fs = new SkillFs(db, 's', readWrite);
+    expect(await fs.readText('skills/s/shared/a.txt')).toBe('from package');
+    await fs.writeText('skills/s/shared/a.txt', 'from output');
+    expect(await fs.readText('skills/s/shared/a.txt')).toBe('from output');
   });
 
   it('forbids a skill from reading or writing reserved state keys', async () => {

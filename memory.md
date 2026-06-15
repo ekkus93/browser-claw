@@ -1307,3 +1307,15 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - No circular import: db.ts imports isSkillPermissions (value) from skillTypes (leaf, no db import).
 - Gate ALL GREEN: typecheck, lint, prettier, vitest 462/76 files, e2e 28. No Rust touched.
 - NEXT loop item: A1.3 — make installed skill package files (skill_files) read-only (SkillFs.writeText must not mutate package assets; route generated files to skill_state/skill_outputs/approved workspace path).
+
+## 2026-06-15T06:53:47Z - Claude Opus 4.8 - Ralph: A1.3 (skill package files read-only)
+- A1.3 DONE: installed skill package assets (`skill_files`) are now read-only via SkillFs.
+- NEW writable table `skill_outputs` (`db/types.ts SkillOutputRow {skillId,path,content}`, **DB_VERSION 5 -> 6**, add-table-only migration `skill_outputs: '[skillId+path], skillId'`).
+- `skillFs.ts`: `writeText` now writes to `skill_outputs` (NEVER skill_files); `readText` returns a generated output if present, else the read-only package file (output shadows package at same path). Reserved-key guard unchanged.
+- `skillManager.ts`: uninstall deletes skill_outputs; clearState-reinstall clears skill_outputs alongside skill_state; install/reinstall remains the ONLY writer of skill_files.
+- `backupService.ts`: skill_outputs in COLLECTIONS + KEY_FIELDS (['skillId','path']).
+- Tests: skillFs.test.ts +2 ("writeText never mutates installed package files (A1.3)", "readText returns package asset, generated output shadows it"). db.test 19->20 stores. Added skill_outputs.clear() to skillFs/skillRunner cleanup.
+- IMPORTANT CONTEXT: there is still NO `skill_fs_write_text` runtime EFFECT (effectTypes only has skill_fs_read_text/skill_state_get/skill_state_put), so skills can't write files from the runtime today regardless — A1.3 hardens the SkillFs API so future write-wiring can't mutate package assets. spec's skill_state/`/workspace` write targets: skill_state already works (setState); /workspace is Part B.
+- Gate ALL GREEN: typecheck, lint, prettier, vitest 464/76 files, e2e 28. No Rust touched.
+- Schema version history now: v1 init, v2 model_blobs, v3 audit source/status, v4 sample-memory cleanup, v5 skill_permissions (A1.2), v6 skill_outputs (A1.3).
+- NEXT loop item: A1.4 — harden Page Reader/browser fetch (shared URL/network safety validator: block localhost/loopback/private/link-local/169.254.169.254/non-http(s)/blocked-redirects; AbortController timeout; max response bytes; no credentials by default; no custom headers w/o approval; audit web.fetch_blocked). Existing tool in src/tools/tools.ts (Page Reader). This is the SSRF item; replies2.md says do it before any web research work.

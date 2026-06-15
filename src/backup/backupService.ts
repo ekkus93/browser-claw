@@ -31,6 +31,7 @@ const COLLECTIONS = [
   'schedules',
   'skills',
   'skill_files',
+  'skill_outputs',
   'skill_state',
   'skill_permissions',
   'audit_events',
@@ -156,6 +157,7 @@ const ALLOWED_COLLECTIONS = new Set<string>([
 const KEY_FIELDS: Record<string, string[]> = {
   app_settings: ['key'],
   skill_files: ['skillId', 'path'],
+  skill_outputs: ['skillId', 'path'],
   skill_state: ['skillId', 'key'],
   skill_permissions: ['skillId'],
 };

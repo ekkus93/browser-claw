@@ -231,6 +231,7 @@ describe('createToolEffectHandler — approval policy', () => {
 describe('runApprovedToolCall', () => {
   it('runs an approved tool and resolves the effect with its output', async () => {
     await db.open();
+    await installSkill({ id: 'web', enabled: true, tools: ['Page Reader'] });
     const { store, submit } = makeHandler();
     const fetchImpl = vi.fn(() =>
       Promise.resolve(new Response('<p>hello</p>')),
@@ -243,6 +244,7 @@ describe('runApprovedToolCall', () => {
         status: 'approved',
         toolName: 'Page Reader',
         argsJson: '{"url":"https://example.com"}',
+        skillId: 'web',
       },
     );
 
@@ -284,6 +286,11 @@ describe('runApprovedToolCall', () => {
   it('Remember persists a provenance-tagged memory and audits memory.created', async () => {
     await db.open();
     await db.memories.clear();
+    await installSkill({
+      id: 'web-search',
+      enabled: true,
+      tools: ['Remember'],
+    });
     const { store, submit } = makeHandler();
 
     await runApprovedToolCall(
@@ -327,6 +334,11 @@ describe('runApprovedToolCall', () => {
   it('Remember with missing fields fails (no memory written)', async () => {
     await db.open();
     await db.memories.clear();
+    await installSkill({
+      id: 'web-search',
+      enabled: true,
+      tools: ['Remember'],
+    });
     const { store, submit } = makeHandler();
 
     await runApprovedToolCall(
@@ -351,6 +363,7 @@ describe('runApprovedToolCall', () => {
 
   it('resolves a tool error as a failure and audits it', async () => {
     await db.open();
+    await installSkill({ id: 'web', enabled: true, tools: ['Page Reader'] });
     const { store, submit } = makeHandler();
     const fetchImpl = vi.fn(() =>
       Promise.resolve(new Response('nope', { status: 500 })),
@@ -363,6 +376,7 @@ describe('runApprovedToolCall', () => {
         status: 'approved',
         toolName: 'Page Reader',
         argsJson: '{"url":"https://example.com"}',
+        skillId: 'web',
       },
     );
 
@@ -376,5 +390,70 @@ describe('runApprovedToolCall', () => {
       .equals('tool.failed')
       .toArray();
     expect(failed[0]?.status).toBe('failure');
+  });
+});
+
+describe('runApprovedToolCall — execution-time permission re-check (A1.1)', () => {
+  const fetchImpl = vi.fn(() =>
+    Promise.resolve(new Response('<p>hello</p>')),
+  ) as unknown as typeof fetch;
+
+  async function runWith(skillId: string | undefined) {
+    const { store, submit } = makeHandler();
+    await runApprovedToolCall(
+      { db, dispatch: store.dispatch, submit, ctx: { fetchImpl } },
+      {
+        id: 'eff-rc',
+        status: 'approved',
+        toolName: 'Page Reader',
+        argsJson: '{"url":"https://example.com"}',
+        ...(skillId !== undefined ? { skillId } : {}),
+      },
+    );
+    return submit;
+  }
+
+  function expectBlocked(submit: ReturnType<typeof vi.fn>) {
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(submit).toHaveBeenCalledWith({
+      type: 'resolve_effect',
+      id: 'eff-rc',
+      result: {
+        ok: false,
+        error: expect.objectContaining({ kind: 'tool_not_permitted' }),
+      },
+    });
+  }
+
+  it('blocks a tool whose skill was disabled after approval (audited)', async () => {
+    await db.open();
+    await installSkill({ id: 'web', enabled: false, tools: ['Page Reader'] });
+    const submit = await runWith('web');
+    expectBlocked(submit);
+    const blocked = await db.audit_events
+      .where('type')
+      .equals('tool.permission_recheck_failed')
+      .toArray();
+    expect(blocked[0]?.status).toBe('failure');
+    expect(blocked[0]?.skillId).toBe('web');
+  });
+
+  it('blocks a tool whose permission was revoked after approval', async () => {
+    await db.open();
+    await installSkill({ id: 'web', enabled: true, tools: [] });
+    const submit = await runWith('web');
+    expectBlocked(submit);
+  });
+
+  it('blocks a forged/stale approval with no valid skillId', async () => {
+    await db.open();
+    const submit = await runWith(undefined);
+    expectBlocked(submit);
+  });
+
+  it('blocks an approval naming a skill that no longer exists', async () => {
+    await db.open();
+    const submit = await runWith('ghost');
+    expectBlocked(submit);
   });
 });

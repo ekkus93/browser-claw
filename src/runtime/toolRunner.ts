@@ -2,16 +2,13 @@ import type { BrowserClawDB } from '../db/db.ts';
 import type { AppDispatch } from '../store/store.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { approvalRequested } from '../store/slices/approvalsSlice.ts';
-import type { SkillPermissions } from '../skills/skillTypes.ts';
+import { authorizeSkillTool } from '../skills/skillPermissions.ts';
 import type { Command, Effect } from './effectTypes.ts';
 import { normalizeApprovalRisk } from './effectExecutor.ts';
 import { runToolCall, type ToolContext } from '../tools/tools.ts';
 import { getApprovalPolicy } from '../settings/appSettings.ts';
 
 type ToolEffect = Extract<Effect, { type: 'tool_call_proposal' }>;
-
-/** Where a skill's declared permissions live in its private state. */
-const PERMISSIONS_KEY = '__permissions__';
 
 export interface ToolEffectDeps {
   db: BrowserClawDB;
@@ -55,29 +52,13 @@ export function createToolEffectHandler(deps: ToolEffectDeps) {
   }
 
   return async (effect: ToolEffect): Promise<void> => {
-    if (!effect.skill_id) {
-      await deny(effect, 'no active skill');
-      return;
-    }
-    const skill = await deps.db.skills.get(effect.skill_id);
-    if (!skill) {
-      await deny(effect, `unknown skill ${effect.skill_id}`);
-      return;
-    }
-    if (!skill.enabled) {
-      await deny(effect, `skill ${effect.skill_id} is disabled`);
-      return;
-    }
-    const permRow = await deps.db.skill_state.get([
-      effect.skill_id,
-      PERMISSIONS_KEY,
-    ]);
-    const tools = (permRow?.value as SkillPermissions | undefined)?.tools ?? [];
-    if (!tools.includes(effect.name)) {
-      await deny(
-        effect,
-        `skill ${effect.skill_id} did not declare tool '${effect.name}'`,
-      );
+    const authz = await authorizeSkillTool(
+      deps.db,
+      effect.skill_id ?? '',
+      effect.name,
+    );
+    if (!authz.ok) {
+      await deny(effect, authz.reason);
       return;
     }
 
@@ -180,8 +161,12 @@ export interface RunApprovedToolDeps {
  * Run (or decline) a tool call the user resolved on the approval card, then
  * resolve the effect back into the runtime so it continues the turn. A
  * rejection or a tool error resolves as a failure — the runtime never proceeds
- * as if a declined/failed tool succeeded. Permission was already enforced when
- * the call was queued (see createToolEffectHandler).
+ * as if a declined/failed tool succeeded.
+ *
+ * Defense in depth (hardening A1.1): permission is RE-CHECKED here at execution
+ * time, not trusted from the approval/Redux state. An approval can sit in the
+ * queue while the skill is disabled or has the tool revoked; the proposal-time
+ * check (see createToolEffectHandler) is not the security boundary.
  */
 export async function runApprovedToolCall(
   deps: RunApprovedToolDeps,
@@ -201,6 +186,29 @@ export async function runApprovedToolCall(
       type: 'resolve_effect',
       id: approval.id,
       result: { ok: false, error: { kind: 'user_rejected' } },
+    });
+    return;
+  }
+  // Re-authorize against the skill's PROTECTED permissions before running.
+  const skillId = approval.skillId ?? '';
+  const authz = await authorizeSkillTool(deps.db, skillId, name);
+  if (!authz.ok) {
+    void recordAudit(deps.db, deps.dispatch, {
+      type: 'tool.permission_recheck_failed',
+      summary: `Tool '${name}' blocked at execution: ${authz.reason}`,
+      source: 'skill',
+      risk: 'medium',
+      status: 'failure',
+      toolName: name,
+      ...(skillId ? { skillId } : {}),
+    });
+    await deps.submit({
+      type: 'resolve_effect',
+      id: approval.id,
+      result: {
+        ok: false,
+        error: { kind: 'tool_not_permitted', message: authz.reason },
+      },
     });
     return;
   }

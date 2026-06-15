@@ -1278,3 +1278,20 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
   * negative fallback: providers.test describe('registry — fails closed') + runtimeBoot.test fail-closed/dev-flag tests + appConfig.test flags-default-off.
 - Ticked all 4 (542-545) with evidence. No code change.
 - Gate GREEN (doc-only): pnpm test passed. TODO now 25 unchecked — ALL remaining are deliberate omissions / no-consumer / genuinely-minor (source-message-ID provenance; reload-snapshot integration whose host-level restore is already tested). No buildable, consumer-backed, or test-gap items remain.
+
+## 2026-06-15T06:36:53Z - Claude Opus 4.8 - Ralph: new pass kickoff + A1.1 (execution-time tool permission re-check)
+- NEW WORK PASS started: `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_{SPEC,TODO}.md` (arrived via git pull). My review questions are in `docs/responses2.md`; ChatGPT's answers in `docs/replies2.md`. All 10 questions resolved.
+- LOCKED DECISIONS (see new `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` — the cross-iteration decision log so we don't re-litigate):
+  * Build order: Part A (hardening) -> B (Workspace FS) -> C (Plan DSL) -> E (Chrome extension/web research) -> D (Sandboxed JS) -> F/G/H.
+  * Part D IS in v0.1: QuickJS-in-WASM interpreter; NEVER eval/new Function/importScripts/Worker-eval. If dep unsuitable, STOP and report.
+  * Search routes through the Chrome extension by default (CORS); define SearchProvider/PageReaderProvider but extension-backed first.
+  * Chrome extension QA is AUTOMATED (Dockerized Chromium E2E, `pnpm run test:extension:e2e`), not manual-only.
+  * Configurable allowed origins (dev real, prod placeholder). Rust/WASM in scope for 1.7/A2.2 (unknown resolve_effect, both TS + claw-core).
+  * ContentStore abstraction (Opfs/Memory/Unavailable) — OPFS behind interface since jsdom has none. tool.call waits for A1.1->A1.2->A1.3. Evidence comments required on every ticked box.
+- A1.1 DONE (first iteration of this pass):
+  * NEW `src/skills/skillPermissions.ts` `authorizeSkillTool(db, skillId, tool)` = single fail-closed authz read (skill exists + enabled + tool in declared `tools`). Reads `skill_state['__permissions__']` FOR NOW — A1.2 will relocate that read here in ONE place.
+  * `src/runtime/toolRunner.ts`: proposal handler now delegates to authorizeSkillTool (removed inline checks + PERMISSIONS_KEY const + SkillPermissions import). `runApprovedToolCall` RE-CHECKS via the same helper AFTER the rejected-branch and BEFORE running; on failure audits `tool.permission_recheck_failed` (risk medium) + resolves `tool_not_permitted`. Execution no longer trusts approval/Redux state.
+  * Tests: updated existing runApprovedToolCall tests to install a valid enabled skill + pass skillId (execution now re-checks); added describe "execution-time permission re-check (A1.1)": skill-disabled-after-approval, permission-revoked, forged/no-skillId, skill-no-longer-exists — all blocked+audited.
+  * GOTCHA: prettier (part of `pnpm test` pretest via format:check) flagged the test file after my edits; `pnpm run format` fixed it. Lint(vitest)-green != gate-green; prettier is load-bearing.
+- Gate ALL GREEN: typecheck, lint (max-warnings 0), prettier, vitest 459/75 files, playwright e2e 28. No Rust touched this iteration.
+- NEXT loop item: A1.2 — move skill permissions out of mutable skill_state into a protected `skill_permissions` table (+ migration from `__permissions__`); update authorizeSkillTool's read path (single place), skillManager install/uninstall/fsFor, SkillFs, backup validators.

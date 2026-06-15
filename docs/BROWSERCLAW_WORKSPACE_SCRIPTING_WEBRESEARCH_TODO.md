@@ -33,26 +33,28 @@ P2 = polish, robustness, or future-facing hardening
 
 ### A1.1 Re-check skill permission at approved execution time
 
-- [ ] P0 Update approved tool execution path so it does not trust Redux approval state alone.
-- [ ] P0 Ensure approval object carries `skillId` or equivalent provenance.
-- [ ] P0 On approval execution:
-  - [ ] load skill by `skillId`;
-  - [ ] require skill exists;
-  - [ ] require skill is enabled;
-  - [ ] load protected permissions;
-  - [ ] require tool name in protected `permissions.tools`;
-  - [ ] only then execute tool.
-- [ ] P0 If re-check fails:
-  - [ ] do not run the tool;
-  - [ ] resolve runtime effect as failure;
-  - [ ] show visible error;
-  - [ ] audit `tool.denied` or `tool.permission_recheck_failed`.
-- [ ] P0 Tests:
-  - [ ] tool approved, then skill disabled before execution -> denied;
-  - [ ] tool approved, then permission removed before execution -> denied;
-  - [ ] forged/stale approval without valid skillId -> denied;
-  - [ ] denial is audited;
-  - [ ] successful execution still works for valid enabled skill with declared tool.
+<!-- src/skills/skillPermissions.ts: authorizeSkillTool (single fail-closed authz read, used at proposal AND execution); src/runtime/toolRunner.ts: runApprovedToolCall re-checks before running, audits tool.permission_recheck_failed; tests in src/runtime/toolRunner.test.ts ("execution-time permission re-check (A1.1)"). Gate green: typecheck/lint/prettier/vitest 459/e2e 28. -->
+
+- [x] P0 Update approved tool execution path so it does not trust Redux approval state alone.
+- [x] P0 Ensure approval object carries `skillId` or equivalent provenance.
+- [x] P0 On approval execution:
+  - [x] load skill by `skillId`;
+  - [x] require skill exists;
+  - [x] require skill is enabled;
+  - [x] load protected permissions;
+  - [x] require tool name in protected `permissions.tools`;
+  - [x] only then execute tool.
+- [x] P0 If re-check fails:
+  - [x] do not run the tool;
+  - [x] resolve runtime effect as failure;
+  - [x] show visible error;
+  - [x] audit `tool.denied` or `tool.permission_recheck_failed`.
+- [x] P0 Tests:
+  - [x] tool approved, then skill disabled before execution -> denied;
+  - [x] tool approved, then permission removed before execution -> denied;
+  - [x] forged/stale approval without valid skillId -> denied;
+  - [x] denial is audited;
+  - [x] successful execution still works for valid enabled skill with declared tool.
 
 ### A1.2 Move skill permissions out of mutable skill_state
 

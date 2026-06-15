@@ -75,8 +75,14 @@ export function createAnthropicProvider(
     }
 
     const data = (await response.json()) as AnthropicResponse;
-    const text =
-      data.content?.find((block) => block.type === 'text')?.text ?? '';
+    // An empty/missing text block is an error, not an empty assistant turn (A2.8).
+    const text = data.content?.find((block) => block.type === 'text')?.text;
+    if (typeof text !== 'string' || text.length === 0) {
+      throw new ProviderError(
+        'invalid_response',
+        'Provider returned a response with no text content.',
+      );
+    }
     return { text };
   }
 

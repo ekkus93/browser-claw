@@ -136,6 +136,22 @@ describe('OpenAI-compatible provider', () => {
     ).rejects.toMatchObject({ kind: 'unreachable' });
     expect(await provider.checkHealth()).toBe('unreachable');
   });
+
+  it('treats empty/missing message content as invalid_response (A2.8)', async () => {
+    for (const body of [
+      { choices: [{ message: { content: '' } }] },
+      { choices: [{ message: {} }] },
+      { choices: [] },
+    ]) {
+      const fetchImpl = vi.fn(() =>
+        Promise.resolve(jsonResponse(body)),
+      ) as unknown as typeof fetch;
+      const provider = createOpenAIProvider({ fetchImpl });
+      await expect(
+        provider.complete({ messages: [{ role: 'user', content: 'x' }] }),
+      ).rejects.toMatchObject({ kind: 'invalid_response' });
+    }
+  });
 });
 
 describe('Anthropic provider', () => {
@@ -165,6 +181,19 @@ describe('Anthropic provider', () => {
     );
     const body = JSON.parse(init.body as string) as { system?: string };
     expect(body.system).toBe('be brief');
+  });
+
+  it('treats a response with no text block as invalid_response (A2.8)', async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(jsonResponse({ content: [] })),
+    ) as unknown as typeof fetch;
+    const provider = createAnthropicProvider({ fetchImpl });
+    await expect(
+      provider.complete(
+        { messages: [{ role: 'user', content: 'hi' }] },
+        { apiKey: 'sk-ant' },
+      ),
+    ).rejects.toMatchObject({ kind: 'invalid_response' });
   });
 });
 

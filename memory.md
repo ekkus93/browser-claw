@@ -1393,3 +1393,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - LIMITATION: engine blob-URL wiring is real-browser-only (engine mocks wllama in tests); verification helper IS unit-tested. MUST bump WLLAMA_WASM_SHA256 in lockstep with any wllama version change or local models fail closed.
 - Gate ALL GREEN: typecheck, lint, prettier, vitest 521/78, e2e 28. No Rust touched.
 - NEXT: A2.8 — invalid/empty provider responses are errors (treat missing/empty content as invalid_response, not empty assistant msg). Apply to wllama engine (engine.ts ~line 225 `?? ''`) + remote adapters (anthropic.ts, openAiCompatible.ts `?? ''`). P1.
+
+## 2026-06-15T08:11:31Z - Claude Opus 4.8 - Ralph: A2.8 (invalid/empty provider responses are errors)
+- A2.8 DONE. New `invalid_response` ProviderErrorKind in src/providers/errors.ts (+ providerErrorMessage case + kindToHealth->'unreachable'; isFailoverEligible stays false for it — empty != reachability failure).
+- Adapters throw ProviderError('invalid_response') instead of `?? ''`: openAiCompatible.ts (content empty/missing or no choices), anthropic.ts (no text block), wllamaProvider.ts (empty generation). wllama engine.ts still returns string `?? ''`; the provider boundary (wllamaProvider) validates it — keeps engine simple.
+- Tests: providers.test +2 (OpenAI loop over empty-string/missing-content/empty-choices; Anthropic empty content[]). vitest 521->523.
+- Gate ALL GREEN: typecheck, lint, prettier, vitest 523/78, e2e 28. No Rust touched.
+- NEXT: A2.9 — audit SUMMARY redaction (details already redacted; ensure thrown error messages can't leak keys into summary). Add redaction/constraining for audit summary in auditService.buildAuditRow (or recordAudit). Tests: details redacted, summary redacted, Authorization header never appears. P1.

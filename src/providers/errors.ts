@@ -9,6 +9,7 @@ export type ProviderErrorKind =
   | 'auth'
   | 'model_not_found'
   | 'unreachable'
+  | 'invalid_response'
   | 'unknown';
 
 export class ProviderError extends Error {
@@ -50,6 +51,8 @@ export function providerErrorMessage(kind: ProviderErrorKind): string {
       return 'The requested model was not found for this provider.';
     case 'unreachable':
       return 'The provider could not be reached (a possible CORS or network issue).';
+    case 'invalid_response':
+      return 'The provider returned an empty or invalid response.';
     case 'unknown':
       return 'The provider could not respond.';
   }
@@ -77,6 +80,7 @@ export function kindToHealth(kind: ProviderErrorKind): ProviderHealth {
     case 'model_not_found':
       return 'model_not_found';
     case 'unreachable':
+    case 'invalid_response':
     case 'unknown':
       return 'unreachable';
   }

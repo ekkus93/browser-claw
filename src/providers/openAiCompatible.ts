@@ -65,7 +65,15 @@ export function createOpenAICompatibleProvider(
     }
 
     const data = (await response.json()) as ChatCompletionResponse;
-    return { text: data.choices?.[0]?.message?.content ?? '' };
+    // An empty/missing message is an error, not an empty assistant turn (A2.8).
+    const content = data.choices?.[0]?.message?.content;
+    if (typeof content !== 'string' || content.length === 0) {
+      throw new ProviderError(
+        'invalid_response',
+        'Provider returned a response with no message content.',
+      );
+    }
+    return { text: content };
   }
 
   async function checkHealth(

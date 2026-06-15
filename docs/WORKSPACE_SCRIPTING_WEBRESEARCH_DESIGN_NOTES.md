@@ -222,3 +222,14 @@ and TODO are. Newest decisions at the bottom of each section.
   the rest of the engine. The verification helper itself IS fully unit-tested.
 - IMPORTANT: bump WLLAMA_WASM_SHA256 in lockstep whenever the pinned wllama
   version/WASM_URL changes, or local models will fail closed.
+
+### A2.8 — invalid/empty provider responses are errors (done)
+- New `invalid_response` ProviderErrorKind (errors.ts) + message + kindToHealth
+  -> 'unreachable'. Adapters now throw it instead of returning `?? ''`:
+  openAiCompatible.ts (empty/missing choices[0].message.content), anthropic.ts
+  (no text block), wllamaProvider.ts (empty generation). The wllama engine still
+  returns a string; the provider boundary validates it.
+- isFailoverEligible leaves invalid_response false (not cors/unreachable/unknown)
+  — an empty response isn't a reachability failure.
+- Tests: providers.test OpenAI (empty / missing content / no choices) + Anthropic
+  (no text block) -> invalid_response.

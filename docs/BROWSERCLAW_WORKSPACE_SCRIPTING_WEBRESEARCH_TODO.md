@@ -256,13 +256,15 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ### A2.8 Invalid/empty provider responses are errors
 
-- [ ] P1 Treat missing content as `invalid_response`.
-- [ ] P1 Treat empty content as `invalid_response` unless provider explicitly supports empty response and UI handles it.
-- [ ] P1 Apply to wllama and remote providers.
-- [ ] P1 Tests:
-  - [ ] missing content -> provider error;
-  - [ ] empty content -> provider error;
-  - [ ] valid content still works.
+<!-- src/providers/errors.ts: added 'invalid_response' ProviderErrorKind (+ message + kindToHealth->unreachable). Adapters throw it on empty/missing content: openAiCompatible.ts, anthropic.ts, wllamaProvider.ts (was `?? ''`). Tests: src/providers/providers.test.ts (OpenAI empty/missing/no-choices + Anthropic no-text-block -> invalid_response; valid still works). Gate: typecheck/lint/prettier/vitest 523/e2e 28. -->
+
+- [x] P1 Treat missing content as `invalid_response`.
+- [x] P1 Treat empty content as `invalid_response` unless provider explicitly supports empty response and UI handles it.
+- [x] P1 Apply to wllama and remote providers.
+- [x] P1 Tests:
+  - [x] missing content -> provider error;
+  - [x] empty content -> provider error;
+  - [x] valid content still works.
 
 ### A2.9 Audit summary redaction
 

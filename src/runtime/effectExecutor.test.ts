@@ -142,6 +142,23 @@ describe('executeEffect', () => {
     expect(llmRequest).toHaveBeenCalledOnce();
   });
 
+  it('routes a plan proposal to the plan port, failing closed if unwired (C5)', async () => {
+    await db.open();
+    const plan = vi.fn();
+    const wired = makeCtx({ plan });
+    await executeEffect(
+      { type: 'script_plan_proposal', id: 'p1', plan: {} },
+      wired.ctx,
+    );
+    expect(plan).toHaveBeenCalledOnce();
+
+    const { store, ctx } = makeCtx();
+    await expect(
+      executeEffect({ type: 'script_plan_proposal', id: 'p2', plan: {} }, ctx),
+    ).rejects.toThrow(/plan/);
+    expect(store.getState().runtime.status).toBe('error');
+  });
+
   it('fails closed on an unknown effect type (audited + visible)', async () => {
     await db.open();
     const { store, ctx } = makeCtx();

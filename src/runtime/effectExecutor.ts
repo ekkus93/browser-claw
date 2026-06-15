@@ -38,6 +38,9 @@ export interface EffectPorts {
   tool?(
     effect: Extract<Effect, { type: 'tool_call_proposal' }>,
   ): void | Promise<void>;
+  plan?(
+    effect: Extract<Effect, { type: 'script_plan_proposal' }>,
+  ): void | Promise<void>;
 }
 
 export interface EffectContext {
@@ -126,6 +129,16 @@ export async function executeEffect(
       const handler = ctx.ports?.tool;
       if (!handler) {
         return failEffect(ctx, effect.type, 'no tool handler is wired', now);
+      }
+      await handler(effect);
+      return;
+    }
+    case 'script_plan_proposal': {
+      // Routed to the plan port, which validates + gates the plan behind
+      // approval before running it (Part C5). Fails closed if unwired.
+      const handler = ctx.ports?.plan;
+      if (!handler) {
+        return failEffect(ctx, effect.type, 'no plan handler is wired', now);
       }
       await handler(effect);
       return;

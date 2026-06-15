@@ -568,15 +568,17 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase C5 — Plan integration with runtime
 
-- [ ] P1 Add runtime effect for plan proposal/execution.
-- [ ] P1 Ensure missing plan handler fails closed.
-- [ ] P1 Ensure plan execution results resolve runtime effects.
-- [ ] P1 Ensure plan failures are visible and audited.
-- [ ] P1 Tests:
-  - [ ] runtime can propose plan;
-  - [ ] approved plan result continues runtime;
-  - [ ] failed plan resolves as error;
-  - [ ] missing handler fatal/error per policy.
+<!-- src/runtime/effectTypes.ts: script_plan_proposal effect; src/runtime/effectExecutor.ts: EffectPorts.plan + case fails closed via failEffect when unwired; src/runtime/planRunner.ts: createPlanEffectHandler (validate -> propose+queue approval / invalid -> resolve failure) + runApprovedPlanEffect (run via runApprovedPlan -> resolve_effect ok+outputs / reject -> user_rejected / fail -> error). Tests: src/runtime/planRunner.test.ts + effectExecutor.test plan-port case. Live approvalResolved listener wiring = F3. Gate: typecheck/lint/prettier/vitest 620/e2e 30. -->
+
+- [x] P1 Add runtime effect for plan proposal/execution. (script_plan_proposal; Rust core doesn't emit it yet — host-side handler ready for when the agent emits plans)
+- [x] P1 Ensure missing plan handler fails closed.
+- [x] P1 Ensure plan execution results resolve runtime effects.
+- [x] P1 Ensure plan failures are visible and audited.
+- [x] P1 Tests:
+  - [x] runtime can propose plan; (createPlanEffectHandler queues approval)
+  - [x] approved plan result continues runtime; (runApprovedPlanEffect resolves ok+outputs)
+  - [x] failed plan resolves as error;
+  - [x] missing handler fatal/error per policy. (executor fail-closed test)
 
 ---
 

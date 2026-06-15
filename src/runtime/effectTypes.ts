@@ -43,6 +43,14 @@ export type Effect =
       summary: string;
       risk: string;
     }
+  | {
+      // A structured Plan DSL proposal the runtime hands to the host to validate,
+      // gate behind approval, and execute (Part C5). The host resolves the effect
+      // with the plan's result.
+      type: 'script_plan_proposal';
+      id: string;
+      plan: unknown;
+    }
   | { type: 'runtime_snapshot_save'; id: string; snapshot: unknown };
 
 export type Command =

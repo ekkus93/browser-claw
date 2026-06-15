@@ -239,19 +239,46 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
 
     deps.dispatch(runStateSet('idle'));
 
-    // If the reply is a tool call, resolve with it so the runtime proposes the
-    // tool (subject to skill-permission enforcement + approval) rather than
-    // storing the raw block as an assistant message. Otherwise resolve with the
-    // reply text; the runtime then emits the storage_put that persists the
-    // assistant message (single source of truth — we don't write db.messages
-    // here, which would store the reply twice).
-    const toolCall = parseToolCall(text);
+    // Classify the reply (hardening A1.5):
+    //  - tool_call: resolve with it so the runtime proposes the tool (subject to
+    //    skill-permission enforcement + approval), not the raw block as text.
+    //  - malformed: a ```tool block that didn't parse must NOT be stored as an
+    //    ordinary assistant message — audit it and resolve as a protocol error.
+    //  - none: resolve with the reply text; the runtime emits the storage_put
+    //    that persists the assistant message (single source of truth).
+    const parsed = parseToolCall(text);
+    if (parsed.kind === 'malformed') {
+      void recordAudit(deps.db, deps.dispatch, {
+        type: 'tool.parse_failed',
+        summary: `Malformed tool call from model: ${parsed.message}`,
+        source: 'runtime',
+        risk: 'medium',
+        status: 'failure',
+        conversationId: effect.conversation_id,
+      });
+      await deps.submit({
+        type: 'resolve_effect',
+        id: effect.id,
+        result: {
+          ok: false,
+          error: { kind: 'tool_parse_failed', message: parsed.message },
+        },
+      });
+      return;
+    }
     await deps.submit({
       type: 'resolve_effect',
       id: effect.id,
-      result: toolCall
-        ? { ok: true, tool_call: { name: toolCall.name, args: toolCall.args } }
-        : { ok: true, text },
+      result:
+        parsed.kind === 'tool_call'
+          ? {
+              ok: true,
+              tool_call: {
+                name: parsed.call.name,
+                args: parsed.call.args,
+              },
+            }
+          : { ok: true, text },
     });
   };
 }

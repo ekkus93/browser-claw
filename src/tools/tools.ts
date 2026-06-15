@@ -60,31 +60,65 @@ export class UnknownToolError extends Error {
 }
 
 /**
- * Parse the first ```tool fenced JSON block from a model reply into a ToolCall,
- * or null if there is no well-formed tool call. Malformed JSON or a missing
- * `tool` name yields null (treated as "no tool call", not an error).
+ * Result of parsing a model reply for a tool call (hardening A1.5):
+ *  - `none`      — no ```tool block at all; the reply is ordinary text;
+ *  - `tool_call` — a well-formed tool call;
+ *  - `malformed` — there IS a ```tool block but it is invalid. This must NOT be
+ *    silently treated as ordinary assistant text — the caller audits it and
+ *    surfaces a protocol/tool error.
  */
-export function parseToolCall(reply: string): ToolCall | null {
+export type ToolParseResult =
+  | { kind: 'none' }
+  | { kind: 'tool_call'; call: ToolCall }
+  | { kind: 'malformed'; message: string };
+
+/**
+ * Parse the first ```tool fenced JSON block from a model reply. A reply with no
+ * such block is `none`; a block that fails to parse, isn't a JSON object, or
+ * lacks a string `tool` name is `malformed` (an explicit protocol error, not
+ * "no tool call").
+ */
+export function parseToolCall(reply: string): ToolParseResult {
   const match = /```tool\s*\n([\s\S]*?)```/.exec(reply);
-  if (!match || match[1] === undefined) return null;
+  if (!match || match[1] === undefined) return { kind: 'none' };
   let parsed: unknown;
   try {
     parsed = JSON.parse(match[1]);
   } catch {
-    return null;
+    return { kind: 'malformed', message: 'Tool block is not valid JSON.' };
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    return null;
+    return {
+      kind: 'malformed',
+      message: 'Tool block must be a JSON object.',
+    };
   }
   const obj = parsed as Record<string, unknown>;
-  if (typeof obj.tool !== 'string' || obj.tool.length === 0) return null;
+  if (typeof obj.tool !== 'string' || obj.tool.length === 0) {
+    return {
+      kind: 'malformed',
+      message: 'Tool block is missing a "tool" name.',
+    };
+  }
+  if (obj.args !== undefined) {
+    const argsOk =
+      typeof obj.args === 'object' &&
+      obj.args !== null &&
+      !Array.isArray(obj.args);
+    if (!argsOk) {
+      return {
+        kind: 'malformed',
+        message: 'Tool block "args" must be an object.',
+      };
+    }
+  }
   const args =
     typeof obj.args === 'object' &&
     obj.args !== null &&
     !Array.isArray(obj.args)
       ? (obj.args as Record<string, unknown>)
       : {};
-  return { name: obj.tool, args };
+  return { kind: 'tool_call', call: { name: obj.tool, args } };
 }
 
 /** Max characters of page text returned — keeps a huge page out of the prompt. */

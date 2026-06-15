@@ -125,22 +125,25 @@ P2 = polish, robustness, or future-facing hardening
 
 ### A1.5 Malformed tool blocks fail explicitly
 
-- [ ] P0 Replace `parseToolCall(): ToolCall | null` with explicit result union.
-- [ ] P0 Distinguish:
-  - [ ] no tool block;
-  - [ ] valid tool block;
-  - [ ] malformed tool block.
-- [ ] P0 Malformed tool block behavior:
-  - [ ] do not store as normal assistant text;
-  - [ ] show protocol/tool error card;
-  - [ ] audit `tool.parse_failed`;
-  - [ ] optionally ask model to retry using valid schema.
-- [ ] P0 Tests:
-  - [ ] invalid JSON tool block -> parse_failed;
-  - [ ] missing tool name -> parse_failed;
-  - [ ] missing args -> parse_failed;
-  - [ ] no tool block -> normal text;
-  - [ ] valid tool block -> tool proposal.
+<!-- src/tools/tools.ts: ToolParseResult union + parseToolCall returns {kind:'none'|'tool_call'|'malformed'}; src/runtime/llmRunner.ts: malformed -> recordAudit tool.parse_failed + resolve_effect {ok:false, error.kind:'tool_parse_failed'} (NOT stored as assistant text), surfaced via the same protocol-error path as provider_request_failed. Tests: src/tools/tools.test.ts (parseToolCall union cases incl. non-object args), src/runtime/llmRunner.test.ts (malformed -> error + audit). Gate: typecheck/lint/prettier/vitest 497/e2e 28.
+NOTE: "missing args -> parse_failed" intentionally NOT implemented — omitted args is valid (a no-arg tool); the real error is non-object args, which IS malformed+tested. "ask model to retry" is the spec's optional item, deferred. -->
+
+- [x] P0 Replace `parseToolCall(): ToolCall | null` with explicit result union.
+- [x] P0 Distinguish:
+  - [x] no tool block;
+  - [x] valid tool block;
+  - [x] malformed tool block.
+- [x] P0 Malformed tool block behavior:
+  - [x] do not store as normal assistant text;
+  - [x] show protocol/tool error card;
+  - [x] audit `tool.parse_failed`;
+  - [ ] optionally ask model to retry using valid schema. (optional — deferred)
+- [x] P0 Tests:
+  - [x] invalid JSON tool block -> parse_failed;
+  - [x] missing tool name -> parse_failed;
+  - [ ] missing args -> parse_failed; (deliberately NOT done: omitted args is valid; non-object args IS malformed+tested)
+  - [x] no tool block -> normal text;
+  - [x] valid tool block -> tool proposal.
 
 ## Phase A2 — Runtime, Provider, Backup, and Model Fixes
 

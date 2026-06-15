@@ -116,3 +116,15 @@ and TODO are. Newest decisions at the bottom of each section.
     `if (response.url)` so the happy path (synthetic responses in tests) doesn't
     trip "invalid_url".
 - Added `ctx.timeoutMs` to ToolContext (injectable, like fetchImpl) for fast tests.
+
+### A1.5 — malformed tool blocks fail explicitly (done)
+- `parseToolCall` now returns `ToolParseResult` = `{kind:'none'}` |
+  `{kind:'tool_call', call}` | `{kind:'malformed', message}` (was `ToolCall|null`).
+- `llmRunner`: malformed -> `recordAudit('tool.parse_failed', source:'runtime',
+  failure)` + `resolve_effect {ok:false, error:{kind:'tool_parse_failed'}}`
+  (reuses the same failed-LLM-effect path as provider_request_failed, so it's
+  surfaced as a protocol error and NEVER stored as an assistant message).
+- DELIBERATE DEVIATION from the TODO: "missing args -> parse_failed" NOT
+  implemented — an OMITTED args is valid (no-arg tools; the existing "defaults
+  args to {}" behavior). Non-object args (e.g. `"args":[1]`) IS malformed and is
+  tested. The spec's "ask model to retry" is its own optional item, deferred.

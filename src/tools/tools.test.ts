@@ -18,23 +18,37 @@ describe('parseToolCall', () => {
       '```',
     ].join('\n');
     expect(parseToolCall(reply)).toEqual({
-      name: 'Page Reader',
-      args: { url: 'https://example.com' },
+      kind: 'tool_call',
+      call: { name: 'Page Reader', args: { url: 'https://example.com' } },
     });
   });
 
   it('defaults args to {} when omitted', () => {
     const reply = '```tool\n{ "tool": "Page Reader" }\n```';
-    expect(parseToolCall(reply)).toEqual({ name: 'Page Reader', args: {} });
+    expect(parseToolCall(reply)).toEqual({
+      kind: 'tool_call',
+      call: { name: 'Page Reader', args: {} },
+    });
   });
 
-  it('returns null when there is no tool block', () => {
-    expect(parseToolCall('just a normal reply')).toBeNull();
+  it('reports kind "none" when there is no tool block', () => {
+    expect(parseToolCall('just a normal reply')).toEqual({ kind: 'none' });
   });
 
-  it('returns null for malformed JSON or a missing tool name', () => {
-    expect(parseToolCall('```tool\n{ not json }\n```')).toBeNull();
-    expect(parseToolCall('```tool\n{ "args": {} }\n```')).toBeNull();
+  it('reports kind "malformed" for invalid JSON (not silent text)', () => {
+    expect(parseToolCall('```tool\n{ not json }\n```').kind).toBe('malformed');
+  });
+
+  it('reports kind "malformed" for a missing tool name', () => {
+    expect(parseToolCall('```tool\n{ "args": {} }\n```').kind).toBe(
+      'malformed',
+    );
+  });
+
+  it('reports kind "malformed" when args is not an object', () => {
+    expect(
+      parseToolCall('```tool\n{ "tool": "x", "args": [1] }\n```').kind,
+    ).toBe('malformed');
   });
 });
 

@@ -273,6 +273,53 @@ describe('createLlmRequestHandler', () => {
     });
   });
 
+  it('fails explicitly on a malformed tool block (A1.5) — never silent text', async () => {
+    await db.open();
+    await db.messages.clear();
+    await db.audit_events.clear();
+    const store = configureStore({ reducer: { chat: chatReducer } });
+    await db.messages.put({
+      id: 'u6',
+      conversationId: 'c6',
+      role: 'user',
+      content: 'read the page',
+      createdAt: 1,
+    });
+    const provider: LlmProvider = {
+      id: 'mock',
+      complete: () => Promise.resolve({ text: '```tool\n{ not json }\n```' }),
+      checkHealth: () => Promise.resolve('connected'),
+    };
+    const submit = vi
+      .fn<(command: unknown) => Promise<void>>()
+      .mockResolvedValue(undefined);
+    const handler = createLlmRequestHandler({
+      db,
+      dispatch: store.dispatch,
+      getProvider: () => provider,
+      submit,
+    });
+
+    await handler({
+      type: 'llm_request',
+      id: 'eff-bad',
+      conversation_id: 'c6',
+      prompt: 'read the page',
+    });
+
+    // Resolved as a protocol error, not stored as an assistant reply.
+    expect(submit.mock.calls[0]?.[0]).toMatchObject({
+      type: 'resolve_effect',
+      id: 'eff-bad',
+      result: { ok: false, error: { kind: 'tool_parse_failed' } },
+    });
+    const audited = await db.audit_events
+      .where('type')
+      .equals('tool.parse_failed')
+      .toArray();
+    expect(audited[0]?.status).toBe('failure');
+  });
+
   it('surfaces a relevant memory into the prompt, marks it used, and audits the retrieval', async () => {
     await db.open();
     await db.messages.clear();

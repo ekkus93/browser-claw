@@ -98,28 +98,30 @@ P2 = polish, robustness, or future-facing hardening
 
 ### A1.4 Harden existing Page Reader/browser fetch tool
 
-- [ ] P0 Create shared URL/network safety validator.
-- [ ] P0 Reject non-http/https schemes.
-- [ ] P0 Reject localhost hostnames.
-- [ ] P0 Reject loopback IPs.
-- [ ] P0 Reject private LAN IPs.
-- [ ] P0 Reject link-local IPs.
-- [ ] P0 Reject cloud metadata IPs, including `169.254.169.254`.
-- [ ] P0 Reject suspicious redirects to blocked hosts/IPs where detectable.
-- [ ] P0 Add request timeout via `AbortController`.
-- [ ] P0 Add max response byte limit before reading full body.
-- [ ] P0 Avoid credentials by default.
-- [ ] P0 Do not allow custom headers unless explicitly approved.
-- [ ] P0 Audit blocked fetches as `web.fetch_blocked` or `tool.denied`.
-- [ ] P0 Tests:
-  - [ ] blocks `http://localhost`;
-  - [ ] blocks `http://127.0.0.1`;
-  - [ ] blocks `http://192.168.1.1`;
-  - [ ] blocks `http://169.254.169.254`;
-  - [ ] blocks `file://`;
-  - [ ] timeout aborts request;
-  - [ ] oversized response fails before full body load;
-  - [ ] safe public https URL still works when CORS allows.
+<!-- src/net/urlSafety.ts: classifyFetchUrl/assertFetchUrlAllowed/BlockedUrlError (shared validator: http(s) only; blocks localhost/.localhost/.local, loopback, 0.0.0.0/8, 10/8, 172.16/12, 192.168/16, 100.64/10 CGNAT, 169.254/16 incl metadata, multicast, ::1/::/fe80::/fc00::/ff00::/IPv4-mapped); src/tools/tools.ts: pageReaderTool uses it + AbortController timeout (ctx.timeoutMs) + readCappedText (content-length precheck + streamed cap MAX_PAGE_BYTES) + credentials:'omit' + final-URL re-validation + web.fetch_blocked audit. Tests: src/net/urlSafety.test.ts, src/tools/tools.test.ts. Gate: typecheck/lint/prettier/vitest 494/e2e 28. -->
+
+- [x] P0 Create shared URL/network safety validator.
+- [x] P0 Reject non-http/https schemes.
+- [x] P0 Reject localhost hostnames.
+- [x] P0 Reject loopback IPs.
+- [x] P0 Reject private LAN IPs.
+- [x] P0 Reject link-local IPs.
+- [x] P0 Reject cloud metadata IPs, including `169.254.169.254`.
+- [x] P0 Reject suspicious redirects to blocked hosts/IPs where detectable.
+- [x] P0 Add request timeout via `AbortController`.
+- [x] P0 Add max response byte limit before reading full body.
+- [x] P0 Avoid credentials by default.
+- [x] P0 Do not allow custom headers unless explicitly approved.
+- [x] P0 Audit blocked fetches as `web.fetch_blocked` or `tool.denied`.
+- [x] P0 Tests:
+  - [x] blocks `http://localhost`;
+  - [x] blocks `http://127.0.0.1`;
+  - [x] blocks `http://192.168.1.1`;
+  - [x] blocks `http://169.254.169.254`;
+  - [x] blocks `file://`;
+  - [x] timeout aborts request;
+  - [x] oversized response fails before full body load;
+  - [x] safe public https URL still works when CORS allows.
 
 ### A1.5 Malformed tool blocks fail explicitly
 

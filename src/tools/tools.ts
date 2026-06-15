@@ -15,6 +15,7 @@ import type { BrowserClawDB } from '../db/db.ts';
 import type { AppDispatch } from '../store/store.ts';
 import type { MemoryRow } from '../db/types.ts';
 import { recordAudit } from '../audit/auditSink.ts';
+import { classifyFetchUrl } from '../net/urlSafety.ts';
 
 export interface ToolCall {
   name: string;
@@ -24,6 +25,8 @@ export interface ToolCall {
 export interface ToolContext {
   /** Injectable fetch so network tools are testable. Defaults to global fetch. */
   fetchImpl?: typeof fetch;
+  /** Network-fetch timeout in ms (injectable for tests). Defaults to 15s. */
+  timeoutMs?: number;
   /** Durable store — present for tools that persist (e.g. Remember). */
   db?: BrowserClawDB;
   /** Dispatch for tools that audit their effect. */
@@ -86,6 +89,10 @@ export function parseToolCall(reply: string): ToolCall | null {
 
 /** Max characters of page text returned — keeps a huge page out of the prompt. */
 const MAX_PAGE_TEXT = 20_000;
+/** Hard cap on response bytes read — refuse oversized bodies (A1.4). */
+const MAX_PAGE_BYTES = 2_000_000;
+/** Default network timeout for a page fetch (A1.4). */
+const DEFAULT_FETCH_TIMEOUT_MS = 15_000;
 
 /** Strip a page to readable text: drop scripts/styles/tags, collapse space. */
 function htmlToText(html: string): string {
@@ -99,30 +106,127 @@ function htmlToText(html: string): string {
 }
 
 /**
+ * Read a response body as text, refusing oversized content. A declared
+ * Content-Length over the cap is rejected BEFORE reading; otherwise the stream
+ * is read incrementally and aborted the moment it exceeds the cap, so a huge
+ * (or lying) body is never fully buffered.
+ */
+async function readCappedText(
+  response: Response,
+  maxBytes: number,
+): Promise<string> {
+  const declared = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    throw new Error('Page Reader response is too large.');
+  }
+  const body = response.body;
+  if (!body) {
+    const text = await response.text();
+    if (new TextEncoder().encode(text).length > maxBytes) {
+      throw new Error('Page Reader response is too large.');
+    }
+    return text;
+  }
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        throw new Error('Page Reader response is too large.');
+      }
+      chunks.push(value);
+    }
+  }
+  const merged = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(merged);
+}
+
+/**
  * Page Reader: fetch an http(s) page and return its readable text. The URL is
- * validated (http/https only) and the fetched HTML is reduced to plain text —
- * scripts/styles are stripped, so nothing from the page can execute.
+ * run through the shared SSRF validator (no localhost/private/link-local/cloud
+ * metadata targets, http(s) only); the fetch omits credentials, times out, and
+ * caps the body size; the final URL after redirects is re-validated; and the
+ * HTML is reduced to plain text so nothing from the page can execute. A blocked
+ * URL is audited (`web.fetch_blocked`) when a store is available.
  */
 export const pageReaderTool: Tool = {
   name: 'Page Reader',
   description: 'Fetch a web page and return its readable text.',
   async run(args, ctx) {
     const raw = typeof args.url === 'string' ? args.url.trim() : '';
-    let url: URL;
-    try {
-      url = new URL(raw);
-    } catch {
-      throw new Error('Page Reader needs a valid URL.');
+
+    const auditBlocked = (message: string): void => {
+      if (!ctx.db || !ctx.dispatch) return;
+      void recordAudit(ctx.db, ctx.dispatch, {
+        type: 'web.fetch_blocked',
+        summary: `Blocked fetch: ${message}`,
+        source: 'skill',
+        risk: 'medium',
+        status: 'failure',
+        toolName: 'Page Reader',
+        ...(ctx.skillId ? { skillId: ctx.skillId } : {}),
+      });
+    };
+
+    const safety = classifyFetchUrl(raw);
+    if (!safety.ok) {
+      auditBlocked(safety.message);
+      throw new Error(safety.message);
     }
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      throw new Error('Page Reader only fetches http(s) URLs.');
-    }
+    const url = safety.url;
+
     const fetchImpl = ctx.fetchImpl ?? fetch;
-    const response = await fetchImpl(url.href);
+    const controller = new AbortController();
+    const timeoutMs = ctx.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    let response: Response;
+    try {
+      response = await fetchImpl(url.href, {
+        signal: controller.signal,
+        redirect: 'follow',
+        // No ambient cookies/credentials on agent-driven fetches (A1.4).
+        credentials: 'omit',
+        // No custom headers unless explicitly approved (A1.4).
+      });
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw new Error('Page Reader timed out.', { cause: error });
+      }
+      throw new Error(
+        `Page Reader could not reach the URL (network/CORS error): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        { cause: error },
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+
+    // Re-validate the final URL after any redirects (response.url is empty for
+    // synthetic responses, so this only fires on real redirected fetches).
+    if (response.url) {
+      const finalSafety = classifyFetchUrl(response.url);
+      if (!finalSafety.ok) {
+        auditBlocked(`redirect -> ${finalSafety.message}`);
+        throw new Error(
+          `Page Reader blocked a redirect: ${finalSafety.message}`,
+        );
+      }
+    }
     if (!response.ok) {
       throw new Error(`Page Reader failed to fetch (${response.status}).`);
     }
-    const html = await response.text();
+    const html = await readCappedText(response, MAX_PAGE_BYTES);
     return htmlToText(html).slice(0, MAX_PAGE_TEXT);
   },
 };

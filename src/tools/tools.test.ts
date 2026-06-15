@@ -7,6 +7,7 @@ import {
   ToolNotPermittedError,
   UnknownToolError,
 } from './tools.ts';
+import type { BrowserClawDB } from '../db/db.ts';
 
 describe('parseToolCall', () => {
   it('parses a well-formed tool block', () => {
@@ -104,5 +105,72 @@ describe('Page Reader tool', () => {
     await expect(
       pageReaderTool.run({ url: 'https://example.com' }, { fetchImpl }),
     ).rejects.toThrow(/404/);
+  });
+
+  it('blocks a private/loopback target and audits web.fetch_blocked (A1.4)', async () => {
+    const dispatch = vi.fn();
+    const put = vi.fn().mockResolvedValue(undefined);
+    const db = { audit_events: { put } } as unknown as BrowserClawDB;
+    const fetchImpl = vi.fn() as unknown as typeof fetch;
+
+    await expect(
+      pageReaderTool.run(
+        { url: 'http://127.0.0.1/' },
+        { fetchImpl, db, dispatch },
+      ),
+    ).rejects.toThrow(/blocked host/i);
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(dispatch).toHaveBeenCalled();
+    expect(put).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'web.fetch_blocked', status: 'failure' }),
+    );
+  });
+
+  it('blocks the cloud metadata IP', async () => {
+    const fetchImpl = vi.fn() as unknown as typeof fetch;
+    await expect(
+      pageReaderTool.run({ url: 'http://169.254.169.254/' }, { fetchImpl }),
+    ).rejects.toThrow(/blocked host/i);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('times out a slow fetch via AbortController', async () => {
+    const fetchImpl = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
+        }),
+    ) as unknown as typeof fetch;
+    await expect(
+      pageReaderTool.run(
+        { url: 'https://example.com' },
+        { fetchImpl, timeoutMs: 5 },
+      ),
+    ).rejects.toThrow(/timed out/i);
+  });
+
+  it('rejects an oversized response before buffering it', async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(
+        new Response('x', { headers: { 'content-length': '5000000' } }),
+      ),
+    ) as unknown as typeof fetch;
+    await expect(
+      pageReaderTool.run({ url: 'https://example.com' }, { fetchImpl }),
+    ).rejects.toThrow(/too large/i);
+  });
+
+  it('omits credentials on the fetch', async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(new Response('<p>ok</p>')),
+    ) as unknown as typeof fetch;
+    await pageReaderTool.run({ url: 'https://example.com' }, { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'https://example.com/',
+      expect.objectContaining({ credentials: 'omit' }),
+    );
   });
 });

@@ -95,3 +95,24 @@ and TODO are. Newest decisions at the bottom of each section.
   so future wiring can't mutate package assets. The `skill_state` and
   `/workspace` write targets in the spec are left for later (skill_state already
   works via setState; /workspace lands in Part B).
+
+### A1.4 — Page Reader SSRF / network hardening (done)
+- NEW shared `src/net/urlSafety.ts` (reused by future `browser_fetch`, E3):
+  `classifyFetchUrl`/`assertFetchUrlAllowed`/`BlockedUrlError`. http(s) only;
+  blocks localhost/.localhost/.local, IPv4 loopback/0.0.0.0/8/10.8/172.16.12/
+  192.168.16/100.64.10(CGNAT)/169.254.16(incl 169.254.169.254 metadata)/
+  multicast, and IPv6 ::1/::/fe80::/fc00::/ff00:: + IPv4-mapped (dotted AND hex).
+- `pageReaderTool`: validator gate (+ `web.fetch_blocked` audit when db/dispatch
+  present) -> AbortController timeout (`ctx.timeoutMs`, default 15s) -> fetch with
+  `credentials:'omit'`, no custom headers -> re-validate final `response.url`
+  after redirects -> `readCappedText` (content-length precheck + streamed cap at
+  MAX_PAGE_BYTES=2MB) -> htmlToText slice.
+- GOTCHAs:
+  * WHATWG URL normalizes `http://2130706433/` -> 127.0.0.1 and `[::ffff:127.0.0.1]`
+    -> `[::ffff:7f00:1]` (HEX). Must parse the hex IPv4-mapped form, not just dotted.
+  * eslint `preserve-caught-error`: a `throw new Error()` inside a `catch` MUST pass
+    `{ cause: error }`. Added to both timeout/network throws.
+  * `new Response(str).url` is '' — guard the final-URL re-validation with
+    `if (response.url)` so the happy path (synthetic responses in tests) doesn't
+    trip "invalid_url".
+- Added `ctx.timeoutMs` to ToolContext (injectable, like fetchImpl) for fast tests.

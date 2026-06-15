@@ -191,3 +191,14 @@ and TODO are. Newest decisions at the bottom of each section.
 - Side effect: the old "rolls back if a collection fails" test now fails at
   validation (its bogus skill_state row) BEFORE the transaction — still throws,
   still no partial write, so it stays green.
+
+### A2.6 — strengthen backup row validators (done)
+- `backupService.ts` ROW_VALIDATORS: per-collection enum/type checks for
+  messages, conversations, memories, audit_events, provider_profiles, skills,
+  skill_permissions (isSkillPermissions), model_catalog. Enum helpers via `oneOf`.
+- ORDER MATTERS: row validators run LAST in the per-row loop — AFTER the
+  raw-secret and size checks — so a secret/oversize row reports its own
+  (more security-critical) reason. (Discovered by 3 existing tests using minimal
+  rows to probe secret/size; moving the validator after those kept them green.)
+- Skipped: model_catalog has no `status` field (only provider/label validated);
+  app_settings keys left open-ended (allowlist would reject future settings).

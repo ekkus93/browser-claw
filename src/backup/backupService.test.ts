@@ -638,6 +638,122 @@ describe('validateBackup hardening', () => {
   });
 });
 
+describe('per-collection row validators (A2.6)', () => {
+  const bad: Array<[string, Record<string, unknown>, RegExp]> = [
+    [
+      'messages',
+      {
+        id: 'x',
+        conversationId: 'c',
+        role: 'wizard',
+        content: 'hi',
+        createdAt: 1,
+      },
+      /invalid message role/i,
+    ],
+    [
+      'audit_events',
+      {
+        id: 'a',
+        type: 't',
+        summary: 's',
+        risk: 'spicy',
+        status: 'success',
+        source: 'runtime',
+        at: 1,
+      },
+      /invalid risk/i,
+    ],
+    [
+      'audit_events',
+      {
+        id: 'a',
+        type: 't',
+        summary: 's',
+        risk: 'low',
+        status: 'maybe',
+        source: 'runtime',
+        at: 1,
+      },
+      /invalid status/i,
+    ],
+    [
+      'provider_profiles',
+      { id: 'p', kind: 'skynet', label: 'X', apiKeyMode: 'none' },
+      /invalid provider kind/i,
+    ],
+    [
+      'provider_profiles',
+      { id: 'p', kind: 'openai', label: 'X', apiKeyMode: 'plaintext' },
+      /invalid apiKeyMode/i,
+    ],
+    [
+      'memories',
+      {
+        id: 'm',
+        title: 't',
+        text: 'x',
+        tags: [],
+        source: 'chat',
+        createdBy: 'user',
+        createdAt: 1,
+        sensitivity: 'topsecret',
+      },
+      /invalid sensitivity/i,
+    ],
+    [
+      'skills',
+      { id: 's', name: 'S', version: '1', enabled: 'yes', source: 'skill_md' },
+      /non-boolean enabled/i,
+    ],
+    [
+      'skill_permissions',
+      { skillId: 's', value: { tools: 'all' } },
+      /malformed permissions/i,
+    ],
+  ];
+
+  it.each(bad)('rejects a bad %s row', (name, row, re) => {
+    const result = validateBackup(backupOf({ [name]: [row] }));
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(re);
+  });
+
+  it('accepts well-formed rows across collections', () => {
+    const result = validateBackup(
+      backupOf({
+        messages: [
+          {
+            id: 'm1',
+            conversationId: 'c1',
+            role: 'assistant',
+            content: 'hi',
+            createdAt: 1,
+          },
+        ],
+        audit_events: [
+          {
+            id: 'a1',
+            type: 't',
+            summary: 's',
+            risk: 'info',
+            status: 'success',
+            source: 'runtime',
+            at: 1,
+          },
+        ],
+        skill_permissions: [
+          {
+            skillId: 's',
+            value: { tools: ['Remember'], read: [], write: [], network: false },
+          },
+        ],
+      }),
+    );
+    expect(result.valid).toBe(true);
+  });
+});
+
 describe('containsLikelyRawSecret — credential-shape detection', () => {
   // Each entry is a live-looking credential that must be detected by VALUE
   // shape alone (placed under an innocuous field name), so a foreign/tampered

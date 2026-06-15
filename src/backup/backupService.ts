@@ -9,6 +9,7 @@ import {
   decryptString,
   generateSalt,
 } from '../secrets/crypto.ts';
+import { isSkillPermissions } from '../skills/skillTypes.ts';
 
 /**
  * `.clawbackup` export/import over Dexie. The backup contains durable user data
@@ -165,6 +166,107 @@ const KEY_FIELDS: Record<string, string[]> = {
 function keyFieldsFor(name: string): string[] {
   return KEY_FIELDS[name] ?? ['id'];
 }
+
+/**
+ * Per-collection row-shape validators (hardening A2.6). Beyond the key-field
+ * presence check, these assert enum values and important type constraints so a
+ * tampered/corrupt backup can't smuggle in a row with, say, an unknown provider
+ * kind or message role. Each returns an error fragment, or null when the row is
+ * acceptable. Optional fields are only checked when present so older exports
+ * still import.
+ */
+type RowValidator = (row: Record<string, unknown>) => string | null;
+
+const isStr = (v: unknown): v is string => typeof v === 'string';
+const isNum = (v: unknown): boolean =>
+  typeof v === 'number' && !Number.isNaN(v);
+const oneOf =
+  (...allowed: string[]) =>
+  (v: unknown): boolean =>
+    typeof v === 'string' && allowed.includes(v);
+
+const isMessageRole = oneOf('user', 'assistant', 'system', 'tool');
+const isRisk = oneOf('info', 'low', 'medium', 'high', 'critical');
+const isStatus = oneOf(
+  'success',
+  'failure',
+  'pending',
+  'rejected',
+  'cancelled',
+);
+const isAuditSource = oneOf(
+  'user',
+  'runtime',
+  'provider',
+  'storage',
+  'skill',
+  'backup',
+  'model',
+  'system',
+);
+const isProviderKind = oneOf(
+  'openai',
+  'anthropic',
+  'openai_compatible',
+  'ollama',
+  'llama_server',
+  'wllama',
+);
+const isApiKeyMode = oneOf('none', 'session', 'encrypted');
+const isSkillSource = oneOf('bundled', 'clawskill', 'skill_md');
+const isSensitivity = oneOf('normal', 'sensitive');
+
+const ROW_VALIDATORS: Record<string, RowValidator> = {
+  messages: (r) => {
+    if (!isMessageRole(r.role)) return 'has an invalid message role';
+    if (!isStr(r.content)) return 'has a non-string content';
+    if (!isStr(r.conversationId)) return 'has a non-string conversationId';
+    if (!isNum(r.createdAt)) return 'has a non-numeric createdAt';
+    return null;
+  },
+  conversations: (r) => {
+    if (!isStr(r.title)) return 'has a non-string title';
+    if (!isNum(r.createdAt) || !isNum(r.updatedAt))
+      return 'has invalid timestamps';
+    return null;
+  },
+  memories: (r) => {
+    if (!isStr(r.title) || !isStr(r.text)) return 'has invalid title/text';
+    if (!Array.isArray(r.tags)) return 'has non-array tags';
+    if (!isSensitivity(r.sensitivity)) return 'has an invalid sensitivity';
+    if (!isStr(r.source) || !isStr(r.createdBy))
+      return 'has invalid provenance';
+    if (!isNum(r.createdAt)) return 'has a non-numeric createdAt';
+    return null;
+  },
+  audit_events: (r) => {
+    if (!isStr(r.type) || !isStr(r.summary)) return 'has invalid type/summary';
+    if (!isRisk(r.risk)) return 'has an invalid risk level';
+    if (!isStatus(r.status)) return 'has an invalid status';
+    if (!isAuditSource(r.source)) return 'has an invalid source';
+    if (!isNum(r.at)) return 'has a non-numeric timestamp';
+    return null;
+  },
+  provider_profiles: (r) => {
+    if (!isProviderKind(r.kind)) return 'has an invalid provider kind';
+    if (!isApiKeyMode(r.apiKeyMode)) return 'has an invalid apiKeyMode';
+    if (!isStr(r.label)) return 'has a non-string label';
+    return null;
+  },
+  skills: (r) => {
+    if (!isStr(r.name) || !isStr(r.version)) return 'has invalid name/version';
+    if (typeof r.enabled !== 'boolean') return 'has a non-boolean enabled';
+    if (!isSkillSource(r.source)) return 'has an invalid skill source';
+    return null;
+  },
+  skill_permissions: (r) =>
+    isSkillPermissions(r.value) ? null : 'has a malformed permissions value',
+  model_catalog: (r) => {
+    if (!isStr(r.provider)) return 'has a non-string provider';
+    if (!isStr(r.label)) return 'has a non-string label';
+    return null;
+  },
+};
 
 export interface BackupLimits {
   maxRowsPerCollection: number;
@@ -332,6 +434,15 @@ export function validateBackup(
           valid: false,
           error: `Backup exceeds the ${lim.maxTotalBytes}-byte total size limit.`,
         };
+      }
+      // Per-collection enum/type validation last: the secret and size checks
+      // above are more security-critical and should report their own reasons.
+      const validateRow = ROW_VALIDATORS[name];
+      if (validateRow) {
+        const rowError = validateRow(row);
+        if (rowError) {
+          return { valid: false, error: `Record in ${name} ${rowError}.` };
+        }
       }
     }
 

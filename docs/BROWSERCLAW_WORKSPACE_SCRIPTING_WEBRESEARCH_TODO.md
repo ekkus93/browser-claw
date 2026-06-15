@@ -225,19 +225,21 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ### A2.6 Strengthen backup row validators
 
-- [ ] P1 Add per-collection validators for existing stores.
-- [ ] P1 Validate enum fields:
-  - [ ] message role;
-  - [ ] audit risk/status/source;
-  - [ ] provider kind;
-  - [ ] model status/provider;
-  - [ ] memory sensitivity/source/createdBy;
-  - [ ] skill enabled boolean/version/name.
-- [ ] P1 Validate required string fields.
-- [ ] P1 Validate numeric timestamps.
-- [ ] P1 Validate app_settings known keys where possible.
-- [ ] P1 Reject or quarantine unknown row shapes.
-- [ ] P1 Tests for each major collection validator.
+<!-- src/backup/backupService.ts: ROW_VALIDATORS map (messages/conversations/memories/audit_events/provider_profiles/skills/skill_permissions/model_catalog) run per row in validateBackup AFTER the secret+size checks; enum helpers (isMessageRole/isRisk/isStatus/isAuditSource/isProviderKind/isApiKeyMode/isSkillSource/isSensitivity). Tests: src/backup/backupService.test.ts "per-collection row validators (A2.6)" (it.each bad rows + well-formed accept). Gate: typecheck/lint/prettier/vitest 515/e2e 28. -->
+
+- [x] P1 Add per-collection validators for existing stores.
+- [x] P1 Validate enum fields:
+  - [x] message role;
+  - [x] audit risk/status/source;
+  - [x] provider kind;
+  - [ ] model status/provider; (model_catalog has no status field; provider validated. model_cache_index left key-field only)
+  - [x] memory sensitivity/source/createdBy;
+  - [x] skill enabled boolean/version/name.
+- [x] P1 Validate required string fields.
+- [x] P1 Validate numeric timestamps.
+- [ ] P1 Validate app_settings known keys where possible. (skipped — app_settings keys are open-ended/forward-compatible; key-field presence is enough, an allowlist would reject future settings)
+- [x] P1 Reject or quarantine unknown row shapes. (reject — unknown collection already rejected; per-collection validators reject malformed rows)
+- [x] P1 Tests for each major collection validator.
 
 ### A2.7 wllama integrity/TODO correction
 

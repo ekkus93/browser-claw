@@ -870,31 +870,33 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase E9 — BrowserClaw extension integration
 
-- [ ] P0 Add extension availability detector.
-- [ ] P0 Add Web Research settings/status UI:
+<!-- src/extension/pageReaderProvider.ts: createExtensionPageReader({transport, onAudit?}) -> PageReaderProvider (isAvailable via ping; readPage/readPages/readCurrentTab via protocol messages -> validated -> PageReadResult; ERROR_KIND_MAP extension->page-read error kinds). ExtensionTransport injectable (real = chrome.runtime.sendMessage). onAudit hook emits extension.connected/missing + web.page_read_started/completed/failed. Tests: src/extension/pageReaderProvider.test.ts. Web Research status UI = G3. Gate: typecheck/lint/prettier/vitest 655/e2e 30. -->
+
+- [x] P0 Add extension availability detector. (isAvailable() ping)
+- [ ] P0 Add Web Research settings/status UI: (G3)
   - [ ] extension missing;
   - [ ] extension connected;
   - [ ] extension version;
   - [ ] page reading available;
   - [ ] permission denied;
   - [ ] error state.
-- [ ] P0 Add install/setup guidance for Chrome extension.
-- [ ] P0 Add PageReaderProvider implementation backed by extension messaging.
-- [ ] P0 Add audit events:
-  - [ ] `extension.connected`;
-  - [ ] `extension.missing`;
-  - [ ] `extension.permission_requested`;
+- [x] P0 Add install/setup guidance for Chrome extension. (extension/chrome-web-research/README.md; in-app G3)
+- [x] P0 Add PageReaderProvider implementation backed by extension messaging.
+- [x] P0 Add audit events:
+  - [x] `extension.connected`;
+  - [x] `extension.missing`;
+  - [ ] `extension.permission_requested`; (real-browser permission flow — service worker / G3)
   - [ ] `extension.permission_granted`;
   - [ ] `extension.permission_denied`;
-  - [ ] `web.page_read_started`;
-  - [ ] `web.page_read_completed`;
-  - [ ] `web.page_read_failed`.
-- [ ] P0 Tests:
-  - [ ] missing extension shown honestly;
-  - [ ] connected extension detected;
-  - [ ] permission denied shown;
-  - [ ] page read result normalized;
-  - [ ] failures audited.
+  - [x] `web.page_read_started`;
+  - [x] `web.page_read_completed`;
+  - [x] `web.page_read_failed`.
+- [x] P0 Tests:
+  - [x] missing extension shown honestly; (isAvailable false on throw)
+  - [x] connected extension detected;
+  - [x] permission denied shown; (error response -> permission_denied PageReadResult)
+  - [x] page read result normalized;
+  - [x] failures audited. (onAudit web.page_read_failed)
 
 ## Phase E10 — Web research workflow
 

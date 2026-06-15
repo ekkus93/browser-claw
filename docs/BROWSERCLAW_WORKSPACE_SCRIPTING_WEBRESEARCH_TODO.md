@@ -657,25 +657,28 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase D4 — Mediated capabilities
 
-- [ ] P0 Implement sandbox capability proxy.
-- [ ] P0 Supported capability APIs:
-  - [ ] `fs.readText`;
-  - [ ] `fs.writeText`;
-  - [ ] `fs.search`;
-  - [ ] `fs.grep`;
-  - [ ] `web.search`;
-  - [ ] `web.readPage`;
-  - [ ] `memory.search` if needed;
-  - [ ] `tool.call` only through permission model.
-- [ ] P0 Every capability call checks policy/scope.
-- [ ] P0 Every denied call returns explicit error.
-- [ ] P0 Audit summarized capability usage.
-- [ ] P0 Tests:
-  - [ ] allowed file read works;
-  - [ ] disallowed file read denied;
-  - [ ] allowed file write requires approval/policy;
-  - [ ] disallowed web read denied;
-  - [ ] capability denial audited.
+- [x] P0 Implement sandbox capability proxy. <!-- src/script/sandboxCapabilities.ts: buildSandboxHost(ctx, capabilities) -> SandboxHostApi (the only bridge out of the D3 VM) -->
+- [x] P0 Supported capability APIs: <!-- namespace present ONLY when the manifest grants it; each call re-checks its scope -->
+  - [x] `fs.readText`; <!-- checks fsRead glob scope -->
+  - [x] `fs.writeText`; <!-- checks fsWrite glob scope; actor 'script', overwrite -->
+  - [x] `fs.search`; <!-- requires fsRead; results filtered to fsRead scope -->
+  - [x] `fs.grep`; <!-- requires fsRead; hits filtered to fsRead scope -->
+  - [x] `web.search`; <!-- requires webSearch===true; delegates to WebResearchService -->
+  - [x] `web.readPage`; <!-- requires url in webRead scope -->
+  - [x] `memory.search` if needed; <!-- exposed only with capabilities.memoryRead -->
+  - [x] `tool.call` only through permission model. <!-- exposed only with capabilities.tools[]; runToolCall(allowedTools=tools) -->
+- [x] P0 Every capability call checks policy/scope. <!-- globToRegExp + matchesAnyScope per fs path / web url; webSearch/memoryRead/tools flags gate the rest -->
+- [x] P0 Every denied call returns explicit error. <!-- deny() audits then throws SandboxCapabilityError -> rejected promise inside the script -->
+- [x] P0 Audit summarized capability usage. <!-- onAudit({capability,target,allowed,reason}) on every call; F4 backs it with recordAudit (script.capability_*) -->
+- [x] P0 Tests: <!-- src/script/sandboxCapabilities.test.ts (10): real sandbox + real WorkspaceFs through the proxy -->
+  - [x] allowed file read works; <!-- 'allows a file read within the read scope' -->
+  - [x] disallowed file read denied; <!-- 'denies a file read outside the read scope and audits it' -->
+  - [x] allowed file write requires approval/policy; <!-- 'allows a write within the write scope and persists it' + 'denies a write outside' (scope = the approved policy) -->
+  - [x] disallowed web read denied; <!-- 'denies a web read outside the web read scope' + 'denies web.search without the webSearch capability' -->
+  - [x] capability denial audited. <!-- denial assertions check audits contains allowed:false with reason -->
+
+<!-- D4 done 2026-06-15. Additively extended ScriptCapabilities (D1) with memoryRead?/tools? + D2 validation. Gate green: typecheck, eslint --max-warnings 0, prettier, vitest 718/99, e2e 30. No Rust. -->
+<!-- D5 adds COUNT/BYTE limits (maxFileReads/Writes/totalBytes/web/pages/output) as counters in this proxy layer; timeout/cancel already enforced by the D3 runtime. -->
 
 ## Phase D5 — Resource limits
 

@@ -175,6 +175,23 @@ function validateCapabilities(
   }
   const webSearch = raw.webSearch === true;
 
+  if (raw.memoryRead !== undefined && typeof raw.memoryRead !== 'boolean') {
+    errors.push('capabilities.memoryRead must be a boolean');
+  }
+  const memoryRead = raw.memoryRead === true;
+
+  let tools: string[] | undefined;
+  if (raw.tools !== undefined) {
+    if (
+      !Array.isArray(raw.tools) ||
+      raw.tools.some((t) => typeof t !== 'string')
+    ) {
+      errors.push('capabilities.tools must be an array of tool names');
+    } else {
+      tools = raw.tools as string[];
+    }
+  }
+
   // Secrets are never grantable to a script.
   if (raw.secrets !== undefined && raw.secrets !== 'deny') {
     errors.push(
@@ -206,7 +223,9 @@ function validateCapabilities(
     ...(fsRead ? { fsRead } : {}),
     ...(fsWrite ? { fsWrite } : {}),
     ...(webRead ? { webRead } : {}),
+    ...(tools ? { tools } : {}),
     webSearch,
+    memoryRead,
     network,
     secrets: 'deny',
   };

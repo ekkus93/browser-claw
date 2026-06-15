@@ -381,3 +381,30 @@ and TODO are. Newest decisions at the bottom of each section.
   policy/scope-checked against the request's capabilities (fsRead/fsWrite
   globs); denied -> explicit error + audit. Then D5 (count/byte limits in this
   proxy), D6 (approval card + script.sandbox_* audit). DEFERRED: Worker hosting -> F2.
+
+### D4 — Sandbox mediated capability proxy (done, 2026-06-15)
+- ADDITIVE to D1/D2: ScriptCapabilities += memoryRead?:boolean, tools?:string[].
+  D2 validates both; classifyCapabilityRisk: tools present -> medium.
+- src/script/sandboxCapabilities.ts: buildSandboxHost(ctx, capabilities) ->
+  SandboxHostApi — the ONLY bridge out of the D3 VM. SandboxCapabilityContext
+  {fs, db, dispatch, web?, toolCtx?, onAudit?}. SandboxCapabilityError.
+- Namespace exposure is capability-driven (so typeof unused-ns === 'undefined'):
+  fs iff fsRead||fsWrite; web iff webSearch||webRead; memory iff memoryRead;
+  tool iff tools[]. Each CALL re-checks its specific scope:
+  - globToRegExp: ** -> .*, * -> [^/]*, regex-escape the rest, anchored ^$.
+    matchesAnyScope(path, scopes). fs.readText/writeText normalize path first
+    (invalid path -> deny). fs.search/grep filter results to fsRead scope.
+  - web.search needs webSearch===true; web.readPage needs url in webRead scope
+    (glob match over the full URL). Both need ctx.web present.
+  - memory.search read-only (id/title/text/tags); tool.call -> runToolCall with
+    allowedTools=capabilities.tools (existing permission model).
+- deny(cap,target,reason): audit allowed:false + throw -> rejected promise in
+  the script. Every allowed call also audited. onAudit injectable (F4 backs it
+  with recordAudit -> script.capability_*). Redux-agnostic.
+- Tests: src/script/sandboxCapabilities.test.ts (10) end-to-end via
+  runSandboxedScript. vitest 708->718.
+- NEXT D5: resource limits as COUNTERS in this proxy (maxFileReads/maxFileWrites/
+  maxTotalBytesRead/Written/maxWebRequests/maxPagesRead/maxOutputBytes/maxLogBytes).
+  Wrap buildSandboxHost (or thread a LimitTracker) so each fs/web call increments
+  + throws a 'limit_exceeded' when over. timeout/cancel already in D3 runtime.
+  Output-size cap on the returned value. Then D6 (approval card + script.sandbox_* audit).

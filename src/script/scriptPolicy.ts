@@ -54,6 +54,10 @@ export interface ScriptCapabilities {
   fsWrite?: readonly string[];
   webSearch?: boolean;
   webRead?: readonly string[];
+  /** Read-only memory search (Part D4). */
+  memoryRead?: boolean;
+  /** Tools the script may call via `tool.call`, through the permission model. */
+  tools?: readonly string[];
   network?: 'deny' | 'mediated';
   secrets?: 'deny';
 }
@@ -126,7 +130,8 @@ export function classifyCapabilityRisk(
   if (
     (capabilities.fsWrite?.length ?? 0) > 0 ||
     capabilities.webSearch === true ||
-    (capabilities.webRead?.length ?? 0) > 0
+    (capabilities.webRead?.length ?? 0) > 0 ||
+    (capabilities.tools?.length ?? 0) > 0
   ) {
     return 'medium';
   }

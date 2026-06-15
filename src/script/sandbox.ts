@@ -10,16 +10,18 @@
  * out of the VM is through the mediated host functions explicitly injected by
  * the caller (Part D4); nothing else crosses the boundary.
  *
- * This module owns the VM lifecycle, value marshalling across the boundary, an
+ * Async host capabilities are bridged with QuickJS deferred promises and a host
+ * driver loop (not asyncify), so a script can `await` host calls inside loops
+ * without stalling. The runtime owns the VM lifecycle, value marshalling, an
  * interrupt-based timeout/cancellation, and host-function injection. It runs no
  * untrusted code in the app realm.
  */
 
-import { newQuickJSAsyncWASMModule } from 'quickjs-emscripten';
+import { getQuickJS } from 'quickjs-emscripten';
 import type {
-  QuickJSAsyncContext,
-  QuickJSAsyncWASMModule,
+  QuickJSContext,
   QuickJSHandle,
+  QuickJSWASMModule,
 } from 'quickjs-emscripten';
 
 /**
@@ -36,6 +38,7 @@ export type SandboxErrorKind =
   | 'script_error'
   | 'timeout'
   | 'cancelled'
+  | 'limit_exceeded'
   | 'internal_error';
 
 export type SandboxResult =
@@ -53,16 +56,16 @@ export interface SandboxRunOptions {
   now?: () => number;
 }
 
-let modulePromise: Promise<QuickJSAsyncWASMModule> | undefined;
+let modulePromise: Promise<QuickJSWASMModule> | undefined;
 
-/** Lazily load (and cache) the async QuickJS WASM module. */
-async function getModule(): Promise<QuickJSAsyncWASMModule> {
-  if (!modulePromise) modulePromise = newQuickJSAsyncWASMModule();
+/** Lazily load (and cache) the QuickJS WASM module. */
+async function getModule(): Promise<QuickJSWASMModule> {
+  if (!modulePromise) modulePromise = getQuickJS();
   return modulePromise;
 }
 
 /** Recursively marshal a plain JS value INTO the VM. Caller disposes the result. */
-function toHandle(vm: QuickJSAsyncContext, value: unknown): QuickJSHandle {
+function toHandle(vm: QuickJSContext, value: unknown): QuickJSHandle {
   if (value === undefined) return vm.undefined;
   if (value === null) return vm.null;
   switch (typeof value) {
@@ -100,24 +103,38 @@ function toHandle(vm: QuickJSAsyncContext, value: unknown): QuickJSHandle {
 
 /** Install one namespaced host API object onto the VM global. */
 function installHostNamespace(
-  vm: QuickJSAsyncContext,
+  vm: QuickJSContext,
   namespace: string,
   fns: Record<string, HostFunction>,
 ): void {
   const nsHandle = vm.newObject();
   for (const [name, fn] of Object.entries(fns)) {
-    const fnHandle = vm.newAsyncifiedFunction(
+    const fnHandle = vm.newFunction(
       `${namespace}.${name}`,
-      async (...argHandles: QuickJSHandle[]) => {
+      (...argHandles: QuickJSHandle[]) => {
         const args = argHandles.map((handle) => vm.dump(handle));
-        try {
-          const result = await fn(...args);
-          return toHandle(vm, result);
-        } catch (error) {
-          const message =
-            error instanceof Error ? error.message : String(error);
-          return { error: vm.newError(message) };
-        }
+        const deferred = vm.newPromise();
+        // Run the host capability off the VM call stack; a sync throw inside an
+        // async fn becomes a rejection either way.
+        Promise.resolve()
+          .then(() => fn(...args))
+          .then(
+            (result) => {
+              const handle = toHandle(vm, result);
+              deferred.resolve(handle);
+              handle.dispose();
+            },
+            (error: unknown) => {
+              const message =
+                error instanceof Error ? error.message : String(error);
+              const errorHandle = vm.newError(message);
+              deferred.reject(errorHandle);
+              errorHandle.dispose();
+            },
+          );
+        // Pump the VM's job queue once this promise settles.
+        deferred.settled.then(() => vm.runtime.executePendingJobs());
+        return deferred.handle;
       },
     );
     vm.setProp(nsHandle, name, fnHandle);
@@ -140,7 +157,7 @@ function wrapScript(code: string): string {
 export async function runSandboxedScript(
   code: string,
   options: SandboxRunOptions = {},
-  injectedModule?: QuickJSAsyncWASMModule,
+  injectedModule?: QuickJSWASMModule,
 ): Promise<SandboxResult> {
   const module = injectedModule ?? (await getModule());
   const vm = module.newContext();
@@ -148,20 +165,19 @@ export async function runSandboxedScript(
   const start = now();
   let interruptReason: 'timeout' | 'cancelled' | null = null;
 
+  const overBudget = (): 'timeout' | 'cancelled' | null => {
+    if (options.signal?.aborted) return 'cancelled';
+    if (options.timeoutMs !== undefined && now() - start > options.timeoutMs) {
+      return 'timeout';
+    }
+    return null;
+  };
+
   try {
     vm.runtime.setInterruptHandler(() => {
-      if (options.signal?.aborted) {
-        interruptReason = 'cancelled';
-        return true;
-      }
-      if (
-        options.timeoutMs !== undefined &&
-        now() - start > options.timeoutMs
-      ) {
-        interruptReason = 'timeout';
-        return true;
-      }
-      return false;
+      const reason = overBudget();
+      if (reason) interruptReason = reason;
+      return reason !== null;
     });
 
     if (options.host) {
@@ -170,25 +186,40 @@ export async function runSandboxedScript(
       }
     }
 
-    const evalResult = await vm.evalCodeAsync(wrapScript(code));
+    const evalResult = vm.evalCode(wrapScript(code));
     if (evalResult.error) {
       const message = describeError(vm, evalResult.error);
       evalResult.error.dispose();
       return failFromInterrupt(interruptReason, message);
     }
 
-    const promise = vm.resolvePromise(evalResult.value);
+    // Drive the script's returned promise to settlement, pumping the VM job
+    // queue and yielding to the host event loop so awaited host calls progress.
+    const native = vm.resolvePromise(evalResult.value);
     evalResult.value.dispose();
-    vm.runtime.executePendingJobs();
-    const settled = await promise;
+    let settled: Awaited<typeof native> | undefined;
+    void native.then((result) => {
+      settled = result;
+    });
+
+    while (settled === undefined) {
+      const reason = overBudget();
+      if (reason) {
+        interruptReason = reason;
+        return failFromInterrupt(reason, 'interrupted');
+      }
+      const jobs = vm.runtime.executePendingJobs();
+      if (jobs.error) jobs.error.dispose();
+      await new Promise((resolve) => setTimeout(resolve));
+    }
 
     if (settled.error) {
       const message = describeError(vm, settled.error);
       settled.error.dispose();
       return failFromInterrupt(interruptReason, message);
     }
-    const value = vm.dump(settled.value);
-    settled.value.dispose();
+    const value = settled.value ? vm.dump(settled.value) : undefined;
+    settled.value?.dispose();
     return { ok: true, value };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -198,7 +229,7 @@ export async function runSandboxedScript(
   }
 }
 
-function describeError(vm: QuickJSAsyncContext, handle: QuickJSHandle): string {
+function describeError(vm: QuickJSContext, handle: QuickJSHandle): string {
   const dumped = vm.dump(handle) as unknown;
   if (dumped && typeof dumped === 'object' && 'message' in dumped) {
     const { name, message } = dumped as { name?: string; message?: string };

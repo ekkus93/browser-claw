@@ -22,8 +22,13 @@ import { normalizeWorkspacePath } from '../workspace/path.ts';
 import { WorkspaceFs } from '../workspace/workspaceFs.ts';
 import type { GrepResult, WorkspaceSearchResult } from '../workspace/types.ts';
 import type { WebResearchService } from '../webresearch/types.ts';
-import type { SandboxHostApi } from './sandbox.ts';
+import {
+  runSandboxedScript,
+  type SandboxHostApi,
+  type SandboxResult,
+} from './sandbox.ts';
 import type { ScriptCapabilities } from './scriptPolicy.ts';
+import type { ScriptLimits } from './scriptRequest.ts';
 
 /** A summarized capability call for the audit log. */
 export interface CapabilityAudit {
@@ -48,6 +53,95 @@ export class SandboxCapabilityError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'SandboxCapabilityError';
+  }
+}
+
+/** Thrown when a script exceeds one of its declared resource limits (D5). */
+export class SandboxLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SandboxLimitError';
+  }
+}
+
+/**
+ * Counts a running script's resource usage against its declared limits (Part
+ * D5). Each accessor increments a counter and throws {@link SandboxLimitError}
+ * when a ceiling is crossed; `tripped` records which one, so the runner can
+ * classify the failure even after the error has crossed the VM boundary.
+ */
+export class LimitTracker {
+  tripped: string | null = null;
+  readonly logs: string[] = [];
+  private fileReads = 0;
+  private fileWrites = 0;
+  private bytesRead = 0;
+  private bytesWritten = 0;
+  private webRequests = 0;
+  private pagesRead = 0;
+  private logBytes = 0;
+  private readonly limits: ScriptLimits;
+
+  constructor(limits: ScriptLimits) {
+    this.limits = limits;
+  }
+
+  private trip(message: string): never {
+    this.tripped = message;
+    throw new SandboxLimitError(message);
+  }
+
+  /** Count a file read (call BEFORE reading), then its bytes (call after). */
+  beginFileRead(): void {
+    this.fileReads += 1;
+    if (this.fileReads > this.limits.maxFileReads) {
+      this.trip(`maxFileReads (${this.limits.maxFileReads}) exceeded`);
+    }
+  }
+
+  addBytesRead(bytes: number): void {
+    this.bytesRead += bytes;
+    const max = this.limits.maxTotalBytesRead;
+    if (max !== undefined && this.bytesRead > max) {
+      this.trip(`maxTotalBytesRead (${max}) exceeded`);
+    }
+  }
+
+  beginFileWrite(bytes: number): void {
+    this.fileWrites += 1;
+    if (this.fileWrites > this.limits.maxFileWrites) {
+      this.trip(`maxFileWrites (${this.limits.maxFileWrites}) exceeded`);
+    }
+    this.bytesWritten += bytes;
+    const max = this.limits.maxTotalBytesWritten;
+    if (max !== undefined && this.bytesWritten > max) {
+      this.trip(`maxTotalBytesWritten (${max}) exceeded`);
+    }
+  }
+
+  countWebRequest(): void {
+    this.webRequests += 1;
+    const max = this.limits.maxWebRequests;
+    if (max !== undefined && this.webRequests > max) {
+      this.trip(`maxWebRequests (${max}) exceeded`);
+    }
+  }
+
+  countPageRead(): void {
+    this.pagesRead += 1;
+    const max = this.limits.maxPagesRead;
+    if (max !== undefined && this.pagesRead > max) {
+      this.trip(`maxPagesRead (${max}) exceeded`);
+    }
+  }
+
+  appendLog(text: string): void {
+    this.logBytes += text.length;
+    const max = this.limits.maxLogBytes;
+    if (max !== undefined && this.logBytes > max) {
+      this.trip(`maxLogBytes (${max}) exceeded`);
+    }
+    this.logs.push(text);
   }
 }
 
@@ -94,6 +188,7 @@ function str(value: unknown, name: string): string {
 export function buildSandboxHost(
   ctx: SandboxCapabilityContext,
   capabilities: ScriptCapabilities,
+  tracker?: LimitTracker,
 ): SandboxHostApi {
   const host: SandboxHostApi = {};
   const audit = (entry: CapabilityAudit): void => ctx.onAudit?.(entry);
@@ -124,7 +219,9 @@ export function buildSandboxHost(
         if (!matchesAnyScope(path, capabilities.fsRead)) {
           return deny('fs.readText', path, 'path not in read scope');
         }
+        tracker?.beginFileRead();
         const text = await ctx.fs.readText(path);
+        tracker?.addBytesRead(text.length);
         audit({ capability: 'fs.readText', target: path, allowed: true });
         return text;
       },
@@ -133,7 +230,9 @@ export function buildSandboxHost(
         if (!matchesAnyScope(path, capabilities.fsWrite)) {
           return deny('fs.writeText', path, 'path not in write scope');
         }
-        await ctx.fs.createFile(path, str(content, 'content'), {
+        const body = str(content, 'content');
+        tracker?.beginFileWrite(body.length);
+        await ctx.fs.createFile(path, body, {
           overwrite: true,
           actor: 'script',
         });
@@ -200,6 +299,7 @@ export function buildSandboxHost(
         if (!ctx.web) {
           return deny('web.search', '*', 'web research service unavailable');
         }
+        tracker?.countWebRequest();
         const opts = (rawOpts ?? {}) as Record<string, unknown>;
         const out = await ctx.web.search(str(rawQuery, 'query'), {
           ...(typeof opts.maxResults === 'number'
@@ -217,6 +317,8 @@ export function buildSandboxHost(
         if (!ctx.web) {
           return deny('web.readPage', url, 'web research service unavailable');
         }
+        tracker?.countWebRequest();
+        tracker?.countPageRead();
         const opts = (rawOpts ?? {}) as Record<string, unknown>;
         const out = await ctx.web.readPage(url, {
           url,
@@ -284,5 +386,81 @@ export function buildSandboxHost(
     };
   }
 
+  // A benign log sink (stdout) — always available, but byte-capped by maxLogBytes
+  // through the tracker. Collected logs are returned by runSandboxWithLimits.
+  if (tracker) {
+    host.console = {
+      log: (...parts) => {
+        tracker.appendLog(parts.map((p) => String(p)).join(' '));
+      },
+    };
+  }
+
   return host;
+}
+
+/** Approximate the serialized byte size of a script's return value. */
+function outputSize(value: unknown): number {
+  if (value === undefined) return 0;
+  try {
+    return JSON.stringify(value)?.length ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+export interface LimitedRunOptions {
+  capabilities: ScriptCapabilities;
+  limits: ScriptLimits;
+  signal?: AbortSignal;
+  now?: () => number;
+}
+
+export type LimitedSandboxResult = SandboxResult & { logs?: string[] };
+
+/**
+ * Run an approved script with its declared limits enforced (Part D5). Wires the
+ * runtime timeout/cancellation (D3) to `limits.timeoutMs`/`signal`, threads a
+ * {@link LimitTracker} through the capability proxy (D4) for read/write/web/log
+ * ceilings, and rejects an over-budget return value. Limit failures are
+ * reclassified to the `limit_exceeded` error kind.
+ */
+export async function runSandboxWithLimits(
+  ctx: SandboxCapabilityContext,
+  code: string,
+  options: LimitedRunOptions,
+): Promise<LimitedSandboxResult> {
+  const tracker = new LimitTracker(options.limits);
+  const host = buildSandboxHost(ctx, options.capabilities, tracker);
+  const result = await runSandboxedScript(code, {
+    host,
+    timeoutMs: options.limits.timeoutMs,
+    ...(options.signal ? { signal: options.signal } : {}),
+    ...(options.now ? { now: options.now } : {}),
+  });
+
+  // A tripped limit fails the run even if the script swallowed the error or the
+  // trip came from a fire-and-forget capability (e.g. an over-budget log).
+  if (tracker.tripped) {
+    return {
+      ok: false,
+      error: tracker.tripped,
+      errorKind: 'limit_exceeded',
+      logs: tracker.logs,
+    };
+  }
+  if (!result.ok) {
+    return { ...result, logs: tracker.logs };
+  }
+
+  const size = outputSize(result.value);
+  if (size > options.limits.maxOutputBytes) {
+    return {
+      ok: false,
+      error: `output exceeds maxOutputBytes (${options.limits.maxOutputBytes})`,
+      errorKind: 'limit_exceeded',
+      logs: tracker.logs,
+    };
+  }
+  return { ...result, logs: tracker.logs };
 }

@@ -682,20 +682,23 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase D5 — Resource limits
 
-- [ ] P0 Enforce timeout.
-- [ ] P0 Enforce cancellation.
-- [ ] P0 Enforce max output bytes.
-- [ ] P0 Enforce max logs/stdout bytes.
-- [ ] P0 Enforce max file reads.
-- [ ] P0 Enforce max file writes.
-- [ ] P0 Enforce max total bytes read/written.
-- [ ] P0 Enforce max web requests/pages.
-- [ ] P0 Tests:
-  - [ ] infinite loop times out;
-  - [ ] huge output rejected;
-  - [ ] too many file reads rejected;
-  - [ ] too many file writes rejected;
-  - [ ] cancellation stops execution.
+- [x] P0 Enforce timeout. <!-- runSandboxWithLimits wires limits.timeoutMs to the D3 interrupt handler -> errorKind 'timeout' -->
+- [x] P0 Enforce cancellation. <!-- options.signal -> interrupt handler -> errorKind 'cancelled' -->
+- [x] P0 Enforce max output bytes. <!-- outputSize(JSON) > maxOutputBytes -> limit_exceeded -->
+- [x] P0 Enforce max logs/stdout bytes. <!-- console.log host sink -> LimitTracker.appendLog -> maxLogBytes -->
+- [x] P0 Enforce max file reads. <!-- LimitTracker.beginFileRead -> maxFileReads -->
+- [x] P0 Enforce max file writes. <!-- LimitTracker.beginFileWrite -> maxFileWrites -->
+- [x] P0 Enforce max total bytes read/written. <!-- addBytesRead/beginFileWrite -> maxTotalBytesRead/maxTotalBytesWritten -->
+- [x] P0 Enforce max web requests/pages. <!-- countWebRequest/countPageRead -> maxWebRequests/maxPagesRead -->
+- [x] P0 Tests: <!-- src/script/sandboxLimits.test.ts (8) via runSandboxWithLimits -->
+  - [x] infinite loop times out; <!-- 'times out an infinite loop' (errorKind timeout) -->
+  - [x] huge output rejected; <!-- 'rejects an over-budget return value' (limit_exceeded) -->
+  - [x] too many file reads rejected; <!-- 'rejects too many file reads' -->
+  - [x] too many file writes rejected; <!-- 'rejects too many file writes' (+ only first write committed) -->
+  - [x] cancellation stops execution. <!-- 'cancels via an aborted signal' (errorKind cancelled) -->
+
+<!-- D5 done 2026-06-15. LimitTracker + runSandboxWithLimits in sandboxCapabilities.ts; a tripped limit reclassifies to errorKind 'limit_exceeded'. Also extra tests: web page reads, log cap+collection, within-limits completion. -->
+<!-- NOTE: D3 runtime was switched from asyncify to a deferred-promise + driver-loop bridge (vm.newPromise + executePendingJobs pump) — asyncify HUNG on loops of awaited host calls, which v0.2 scripts depend on. Public API unchanged; all D3 escape tests still pass. Gate green: typecheck, eslint --max-warnings 0, prettier, vitest 726/100, e2e 30. No Rust. -->
 
 ## Phase D6 — Script approvals and audit
 

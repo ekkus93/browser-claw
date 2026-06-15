@@ -408,3 +408,34 @@ and TODO are. Newest decisions at the bottom of each section.
   Wrap buildSandboxHost (or thread a LimitTracker) so each fs/web call increments
   + throws a 'limit_exceeded' when over. timeout/cancel already in D3 runtime.
   Output-size cap on the returned value. Then D6 (approval card + script.sandbox_* audit).
+
+### D5 — Sandbox resource limits (done, 2026-06-15)
+- src/script/sandboxCapabilities.ts: LimitTracker(limits) counts fileReads/
+  fileWrites/bytesRead/bytesWritten/webRequests/pagesRead/logBytes; each accessor
+  throws SandboxLimitError when a ceiling is crossed and records `tripped`.
+  buildSandboxHost(ctx, caps, tracker?) threads it: readText beginFileRead+
+  addBytesRead, writeText beginFileWrite, web.search countWebRequest, web.readPage
+  countWebRequest+countPageRead, console.log -> appendLog (maxLogBytes).
+- runSandboxWithLimits(ctx, code, {capabilities, limits, signal?, now?}) ->
+  LimitedSandboxResult (SandboxResult + logs?). Wires limits.timeoutMs/signal to
+  the D3 interrupt handler; builds the host with a tracker; after the run:
+  if tracker.tripped -> errorKind 'limit_exceeded' (covers fire-and-forget log
+  overflow + swallowed errors); else if output JSON size > maxOutputBytes ->
+  limit_exceeded; else passthrough. console.log collected into result.logs.
+- Tests: src/script/sandboxLimits.test.ts (8). vitest 718->726.
+
+### D3 RUNTIME REWRITE (asyncify -> deferred promises) — IMPORTANT
+- The D3 sandbox originally used newQuickJSAsyncWASMModule + newAsyncifiedFunction
+  + evalCodeAsync. That HANGS when a script awaits host calls INSIDE A LOOP
+  (proved: a 5-iteration loop of awaited host fns never returns). v0.2 scripts
+  exist for loops, so this was fatal.
+- Rewrote to the deferred-promise pattern (sync getQuickJS module): host fns are
+  vm.newFunction returning vm.newPromise().handle, resolved/rejected from a host
+  Promise.resolve().then(fn); deferred.settled.then(executePendingJobs). The
+  runner drives the script's returned promise via resolvePromise + a loop that
+  pumps executePendingJobs and `await setTimeout` (yields to the host event loop)
+  until settled, honoring the interrupt-based timeout/cancel throughout.
+- Public API (runSandboxedScript signature, SandboxResult, host injection) UNCHANGED.
+  All D3 escape tests + D4 + D5 pass. injectedModule param is now QuickJSWASMModule.
+- GOTCHA: erasableSyntaxOnly (TS6) forbids constructor parameter properties —
+  declare the field + assign in the body (LimitTracker.limits).

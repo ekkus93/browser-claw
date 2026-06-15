@@ -79,12 +79,32 @@ export class RuntimeHost {
     if (verbose && command.type === 'resolve_effect') {
       this.#auditResolved(command);
     }
-    for (const effect of this.#port.dispatch(command)) {
-      if (verbose) this.#auditEmitted(effect);
-      await executeEffect(effect, this.#ctx);
+    try {
+      for (const effect of this.#port.dispatch(command)) {
+        if (verbose) this.#auditEmitted(effect);
+        await executeEffect(effect, this.#ctx);
+      }
+    } catch (error) {
+      // A fatal effect failure throws out of the loop, so the normal post-turn
+      // save below never runs. The runtime state was already advanced by
+      // dispatch(), so persist it before the error propagates — otherwise the
+      // turn's progress is lost on the next reload ("save after error"). The
+      // flush is best-effort; we re-throw the original error regardless.
+      await this.#flushOnError();
+      throw error;
     }
-    // Coalesced save after the turn settles (no-op unless snapshots enabled).
+    // Coalesced save after the turn settles (idle = no pending effects). No-op
+    // unless snapshots are enabled.
     this.#snapshots?.schedule();
+  }
+
+  async #flushOnError(): Promise<void> {
+    if (!this.#snapshots) return; // snapshots disabled — nothing to persist
+    try {
+      await this.saveSnapshot();
+    } catch {
+      // Already handling a fatal error; a failed save must not mask it.
+    }
   }
 
   #auditEmitted(effect: Effect): void {

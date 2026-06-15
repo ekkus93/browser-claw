@@ -103,6 +103,37 @@ describe('RuntimeHost', () => {
     ).toBe(false);
   });
 
+  it('flushes a snapshot when a fatal effect error halts the turn', async () => {
+    await db.open();
+    await db.runtime_snapshots.clear();
+    // ctx has an llm_request stub but NO storage port.
+    const { ctx } = makeContext();
+    const host = new RuntimeHost(createReferenceRuntime(), ctx, {
+      // Long delay so the normal debounced save does NOT fire during the test —
+      // any snapshot that appears must come from the error flush.
+      snapshot: { delayMs: 10000 },
+    });
+    await host.submit({
+      type: 'submit_user_message',
+      conversation_id: 'c1',
+      text: 'hi',
+    });
+    await db.runtime_snapshots.clear();
+
+    // Resolving the llm_request makes the runtime emit a storage_put, which has
+    // no handler -> failEffect throws. The host must persist state first.
+    await expect(
+      host.submit({
+        type: 'resolve_effect',
+        id: 'eff-2',
+        result: { ok: true, text: 'hi' },
+      }),
+    ).rejects.toThrow();
+
+    const load = await loadLatestSnapshot(db);
+    expect(load.status).toBe('ok');
+  });
+
   it('schedules a snapshot save after a submit when enabled', async () => {
     await db.open();
     const { ctx } = makeContext();

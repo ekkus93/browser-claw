@@ -348,7 +348,7 @@
 - [x] Validate permissions.
 - [x] Reject unknown permission fields unless explicitly allowed.
 - [x] Imported skills start disabled unless user enables them.
-- [ ] Show permission review before install. <!-- needs skills import UI -->
+- [x] Show permission review before install. <!-- SkillsScreen import (handleFile) parses the file and sets `pending` WITHOUT installing; a Dialog "Install <name>?" renders a PermissionView of the requested tools/read/write/network with Install + Cancel. Only Install -> confirmInstall -> manager.install; Cancel -> setPending(null) installs nothing (fail-closed). The earlier "needs skills import UI" note was stale (the import UI exists). Tested both halves in SkillsScreen.test.tsx: "imports a skill: reviews permissions, installs, enables, and audits" (review appears before install) and "canceling the permission review installs nothing (fail-closed)" (db.skills has no row + no skillId audit after Cancel). -->
 - [x] Tests:
   - [x] missing name rejected;
   - [x] missing description rejected;

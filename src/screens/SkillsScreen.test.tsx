@@ -97,6 +97,43 @@ describe('SkillsScreen', () => {
     expect(types).toContain('skill_enabled');
   });
 
+  it('canceling the permission review installs nothing (fail-closed)', async () => {
+    // The review dialog is a security gate: declining it must NOT install the
+    // skill or write any install audit — the skill never enters the system.
+    const user = userEvent.setup();
+    renderSkills();
+    await screen.findByRole('button', { name: /web-search/ });
+
+    const skillMd = [
+      '---',
+      'name: reject-test',
+      'version: 1.0.0',
+      'description: Should never install.',
+      'tools: [Page Reader]',
+      'network: true',
+      '---',
+      'Nope.',
+    ].join('\n');
+    const file = new File([skillMd], 'SKILL.md', { type: 'text/markdown' });
+
+    await user.upload(screen.getByLabelText('Import skill file'), file);
+    expect(await screen.findByText('Install reject-test?')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText('Install reject-test?'),
+      ).not.toBeInTheDocument(),
+    );
+    // Nothing persisted, nothing audited.
+    expect(await db.skills.get('reject-test')).toBeUndefined();
+    const installAudits = (await db.audit_events.toArray()).filter(
+      (e) => e.skillId === 'reject-test',
+    );
+    expect(installAudits).toHaveLength(0);
+  });
+
   it('enables a skill and shows its permissions', async () => {
     const user = userEvent.setup();
     renderSkills();

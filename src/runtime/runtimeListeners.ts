@@ -12,6 +12,7 @@ import { runApprovedToolCall } from './toolRunner.ts';
 import type { ApprovedPlan } from './planRunner.ts';
 import type { ApprovedSandboxScript } from './sandboxScriptRunner.ts';
 import type { ApprovedWorkspaceOp } from './workspaceRunner.ts';
+import type { ApprovedWebPageRead } from './webRunner.ts';
 
 export interface RuntimeListenerDeps {
   db: BrowserClawDB;
@@ -21,6 +22,8 @@ export interface RuntimeListenerDeps {
   resolveSandboxApproval?: (approval: ApprovedSandboxScript) => Promise<void>;
   /** Resolves a `workspace_write`/`workspace_delete` approval (Part B6/F3). */
   resolveWorkspaceApproval?: (approval: ApprovedWorkspaceOp) => Promise<void>;
+  /** Resolves a `web_page_read` approval through the web bridge (Part F3). */
+  resolveWebPageReadApproval?: (approval: ApprovedWebPageRead) => Promise<void>;
 }
 
 /**
@@ -89,6 +92,16 @@ export function registerRuntimeListeners(
         approval.kind === 'workspace_delete'
       ) {
         await deps.resolveWorkspaceApproval?.({
+          id: approval.id,
+          status: action.payload.status,
+          ...(approval.payloadPreview !== undefined
+            ? { payloadPreview: approval.payloadPreview }
+            : {}),
+        });
+        return;
+      }
+      if (approval.kind === 'web_page_read') {
+        await deps.resolveWebPageReadApproval?.({
           id: approval.id,
           status: action.payload.status,
           ...(approval.payloadPreview !== undefined

@@ -155,6 +155,30 @@ describe('registerRuntimeListeners', () => {
     });
   });
 
+  it('routes a web page-read approval to the web resolver (F3)', async () => {
+    const resolveWebPageReadApproval = vi.fn().mockResolvedValue(undefined);
+    const { store } = setup({ resolveWebPageReadApproval });
+    store.dispatch(
+      approvalRequested({
+        id: 'web-1',
+        kind: 'web_page_read',
+        title: 'Read web page',
+        risk: 'medium',
+        summary: 'read a page',
+        payloadPreview: '{"url":"https://example.com/a"}',
+      }),
+    );
+    store.dispatch(approvalResolved({ id: 'web-1', status: 'approved' }));
+    await vi.waitFor(() =>
+      expect(resolveWebPageReadApproval).toHaveBeenCalled(),
+    );
+    expect(resolveWebPageReadApproval).toHaveBeenCalledWith({
+      id: 'web-1',
+      status: 'approved',
+      payloadPreview: '{"url":"https://example.com/a"}',
+    });
+  });
+
   it('audits an edit to a tool-call approval', async () => {
     await db.open();
     await db.audit_events.clear();

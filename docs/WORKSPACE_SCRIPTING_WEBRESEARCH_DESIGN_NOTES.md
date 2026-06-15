@@ -566,3 +566,25 @@ and TODO are. Newest decisions at the bottom of each section.
   bulk_research) OR move to PART G (UI: G2 plan+sandbox approval cards via
   PlanProposal/ScriptProposal, G3 web research status). E2 (search) needs the user
   to NAME the provider (Tavily/Brave/Exa). PART H = QA gate.
+
+### F3 (web increment) — web_page_read approval wiring (done, 2026-06-15)
+- USER DECISION: E2 search provider = BRAVE SEARCH (commercial API, key in
+  SecretVault, called from the extension). Build E2 against Brave when we get there.
+- approvalsSlice ApprovalKind += web_page_read, bulk_research, extension_permission.
+- src/runtime/webRunner.ts: createWebEffectHandler({web:WebResearchService, db,
+  dispatch, submit}) — web_search runs read-only DIRECT (audited
+  web.search_started/completed/failed) + resolves; web_page_read validates URL
+  (classifyFetchUrl) -> approvalRequested kind 'web_page_read' (payloadPreview
+  {url,options}), nothing fetched. runApprovedWebPageRead: approved ->
+  web.readPage + web.page_read_started/completed audits + resolve {ok,content};
+  rejected -> web.page_read_rejected + resolve user_rejected; reader throw ->
+  web.page_read_failed + resolve failure. Audit summaries length-capped by F4
+  (big page body never stored whole). Uses webAuditEvent (F4 builder).
+- runtimeListeners.ts approvalResolved += route web_page_read ->
+  deps.resolveWebPageReadApproval. RuntimeListenerDeps += that.
+- Tests: webRunner.test.ts (7) + runtimeListeners.test.ts +1. vitest 781->788.
+- F3 STATUS: plan + sandbox + workspace_write/delete + web_page_read WIRED.
+  REMAINING: extension host permission ('extension_permission'), bulk_research
+  ('bulk_research') — kinds declared in ApprovalKind, handlers TODO. extension
+  permission = real-browser chrome.permissions flow (extension service worker);
+  bulk_research needs a web_research effect (not in F2) or research() gating.

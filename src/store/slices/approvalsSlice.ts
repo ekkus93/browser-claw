@@ -19,7 +19,10 @@ export type ApprovalKind =
   | 'workspace_write'
   | 'workspace_delete'
   | 'plan'
-  | 'sandbox_script';
+  | 'sandbox_script'
+  | 'web_page_read'
+  | 'bulk_research'
+  | 'extension_permission';
 
 export type ApprovalRisk = 'low' | 'medium' | 'high';
 

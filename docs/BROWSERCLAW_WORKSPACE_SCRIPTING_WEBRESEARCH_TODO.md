@@ -486,27 +486,29 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase C2 — Plan operation implementations
 
-- [ ] P0 Implement workspace operations:
-  - [ ] `fs.readText`;
-  - [ ] `fs.readTextRange`;
-  - [ ] `fs.readLines`;
-  - [ ] `fs.writeText`;
-  - [ ] `fs.updateText`;
-  - [ ] `fs.appendText`;
-  - [ ] `fs.delete`;
-  - [ ] `fs.list`;
-  - [ ] `fs.search`;
-  - [ ] `fs.grep`.
-- [ ] P1 Implement:
-  - [ ] `fs.move`;
-  - [ ] `fs.copy`.
-- [ ] P1 Implement memory operations:
-  - [ ] `memory.search`;
-  - [ ] `memory.create`.
-- [ ] P1 Implement tool call operation:
-  - [ ] `tool.call` using existing tool permission/approval model.
+<!-- src/script/planOps.ts: executePlanOp(ctx, op, resolvedArgs) -> WorkspaceFs (fs.*), Dexie (memory.*), runToolCall (tool.call, allowedTools from approved plan). web.* throw PlanOpError (explicit, NOT faked) until Part E. Tests: src/script/planOps.test.ts. Gate: typecheck/lint/prettier/vitest 602/e2e 30. -->
+
+- [x] P0 Implement workspace operations:
+  - [x] `fs.readText`;
+  - [x] `fs.readTextRange`;
+  - [x] `fs.readLines`;
+  - [x] `fs.writeText`;
+  - [x] `fs.updateText`;
+  - [x] `fs.appendText`;
+  - [x] `fs.delete`;
+  - [x] `fs.list`;
+  - [x] `fs.search`;
+  - [x] `fs.grep`.
+- [x] P1 Implement:
+  - [x] `fs.move`;
+  - [x] `fs.copy`.
+- [x] P1 Implement memory operations:
+  - [x] `memory.search`;
+  - [x] `memory.create`.
+- [x] P1 Implement tool call operation:
+  - [x] `tool.call` using existing tool permission/approval model. (runToolCall with the approved plan's allowedTools)
 - [ ] P1 Implement web operations after Web Research providers exist:
-  - [ ] `web.search`;
+  - [ ] `web.search`; (throws PlanOpError until Part E — not faked)
   - [ ] `web.readPage`;
   - [ ] `web.readPages`.
 

@@ -32,6 +32,13 @@ vi.mock('@wllama/wllama/esm/index.js', () => {
   return { Wllama };
 });
 
+// Stub the SHA-256 runtime verification (its own fetch is unit-tested in
+// runtimeIntegrity.test.ts). This keeps the consent/load wiring tests off the
+// network — getInstance would otherwise fetch the real CDN wasm (A2.7).
+vi.mock('./runtimeIntegrity.ts', () => ({
+  fetchVerifiedRuntimeUrl: () => Promise.resolve('blob:mock-runtime'),
+}));
+
 import {
   createWllamaEngine,
   getWllamaEngine,

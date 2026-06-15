@@ -138,3 +138,42 @@ describe('WorkspaceFs CRUD (B3)', () => {
     expect(await db.workspace_files.count()).toBe(0);
   });
 });
+
+describe('WorkspaceFs range reads (B4)', () => {
+  it('reads a character range without splitting a multibyte char', async () => {
+    // 'a' + emoji (astral, surrogate pair) + 'b'
+    await fs.createFile('/workspace/u.txt', 'a😀b');
+    expect(await fs.readTextRange('/workspace/u.txt', 0, 2)).toBe('a😀');
+    expect(await fs.readTextRange('/workspace/u.txt', 1, 1)).toBe('😀');
+    expect(await fs.readTextRange('/workspace/u.txt', 1, 2)).toBe('😀b');
+  });
+
+  it('rejects an oversized or negative range', async () => {
+    await fs.createFile('/workspace/r.txt', 'data');
+    await expect(
+      fs.readTextRange('/workspace/r.txt', 0, 1_000_000),
+    ).rejects.toThrow(/limit/i);
+    await expect(fs.readTextRange('/workspace/r.txt', -1, 1)).rejects.toThrow(
+      /non-negative/i,
+    );
+  });
+
+  it('reads a 1-based line range as a snippet', async () => {
+    await fs.createFile('/workspace/l.txt', 'l1\nl2\nl3\nl4\nl5');
+    const snip = await fs.readLines('/workspace/l.txt', 2, 2);
+    expect(snip.lines).toEqual(['l2', 'l3']);
+    expect(snip.startLine).toBe(2);
+    expect(snip.endLine).toBe(3);
+    expect(snip.text).toBe('l2\nl3');
+  });
+
+  it('rejects an invalid line range', async () => {
+    await fs.createFile('/workspace/l.txt', 'a\nb');
+    await expect(fs.readLines('/workspace/l.txt', 0, 1)).rejects.toThrow(
+      /1-based/i,
+    );
+    await expect(fs.readLines('/workspace/l.txt', 1, 999_999)).rejects.toThrow(
+      /limit/i,
+    );
+  });
+});

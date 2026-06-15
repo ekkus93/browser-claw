@@ -1446,3 +1446,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - HONESTY: "failed metadata write doesn't leave unreachable content" left unchecked — content-before-metadata makes orphaned content the accepted/harmless case (spec "where possible"); not separately tested.
 - Gate ALL GREEN: typecheck, lint, prettier, vitest 565/82, e2e 28. No Rust touched.
 - NEXT: B4 — text range/snippets/large-file: readTextRange(path,start,length), readLines(path,startLine,lineCount), enforce max range length + max snippet output size, UTF-8 boundary safety. Add to WorkspaceFs. P1.
+
+## 2026-06-15T08:45:32Z - Claude Opus 4.8 - Ralph: B4 (text range/snippets)
+- B4 DONE. WorkspaceFs.readTextRange(path,start,length): code-point slicing ([...text]) so surrogate pairs/emoji never split; caps length at MAX_RANGE_CHARS (100k); rejects negative/non-int. readLines(path,startLine,lineCount): 1-based, returns TextSnippet {path,startLine,endLine,lines,text}; caps lineCount at MAX_SNIPPET_LINES (5k) + output at MAX_SNIPPET_BYTES (256k). TextSnippet type added to types.ts.
+- Tests: workspaceFs.test "range reads (B4)" +4 (emoji range no-split, oversized/negative range reject, line snippet, invalid line range). vitest 565->569.
+- NOTE: reads whole file then slices (ContentStore has no partial read); fine for now, future optimization possible.
+- Gate ALL GREEN: typecheck, lint, prettier, vitest 569/82, e2e 28. No Rust touched.
+- NEXT: B5 — workspace search + grep: metadata/path search, text indexing, grep-in-file, grep-across-workspace, snippets w/ line+context, file-type filters, max-result limits, reindex op. Tests: search by path/content, grep line/snippet, binary/large skip, updated-file reindex, deleted removed from index. P1. Add src/workspace/search.ts (or methods on WorkspaceFs). v0.1 backend = simple in-memory/IndexedDB scan (no FTS yet).

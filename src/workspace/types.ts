@@ -31,6 +31,17 @@ export interface WorkspaceFileSource {
  * Durable metadata for one workspace entry. The file's bytes are addressed by
  * `id` in the ContentStore (a directory has no content). See spec §2.5.
  */
+/** A line-numbered text excerpt returned by readLines (spec §2.3/§2.7). */
+export interface TextSnippet {
+  path: string;
+  /** 1-based line number of the first returned line. */
+  startLine: number;
+  /** 1-based line number of the last returned line. */
+  endLine: number;
+  lines: string[];
+  text: string;
+}
+
 export interface WorkspaceFileMeta {
   id: string;
   path: string;

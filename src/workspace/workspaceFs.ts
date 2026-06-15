@@ -15,12 +15,20 @@ import type { ContentStore } from './contentStore.ts';
 import { WorkspaceContentMissingError } from './contentStore.ts';
 import { normalizeWorkspacePath } from './path.ts';
 import type {
+  TextSnippet,
   WorkspaceActor,
   WorkspaceFileMeta,
   WorkspaceFileSource,
 } from './types.ts';
 
 export type FileStat = WorkspaceFileMeta;
+
+/** Max characters returnable from readTextRange in one call (B4). */
+export const MAX_RANGE_CHARS = 100_000;
+/** Max lines returnable from readLines in one call (B4). */
+export const MAX_SNIPPET_LINES = 5_000;
+/** Max serialized bytes a snippet may return (B4). */
+export const MAX_SNIPPET_BYTES = 256_000;
 
 export class WorkspacePathConflictError extends Error {
   constructor(path: string) {
@@ -151,6 +159,71 @@ export class WorkspaceFs {
 
   async readText(path: string): Promise<string> {
     return new TextDecoder().decode(await this.readFile(path));
+  }
+
+  /**
+   * Read a character range of a text file (B4). `start`/`length` count Unicode
+   * code points, and slicing is done on code points (via spread), so a multibyte
+   * character / surrogate pair is never split. `length` is capped at
+   * {@link MAX_RANGE_CHARS}.
+   */
+  async readTextRange(
+    path: string,
+    start: number,
+    length: number,
+  ): Promise<string> {
+    if (!Number.isInteger(start) || start < 0) {
+      throw new RangeError(
+        'readTextRange: start must be a non-negative integer',
+      );
+    }
+    if (!Number.isInteger(length) || length < 0) {
+      throw new RangeError(
+        'readTextRange: length must be a non-negative integer',
+      );
+    }
+    if (length > MAX_RANGE_CHARS) {
+      throw new RangeError(
+        `readTextRange: length ${length} exceeds the ${MAX_RANGE_CHARS} limit`,
+      );
+    }
+    const codePoints = [...(await this.readText(path))];
+    return codePoints.slice(start, start + length).join('');
+  }
+
+  /**
+   * Read a 1-based line range of a text file as a {@link TextSnippet} (B4).
+   * `lineCount` is capped at {@link MAX_SNIPPET_LINES} and the serialized output
+   * at {@link MAX_SNIPPET_BYTES}.
+   */
+  async readLines(
+    path: string,
+    startLine: number,
+    lineCount: number,
+  ): Promise<TextSnippet> {
+    if (!Number.isInteger(startLine) || startLine < 1) {
+      throw new RangeError('readLines: startLine is 1-based and must be >= 1');
+    }
+    if (!Number.isInteger(lineCount) || lineCount < 0) {
+      throw new RangeError(
+        'readLines: lineCount must be a non-negative integer',
+      );
+    }
+    if (lineCount > MAX_SNIPPET_LINES) {
+      throw new RangeError(
+        `readLines: lineCount ${lineCount} exceeds the ${MAX_SNIPPET_LINES} limit`,
+      );
+    }
+    const p = normalizeWorkspacePath(path);
+    const from = startLine - 1;
+    const lines = (await this.readText(p))
+      .split('\n')
+      .slice(from, from + lineCount);
+    const text = lines.join('\n');
+    if (new TextEncoder().encode(text).byteLength > MAX_SNIPPET_BYTES) {
+      throw new RangeError('readLines: snippet exceeds the output size limit');
+    }
+    return { path: p, startLine, endLine: from + lines.length, lines, text };
   }
 
   async updateFile(

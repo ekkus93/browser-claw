@@ -363,16 +363,18 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase B4 — Text range, snippets, and large-file behavior
 
-- [ ] P1 Implement `readTextRange(path, start, length)`.
-- [ ] P1 Implement `readLines(path, startLine, lineCount)`.
-- [ ] P1 Enforce max range length.
-- [ ] P1 Enforce max snippet output size.
-- [ ] P1 Handle UTF-8 boundaries safely.
-- [ ] P1 Tests:
-  - [ ] reads byte/text range;
-  - [ ] reads line range;
-  - [ ] rejects oversized range;
-  - [ ] handles unicode safely.
+<!-- src/workspace/workspaceFs.ts: readTextRange (code-point slicing, MAX_RANGE_CHARS) + readLines (1-based, TextSnippet, MAX_SNIPPET_LINES + MAX_SNIPPET_BYTES). src/workspace/types.ts: TextSnippet. Tests: src/workspace/workspaceFs.test.ts "range reads (B4)". Gate: typecheck/lint/prettier/vitest 569/e2e 28. -->
+
+- [x] P1 Implement `readTextRange(path, start, length)`.
+- [x] P1 Implement `readLines(path, startLine, lineCount)`.
+- [x] P1 Enforce max range length.
+- [x] P1 Enforce max snippet output size.
+- [x] P1 Handle UTF-8 boundaries safely. (code-point slicing — never splits a surrogate pair; TextDecoder already yields valid text)
+- [x] P1 Tests:
+  - [x] reads byte/text range;
+  - [x] reads line range;
+  - [x] rejects oversized range;
+  - [x] handles unicode safely.
 
 ## Phase B5 — Workspace search and grep
 

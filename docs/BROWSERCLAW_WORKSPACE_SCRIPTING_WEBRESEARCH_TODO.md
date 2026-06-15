@@ -438,18 +438,20 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase B8 — Workspace backup/restore
 
-- [ ] P1 Add workspace metadata to backup format behind explicit option.
-- [ ] P1 Add workspace content export behind explicit option.
-- [ ] P1 Encrypted backup recommended for workspace files.
-- [ ] P1 Restore workspace metadata/content transactionally where possible.
-- [ ] P1 Validate workspace file rows/content records.
-- [ ] P1 Show backup size warning.
-- [ ] P1 Tests:
-  - [ ] export without workspace excludes files;
-  - [ ] export with workspace includes files;
-  - [ ] restore reconstructs files;
-  - [ ] invalid workspace path in backup rejected;
-  - [ ] large backup warning shown.
+<!-- src/backup/backupService.ts: exportBackup {includeWorkspace, contentStore} adds workspace_files + workspace_content (base64) collections + manifest.includesWorkspace; ALLOWED_COLLECTIONS + ROW_VALIDATORS (workspace path via isValidWorkspacePath, content data string); importBackup(5th arg contentStore) restores metadata transactionally then writes bytes to ContentStore (throws if content present w/o store); workspaceBackupSizeBytes + WORKSPACE_BACKUP_WARN_BYTES. crypto.ts toBase64/fromBase64 exported. Tests: src/backup/backupService.test.ts "workspace backup/restore (B8)". Gate: typecheck/lint/prettier/vitest 586/e2e 30. -->
+
+- [x] P1 Add workspace metadata to backup format behind explicit option.
+- [x] P1 Add workspace content export behind explicit option.
+- [x] P1 Encrypted backup recommended for workspace files. (existing encryptBackup wraps the whole serialized backup incl. workspace collections — no special-casing needed)
+- [x] P1 Restore workspace metadata/content transactionally where possible. (metadata in the Dexie txn; OPFS bytes written after — can't join a Dexie txn)
+- [x] P1 Validate workspace file rows/content records.
+- [x] P1 Show backup size warning. (workspaceBackupSizeBytes + WORKSPACE_BACKUP_WARN_BYTES helper; StorageScreen UI wiring is G3)
+- [x] P1 Tests:
+  - [x] export without workspace excludes files;
+  - [x] export with workspace includes files;
+  - [x] restore reconstructs files;
+  - [x] invalid workspace path in backup rejected;
+  - [x] large backup warning shown. (size estimate helper tested)
 
 ---
 

@@ -17,8 +17,10 @@ import {
   encryptBackup,
   decryptBackup,
   isEncryptedBackup,
+  workspaceBackupSizeBytes,
   type ClawBackup,
 } from './backupService.ts';
+import { MemoryContentStore } from '../workspace/contentStore.ts';
 import type { AppDispatch } from '../store/store.ts';
 
 const db = new BrowserClawDB();
@@ -807,5 +809,121 @@ describe('containsLikelyRawSecret — credential-shape detection', () => {
     expect(containsLikelyRawSecret(nest(7, key))).toBe(true);
     // Buried past the budget -> not descended (a bounded scan, documented).
     expect(containsLikelyRawSecret(nest(8, key))).toBe(false);
+  });
+});
+
+describe('workspace backup/restore (B8)', () => {
+  it('excludes workspace files unless includeWorkspace is set', async () => {
+    await db.open();
+    await db.workspace_files.clear();
+    await db.workspace_files.put({
+      id: 'w1',
+      path: '/workspace/a.txt',
+      kind: 'file',
+      sizeBytes: 2,
+      createdAt: 1,
+      updatedAt: 1,
+      createdBy: 'agent',
+    });
+    const plain = await exportBackup(db);
+    expect('workspace_files' in plain.collections).toBe(false);
+
+    const content = new MemoryContentStore();
+    await content.write('w1', new TextEncoder().encode('hi'));
+    const withWs = await exportBackup(db, {
+      includeWorkspace: true,
+      contentStore: content,
+    });
+    expect(withWs.manifest.includesWorkspace).toBe(true);
+    expect(withWs.collections.workspace_files).toHaveLength(1);
+    expect(withWs.collections.workspace_content).toHaveLength(1);
+  });
+
+  it('round-trips workspace metadata + content through the content store', async () => {
+    await db.open();
+    await db.workspace_files.clear();
+    await db.workspace_files.put({
+      id: 'w1',
+      path: '/workspace/a.txt',
+      kind: 'file',
+      sizeBytes: 5,
+      createdAt: 1,
+      updatedAt: 1,
+      createdBy: 'agent',
+    });
+    const src = new MemoryContentStore();
+    await src.write('w1', new TextEncoder().encode('hello'));
+    const backup = await exportBackup(db, {
+      includeWorkspace: true,
+      contentStore: src,
+    });
+
+    await db.workspace_files.clear();
+    const dest = new MemoryContentStore();
+    await importBackup(db, backup, 'merge', {}, dest);
+
+    expect((await db.workspace_files.get('w1'))?.path).toBe('/workspace/a.txt');
+    expect(new TextDecoder().decode(await dest.read('w1'))).toBe('hello');
+  });
+
+  it('refuses to restore content without a content store', async () => {
+    const backup: ClawBackup = {
+      manifest: {
+        format: 'clawbackup',
+        schemaVersion: 1,
+        appVersion: 't',
+        createdAt: 0,
+        includesSecrets: false,
+        includesWorkspace: true,
+      },
+      collections: { workspace_content: [{ id: 'w1', data: 'aGk=' }] },
+    };
+    await db.open();
+    await expect(importBackup(db, backup)).rejects.toThrow(/content store/i);
+  });
+
+  it('rejects a workspace_files row with an unsafe path', async () => {
+    const backup: ClawBackup = {
+      manifest: {
+        format: 'clawbackup',
+        schemaVersion: 1,
+        appVersion: 't',
+        createdAt: 0,
+        includesSecrets: false,
+      },
+      collections: {
+        workspace_files: [
+          {
+            id: 'bad',
+            path: '/workspace/../escape',
+            kind: 'file',
+            sizeBytes: 0,
+            createdAt: 1,
+            updatedAt: 1,
+            createdBy: 'agent',
+          },
+        ],
+      },
+    };
+    const result = validateBackup(backup);
+    expect(result.valid).toBe(false);
+    expect(result.error).toMatch(/invalid workspace path/i);
+  });
+
+  it('estimates workspace content size for a size warning', () => {
+    const backup: ClawBackup = {
+      manifest: {
+        format: 'clawbackup',
+        schemaVersion: 1,
+        appVersion: 't',
+        createdAt: 0,
+        includesSecrets: false,
+      },
+      collections: {
+        workspace_content: [{ id: 'w1', data: 'AAAA'.repeat(100) }],
+      },
+    };
+    expect(workspaceBackupSizeBytes(backup)).toBeGreaterThan(0);
+    expect(workspaceBackupSizeBytes({ ...backup, collections: {} })).toBe(0);
   });
 });

@@ -10,6 +10,9 @@ import {
   generateSalt,
 } from '../secrets/crypto.ts';
 import { isSkillPermissions } from '../skills/skillTypes.ts';
+import { toBase64, fromBase64 } from '../secrets/crypto.ts';
+import { isValidWorkspacePath } from '../workspace/path.ts';
+import type { ContentStore } from '../workspace/contentStore.ts';
 
 /**
  * `.clawbackup` export/import over Dexie. The backup contains durable user data
@@ -46,6 +49,18 @@ export interface BackupManifest {
   appVersion: string;
   createdAt: number;
   includesSecrets: boolean;
+  /** True when workspace file metadata + content were included (B8). */
+  includesWorkspace?: boolean;
+}
+
+/** Synthetic backup collection (not a Dexie table): workspace file bytes. */
+export const WORKSPACE_CONTENT_COLLECTION = 'workspace_content';
+
+export interface WorkspaceContentRow {
+  /** Matches the workspace_files metadata id. */
+  id: string;
+  /** Base64 of the file bytes. */
+  data: string;
 }
 
 export interface ClawBackup {
@@ -55,6 +70,10 @@ export interface ClawBackup {
 
 export interface BackupOptions {
   includeSecrets?: boolean;
+  /** Include workspace file metadata + content (B8). Needs `contentStore`. */
+  includeWorkspace?: boolean;
+  /** Byte store to read workspace content from when includeWorkspace is set. */
+  contentStore?: ContentStore;
   now?: () => number;
 }
 
@@ -69,6 +88,22 @@ export async function exportBackup(
   if (options.includeSecrets) {
     collections.encrypted_secrets = await db.encrypted_secrets.toArray();
   }
+  if (options.includeWorkspace) {
+    const metas = await db.workspace_files.toArray();
+    collections.workspace_files = metas;
+    if (options.contentStore) {
+      const store = options.contentStore;
+      const content: WorkspaceContentRow[] = [];
+      for (const meta of metas) {
+        if (meta.kind !== 'file') continue;
+        content.push({
+          id: meta.id,
+          data: toBase64(await store.read(meta.id)),
+        });
+      }
+      collections[WORKSPACE_CONTENT_COLLECTION] = content;
+    }
+  }
   return {
     manifest: {
       format: BACKUP_FORMAT,
@@ -76,6 +111,7 @@ export async function exportBackup(
       appVersion: APP_VERSION,
       createdAt: (options.now ?? Date.now)(),
       includesSecrets: options.includeSecrets ?? false,
+      includesWorkspace: options.includeWorkspace ?? false,
     },
     collections,
   };
@@ -152,6 +188,9 @@ export interface ValidationResult {
 const ALLOWED_COLLECTIONS = new Set<string>([
   ...COLLECTIONS,
   'encrypted_secrets',
+  // Opt-in workspace collections (B8): metadata table + synthetic content.
+  'workspace_files',
+  WORKSPACE_CONTENT_COLLECTION,
 ]);
 
 /** Primary-key fields every row in a collection must carry. */
@@ -264,6 +303,22 @@ const ROW_VALIDATORS: Record<string, RowValidator> = {
   model_catalog: (r) => {
     if (!isStr(r.provider)) return 'has a non-string provider';
     if (!isStr(r.label)) return 'has a non-string label';
+    return null;
+  },
+  workspace_files: (r) => {
+    if (!isStr(r.path) || !isValidWorkspacePath(r.path)) {
+      return 'has an invalid workspace path';
+    }
+    if (r.kind !== 'file' && r.kind !== 'directory') {
+      return 'has an invalid kind';
+    }
+    if (!isNum(r.sizeBytes) || !isNum(r.createdAt) || !isNum(r.updatedAt)) {
+      return 'has invalid size/timestamps';
+    }
+    return null;
+  },
+  [WORKSPACE_CONTENT_COLLECTION]: (r) => {
+    if (!isStr(r.data)) return 'has non-string content data';
     return null;
   },
 };
@@ -529,6 +584,7 @@ export async function importBackup(
   backup: ClawBackup,
   strategy: RestoreStrategy = 'merge',
   limits: Partial<BackupLimits> = {},
+  contentStore?: ContentStore,
 ): Promise<void> {
   const validation = validateBackup(backup, limits);
   if (!validation.valid) {
@@ -536,8 +592,24 @@ export async function importBackup(
       `Refusing to import an invalid backup: ${validation.error}`,
     );
   }
-  const names = Object.keys(backup.collections).filter((name) =>
-    Array.isArray(backup.collections[name]),
+  // `workspace_content` is synthetic (OPFS bytes, not a Dexie table) — restore
+  // it separately to the ContentStore (B8). Dexie tables restore transactionally.
+  const contentRows = Array.isArray(
+    backup.collections[WORKSPACE_CONTENT_COLLECTION],
+  )
+    ? (backup.collections[
+        WORKSPACE_CONTENT_COLLECTION
+      ] as WorkspaceContentRow[])
+    : [];
+  if (contentRows.length > 0 && !contentStore) {
+    throw new Error(
+      'Backup contains workspace content but no content store was provided to restore it.',
+    );
+  }
+  const names = Object.keys(backup.collections).filter(
+    (name) =>
+      name !== WORKSPACE_CONTENT_COLLECTION &&
+      Array.isArray(backup.collections[name]),
   );
   // Resolve tables up front: an unknown collection throws here (before any
   // write) rather than corrupting a partial restore.
@@ -550,7 +622,28 @@ export async function importBackup(
       await table.bulkPut(rows);
     }
   });
+  // Content bytes can't join the Dexie transaction (OPFS) — write them after the
+  // metadata commits ("transactionally where possible", spec B8).
+  if (contentStore) {
+    for (const row of contentRows) {
+      await contentStore.write(row.id, fromBase64(row.data));
+    }
+  }
 }
+
+/** Total decoded bytes of workspace content in a backup, for a size warning (B8). */
+export function workspaceBackupSizeBytes(backup: ClawBackup): number {
+  const rows = backup.collections[WORKSPACE_CONTENT_COLLECTION];
+  if (!Array.isArray(rows)) return 0;
+  return (rows as WorkspaceContentRow[]).reduce(
+    // base64 decodes to ~3/4 of its length.
+    (total, row) => total + Math.floor((row.data?.length ?? 0) * 0.75),
+    0,
+  );
+}
+
+/** Workspace backups over this size should prompt a size warning in the UI. */
+export const WORKSPACE_BACKUP_WARN_BYTES = 50_000_000;
 
 export async function recordBackupHistory(
   db: BrowserClawDB,

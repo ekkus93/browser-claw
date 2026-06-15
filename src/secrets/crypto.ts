@@ -18,7 +18,7 @@ function subtle(): SubtleCrypto {
   return c.subtle;
 }
 
-function toBase64(input: ArrayBuffer | Uint8Array): string {
+export function toBase64(input: ArrayBuffer | Uint8Array): string {
   const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
   let binary = '';
   for (const byte of bytes) {
@@ -27,7 +27,7 @@ function toBase64(input: ArrayBuffer | Uint8Array): string {
   return btoa(binary);
 }
 
-function fromBase64(value: string): Uint8Array<ArrayBuffer> {
+export function fromBase64(value: string): Uint8Array<ArrayBuffer> {
   const binary = atob(value);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {

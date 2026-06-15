@@ -17,12 +17,16 @@ import type { AppDispatch } from '../store/store.ts';
 import type { BrowserClawDB } from '../db/db.ts';
 import type {
   PageReadRequest,
+  ResearchOptions,
   SearchOptions,
   WebResearchService,
 } from '../webresearch/types.ts';
 import type { Command, Effect } from './effectTypes.ts';
 
-type WebEffect = Extract<Effect, { type: 'web_search' | 'web_page_read' }>;
+type WebEffect = Extract<
+  Effect,
+  { type: 'web_search' | 'web_page_read' | 'web_research' }
+>;
 
 export interface WebEffectDeps {
   web: WebResearchService;
@@ -38,6 +42,21 @@ function sanitizeSearchOptions(input: unknown): SearchOptions {
   return {
     ...(typeof o.maxResults === 'number' ? { maxResults: o.maxResults } : {}),
     ...(typeof o.site === 'string' ? { site: o.site } : {}),
+  };
+}
+
+function sanitizeResearchOptions(input: unknown): ResearchOptions {
+  const o = (
+    typeof input === 'object' && input !== null ? input : {}
+  ) as Record<string, unknown>;
+  return {
+    ...(typeof o.maxResults === 'number' ? { maxResults: o.maxResults } : {}),
+    ...(typeof o.site === 'string' ? { site: o.site } : {}),
+    ...(typeof o.maxPages === 'number' ? { maxPages: o.maxPages } : {}),
+    ...(o.format === 'text' || o.format === 'markdown'
+      ? { format: o.format }
+      : {}),
+    ...(typeof o.maxChars === 'number' ? { maxChars: o.maxChars } : {}),
   };
 }
 
@@ -104,6 +123,26 @@ export function createWebEffectHandler(deps: WebEffectDeps) {
           },
         });
       }
+      return;
+    }
+
+    if (effect.type === 'web_research') {
+      // A multi-page research run (search + read N pages) is bulk egress -> gate.
+      const query = typeof effect.query === 'string' ? effect.query : '';
+      const options = sanitizeResearchOptions(effect.options);
+      const maxPages = options.maxPages ?? 'default';
+      deps.dispatch(
+        approvalRequested({
+          id: effect.id,
+          kind: 'bulk_research',
+          title: `Research: ${query}`,
+          risk: 'high',
+          summary: `Web research "${query}" reading up to ${maxPages} pages${
+            options.site ? ` on ${options.site}` : ''
+          }`,
+          payloadPreview: JSON.stringify({ query, options }),
+        }),
+      );
       return;
     }
 
@@ -229,6 +268,88 @@ export async function runApprovedWebPageRead(
       type: 'resolve_effect',
       id: approval.id,
       result: { ok: false, error: { kind: 'web_page_read_failed', message } },
+    });
+  }
+}
+
+export interface ApprovedBulkResearch {
+  id: string;
+  status: 'approved' | 'rejected';
+  /** The `{query, options}` JSON the user reviewed (the approval's payloadPreview). */
+  payloadPreview?: string;
+}
+
+/**
+ * Run (or decline) a bulk research operation the user resolved on the approval
+ * card, then resolve the runtime effect with the research bundle.
+ */
+export async function runApprovedBulkResearch(
+  deps: WebEffectDeps,
+  approval: ApprovedBulkResearch,
+): Promise<void> {
+  const parsed = approval.payloadPreview
+    ? (safeParse(approval.payloadPreview) as
+        | { query?: unknown; options?: unknown }
+        | undefined)
+    : undefined;
+  const query = typeof parsed?.query === 'string' ? parsed.query : '';
+
+  if (approval.status !== 'approved') {
+    void recordAudit(
+      deps.db,
+      deps.dispatch,
+      webAuditEvent('web.research_rejected', `Research rejected: ${query}`, {
+        status: 'rejected',
+      }),
+    );
+    await deps.submit({
+      type: 'resolve_effect',
+      id: approval.id,
+      result: { ok: false, error: { kind: 'user_rejected' } },
+    });
+    return;
+  }
+
+  void recordAudit(
+    deps.db,
+    deps.dispatch,
+    webAuditEvent('web.research_started', `Research started: ${query}`, {
+      status: 'pending',
+    }),
+  );
+  try {
+    const bundle = await deps.web.research(
+      query,
+      sanitizeResearchOptions(parsed?.options),
+    );
+    void recordAudit(
+      deps.db,
+      deps.dispatch,
+      webAuditEvent(
+        'web.research_completed',
+        `Research completed: ${query} (${bundle.pages.length} pages)`,
+        { status: 'success' },
+      ),
+    );
+    await deps.submit({
+      type: 'resolve_effect',
+      id: approval.id,
+      result: { ok: true, bundle },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    void recordAudit(
+      deps.db,
+      deps.dispatch,
+      webAuditEvent('web.research_failed', `Research failed: ${message}`, {
+        risk: 'medium',
+        status: 'failure',
+      }),
+    );
+    await deps.submit({
+      type: 'resolve_effect',
+      id: approval.id,
+      result: { ok: false, error: { kind: 'web_research_failed', message } },
     });
   }
 }

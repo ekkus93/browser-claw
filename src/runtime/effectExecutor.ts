@@ -48,7 +48,10 @@ export interface EffectPorts {
     effect: Extract<Effect, { type: 'sandbox_script_proposal' }>,
   ): void | Promise<void>;
   web?(
-    effect: Extract<Effect, { type: 'web_search' | 'web_page_read' }>,
+    effect: Extract<
+      Effect,
+      { type: 'web_search' | 'web_page_read' | 'web_research' }
+    >,
   ): void | Promise<void>;
   extension?(
     effect: Extract<Effect, { type: 'extension_request' }>,
@@ -187,7 +190,8 @@ export async function executeEffect(
       return;
     }
     case 'web_search':
-    case 'web_page_read': {
+    case 'web_page_read':
+    case 'web_research': {
       // Routed to the web port, which enforces the URL/domain policy and runs
       // the mediated web-research call (Part F2). Fails closed if unwired.
       const handler = ctx.ports?.web;

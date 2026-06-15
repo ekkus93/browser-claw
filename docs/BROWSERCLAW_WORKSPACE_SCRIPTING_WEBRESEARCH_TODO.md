@@ -987,17 +987,20 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase F3 — Approval system extensions
 
-- [ ] P1 Support approval types:
+- [x] P1 Support approval types:
   - [x] workspace write/delete; <!-- src/runtime/workspaceRunner.ts: createWorkspaceEffectHandler (parseWorkspaceOp -> buildWorkspaceProposal -> approvalRequested workspace_write/workspace_delete; read-only workspace_search runs direct) + runApprovedWorkspaceEffect (executeWorkspaceOp / rejectWorkspaceOp). Routed via approvalResolved kinds workspace_write/workspace_delete (F3). -->
   - [x] plan execution; <!-- planRunner.ts createPlanEffectHandler/runApprovedPlanEffect (C5) now ROUTED via runtimeListeners.approvalResolved kind 'plan' (F3) -->
   - [x] sandbox script execution; <!-- src/runtime/sandboxScriptRunner.ts createSandboxScriptEffectHandler/runApprovedSandboxScriptEffect + routed via approvalResolved kind 'sandbox_script' -->
   - [x] web page read; <!-- src/runtime/webRunner.ts: createWebEffectHandler (web_search runs read-only direct + audited; web_page_read validates URL via classifyFetchUrl -> approvalRequested kind 'web_page_read') + runApprovedWebPageRead (web.readPage + web.page_read_* audits / user_rejected). ApprovalKind 'web_page_read' added; routed via approvalResolved. -->
   - [x] extension host permission request; <!-- src/runtime/extensionRunner.ts: createExtensionEffectHandler (request_host_permission -> approvalRequested kind 'extension_permission' risk high; benign requests pass through) + runApprovedExtensionPermission (transport.send on approve + extension.permission_requested/rejected audits). Routed via approvalResolved. Real chrome.permissions.request stays in the extension SW (real-browser). -->
-  - [ ] bulk research. <!-- TODO: 'bulk_research' kind + handler (query/URLs/domains/maxPages preview) -->
-- [x] P1 Approval cards must show enough detail for informed decision. <!-- plan: PlanProposal (steps/files/urls/caps/risk); sandbox: ScriptProposal (runtime/reason/code/caps/limits/risk/scopes). payloadPreview carries the full request JSON. Card UI = G2. -->
-- [x] P1 Support approve/reject. <!-- runApproved{Plan,SandboxScript}Effect run on approve; reject -> reject{Plan,Script} + resolve_effect user_rejected -->
+  - [x] bulk research. <!-- effectTypes 'web_research'{query,options} -> effectExecutor web port. webRunner web_research -> approvalRequested kind 'bulk_research' (query/maxPages/site preview) + runApprovedBulkResearch (web.research() + web.research_* audits). Routed via approvalResolved. -->
+- [x] P1 Approval cards must show enough detail for informed decision. <!-- plan: PlanProposal (steps/files/urls/caps/risk); sandbox: ScriptProposal (runtime/reason/code/caps/limits/risk/scopes); workspace: WorkspaceProposal (op/diff); web/research/extension: url/query/origin in title+summary. payloadPreview carries the full request JSON. Visual card UI = G2. -->
+- [x] P1 Support approve/reject. <!-- every runApproved*Effect runs on approve; reject -> reject helper/audit + resolve_effect user_rejected -->
 - [ ] P2 Support edit capabilities/limits before approval. <!-- DEFERRED -> G2 UI; approvalEdited updates payloadPreview and runApproved* re-validates the edited JSON -->
-- [ ] P1 Tests for each approval type. <!-- DONE for plan + sandbox (sandboxScriptRunner.test.ts + runtimeListeners.test.ts routing); workspace/web/extension/bulk pending with their handlers -->
+- [x] P1 Tests for each approval type. <!-- plan+sandbox (sandboxScriptRunner.test + runtimeListeners routing); workspace (workspaceRunner.test); web_page_read + bulk_research (webRunner.test); extension (extensionRunner.test); each routing in runtimeListeners.test -->
+
+<!-- F3 COMPLETE 2026-06-15 (all six approval types wired; P2 inline edit -> G2). PART F COMPLETE (F1-F4). Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 800/107, e2e 30. No Rust. -->
+<!-- NOTE: registerRuntimeListeners + the effect ports are still assembled into the live app in a later step (host wiring); all bridges are built + tested in isolation with injected deps. -->
 
 <!-- F3 (partial) 2026-06-15: wired the two SCRIPT-runtime approval types (plan + sandbox_script) end-to-end through runtimeListeners.approvalResolved (deps.resolvePlanApproval / resolveSandboxApproval, injected). Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 768/103, e2e 30. No Rust. -->
 <!-- F3 workspace increment 2026-06-15: workspace_write/workspace_delete wired via workspaceRunner.ts + approvalResolved route. Gate green (single-threaded): vitest 775/104, e2e 30. -->

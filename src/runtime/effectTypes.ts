@@ -60,6 +60,7 @@ export type Effect =
   | { type: 'sandbox_script_proposal'; id: string; request: unknown }
   | { type: 'web_search'; id: string; query: string; options?: unknown }
   | { type: 'web_page_read'; id: string; url: string; options?: unknown }
+  | { type: 'web_research'; id: string; query: string; options?: unknown }
   | { type: 'extension_request'; id: string; request: unknown }
   | { type: 'runtime_snapshot_save'; id: string; snapshot: unknown };
 

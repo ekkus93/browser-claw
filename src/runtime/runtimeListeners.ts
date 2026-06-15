@@ -12,7 +12,7 @@ import { runApprovedToolCall } from './toolRunner.ts';
 import type { ApprovedPlan } from './planRunner.ts';
 import type { ApprovedSandboxScript } from './sandboxScriptRunner.ts';
 import type { ApprovedWorkspaceOp } from './workspaceRunner.ts';
-import type { ApprovedWebPageRead } from './webRunner.ts';
+import type { ApprovedWebPageRead, ApprovedBulkResearch } from './webRunner.ts';
 import type { ApprovedExtensionPermission } from './extensionRunner.ts';
 
 export interface RuntimeListenerDeps {
@@ -25,6 +25,10 @@ export interface RuntimeListenerDeps {
   resolveWorkspaceApproval?: (approval: ApprovedWorkspaceOp) => Promise<void>;
   /** Resolves a `web_page_read` approval through the web bridge (Part F3). */
   resolveWebPageReadApproval?: (approval: ApprovedWebPageRead) => Promise<void>;
+  /** Resolves a `bulk_research` approval through the web bridge (Part F3). */
+  resolveBulkResearchApproval?: (
+    approval: ApprovedBulkResearch,
+  ) => Promise<void>;
   /** Resolves an `extension_permission` approval through the extension bridge. */
   resolveExtensionPermissionApproval?: (
     approval: ApprovedExtensionPermission,
@@ -107,6 +111,16 @@ export function registerRuntimeListeners(
       }
       if (approval.kind === 'web_page_read') {
         await deps.resolveWebPageReadApproval?.({
+          id: approval.id,
+          status: action.payload.status,
+          ...(approval.payloadPreview !== undefined
+            ? { payloadPreview: approval.payloadPreview }
+            : {}),
+        });
+        return;
+      }
+      if (approval.kind === 'bulk_research') {
+        await deps.resolveBulkResearchApproval?.({
           id: approval.id,
           status: action.payload.status,
           ...(approval.payloadPreview !== undefined

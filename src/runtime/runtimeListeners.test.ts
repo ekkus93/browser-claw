@@ -179,6 +179,30 @@ describe('registerRuntimeListeners', () => {
     });
   });
 
+  it('routes a bulk-research approval to its resolver (F3)', async () => {
+    const resolveBulkResearchApproval = vi.fn().mockResolvedValue(undefined);
+    const { store } = setup({ resolveBulkResearchApproval });
+    store.dispatch(
+      approvalRequested({
+        id: 'br-1',
+        kind: 'bulk_research',
+        title: 'Research',
+        risk: 'high',
+        summary: 'research run',
+        payloadPreview: '{"query":"opfs"}',
+      }),
+    );
+    store.dispatch(approvalResolved({ id: 'br-1', status: 'approved' }));
+    await vi.waitFor(() =>
+      expect(resolveBulkResearchApproval).toHaveBeenCalled(),
+    );
+    expect(resolveBulkResearchApproval).toHaveBeenCalledWith({
+      id: 'br-1',
+      status: 'approved',
+      payloadPreview: '{"query":"opfs"}',
+    });
+  });
+
   it('routes an extension-permission approval to its resolver (F3)', async () => {
     const resolveExtensionPermissionApproval = vi
       .fn()

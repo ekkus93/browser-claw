@@ -250,6 +250,11 @@ describe('executeEffect', () => {
         match: /web/,
       },
       {
+        effect: { type: 'web_research', id: 'q3', query: 'x' },
+        port: 'web',
+        match: /web/,
+      },
+      {
         effect: { type: 'extension_request', id: 'e1', request: {} },
         port: 'extension',
         match: /extension/,

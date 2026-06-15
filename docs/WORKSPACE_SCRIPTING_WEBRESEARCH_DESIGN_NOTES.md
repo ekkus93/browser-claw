@@ -604,3 +604,21 @@ and TODO are. Newest decisions at the bottom of each section.
 - Tests: extensionRunner.test.ts (5) + runtimeListeners.test.ts +1. vitest 788->794.
 - F3 STATUS: plan + sandbox + workspace + web_page_read + extension_permission
   WIRED. REMAINING: bulk_research (kind declared; needs a web_research effect).
+
+### F3 (bulk research) — PART F COMPLETE (done, 2026-06-15)
+- effectTypes.ts Effect += web_research{query,options}; effectExecutor.ts web
+  port Extract + case now covers web_search|web_page_read|web_research.
+- webRunner.ts: web_research -> approvalRequested kind 'bulk_research' (risk high;
+  title/summary show query + maxPages + site; payloadPreview {query,options});
+  runApprovedBulkResearch -> web.research(query, sanitizeResearchOptions) +
+  web.research_started/completed/failed/rejected audits + resolve {ok,bundle}.
+- runtimeListeners.ts approvalResolved += route bulk_research ->
+  deps.resolveBulkResearchApproval.
+- Tests: webRunner.test +3 (gate, run, reject) + effectExecutor.test +1 (route) +
+  runtimeListeners.test +1 (routing). vitest 794->800.
+- ===== PART F COMPLETE: F1 capability model, F2 runtime effects, F3 all six
+  approval types (plan/sandbox/workspace_write+delete/web_page_read/
+  extension_permission/bulk_research) wired via runtimeListeners.approvalResolved
+  + injected-deps, F4 audit builders + redaction cap. =====
+- ONLY P2 inline cap/limit editing deferred to G2. registerRuntimeListeners + the
+  effect ports are assembled into the live app in a later host-wiring step.

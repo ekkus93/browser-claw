@@ -202,3 +202,23 @@ and TODO are. Newest decisions at the bottom of each section.
   rows to probe secret/size; moving the validator after those kept them green.)
 - Skipped: model_catalog has no `status` field (only provider/label validated);
   app_settings keys left open-ended (allowlist would reject future settings).
+
+### A2.7 — wllama runtime integrity (SHA-256 verify) (done)
+- Chose the strongest option (real verification, not a doc note). No false
+  integrity claim existed in code/docs beforehand (verified by grep).
+- NEW src/wllama/runtimeIntegrity.ts: `WLLAMA_WASM_SHA256` (real pinned hash of
+  @wllama/wllama@3.4.1 wllama.wasm = a3e827b9…, computed via curl+sha256sum),
+  `sha256Hex`, `verifyRuntimeBytes`, `fetchVerifiedRuntimeUrl` (fetch -> hash ->
+  return application/wasm blob URL of the VERIFIED bytes; throws
+  WllamaIntegrityError on mismatch, plain Error on bad fetch).
+- engine.ts getInstance: `const verifiedWasmUrl = await fetchVerifiedRuntimeUrl(WASM_URL);`
+  then `new Wllama({ default: verifiedWasmUrl })`. A mismatch throws through the
+  existing catch -> onRuntimeLoad(false) audit + rethrow (fail closed).
+- GOTCHA (TS6): crypto.subtle.digest wants an ArrayBuffer-backed BufferSource;
+  Uint8Array<ArrayBufferLike> fails. Normalize via `bytes.slice()` /
+  `new Uint8Array(arrayBuffer)`.
+- LIMITATION: the engine wiring (blob URL into wllama) is real-browser-only —
+  engine mocks wllama in unit tests — so it needs real-browser verification like
+  the rest of the engine. The verification helper itself IS fully unit-tested.
+- IMPORTANT: bump WLLAMA_WASM_SHA256 in lockstep whenever the pinned wllama
+  version/WASM_URL changes, or local models will fail closed.

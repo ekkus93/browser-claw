@@ -1383,3 +1383,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - HONESTY: skipped "model status/provider" (ModelCatalogRow has no status; provider validated) and "app_settings known keys" (open-ended; allowlist would reject future settings) — both noted in TODO.
 - Gate ALL GREEN: typecheck, lint, prettier, vitest 515/77, e2e 28. No Rust touched.
 - NEXT: A2.7 — wllama integrity/TODO correction. P2. Pick: vendor asset | SHA-256 verify | doc-only "consent implemented, integrity not". responses2.md confirmed NO false claim exists, so simplest faithful = Option C doc note (mark integrity verification incomplete) OR implement hash verify. Lean doc-note (C) given P2 + no consumer; confirm no doc currently claims integrity.
+
+## 2026-06-15T08:05:44Z - Claude Opus 4.8 - Ralph: A2.7 (wllama runtime SHA-256 integrity verification)
+- A2.7 DONE — chose real verification (Option C), not a doc note. No false integrity claim pre-existed (grep-confirmed).
+- NEW src/wllama/runtimeIntegrity.ts: WLLAMA_WASM_SHA256 = a3e827b9fc3536fd1b061eee8b130e46f6366d25b062438a791d8b17b2a72a30 (real hash of @wllama/wllama@3.4.1/esm/wasm/wllama.wasm, 7308965 bytes — got it via `curl ... | sha256sum`, network IS available in this sandbox). sha256Hex (Web Crypto), verifyRuntimeBytes, fetchVerifiedRuntimeUrl (fetch->hash->application/wasm blob URL of verified bytes; WllamaIntegrityError on mismatch).
+- engine.ts getInstance now: fetchVerifiedRuntimeUrl(WASM_URL) -> new Wllama({default: verifiedWasmUrl}). Mismatch/fetch-fail throws -> existing catch -> onRuntimeLoad(false) audit + rethrow (fail closed). WASM_URL comment updated; consent gate unchanged.
+- Tests: NEW src/wllama/runtimeIntegrity.test.ts (6): sha256 test vector "abc", verify match/mismatch, 64-hex pin, fetchVerified returns blob URL on match (stub URL.createObjectURL), throws WllamaIntegrityError on tamper, throws on 502. vitest 515->521, 78 files.
+- GOTCHA (TS6): crypto.subtle.digest needs ArrayBuffer-backed BufferSource; Uint8Array<ArrayBufferLike> fails typecheck — normalize with bytes.slice()/new Uint8Array(arrayBuffer).
+- LIMITATION: engine blob-URL wiring is real-browser-only (engine mocks wllama in tests); verification helper IS unit-tested. MUST bump WLLAMA_WASM_SHA256 in lockstep with any wllama version change or local models fail closed.
+- Gate ALL GREEN: typecheck, lint, prettier, vitest 521/78, e2e 28. No Rust touched.
+- NEXT: A2.8 — invalid/empty provider responses are errors (treat missing/empty content as invalid_response, not empty assistant msg). Apply to wllama engine (engine.ts ~line 225 `?? ''`) + remote adapters (anthropic.ts, openAiCompatible.ts `?? ''`). P1.

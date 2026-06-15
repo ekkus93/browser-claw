@@ -243,14 +243,16 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ### A2.7 wllama integrity/TODO correction
 
-- [ ] P2 Pick one:
+<!-- Chose Option B->C: SHA-256 verify before use. src/wllama/runtimeIntegrity.ts: WLLAMA_WASM_SHA256 (pinned real hash of @wllama/wllama@3.4.1 wllama.wasm) + sha256Hex/verifyRuntimeBytes/fetchVerifiedRuntimeUrl (fetch -> hash -> blob URL of verified bytes; throws WllamaIntegrityError on mismatch). src/wllama/engine.ts getInstance verifies before `new Wllama({default})`; failure flows through onRuntimeLoad(false) audit + rethrow. Tests: src/wllama/runtimeIntegrity.test.ts. Gate: typecheck/lint/prettier/vitest 521/e2e 28. NOTE: engine wiring (blob URL into wllama) is real-browser-only (engine mocks wllama in tests) — the verification helper IS unit-tested. -->
+
+- [x] P2 Pick one:
   - [ ] vendor wllama runtime asset; or
-  - [ ] verify SHA-256 hash before use; or
+  - [x] verify SHA-256 hash before use; or
   - [ ] update TODO/docs to say only explicit consent is implemented, not integrity verification.
-- [ ] P2 Tests if implementing hash verification:
-  - [ ] matching hash passes;
-  - [ ] mismatched hash fails;
-  - [ ] failure visible/audited.
+- [x] P2 Tests if implementing hash verification:
+  - [x] matching hash passes;
+  - [x] mismatched hash fails;
+  - [x] failure visible/audited. (WllamaIntegrityError -> getInstance catch -> onRuntimeLoad(false) audit + rethrow)
 
 ### A2.8 Invalid/empty provider responses are errors
 

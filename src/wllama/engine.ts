@@ -9,6 +9,7 @@ import {
 } from './modelCache.ts';
 import { getWllamaCdnConsent } from '../settings/appSettings.ts';
 import { appendAuditEvent } from '../audit/auditService.ts';
+import { fetchVerifiedRuntimeUrl } from './runtimeIntegrity.ts';
 
 /**
  * Thrown when the wllama runtime WASM would be fetched from the CDN without
@@ -73,7 +74,9 @@ interface WllamaModule {
 }
 
 // wllama v3 ships a single wasm at esm/wasm/wllama.wasm; serve it from the CDN
-// so we don't have to wire the binary through Vite. (Vendoring is a future step.)
+// so we don't have to wire the binary through Vite. The bytes are SHA-256
+// verified before use (see runtimeIntegrity.ts) — keep WLLAMA_WASM_SHA256 in
+// lockstep with this pinned version. (Vendoring is still a possible future step.)
 const WASM_URL =
   'https://cdn.jsdelivr.net/npm/@wllama/wllama@3.4.1/esm/wasm/wllama.wasm';
 
@@ -126,9 +129,12 @@ export function createWllamaEngine(
     // Import the built ESM (not the package's untyped .ts source, which would
     // be type-checked under our strict config). Typed via WllamaModule above.
     try {
+      // Verify the runtime bytes against the pinned SHA-256 before loading them,
+      // then hand wllama a blob URL for exactly those verified bytes (A2.7).
+      const verifiedWasmUrl = await fetchVerifiedRuntimeUrl(WASM_URL);
       const mod =
         (await import('@wllama/wllama/esm/index.js')) as unknown as WllamaModule;
-      instance = new mod.Wllama({ default: WASM_URL });
+      instance = new mod.Wllama({ default: verifiedWasmUrl });
     } catch (error) {
       // The runtime couldn't load (CDN unreachable, blocked, or bad asset).
       // Surface it as a distinct runtime-level event, then rethrow so the

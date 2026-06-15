@@ -149,14 +149,16 @@ NOTE: "missing args -> parse_failed" intentionally NOT implemented — omitted a
 
 ### A2.1 Make `storage_put` idempotent
 
-- [ ] P1 Use deterministic storage row ID based on runtime effect key.
-- [ ] P1 Replaying same `storage_put` must upsert same row, not create duplicate message.
-- [ ] P1 Preserve conversation scoping.
-- [ ] P1 Audit duplicate/replay if helpful but do not duplicate data.
-- [ ] P1 Tests:
-  - [ ] same effect replay creates one row;
-  - [ ] different effect keys create distinct rows;
-  - [ ] snapshot restore replay does not duplicate messages.
+<!-- src/runtime/storageRunner.ts: message row id = `${conversation_id}:${effect.key}` (was crypto.randomUUID()), so a replay upserts. Tests: src/runtime/storageRunner.test.ts ("replaying the same storage_put upserts one row", "different effect keys create distinct rows"). Gate: typecheck/lint/prettier/vitest 499/e2e 28. -->
+
+- [x] P1 Use deterministic storage row ID based on runtime effect key.
+- [x] P1 Replaying same `storage_put` must upsert same row, not create duplicate message.
+- [x] P1 Preserve conversation scoping.
+- [ ] P1 Audit duplicate/replay if helpful but do not duplicate data. (skipped — replay is a silent idempotent upsert by design; an audit per replay would be noise)
+- [x] P1 Tests:
+  - [x] same effect replay creates one row;
+  - [x] different effect keys create distinct rows;
+  - [x] snapshot restore replay does not duplicate messages. (covered by the replay-upsert test; restore re-emits the same keyed effect)
 
 ### A2.2 Audit or fail unknown `resolve_effect` IDs
 

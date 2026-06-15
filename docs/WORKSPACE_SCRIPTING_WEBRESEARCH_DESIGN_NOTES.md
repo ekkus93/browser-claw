@@ -128,3 +128,11 @@ and TODO are. Newest decisions at the bottom of each section.
   implemented — an OMITTED args is valid (no-arg tools; the existing "defaults
   args to {}" behavior). Non-object args (e.g. `"args":[1]`) IS malformed and is
   tested. The spec's "ask model to retry" is its own optional item, deferred.
+
+### A2.1 — idempotent storage_put (done)
+- `storageRunner.ts`: message row id = `${effect.conversation_id}:${effect.key}`
+  (the runtime's key is `m${message_count}`, deterministic per message position),
+  replacing `crypto.randomUUID()`. Replay (e.g. snapshot restore re-emitting the
+  same keyed effect) upserts the same row — no duplicate message.
+- Skipped the optional "audit duplicate/replay" sub-item: a replay is meant to be
+  a silent idempotent upsert; auditing every one would be noise.

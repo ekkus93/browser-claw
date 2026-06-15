@@ -1335,3 +1335,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - HONESTY NOTE: left 2 TODO sub-boxes UNCHECKED on purpose with notes: (a) "missing args -> parse_failed" — omitted args is VALID (no-arg tools + existing "defaults args to {}" behavior); only NON-OBJECT args is malformed (tested). (b) "ask model to retry" — spec marks it optional; deferred. Did not fake-check them.
 - Gate ALL GREEN: typecheck, lint, prettier, vitest 497/77, e2e 28. No Rust touched.
 - Phase A1 (tool/skill security) COMPLETE: A1.1-A1.5 all done. NEXT: Phase A2 starts with A2.1 — make storage_put idempotent (deterministic row id from effect key; replay/snapshot-restore must not duplicate messages). storageRunner.ts currently uses crypto.randomUUID() per call. P1.
+
+## 2026-06-15T07:29:57Z - Claude Opus 4.8 - Ralph: A2.1 (idempotent storage_put)
+- A2.1 DONE. `storageRunner.ts` message row id is now `${effect.conversation_id}:${effect.key}` (deterministic) instead of `crypto.randomUUID()`. The runtime's `key` is `m${message_count}` (referenceRuntime.ts + claw-core both emit this, deterministic per message position), so replaying the same storage_put (e.g. after snapshot restore) upserts the same row — no duplicate messages.
+- Tests: storageRunner.test +2 (replay->1 row id 'conv-1:m3'; distinct keys->2 rows). vitest 497->499.
+- HONESTY: left optional sub-box "audit duplicate/replay" unchecked — replay is meant to be a silent idempotent upsert; per-replay audit would be noise. "snapshot restore replay" sub-box ticked as covered by the replay-upsert unit test (restore re-emits the same keyed effect; no separate consumer needed).
+- Gate ALL GREEN: typecheck, lint, prettier, vitest 499/77, e2e 28. No Rust touched (the key was already `m{n}` in claw-core too).
+- NEXT: A2.2 — unknown resolve_effect IDs audited/handled in BOTH TS reference runtime AND Rust claw-core/WASM. This is THE Rust item. Needs cargo test/clippy + pnpm run build:wasm. Emit/audit runtime.resolve_unknown_effect (source runtime, failure, risk medium). Default recoverable. Check if cargo toolchain is available first.

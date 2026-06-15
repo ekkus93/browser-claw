@@ -30,6 +30,11 @@ const MESSAGE_ROLES: readonly MessageRole[] = [
  * write, so the message persists exactly once. The handler fails closed: an
  * unknown store, an unsupported op, or a malformed record is audited and
  * thrown rather than silently performed or skipped (see TODO 5.1 / 1.2).
+ *
+ * Idempotency (hardening A2.1): the persisted row id is DERIVED deterministically
+ * from the effect (`conversation_id` + the runtime's stable per-message `key`,
+ * e.g. `m3`), so replaying the same `storage_put` — e.g. after a snapshot
+ * restore — upserts the same row instead of creating a duplicate message.
  */
 export function createStorageEffectHandler(deps: StorageEffectDeps) {
   async function fail(effect: StorageEffect, reason: string): Promise<never> {
@@ -66,8 +71,9 @@ export function createStorageEffectHandler(deps: StorageEffectDeps) {
     }
 
     const now = deps.now ?? Date.now;
+    // Deterministic id so a replay of the same effect upserts, not duplicates.
     await deps.db.messages.put({
-      id: crypto.randomUUID(),
+      id: `${effect.conversation_id}:${effect.key}`,
       conversationId: effect.conversation_id,
       role: role as MessageRole,
       content,

@@ -49,6 +49,47 @@ describe('createStorageEffectHandler', () => {
     });
   });
 
+  it('is idempotent: replaying the same storage_put upserts one row (A2.1)', async () => {
+    await db.open();
+    const { handler } = makeHandler();
+    const effect = {
+      type: 'storage_put' as const,
+      id: 'p-replay',
+      conversation_id: 'conv-1',
+      store: 'messages',
+      key: 'm3',
+      value: { role: 'assistant' as const, content: 'reply' },
+    };
+    await handler(effect);
+    await handler(effect); // replay (e.g. after snapshot restore)
+    await handler(effect);
+
+    const rows = await db.messages
+      .where('conversationId')
+      .equals('conv-1')
+      .toArray();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.id).toBe('conv-1:m3');
+  });
+
+  it('different effect keys create distinct rows', async () => {
+    await db.open();
+    const { handler } = makeHandler();
+    for (const key of ['m1', 'm2']) {
+      await handler({
+        type: 'storage_put',
+        id: `p-${key}`,
+        conversation_id: 'conv-1',
+        store: 'messages',
+        key,
+        value: { role: 'assistant', content: `c-${key}` },
+      });
+    }
+    expect(
+      await db.messages.where('conversationId').equals('conv-1').count(),
+    ).toBe(2);
+  });
+
   it('rejects and audits an unknown store', async () => {
     await db.open();
     const { store, handler } = makeHandler();

@@ -35,6 +35,7 @@ export interface WllamaEngine {
   download(
     model: CatalogModel,
     onProgress: (loaded: number, total: number) => void,
+    signal?: AbortSignal,
   ): Promise<void>;
   load(model: CatalogModel): Promise<void>;
   unload(): Promise<void>;
@@ -56,6 +57,7 @@ interface WllamaInstance {
     params?: {
       progressCallback?: (opts: { loaded: number; total: number }) => void;
       useCache?: boolean;
+      signal?: AbortSignal;
     },
   ): Promise<unknown>;
   loadModel(blobs: Blob[]): Promise<unknown>;
@@ -143,9 +145,10 @@ export function createWllamaEngine(
   function loadFromHF(
     model: CatalogModel,
     onProgress?: (loaded: number, total: number) => void,
+    signal?: AbortSignal,
   ): Promise<void> {
     if (inFlight && inFlight.id === model.id) return inFlight.promise;
-    const promise = runLoad(model, onProgress).finally(() => {
+    const promise = runLoad(model, onProgress, signal).finally(() => {
       if (inFlight?.promise === promise) inFlight = null;
     });
     inFlight = { id: model.id, promise };
@@ -158,6 +161,7 @@ export function createWllamaEngine(
   async function runLoad(
     model: CatalogModel,
     onProgress?: (loaded: number, total: number) => void,
+    signal?: AbortSignal,
   ): Promise<void> {
     const wllama = await getInstance();
     const progress = onProgress
@@ -168,7 +172,13 @@ export function createWllamaEngine(
       : {};
     const hf = { repo: model.repo, file: model.file };
     try {
-      await wllama.loadModelFromHF(hf, { ...progress, useCache: true });
+      // wllama honours the AbortSignal (DownloadOptions.signal) so a cancel
+      // aborts its OPFS download too — not just our IndexedDB fallback below.
+      await wllama.loadModelFromHF(hf, {
+        ...progress,
+        useCache: true,
+        ...(signal ? { signal } : {}),
+      });
     } catch (error) {
       if (
         error instanceof Error &&
@@ -179,8 +189,9 @@ export function createWllamaEngine(
         const blob = options.blobStore
           ? await getOrFetchModelBlob(options.blobStore, model, {
               ...(onProgress ? { onProgress } : {}),
+              ...(signal ? { signal } : {}),
             })
-          : await fetchGguf(model, fetch, onProgress);
+          : await fetchGguf(model, fetch, onProgress, signal);
         await wllama.loadModel([blob]);
       } else {
         throw error;
@@ -190,8 +201,8 @@ export function createWllamaEngine(
   }
 
   return {
-    download(model, onProgress) {
-      return loadFromHF(model, onProgress);
+    download(model, onProgress, signal) {
+      return loadFromHF(model, onProgress, signal);
     },
     load(model) {
       return loadFromHF(model);

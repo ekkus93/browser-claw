@@ -5,7 +5,12 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
  * The model catalog and cache metadata are durable (Dexie, Phase 3); this slice
  * owns transient selection and in-flight download state.
  */
-export type ModelDownloadStatus = 'queued' | 'downloading' | 'ready' | 'error';
+export type ModelDownloadStatus =
+  | 'queued'
+  | 'downloading'
+  | 'ready'
+  | 'error'
+  | 'cancelled';
 
 export interface ModelDownload {
   status: ModelDownloadStatus;

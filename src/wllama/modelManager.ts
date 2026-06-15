@@ -63,6 +63,10 @@ export function createModelManager(
     });
   }
 
+  // Active download AbortControllers, keyed by model id, so cancel() can abort
+  // the right one. Removed when the download settles.
+  const controllers = new Map<string, AbortController>();
+
   return {
     async download(model: CatalogModel): Promise<void> {
       // Quota preflight: refuse a download that can't fit in the remaining
@@ -96,18 +100,24 @@ export function createModelManager(
           progress: 0,
         }),
       );
+      const controller = new AbortController();
+      controllers.set(model.id, controller);
       try {
-        await engine.download(model, (loaded, total) => {
-          const progress =
-            total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
-          dispatch(
-            modelDownloadUpdated({
-              modelId: model.id,
-              status: 'downloading',
-              progress,
-            }),
-          );
-        });
+        await engine.download(
+          model,
+          (loaded, total) => {
+            const progress =
+              total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+            dispatch(
+              modelDownloadUpdated({
+                modelId: model.id,
+                status: 'downloading',
+                progress,
+              }),
+            );
+          },
+          controller.signal,
+        );
         dispatch(
           modelDownloadUpdated({
             modelId: model.id,
@@ -123,6 +133,26 @@ export function createModelManager(
           model.id,
         );
       } catch (error) {
+        // A user cancel aborts the download; that's not a failure. Report it
+        // honestly as 'cancelled' (no error toast) — the abort-safe cache means
+        // nothing partial was written. Any other error is a real failure.
+        if (controller.signal.aborted) {
+          dispatch(
+            modelDownloadUpdated({
+              modelId: model.id,
+              status: 'cancelled',
+              progress: 0,
+            }),
+          );
+          audit(
+            'model.download_cancelled',
+            `Cancelled download of local model ${model.name}`,
+            'cancelled',
+            'info',
+            model.id,
+          );
+          return;
+        }
         dispatch(
           modelDownloadUpdated({
             modelId: model.id,
@@ -138,7 +168,15 @@ export function createModelManager(
           model.id,
         );
         throw error;
+      } finally {
+        controllers.delete(model.id);
       }
+    },
+
+    /** Cancel an in-flight download (aborts the fetch/wllama load). No-op if
+     * the model isn't downloading. The download() catch reports 'cancelled'. */
+    cancel(modelId: string): void {
+      controllers.get(modelId)?.abort();
     },
 
     async load(model: CatalogModel): Promise<void> {

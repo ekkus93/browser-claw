@@ -48,6 +48,40 @@ describe('modelManager', () => {
     });
   });
 
+  it('cancels an in-flight download and reports it honestly (not an error)', async () => {
+    const s = store();
+    // A download that never resolves on its own — it only ends when aborted.
+    const cancelEngine = fakeEngine({
+      download: (_m, _onProgress, signal) =>
+        new Promise((_resolve, reject) => {
+          const abort = () => reject(new DOMException('Aborted', 'AbortError'));
+          if (signal?.aborted) abort();
+          signal?.addEventListener('abort', abort);
+        }),
+    });
+    const manager = createModelManager(db, s.dispatch, cancelEngine, () =>
+      Promise.resolve({ usedBytes: 0, quotaBytes: 0 }),
+    );
+
+    const p = manager.download(model);
+    // Let the download start and register its AbortController, then cancel it.
+    await new Promise((r) => setTimeout(r, 0));
+    manager.cancel(model.id);
+    await p; // resolves — a cancel is not a failure, so download() doesn't throw
+
+    expect(s.getState().models.downloads[model.id]).toEqual({
+      status: 'cancelled',
+      progress: 0,
+    });
+    const events = await queryAuditEvents(db, { source: 'model' });
+    expect(
+      events.some(
+        (e) =>
+          e.type === 'model.download_cancelled' && e.status === 'cancelled',
+      ),
+    ).toBe(true);
+  });
+
   it('blocks a download that would exceed the storage quota', async () => {
     // Fail closed: a model far larger than the remaining quota must never start
     // downloading — it's refused up front, marked error, and audited.

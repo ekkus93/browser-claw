@@ -32,11 +32,15 @@ export async function fetchGguf(
   model: CatalogModel,
   fetchImpl: typeof fetch = fetch,
   onProgress?: (loaded: number, total: number) => void,
+  signal?: AbortSignal,
 ): Promise<Blob> {
   // Built via hfDownloadUrl so the bytes always come straight from HF — never
   // proxied through an app server (TODO 8.3).
   const url = hfDownloadUrl(model);
-  const response = await fetchImpl(url);
+  // Aborting the fetch (and the stream read below, which inherits the signal)
+  // is how a download is cancelled (TODO 8.2). No cache row is written until
+  // the blob fully downloads, so an abort leaves nothing partial behind.
+  const response = await fetchImpl(url, signal ? { signal } : undefined);
   if (!response.ok || !response.body) {
     throw new Error(`Model download failed (${response.status})`);
   }
@@ -57,6 +61,7 @@ export async function fetchGguf(
 export interface FetchOptions {
   fetchImpl?: typeof fetch;
   onProgress?: (loaded: number, total: number) => void;
+  signal?: AbortSignal;
 }
 
 /** Return the cached model blob, or download it once and cache it. */
@@ -74,6 +79,7 @@ export async function getOrFetchModelBlob(
     model,
     options.fetchImpl ?? fetch,
     options.onProgress,
+    options.signal,
   );
   await store.put(model.id, blob);
   return blob;

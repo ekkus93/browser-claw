@@ -436,6 +436,15 @@ export default function ModelsScreen() {
                                 Download
                               </Button>
                             )}
+                            {dl?.status === 'downloading' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => manager.cancel(model.id)}
+                              >
+                                Cancel
+                              </Button>
+                            )}
                             {ready && !isUser && (
                               <Button
                                 variant="ghost"

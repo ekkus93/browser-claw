@@ -233,3 +233,11 @@ and TODO are. Newest decisions at the bottom of each section.
   — an empty response isn't a reachability failure.
 - Tests: providers.test OpenAI (empty / missing content / no choices) + Anthropic
   (no text block) -> invalid_response.
+
+### A2.9 — audit summary redaction (done)
+- `auditService.ts redactText` scrubs credential-shaped substrings from free
+  text (Authorization headers, bearer tokens, sk-/sk-ant-/xox/AKIA/ghp_/ya29./
+  JWT — thresholds mirror the backup detector to avoid false positives like
+  "task-manager"). Applied to `summary` in buildAuditRow (single choke point;
+  the Redux live-tail uses the already-redacted row.summary). details redaction
+  unchanged.

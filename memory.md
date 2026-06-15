@@ -1400,3 +1400,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Tests: providers.test +2 (OpenAI loop over empty-string/missing-content/empty-choices; Anthropic empty content[]). vitest 521->523.
 - Gate ALL GREEN: typecheck, lint, prettier, vitest 523/78, e2e 28. No Rust touched.
 - NEXT: A2.9 — audit SUMMARY redaction (details already redacted; ensure thrown error messages can't leak keys into summary). Add redaction/constraining for audit summary in auditService.buildAuditRow (or recordAudit). Tests: details redacted, summary redacted, Authorization header never appears. P1.
+
+## 2026-06-15T08:15:12Z - Claude Opus 4.8 - Ralph: A2.9 (audit summary redaction)
+- A2.9 DONE. src/audit/auditService.ts: NEW `redactText(text)` with SECRET_TEXT_PATTERNS (Authorization: <val> header, bearer <token>, sk-{16,}, sk-ant-{16,}, xox[baprs]-{10,}, AKIA{16}, ghp_{20,}, ya29.{20,}, JWT). Applied to `summary` in buildAuditRow — single choke point; auditSink live-tail dispatches row.summary (already redacted). details redaction (redactDetails by key) unchanged.
+- Thresholds mirror backup's SECRET_VALUE_PATTERNS to avoid false positives (e.g. "task-manager" doesn't trip sk-{16,}). Verified with "leaves ordinary summary untouched" test.
+- Tests: auditService.test "summary redaction (A2.9)" +3 (leaked sk-ant scrubbed; Authorization: Bearer scrubbed; ordinary untouched). vitest 523->526.
+- Gate ALL GREEN: typecheck, lint, prettier, vitest 526/78, e2e 28. No Rust touched.
+- NEXT: A2.10 — runtime boot outer catch updates UI. bootRuntime().catch should dispatch runtimeFailed + attempt durable audit + show blocking runtime error (not console-only). Check src/main.tsx bootRuntime + its .catch. P1.

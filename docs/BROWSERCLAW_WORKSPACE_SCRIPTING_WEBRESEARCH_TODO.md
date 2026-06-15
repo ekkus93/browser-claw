@@ -268,12 +268,14 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ### A2.9 Audit summary redaction
 
-- [ ] P1 Add redaction/constraining for audit `summary`.
-- [ ] P1 Ensure thrown error messages cannot leak API keys/tokens into summaries.
-- [ ] P1 Tests:
-  - [ ] details redacted;
-  - [ ] summary redacted;
-  - [ ] Authorization header never appears.
+<!-- src/audit/auditService.ts: redactText (SECRET_TEXT_PATTERNS: Authorization header, bearer token, sk-/sk-ant-/xox/AKIA/ghp_/ya29./JWT) applied to summary in buildAuditRow; details redaction (redactDetails) unchanged. Tests: src/audit/auditService.test.ts "summary redaction (A2.9)". Gate: typecheck/lint/prettier/vitest 526/e2e 28. -->
+
+- [x] P1 Add redaction/constraining for audit `summary`.
+- [x] P1 Ensure thrown error messages cannot leak API keys/tokens into summaries.
+- [x] P1 Tests:
+  - [x] details redacted;
+  - [x] summary redacted;
+  - [x] Authorization header never appears.
 
 ### A2.10 Runtime boot outer catch updates UI
 

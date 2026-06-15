@@ -49,6 +49,33 @@ const SECRET_KEY_PATTERN =
 const REDACTED = '[redacted]';
 
 /**
+ * Credential-shaped VALUE patterns for redacting free text (hardening A2.9).
+ * The `summary` is a human string that sometimes embeds an exception message,
+ * which could carry a key or an Authorization header — scrub those before the
+ * summary is persisted/shown. Thresholds mirror the backup secret detector to
+ * avoid false positives on ordinary hyphenated words.
+ */
+const SECRET_TEXT_PATTERNS: readonly RegExp[] = [
+  /authorization\s*:\s*\S+/gi, // "Authorization: <value>" header
+  /bearer\s+[A-Za-z0-9._-]{8,}/gi, // bearer tokens
+  /sk-ant-[A-Za-z0-9-]{16,}/gi, // Anthropic
+  /sk-[A-Za-z0-9-]{16,}/gi, // OpenAI-style
+  /xox[baprs]-[A-Za-z0-9-]{10,}/gi, // Slack
+  /AKIA[0-9A-Z]{16}/g, // AWS access key id
+  /ghp_[A-Za-z0-9]{20,}/gi, // GitHub PAT
+  /ya29\.[A-Za-z0-9._-]{20,}/g, // Google OAuth
+  /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/g, // JWT
+];
+
+/** Replace any credential-shaped substring in free text with the marker. */
+export function redactText(text: string): string {
+  let out = text;
+  for (const pattern of SECRET_TEXT_PATTERNS)
+    out = out.replace(pattern, REDACTED);
+  return out;
+}
+
+/**
  * Deep-copy `details`, replacing any value whose key looks like a credential
  * with a redaction marker. Defends the audit log against accidental secret
  * capture even when a caller passes a richer object than intended.
@@ -105,7 +132,7 @@ export function buildAuditRow(input: AppendAuditInput): AuditEventRow {
   const row: AuditEventRow = {
     id: generateId(),
     type: input.type,
-    summary: input.summary,
+    summary: redactText(input.summary),
     risk: input.risk ?? 'info',
     source: input.source,
     status: input.status ?? 'success',

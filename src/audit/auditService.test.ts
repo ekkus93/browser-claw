@@ -63,6 +63,38 @@ describe('redactDetails', () => {
   });
 });
 
+describe('summary redaction (A2.9)', () => {
+  it('scrubs a credential leaked into the summary text', () => {
+    const row = buildAuditRow({
+      type: 'provider.request_failed',
+      summary: 'Request failed: bad key sk-ant-abcdef0123456789abcdef rejected',
+      source: 'provider',
+    });
+    expect(row.summary).not.toContain('sk-ant-');
+    expect(row.summary).toContain('[redacted]');
+  });
+
+  it('scrubs an Authorization header from the summary', () => {
+    const row = buildAuditRow({
+      type: 'web.fetch_blocked',
+      summary:
+        'Blocked fetch with Authorization: Bearer sk-abcdefghijklmnop1234',
+      source: 'skill',
+    });
+    expect(row.summary).not.toMatch(/Bearer\s+sk-/i);
+    expect(row.summary).not.toContain('sk-abcdefghijklmnop1234');
+  });
+
+  it('leaves an ordinary summary untouched', () => {
+    const row = buildAuditRow({
+      type: 'skill_installed',
+      summary: 'Installed skill task-manager v1.2.0',
+      source: 'skill',
+    });
+    expect(row.summary).toBe('Installed skill task-manager v1.2.0');
+  });
+});
+
 describe('backfillAuditDefaults', () => {
   it('fills missing source/status but keeps existing values', () => {
     const a: { source?: string; status?: string } = {};

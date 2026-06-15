@@ -295,3 +295,15 @@ and TODO are. Newest decisions at the bottom of each section.
   Errors: WorkspacePathConflictError, WorkspaceNotFoundError, WorkspaceNotAFileError.
 - listDir returns IMMEDIATE children only (prefix + no further slash).
 - Tests use MemoryContentStore + injected now/newId for determinism.
+
+## Locked decisions (2026-06-15, mid-pass)
+
+- **E2 search backend:** a COMMERCIAL search API (Tavily / Brave / Exa) — user
+  will name the specific one. Key in SecretVault; CALLED FROM THE EXTENSION
+  context (not browser-direct), so E2 needs: (a) a `search` message type added to
+  the extension protocol + service-worker handler, (b) a profile in IndexedDB,
+  (c) an extension-backed SearchProvider that sends the search message, (d) error
+  classification (auth/rate_limit/network/invalid_response/unavailable) + audit
+  web.search_started/completed/failed. Confirm the exact provider before E2.
+- **Resume cadence:** the QuickJS sandbox (Part D) + F/G/H are to be done in a
+  FRESH session (this one is context-saturated). All work is pushed at fa3ec26.

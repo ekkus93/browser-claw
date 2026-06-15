@@ -274,3 +274,13 @@ and TODO are. Newest decisions at the bottom of each section.
 - NEXT B-phases: B2 path validation (normalizeWorkspacePath/validateWorkspacePath),
   B3 CRUD WorkspaceFs (ties metadata + ContentStore), B4 range reads, B5 search/grep,
   B6 approval+audit, B7 UI, B8 backup.
+
+### B2 — path validation (done)
+- src/workspace/path.ts: validateWorkspacePath -> {ok,path}|{ok:false,reason};
+  normalizeWorkspacePath (throws); isValidWorkspacePath. Checks BOTH raw and
+  percent-decoded form (encoded traversal caught), rejects backslash/null/control
+  (control via codePoint loop -- NO control-regex, so no eslint no-control-regex
+  and no eslint-disable), requires first segment "workspace", rejects "." / ".."
+  and any leading-dot (hidden/reserved) segment, collapses // and trailing slash.
+- GOTCHA: literal control bytes in test fixtures survive Write but are fragile;
+  converted to backslash-u escapes via perl for robust ASCII source.

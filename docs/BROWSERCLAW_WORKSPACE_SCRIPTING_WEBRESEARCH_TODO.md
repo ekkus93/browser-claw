@@ -320,20 +320,22 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase B2 — Path validation
 
-- [ ] P0 Implement `normalizeWorkspacePath()`.
-- [ ] P0 Implement `validateWorkspacePath()`.
-- [ ] P0 Reject:
-  - [ ] empty path;
-  - [ ] relative path outside workspace;
-  - [ ] `..` traversal;
-  - [ ] encoded traversal;
-  - [ ] OS absolute paths;
-  - [ ] backslash traversal;
-  - [ ] null bytes;
-  - [ ] control characters;
-  - [ ] reserved namespaces.
-- [ ] P0 Tests for every rejected case.
-- [ ] P0 Tests for valid normalized paths.
+<!-- src/workspace/path.ts: validateWorkspacePath (checks raw + percent-decoded form), normalizeWorkspacePath (throws), isValidWorkspacePath. Rejects empty/relative/.. /encoded-traversal/OS-absolute/backslash/null/control/hidden-or-reserved(leading-dot)/outside-root; normalizes collapsing slashes + trailing slash. Tests: src/workspace/path.test.ts (it.each reject matrix + accept/normalize matrix). Gate: typecheck/lint/prettier/vitest 555/e2e 28. -->
+
+- [x] P0 Implement `normalizeWorkspacePath()`.
+- [x] P0 Implement `validateWorkspacePath()`.
+- [x] P0 Reject:
+  - [x] empty path;
+  - [x] relative path outside workspace;
+  - [x] `..` traversal;
+  - [x] encoded traversal;
+  - [x] OS absolute paths;
+  - [x] backslash traversal;
+  - [x] null bytes;
+  - [x] control characters;
+  - [x] reserved namespaces. (leading-dot / hidden segments + outside-root)
+- [x] P0 Tests for every rejected case.
+- [x] P0 Tests for valid normalized paths.
 
 ## Phase B3 — Workspace CRUD API
 

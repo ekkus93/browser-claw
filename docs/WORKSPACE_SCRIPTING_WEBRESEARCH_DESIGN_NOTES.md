@@ -328,3 +328,25 @@ and TODO are. Newest decisions at the bottom of each section.
 - NEXT D2: BrowserClawScriptRequest schema validator (type/version/runtime/
   title/reason/code/capabilities/limits; no secrets; no direct network unless
   mediated web; path scopes must be safe workspace globs). Reuse ScriptCapabilities.
+
+### D2 — Sandboxed script request schema (done, 2026-06-15)
+- src/script/scriptRequest.ts: BrowserClawScriptRequest {type
+  'browserclaw_script_request', version 1, runtime 'sandboxed_script', title,
+  reason, code, capabilities: ScriptCapabilities (reused from D1), limits:
+  ScriptLimits}. validateScriptRequest(input) -> {ok,request,risk}|{ok:false,errors}.
+- ScriptLimits core REQUIRED: timeoutMs, maxOutputBytes, maxFileReads,
+  maxFileWrites (all positive, <= MAX_TIMEOUT_MS 30s / MAX_OUTPUT_BYTES 1MiB /
+  MAX_FILE_READS 1000 / MAX_FILE_WRITES 200). Extended optional (maxLogBytes,
+  maxTotalBytesRead/Written, maxWebRequests, maxPagesRead) enforced by D5.
+- Capability rules: fsRead/fsWrite scopes each isValidWorkspacePath (globs like
+  /workspace/docs/** pass; /etc/passwd and /workspace/../x rejected). webRead
+  each classifyFetchUrl.ok. secrets must be 'deny'|absent. network 'deny'|
+  'mediated' ONLY (no raw network); 'mediated' REQUIRES webSearch||webRead.
+  Risk via classifyCapabilityRisk (broad write -> high but ACCEPTED).
+- Tests: src/script/scriptRequest.test.ts (13). vitest 671->684.
+- NEXT D3: pnpm add quickjs-emscripten. QuickJS-in-WASM sandbox in a Worker (NO
+  eval/new Function in app ctx). Expose NONE of window/document/localStorage/
+  sessionStorage/indexedDB/OPFS/fetch/XHR/WebSocket/EventSource/chrome/cookies/
+  secrets. Sandbox-escape regression tests = P0 security-critical. Inject the
+  QuickJS module so the core is unit-testable headless (the escape tests run the
+  real interpreter; Worker wiring may be a thin shell tested in Docker E2E).

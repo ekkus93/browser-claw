@@ -604,22 +604,26 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase D2 — Script request schema
 
-- [ ] P0 Define `BrowserClawScriptRequest` schema.
-- [ ] P0 Validate:
-  - [ ] type/version/runtime;
-  - [ ] title/reason;
-  - [ ] code present;
-  - [ ] capability manifest;
-  - [ ] limits;
-  - [ ] no secrets capability;
-  - [ ] no direct network unless mediated web capability;
-  - [ ] path scopes safe.
-- [ ] P0 Tests:
-  - [ ] valid request accepted;
-  - [ ] missing limits rejected;
-  - [ ] secrets request rejected;
-  - [ ] broad workspace write rejected/high-risk;
-  - [ ] invalid path scope rejected.
+- [x] P0 Define `BrowserClawScriptRequest` schema. <!-- src/script/scriptRequest.ts: BrowserClawScriptRequest {type,version,runtime,title,reason,code,capabilities,limits} + ScriptLimits -->
+- [x] P0 Validate: <!-- validateScriptRequest(input) -> {ok,request,risk}|{ok:false,errors} -->
+  - [x] type/version/runtime; <!-- type='browserclaw_script_request', version=1, runtime='sandboxed_script' -->
+  - [x] title/reason; <!-- both required non-empty (trimmed) -->
+  - [x] code present; <!-- code required non-empty, <= MAX_CODE_CHARS -->
+  - [x] capability manifest; <!-- validateCapabilities reuses ScriptCapabilities (D1) -->
+  - [x] limits; <!-- validateLimits: timeoutMs/maxOutputBytes/maxFileReads/maxFileWrites required, positive, <= MAX_* -->
+  - [x] no secrets capability; <!-- secrets must be 'deny' (or absent) -->
+  - [x] no direct network unless mediated web capability; <!-- network 'deny'|'mediated' only; 'mediated' requires webSearch or webRead -->
+  - [x] path scopes safe. <!-- validateScopes -> isValidWorkspacePath per fsRead/fsWrite glob; webRead via classifyFetchUrl -->
+- [x] P0 Tests: <!-- src/script/scriptRequest.test.ts (13) -->
+  - [x] valid request accepted; <!-- 'accepts a well-formed request and reports its risk' -->
+  - [x] missing limits rejected; <!-- 'rejects a request that omits limits' + 'missing a required limit field' -->
+  - [x] secrets request rejected; <!-- 'rejects a request that asks for secrets' -->
+  - [x] broad workspace write rejected/high-risk; <!-- 'marks a broad workspace write scope as high risk (accepted)' -->
+  - [x] invalid path scope rejected. <!-- 'rejects an invalid path scope' + 'rejects a traversal path scope' -->
+
+<!-- D2 done 2026-06-15. Gate green: typecheck, eslint --max-warnings 0, prettier, vitest 684/97, e2e 30. No Rust. -->
+<!-- D3 will pnpm add quickjs-emscripten and build the QuickJS-in-Worker sandbox with escape regression tests. -->
+
 
 ## Phase D3 — Sandbox runtime implementation
 

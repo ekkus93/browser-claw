@@ -59,7 +59,7 @@
   - [x] dispatch runtime error or effect error; <!-- failEffect dispatches runtimeErrored (status 'error'). -->
   - [x] append durable audit event; <!-- failEffect records runtime.effect_failed (source runtime, status failure, risk high). -->
   - [x] show user-visible error state. <!-- runtimeErrored sets runtime.status='error', shown in the sidebar runtime status. -->
-- [ ] Tests:
+- [x] Tests:
   - [x] missing storage handler fails; <!-- effectExecutor.test.ts "fails when the storage handler is missing" (throws + runtime status error). -->
   - [x] missing skill handler fails; <!-- effectExecutor.test.ts "fails when a skill handler is missing" (throws + runtime status error). -->
   - [x] unknown effect fails; <!-- effectExecutor.test.ts "fails closed on an unknown effect type". -->
@@ -178,7 +178,7 @@
 
 ### 3.3 Wire Audit Events Across App
 
-- [ ] Append audit events for:
+- [x] Append audit events for: <!-- all sub-items wired (runtime load/fail/fallback, provider test, LLM request, effect lifecycle, tool lifecycle, memory CRUD+retrieval, skill lifecycle, secret lock/unlock/delete, backup export/import, model download/load/delete) + no-raw-secrets guard. -->
   - [x] runtime loaded; <!-- main.tsx:119 'runtime.loaded' -->
   - [x] runtime failed; <!-- main.tsx:142 'runtime.load_failed' -->
   - [x] fallback runtime used; <!-- main.tsx:131 'runtime.reference_fallback_used' -->
@@ -214,7 +214,7 @@
   - [x] snapshot restore success; <!-- main.tsx 'runtime.snapshot_restored' -->
   - [x] snapshot restore failed; <!-- main.tsx 'runtime.snapshot_restore_failed' (+ 'runtime.snapshot_save_failed' for save errors) -->
   - [x] snapshot incompatible; <!-- main.tsx 'runtime.snapshot_incompatible' on a version mismatch (this pass) -->
-- [ ] Tests:
+- [x] Tests:
   - [x] reload restores runtime state; <!-- runtimeHost.test.ts "persists and restores a snapshot deterministically"; referenceRuntime.test.ts restore -->
   - [x] corrupted snapshot does not crash silently; <!-- runtimeHost.test.ts discards incompatible + pre-versioning snapshots; withSnapshotRestore catches deserialize throws -->
   - [x] incompatible snapshot is audited. <!-- main.tsx emits 'runtime.snapshot_incompatible'; runtimeHost.test.ts asserts the load reports 'incompatible' + drops the row -->
@@ -275,7 +275,7 @@
   - [x] created at; <!-- already persisted on MemoryRow -->
   - [x] last used at. <!-- now WRITTEN by a real retrieval: llmRunner stamps lastUsedAt on every memory it surfaces into a prompt (llmRunner.test "surfaces a relevant memory ... marks it used"). -->
 - [x] Implement retrieval history based on real retrieval events. <!-- Done TS-only in llmRunner (no Rust/WASM change): before each provider call, selectMemoriesForContext ranks saved memories by keyword overlap with the user's latest message (pinned always candidates; SENSITIVE memories never surfaced), the chosen rows are injected as a leading system message, each is stamped lastUsedAt=now, and a memory.retrieved audit (source:runtime, details:{memoryIds,count}) is recorded. The "Recently used"/"Retrieval history" panels now reflect real retrievals, not just demo seeds. Tested: retrieveMemories.test.ts (ranking + sensitive-exclusion + pinned + limit) and llmRunner.test "surfaces a relevant memory into the prompt, marks it used, and audits the retrieval". -->
-- [ ] Tests:
+- [x] Tests:
   - [x] each filter works; <!-- filterMemories.test.ts (unit, per-filter + AND) + MemoriesScreen.test.tsx (wired created-by filter + clear) -->
   - [x] provenance persists after reload; <!-- toolRunner.test "Remember persists a provenance-tagged memory": the saved MemoryRow has conversationId + skillId in IndexedDB (survives reload). -->
   - [x] retrieval history records real retrieval. <!-- llmRunner.test "surfaces a relevant memory into the prompt, marks it used, and audits the retrieval": asserts the injected system message, the lastUsedAt stamp on the surfaced row (and none on the untouched row), and a memory.retrieved audit event. -->
@@ -400,7 +400,7 @@
 - [x] Enforce skill permissions during tool execution. <!-- DONE (Passes 64-68, user-approved multi-pass build): the tool loop is live end-to-end and fails closed. Model emits a ```tool block -> llmRunner resolves {tool_call} -> claw-core emits ToolCallProposal{skill_id} -> toolRunner ENFORCES (a call runs only if the chat's active skill is installed+enabled and DECLARED the tool; else audited tool.denied + resolved as failure) -> inline approval -> on approve runToolCall executes (Page Reader: http/https + sanitized) and resolves the result -> runtime stores it + continues; on reject resolves a failure. The chat active-skill picker sets which skill (none = all tools denied). HISTORY (was BLOCKED — and it's NOT just a one-field schema gap, verified Pass 63): there is no tool-execution loop to enforce on. (a) claw-core never emits Effect::ToolCallProposal (only handles SubmitUserMessage/ResolveEffect; never parses LLM results for tool calls). (b) the approval flow is UI-only — effectExecutor turns tool_call_proposal into approvalRequested but ApprovalCard/approvalsSlice/ChatScreen only mutate Redux; nothing resolves an approval back to RuntimeHost. (c) no tool registry/runner exists — skills' declared permissions.tools is only DISPLAYED, never executed/checked. Unblocking needs the whole loop, in order: (1) runtime parses tool calls + emits ToolCallProposal{skill_id} + tracks pending; (2) an approval listener that sends ResolveEffect back on approve/reject; (3) a tool registry/runner (real security design: web/page/file tools = network/CORS/sandbox). IN PROGRESS (multi-pass feature, user-approved): Pass 65 built piece (1): claw-schema Effect::ToolCallProposal gained skill_id + Command::SubmitUserMessage gained skill_id + RuntimeState.pending_skill; claw-core (and the referenceRuntime mirror) now emit ToolCallProposal{skill_id} when an llm_request resolves with a {tool_call:{name,args}} result, attributing it to the conversation's active skill (cargo + vitest tested; wasm rebuilt). Pass 3a added the runtime continuation (resolve approved -> store tool result + follow-up llm_request; reject -> note). Pass 3b added the ENFORCEMENT: src/runtime/toolRunner.ts createToolEffectHandler routes tool_call_proposal, fails closed (deny + audit tool.denied + resolve rejected unless an installed+enabled skill DECLARED the tool), else queues approvalRequested; wired as ctx.ports.tool in main.tsx; effectExecutor routes tool_call_proposal to it (fatal if missing). Pass 3c-1 added host parse: llmRunner now parseToolCall(reply) -> resolves {tool_call:{name,args}} (else {text}), and feeds prior tool-role messages back as user-prefixed context. So a real model reply containing a ```tool block now flows: llm_request -> {tool_call} -> ToolCallProposal -> enforcement (denied in plain chat since skill_id=''). STILL NEED (Pass 4, coupled to the approval UI): the approval-RUN listener (on approve -> runToolCall(src/tools) -> resolve {text}; on reject -> resolve {ok:false}; audit tool executed/failed) + an active-skill picker so chat sends a skill_id (until then every tool call is denied — fail closed) + rendering the approval queue wired to the runtime. Pass 64 built piece (3)'s foundation — src/tools/tools.ts: a text-marker tool-call parser (```tool fenced JSON), a tool registry + permission-enforcing runner (runToolCall fails closed if the caller didn't DECLARE the tool — the 7.4 check), and the first tool "Page Reader" (http/https-only URL validation + HTML->text sanitization), all unit-tested. NOT yet wired to the runtime/approval loop (pieces 1+2 next), so still not user-reachable. -->
 - [x] Enforce skill filesystem permissions during reads/writes. <!-- skillRunner.ts routes skill_fs_read_text/skill_state_get/skill_state_put through the permission-scoped SkillFs; wired as ctx.ports.skill in main.tsx (was an unwired no-op). -->
 - [x] Do not rely only on UI display. <!-- enforcement lives in SkillFs/skillRunner data layer; disabled/unknown skills fail closed. -->
-- [ ] Tests:
+- [x] Tests:
   - [x] skill cannot call undeclared tool; <!-- toolRunner.test.ts "denies a tool the skill did not declare": the tool_call_proposal handler (createToolEffectHandler) fails closed — a tool not in the skill's permissions.tools (or an unknown/disabled skill, or no active skill) is audited (tool.denied) and resolved as a failure, never queued for approval. (Full tool EXECUTION on approve isn't wired yet — see 7.4 note — but the permission CHECK is enforced and tested.) -->
   - [x] skill cannot read undeclared path;
   - [x] skill cannot write undeclared state path;
@@ -463,7 +463,7 @@
 - [ ] Persist selected/default model. <!-- partial: onboardingProgress persists mode + local endpoint + remote provider, but the wllama "Browser-local model" select in step 2 is still defaultValue-only (not in the progress payload). Add it when the model choice has a real downstream consumer. -->
 - [x] On refresh, do not repeat onboarding if completed. <!-- main.tsx restoreOnboardingState() reads the flag at boot, dispatches onboardingCompleted() then hydrated(); IndexRedirect (index route) sends completed users to /chat, first-run to /onboarding; only the index route is gated so deep links are untouched -->
 - [x] If setup incomplete, resume correct step. <!-- OnboardingScreen restores the saved step on mount (clamped to a valid range) so a mid-setup reload picks up where the user left off instead of restarting at step 0. -->
-- [ ] Tests:
+- [x] Tests:
   - [x] onboarding completion persists; <!-- OnboardingScreen.test "finishes into chat" asserts getOnboardingComplete(db) is true after finish; appSettings.test round-trips; IndexRedirect.test covers the index-route decision -->
   - [x] selected mode persists; <!-- OnboardingScreen.test.tsx "persists in-progress selections so a reload can resume" (mode 'remote' + step written to onboardingProgress); appSettings.test.ts round-trips it. -->
   - [x] refresh resumes incomplete onboarding. <!-- OnboardingScreen.test.tsx "resumes at the saved step on reload" seeds onboardingProgress {step:2, mode:'remote', provider:'openai'} and asserts the screen mounts on "Configure model" (Step 3 of 4) with the provider restored. -->
@@ -472,8 +472,8 @@
 
 ### 9.2 Settings
 
-- [ ] Make Settings screen read from IndexedDB.
-- [ ] Make Settings controls write to IndexedDB.
+- [x] Make Settings screen read from IndexedDB. <!-- The Settings screen reads every control that has a real consumer from IndexedDB on mount: theme (getTheme), default provider (getActiveProviderId), fallback provider (getFallbackProviderId), approval policy (getApprovalPolicy), lock timeout (getLockTimeoutMinutes), wllama CDN consent (getWllamaCdnConsent), verbose runtime audit (loadEffectAuditPref). The read/write-from-IndexedDB mechanism is fully established and used. -->
+- [x] Make Settings controls write to IndexedDB. <!-- Each of those controls writes back on change (setTheme/setActiveProviderId/setFallbackProviderId/setApprovalPolicy/setLockTimeoutMinutes/setWllamaCdnConsent/setEffectAuditEnabled). The remaining decorative controls (backup settings / skill install policy / dev mode — see "Implement settings for") are intentionally NOT settings-backed: they have no consumer, so wiring them would be a hollow affordance (Phase 10). -->
 - [ ] Implement settings for:
   - [x] theme; <!-- Wired END-TO-END and no longer a hollow control: added real dark tokens. src/settings/theme.ts (applyTheme sets <html data-theme>; normalizeTheme) + index.css `[data-theme='dark']` overrides the color custom properties (every Tailwind color utility reads var(--color-*), so the override re-themes the whole app). SettingsScreen Theme Select reads getTheme(db) on mount and on change applies it live + writes setTheme(db,...); main.tsx restoreTheme() applies the persisted theme at boot. Tested: theme.test.ts (applyTheme/normalizeTheme), appSettings.test.ts (default light + durable round-trip), SettingsScreen.test.tsx ("loads the persisted theme, applies it to <html>, and writes changes back"). -->
   - [x] default provider; <!-- Wired to the EXISTING active-provider machinery, not a parallel key: the Settings "Default provider" Select reads getActiveProviderId(db) (app_settings 'activeProviderId') on mount and on change calls setActiveProviderId(db,id) + dispatches activeProviderSet (resolving label/model/baseUrl from getActiveProviderProfile, mirroring main.tsx restoreActiveProvider) so the live runtime/UI switch immediately. Options come from DEFAULT_PROVIDER_PROFILES (openai/anthropic/compatible/ollama/llama-server). Same durable key Onboarding writes, so they agree. Tested: SettingsScreen.test "loads the persisted default provider, then persists + goes live on change" (control reflects 'openai', selecting 'anthropic' writes app_settings AND updates the providers slice). -->
@@ -488,7 +488,7 @@
   - [ ] developer/demo/fallback mode.
 - [x] Settings button in top bar navigates to `/settings`. <!-- AppLayout.tsx now wires topBar.onOpenSettings to navigate('/settings'); previously a silent no-op because AppLayout never passed the prop to AppShell/TopStatusBar. -->
 - [x] Provider/model button in top bar navigates to `/models`. <!-- AppLayout.tsx now wires topBar.onSelectModel to navigate('/models'); same hollow-affordance class as the Settings button — TopStatusBar already fired onSelectModel and /models+ModelsScreen exist, but AppLayout never passed the prop, so the click was a silent no-op. -->
-- [ ] Tests:
+- [x] Tests:
   - [x] settings persist after reload; <!-- Proven for the lock-timeout setting (the first end-to-end one): SettingsScreen.test.tsx seeds a durable value, asserts the control reflects it on mount, then asserts a change is written back to app_settings; appSettings.test.ts round-trips + defaults getLockTimeoutMinutes. The persist-after-reload mechanism (read-on-mount + boot rehydrate) now exists and is tested. -->
 
   - [x] top bar Settings button navigates; <!-- AppLayout.test.tsx: clicking the top-bar Settings button lands on /settings. -->
@@ -515,14 +515,14 @@
   - [x] disable it; or <!-- SettingsScreen's 12 unwired controls are now `disabled` with an honest header note ("Disabled controls are placeholders … don't take effect yet"); a test asserts representative ones are disabled while a wired one is not. -->
   - [x] mark it as coming later. <!-- OnboardingScreen's dead "View setup guide" button replaced with "Setup guide coming soon." text. -->
 - [x] Remove or gate fake/demo UI data. <!-- Removed the fake "Up to date" version badge (no update check) from SettingsScreen; earlier passes replaced StorageScreen's hardcoded all-green health panel + "0 B" model-cache with real derived values. Seeded demo data (sample memories/audit) is env-gated via appConfig.isDemoMode (default off). -->
-- [ ] Add empty states for:
+- [x] Add empty states for:
   - [x] no providers; <!-- N/A-by-design: ModelsScreen merges DEFAULT_PROVIDER_PROFILES (mergeProviderProfiles), so the provider list is never empty — the honest state is the always-present default cards; an empty-state message would be unreachable dead UI. -->
   - [x] no memories; <!-- MemoriesScreen EmptyState "No memories yet." (MemoriesScreen.tsx); tested MemoriesScreen.test.tsx "a fresh non-demo DB shows the empty state". Sidebar "Recently used"/"Retrieval history" also now show honest empty messages ("No memories used yet."/"No retrievals yet.") instead of blank boxes, tested in the same file. -->
   - [x] no audit events; <!-- AuditScreen renders "No audit events." row; tested AuditScreen.test.tsx. -->
   - [x] no skills; <!-- SkillsScreen renders "No skills installed." when db.skills is empty (rarely hit since bundled skills auto-seed). -->
   - [x] no backups; <!-- StorageScreen renders "No backups yet."; tested StorageScreen.test.tsx. -->
   - [x] no downloaded models. <!-- ModelsScreen browser-local table always lists the catalog with an honest per-row status ("Not downloaded" / "downloading N%" / "ready") and the downloads panel shows "No downloads in progress." (asserted in ModelsScreen.test.tsx) — so the not-downloaded state is explicit, not silent. -->
-- [ ] Add error states for:
+- [x] Add error states for:
   - [x] runtime failed; <!-- AppLayout runtimeFatal -> RuntimeBlockedScreen (ErrorState "Runtime unavailable" + Reload). -->
   - [x] storage unavailable; <!-- StorageScreen "Local Data Health" panel now shows an honest "Storage estimate unavailable in this browser." warning (AlertTriangle) when quotaBytes is 0 (estimate missing), instead of the prior hardcoded all-green list. Tested: StorageScreen.test.tsx "surfaces an honest storage-unavailable state instead of fake all-green health". This also removed fabricated "Cache/Service worker/IndexedDB healthy" claims — the panel now reflects real quota level (ok/warning/critical icon) + real persistence. -->
   - [x] provider missing; <!-- ChatScreen EmptyState "No provider configured" with an action link to /models when !isProviderConfigured. -->
@@ -530,7 +530,7 @@
   - [x] model unavailable; <!-- a failed download/load is surfaced three ways: a danger toast ("Could not download/load the model."), an audited model.*_failed event, and a persistent truthful 'error' status on the model row — and the Download button stays enabled in the error state, so the user can re-attempt (recovery affordance). Tested: ModelsScreen.test.tsx "shows a visible, audited error when a model download fails" (toast + audit) and "reflects a truthful error status in the model row after a failed download" (row status 'error', never 'ready'). -->
   - [x] backup import failed; <!-- StorageScreen surfaces a danger toast "Import failed" on parse/validate failure (validateBackup rejection incl. raw-secret refusal). -->
   - [x] skill import failed; <!-- SkillsScreen danger toast "Import failed" + durable skill_import_failed audit. -->
-- [ ] Tests:
+- [x] Tests:
   - [x] no-op buttons are absent/disabled; <!-- ModelsScreen.test.tsx "shows the unavailable banner when wllama is unsupported" now also asserts every Download button is DISABLED when wllama can't run (never a live-looking button that silently no-ops). Add/remove-provider and inline API-key controls are intentionally absent (not stubbed) per the 9.3 audit. -->
   - [x] empty states render honestly; <!-- MemoriesScreen.test.tsx (main "No memories yet." + sidebar "No memories used yet."/"No retrievals yet."), AuditScreen.test.tsx (no audit events), StorageScreen.test.tsx (no backups yet). -->
   - [x] error states render visibly. <!-- every listed error state has a visible surface with a test: runtime failed (RuntimeBlockedScreen via AppLayout), provider failure (CORS-issue badge — ModelsScreen.test), secret locked (SecurityScreen vault state), model unavailable (toast + 'error' row — ModelsScreen.test), backup import failed (danger toast — StorageScreen), skill import failed (danger toast + audit — SkillsScreen), storage unavailable (warning — StorageScreen.test). -->
@@ -553,7 +553,7 @@
 - [x] Backup import rejects raw secret-looking fields if not encrypted. <!-- backupService.validateBackup runs containsLikelyRawSecret on every row before import (rejects with "looks like it contains a raw decrypted secret; refusing to import"); detection is by normalized field name (apikey/accesstoken/refreshtoken/clientsecret/secretkey/privatekey/password/passwd/plaintext) and by credential value shape (Anthropic/OpenAI/Slack/AWS/GitHub/Google/JWT), exempting apiKeyMode + encryptedSecretId. Tested: backupService.test.ts validateBackup rejection tests + a new direct containsLikelyRawSecret suite covering every value pattern, field-name normalization, empty-string non-flag, secret-free metadata, and the recursion depth boundary (detected at 7 levels, not 8). -->
 - [x] Skill cannot access reserved keys. <!-- skillFs.ts isReservedStateKey (anything starting with __, incl. __permissions__/__manifest__/__system__/__audit__/__secrets__) gates getState/setState (throw); skillRunner routes effects through SkillFs and audits a deny on violation. Tested: skillFs.test.ts (namespace reserved + read/write forbidden) and skillRunner.test.ts ("denies writing a reserved state key and audits it"). -->
 - [x] Skill cannot path-traverse. <!-- skillFs.ts isPathSafe/isPathAllowed reject empty/null-byte/backslash/absolute/dot-segment paths in both raw and percent-decoded forms, and require an exact declared-namespace prefix; readText/writeText enforce it. Tested: skillFs.test.ts (every escape technique incl. encoded %2e%2e) and skillRunner.test.ts ("denies a read outside the declared namespace and audits it"). -->
-- [ ] Runtime cannot ignore missing handlers. <!-- contract-blocked: tied to effect-port-fatal handling (Phase 1.2/5.1/7.4) which needs the claw-schema/WASM effect contract (conversationId/skill_id on effects). -->
+- [x] Runtime cannot ignore missing handlers. <!-- Stale "contract-blocked" note — this is DONE. effectExecutor.executeEffect routes every effect to its port and calls failEffect when a required handler is missing (or the effect type is unknown): it audits runtime.effect_failed (status failure), dispatches runtimeErrored (visible 'error' state), and THROWS so the host loop stops rather than silently skipping. Tested: effectExecutor.test.ts "fails when the storage handler is missing" / "fails when a skill handler is missing" / "fails closed on an unknown effect type" (all assert throw + error status + durable failure audit). Phase 1.2 (missing-handler fatal) is complete; no schema change was needed for this. -->
 
 ### 11.3 Add Integration Tests
 

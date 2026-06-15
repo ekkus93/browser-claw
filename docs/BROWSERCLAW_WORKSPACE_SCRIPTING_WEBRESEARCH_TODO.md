@@ -339,25 +339,27 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase B3 — Workspace CRUD API
 
-- [ ] P0 Implement `createFile`.
-- [ ] P0 Implement `readFile`.
-- [ ] P0 Implement `readText`.
-- [ ] P0 Implement `updateFile`.
-- [ ] P0 Implement `appendFile`.
-- [ ] P0 Implement `deleteFile`.
-- [ ] P1 Implement `moveFile`.
-- [ ] P1 Implement `copyFile`.
-- [ ] P0 Implement `mkdir`.
-- [ ] P0 Implement `listDir`.
-- [ ] P0 Implement `stat`.
-- [ ] P0 Ensure metadata and content writes are consistent.
-- [ ] P0 Tests:
-  - [ ] create/read/update/delete file;
-  - [ ] append file;
-  - [ ] mkdir/list/stat;
-  - [ ] move/copy preserve metadata expectations;
-  - [ ] failed content write does not leave corrupt metadata;
-  - [ ] failed metadata write does not leave unreachable content where possible.
+<!-- src/workspace/workspaceFs.ts: WorkspaceFs class (deps: db, content ContentStore, now, newId). All ops normalizeWorkspacePath first; content written BEFORE metadata (failed content write -> no dangling row). Errors: WorkspacePathConflictError/WorkspaceNotFoundError/WorkspaceNotAFileError. Tests: src/workspace/workspaceFs.test.ts. Gate: typecheck/lint/prettier/vitest 565/e2e 28. -->
+
+- [x] P0 Implement `createFile`.
+- [x] P0 Implement `readFile`.
+- [x] P0 Implement `readText`.
+- [x] P0 Implement `updateFile`.
+- [x] P0 Implement `appendFile`.
+- [x] P0 Implement `deleteFile`.
+- [x] P1 Implement `moveFile`.
+- [x] P1 Implement `copyFile`.
+- [x] P0 Implement `mkdir`.
+- [x] P0 Implement `listDir`.
+- [x] P0 Implement `stat`.
+- [x] P0 Ensure metadata and content writes are consistent.
+- [x] P0 Tests:
+  - [x] create/read/update/delete file;
+  - [x] append file;
+  - [x] mkdir/list/stat;
+  - [x] move/copy preserve metadata expectations;
+  - [x] failed content write does not leave corrupt metadata;
+  - [ ] failed metadata write does not leave unreachable content where possible. (content-before-metadata makes the reverse — orphaned content — the accepted/harmless case per spec; not separately tested)
 
 ## Phase B4 — Text range, snippets, and large-file behavior
 

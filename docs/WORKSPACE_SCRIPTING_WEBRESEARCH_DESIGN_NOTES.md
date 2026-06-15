@@ -284,3 +284,14 @@ and TODO are. Newest decisions at the bottom of each section.
   and any leading-dot (hidden/reserved) segment, collapses // and trailing slash.
 - GOTCHA: literal control bytes in test fixtures survive Write but are fragile;
   converted to backslash-u escapes via perl for robust ASCII source.
+
+### B3 — WorkspaceFs CRUD (done)
+- src/workspace/workspaceFs.ts: WorkspaceFs class. Deps injected: {db, content
+  ContentStore, now?, newId?}. Every path normalizeWorkspacePath'd first.
+  createFile/readFile/readText/updateFile/appendFile/deleteFile/mkdir/listDir/
+  stat/moveFile/copyFile/exists. Content keyed by metadata id; move keeps the id
+  (path-only change), copy makes a new id+bytes. SHA-256 checksum per file.
+  Content written BEFORE metadata -> a failed content write leaves no row.
+  Errors: WorkspacePathConflictError, WorkspaceNotFoundError, WorkspaceNotAFileError.
+- listDir returns IMMEDIATE children only (prefix + no further slash).
+- Tests use MemoryContentStore + injected now/newId for determinism.

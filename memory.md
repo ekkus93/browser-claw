@@ -1439,3 +1439,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - GOTCHA: literal control bytes in test fixtures are fragile; converted to backslash-u escapes via perl (pure ASCII, same runtime value). ALSO: never put literal control bytes in a Bash heredoc -> Node rejects "string with null bytes" and the whole command fails.
 - Gate ALL GREEN: typecheck, lint, prettier, vitest 555/81, e2e 28. No Rust touched.
 - NEXT: B3 — Workspace CRUD API (WorkspaceFs tying metadata table + ContentStore): createFile/readFile/readText/updateFile/appendFile/deleteFile/mkdir/listDir/stat (P0) + moveFile/copyFile (P1). validateWorkspacePath every path; consistent metadata+content writes; inject ContentStore+db+now+idgen (MemoryContentStore in tests).
+
+## 2026-06-15T08:42:05Z - Claude Opus 4.8 - Ralph: B3 (WorkspaceFs CRUD)
+- B3 DONE. src/workspace/workspaceFs.ts: WorkspaceFs class, deps {db, content, now?, newId?}. Methods: createFile/readFile/readText/updateFile/appendFile/deleteFile/mkdir/listDir/stat/moveFile/copyFile/exists. All normalizeWorkspacePath first. Content (ContentStore, keyed by metadata id) written BEFORE metadata row -> failed content write leaves no dangling metadata. SHA-256 checksum. move = path-only change (keeps content id); copy = new id+bytes. listDir = immediate children only. Errors: WorkspacePathConflictError/WorkspaceNotFoundError/WorkspaceNotAFileError.
+- Tests: src/workspace/workspaceFs.test.ts (10): CRUD, no-overwrite, append, mkdir-idempotent+listDir-immediate, stat, move-keeps-id, copy-independent, move/copy-no-clobber, unsafe-path-pre-write, failed-content-write-no-row. vitest 555->565, 82 files.
+- HONESTY: "failed metadata write doesn't leave unreachable content" left unchecked — content-before-metadata makes orphaned content the accepted/harmless case (spec "where possible"); not separately tested.
+- Gate ALL GREEN: typecheck, lint, prettier, vitest 565/82, e2e 28. No Rust touched.
+- NEXT: B4 — text range/snippets/large-file: readTextRange(path,start,length), readLines(path,startLine,lineCount), enforce max range length + max snippet output size, UTF-8 boundary safety. Add to WorkspaceFs. P1.

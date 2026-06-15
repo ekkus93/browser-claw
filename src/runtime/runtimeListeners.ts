@@ -13,6 +13,7 @@ import type { ApprovedPlan } from './planRunner.ts';
 import type { ApprovedSandboxScript } from './sandboxScriptRunner.ts';
 import type { ApprovedWorkspaceOp } from './workspaceRunner.ts';
 import type { ApprovedWebPageRead } from './webRunner.ts';
+import type { ApprovedExtensionPermission } from './extensionRunner.ts';
 
 export interface RuntimeListenerDeps {
   db: BrowserClawDB;
@@ -24,6 +25,10 @@ export interface RuntimeListenerDeps {
   resolveWorkspaceApproval?: (approval: ApprovedWorkspaceOp) => Promise<void>;
   /** Resolves a `web_page_read` approval through the web bridge (Part F3). */
   resolveWebPageReadApproval?: (approval: ApprovedWebPageRead) => Promise<void>;
+  /** Resolves an `extension_permission` approval through the extension bridge. */
+  resolveExtensionPermissionApproval?: (
+    approval: ApprovedExtensionPermission,
+  ) => Promise<void>;
 }
 
 /**
@@ -102,6 +107,16 @@ export function registerRuntimeListeners(
       }
       if (approval.kind === 'web_page_read') {
         await deps.resolveWebPageReadApproval?.({
+          id: approval.id,
+          status: action.payload.status,
+          ...(approval.payloadPreview !== undefined
+            ? { payloadPreview: approval.payloadPreview }
+            : {}),
+        });
+        return;
+      }
+      if (approval.kind === 'extension_permission') {
+        await deps.resolveExtensionPermissionApproval?.({
           id: approval.id,
           status: action.payload.status,
           ...(approval.payloadPreview !== undefined

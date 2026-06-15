@@ -588,3 +588,19 @@ and TODO are. Newest decisions at the bottom of each section.
   ('bulk_research') — kinds declared in ApprovalKind, handlers TODO. extension
   permission = real-browser chrome.permissions flow (extension service worker);
   bulk_research needs a web_research effect (not in F2) or research() gating.
+
+### F3 (extension increment) — extension host-permission approval (done, 2026-06-15)
+- src/runtime/extensionRunner.ts: createExtensionEffectHandler({transport:
+  ExtensionTransport, db, dispatch, submit}) — parses effect.request via
+  parseExtensionRequest; request_host_permission -> approvalRequested kind
+  'extension_permission' (risk high, payloadPreview=JSON request), nothing sent;
+  benign requests (ping/status) pass through sendAndResolve directly; invalid ->
+  resolve failure. runApprovedExtensionPermission: approved -> audit
+  extension.permission_requested + transport.send + resolve response; rejected ->
+  extension.permission_rejected + resolve user_rejected. The real
+  chrome.permissions.request stays in the extension service worker (real-browser).
+- runtimeListeners.ts approvalResolved += route extension_permission ->
+  deps.resolveExtensionPermissionApproval.
+- Tests: extensionRunner.test.ts (5) + runtimeListeners.test.ts +1. vitest 788->794.
+- F3 STATUS: plan + sandbox + workspace + web_page_read + extension_permission
+  WIRED. REMAINING: bulk_research (kind declared; needs a web_research effect).

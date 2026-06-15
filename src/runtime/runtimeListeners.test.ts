@@ -179,6 +179,31 @@ describe('registerRuntimeListeners', () => {
     });
   });
 
+  it('routes an extension-permission approval to its resolver (F3)', async () => {
+    const resolveExtensionPermissionApproval = vi
+      .fn()
+      .mockResolvedValue(undefined);
+    const { store } = setup({ resolveExtensionPermissionApproval });
+    store.dispatch(
+      approvalRequested({
+        id: 'ext-1',
+        kind: 'extension_permission',
+        title: 'Grant extension access',
+        risk: 'high',
+        summary: 'host permission',
+        payloadPreview:
+          '{"type":"request_host_permission","requestId":"r","origin":"https://x"}',
+      }),
+    );
+    store.dispatch(approvalResolved({ id: 'ext-1', status: 'approved' }));
+    await vi.waitFor(() =>
+      expect(resolveExtensionPermissionApproval).toHaveBeenCalled(),
+    );
+    expect(resolveExtensionPermissionApproval).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'ext-1', status: 'approved' }),
+    );
+  });
+
   it('audits an edit to a tool-call approval', async () => {
     await db.open();
     await db.audit_events.clear();

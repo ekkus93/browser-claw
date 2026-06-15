@@ -307,3 +307,24 @@ and TODO are. Newest decisions at the bottom of each section.
   web.search_started/completed/failed. Confirm the exact provider before E2.
 - **Resume cadence:** the QuickJS sandbox (Part D) + F/G/H are to be done in a
   FRESH session (this one is context-saturated). All work is pushed at fa3ec26.
+
+### D1 — Script runtime policy + router (done, 2026-06-15)
+- src/script/scriptPolicy.ts: ScriptExecutionPolicy {defaultRuntime:'plan_dsl',
+  sandboxedScriptingEnabled, advancedMode} + DEFAULT_SCRIPT_POLICY (both gate
+  flags false -> v0.2 unavailable by default). ScriptRuntimeKind =
+  'plan_dsl'|'sandboxed_script'. SANDBOX_RUNTIME_LABEL='Sandboxed Script Runtime v0.2'.
+- ScriptCapabilities {fsRead[], fsWrite[], webSearch, webRead[], network
+  'deny'|'mediated', secrets 'deny'} — SHARED shape; D2's full request schema
+  reuses it. ScriptEscalation {reason?, capabilities?, userRequested?}.
+- routeScript(input, policy=DEFAULT) -> RuntimeDecision: no escalation OR
+  (fitsKnownOps && !userRequested) -> {runtime:'plan_dsl'}. Else v0.2 path:
+  reject unless sandboxedScriptingEnabled && advancedMode; reject missing
+  reason / missing capabilities / secrets!=='deny'; else
+  {runtime:'sandboxed_script', requiresApproval:true, risk}.
+- classifyCapabilityRisk: high if network 'mediated' OR broad fsRead/fsWrite
+  (BROAD_SCOPES: *, **, /*, /**, /workspace, /workspace/*, /workspace/**);
+  medium if any bounded write/webSearch/webRead; else low.
+- `fitsKnownOps` is supplied by the caller (validatePlan over a candidate plan).
+- NEXT D2: BrowserClawScriptRequest schema validator (type/version/runtime/
+  title/reason/code/capabilities/limits; no secrets; no direct network unless
+  mediated web; path scopes must be safe workspace globs). Reuse ScriptCapabilities.

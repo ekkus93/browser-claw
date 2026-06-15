@@ -586,17 +586,21 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase D1 — Policy and routing
 
-- [ ] P0 Define `ScriptExecutionPolicy`.
-- [ ] P0 Default runtime is `plan_dsl`.
-- [ ] P0 Sandboxed scripting disabled or advanced-gated by default.
-- [ ] P0 Router chooses v0.1 when task fits known operations.
-- [ ] P0 v0.2 requires explicit request/reason/capabilities.
-- [ ] P0 v0.2 requires user approval.
-- [ ] P0 Tests:
-  - [ ] simple fs workflow routes to v0.1;
-  - [ ] v0.2 rejected when disabled;
-  - [ ] v0.2 request without reason rejected;
-  - [ ] v0.2 request with broad capabilities rejected or marked high risk.
+- [x] P0 Define `ScriptExecutionPolicy`. <!-- src/script/scriptPolicy.ts: ScriptExecutionPolicy {defaultRuntime, sandboxedScriptingEnabled, advancedMode} + DEFAULT_SCRIPT_POLICY -->
+- [x] P0 Default runtime is `plan_dsl`. <!-- PLAN_DSL_RUNTIME; DEFAULT_SCRIPT_POLICY.defaultRuntime='plan_dsl'; routeScript returns plan_dsl when no escalation -->
+- [x] P0 Sandboxed scripting disabled or advanced-gated by default. <!-- DEFAULT_SCRIPT_POLICY both flags false; routeScript rejects v0.2 unless sandboxedScriptingEnabled && advancedMode -->
+- [x] P0 Router chooses v0.1 when task fits known operations. <!-- routeScript: fitsKnownOps && !userRequested -> plan_dsl -->
+- [x] P0 v0.2 requires explicit request/reason/capabilities. <!-- routeScript rejects escalation missing reason or capabilities -->
+- [x] P0 v0.2 requires user approval. <!-- sandboxed decision always carries requiresApproval:true + risk -->
+- [x] P0 Tests: <!-- src/script/scriptPolicy.test.ts (13) -->
+  - [x] simple fs workflow routes to v0.1; <!-- 'routes a task that fits known ops to v0.1' -->
+  - [x] v0.2 rejected when disabled; <!-- 'rejects v0.2 when sandboxed scripting is disabled' + 'when advanced mode is off' -->
+  - [x] v0.2 request without reason rejected; <!-- 'rejects a v0.2 request that omits a reason' -->
+  - [x] v0.2 request with broad capabilities rejected or marked high risk. <!-- 'marks broad workspace write scopes as high risk' + classifyCapabilityRisk -->
+
+<!-- D1 done 2026-06-15. Gate green: typecheck, eslint --max-warnings 0, prettier, vitest 671/96, e2e 30. No Rust. -->
+<!-- D2 will build the full BrowserClawScriptRequest schema; it reuses ScriptCapabilities from scriptPolicy.ts. routeScript's `fitsKnownOps` is supplied by the caller (e.g. validatePlan over a candidate plan). -->
+
 
 ## Phase D2 — Script request schema
 

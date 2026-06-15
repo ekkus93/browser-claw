@@ -212,14 +212,16 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ### A2.5 Backup import self-validation
 
-- [ ] P1 Make `importBackup()` call `validateBackup()` internally.
-- [ ] P1 Reject import if validation fails, regardless of caller.
-- [ ] P1 Ensure validation result is reused to avoid double work where possible.
-- [ ] P1 Tests:
-  - [ ] direct `importBackup()` with unknown collection rejects;
-  - [ ] direct `importBackup()` with malformed row rejects;
-  - [ ] direct `importBackup()` with raw secret-looking value rejects;
-  - [ ] valid UI flow still works.
+<!-- src/backup/backupService.ts importBackup: runs validateBackup(backup, limits) first and throws "Refusing to import an invalid backup" on failure — reuses allowlist/version/key-field/size/raw-secret checks. Tests: src/backup/backupService.test.ts (unknown collection / malformed row / raw secret all reject; valid flow unchanged). Gate: typecheck/lint/prettier/vitest 506/e2e 28. -->
+
+- [x] P1 Make `importBackup()` call `validateBackup()` internally.
+- [x] P1 Reject import if validation fails, regardless of caller.
+- [ ] P1 Ensure validation result is reused to avoid double work where possible. (not done — importBackup re-validates unconditionally; validateBackup is cheap/pure and re-running it is the safe default over threading a "pre-validated" flag that could be spoofed)
+- [x] P1 Tests:
+  - [x] direct `importBackup()` with unknown collection rejects;
+  - [x] direct `importBackup()` with malformed row rejects;
+  - [x] direct `importBackup()` with raw secret-looking value rejects;
+  - [x] valid UI flow still works.
 
 ### A2.6 Strengthen backup row validators
 

@@ -130,6 +130,44 @@ describe('importBackup (transactional)', () => {
     };
   }
 
+  it('self-validates: rejects an unknown collection regardless of caller (A2.5)', async () => {
+    await db.open();
+    await expect(
+      importBackup(db, backup({ not_a_real_table: [{ id: 'x' }] })),
+    ).rejects.toThrow(/invalid backup/i);
+  });
+
+  it('self-validates: rejects a malformed row (A2.5)', async () => {
+    await db.open();
+    await expect(
+      importBackup(db, backup({ memories: [{ id: '' }] })),
+    ).rejects.toThrow(/invalid backup/i);
+  });
+
+  it('self-validates: rejects a row carrying a raw secret (A2.5)', async () => {
+    await db.open();
+    await expect(
+      importBackup(
+        db,
+        backup({
+          memories: [
+            {
+              id: 'leak',
+              title: 'x',
+              text: 'my key is sk-ant-abcdef0123456789abcdef',
+              tags: [],
+              source: 'chat',
+              createdBy: 'user',
+              createdAt: 1,
+              pinned: false,
+              sensitivity: 'normal',
+            },
+          ],
+        }),
+      ),
+    ).rejects.toThrow(/invalid backup|raw decrypted secret/i);
+  });
+
   it('rolls back entirely if any collection fails to import', async () => {
     await db.open();
     await db.memories.clear();

@@ -180,3 +180,14 @@ and TODO are. Newest decisions at the bottom of each section.
   db.provider_profiles; new "does not run the provider test when saving fails"
   (spies db.provider_profiles.put -> reject; asserts fetch not called +
   activeProviderId null).
+
+### A2.5 — backup import self-validation (done)
+- `importBackup` now runs `validateBackup(backup, limits)` first and throws
+  "Refusing to import an invalid backup: <reason>" on failure — no caller can
+  bypass the allowlist / version / key-field / size / raw-secret checks. Added an
+  optional `limits` param (4th) for parity with validateBackup.
+- Chose unconditional re-validation over reusing the UI's earlier result: it's
+  pure and cheap, and a "pre-validated" flag would itself be a bypass vector.
+- Side effect: the old "rolls back if a collection fails" test now fails at
+  validation (its bogus skill_state row) BEFORE the transaction — still throws,
+  still no partial write, so it stays green.

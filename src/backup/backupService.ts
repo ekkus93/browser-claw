@@ -407,12 +407,24 @@ export type RestoreStrategy = 'merge' | 'replace';
  * back and the database is left exactly as it was — never half-restored.
  * `replace` clears only the collections present in the backup; collections not
  * in the backup are untouched. (Hardening TODO 6.2.)
+ *
+ * Self-validation (hardening A2.5): `importBackup` ALWAYS runs `validateBackup`
+ * itself and refuses an invalid backup, so no caller can bypass the collection
+ * allowlist, version-compatibility, row, raw-secret, and size checks — even if a
+ * UI validated earlier (or a future caller forgets to).
  */
 export async function importBackup(
   db: BrowserClawDB,
   backup: ClawBackup,
   strategy: RestoreStrategy = 'merge',
+  limits: Partial<BackupLimits> = {},
 ): Promise<void> {
+  const validation = validateBackup(backup, limits);
+  if (!validation.valid) {
+    throw new Error(
+      `Refusing to import an invalid backup: ${validation.error}`,
+    );
+  }
   const names = Object.keys(backup.collections).filter((name) =>
     Array.isArray(backup.collections[name]),
   );

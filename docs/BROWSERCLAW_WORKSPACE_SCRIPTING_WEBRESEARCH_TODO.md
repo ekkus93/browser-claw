@@ -749,17 +749,19 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase E3 — BrowserFetch lower-privilege tool
 
-- [ ] P1 Implement/keep CORS-limited `browser_fetch` tool.
-- [ ] P1 Label it clearly as CORS-limited.
-- [ ] P1 Use shared network safety validator.
-- [ ] P1 No credentials by default.
-- [ ] P1 Timeout and max bytes.
-- [ ] P1 Do not use `no-cors` as a workaround.
-- [ ] P1 Tests:
-  - [ ] CORS/network failure visible;
-  - [ ] private network blocked;
-  - [ ] max bytes enforced;
-  - [ ] safe CORS-enabled response works.
+<!-- src/tools/tools.ts: browserFetchTool ('Browser Fetch', registered) — classifyFetchUrl SSRF gate + AbortController timeout + readCappedText byte cap + credentials:'omit' + default cors mode (never no-cors); returns RAW body. Description marks it CORS-limited. Tests: src/tools/tools.test.ts "Browser Fetch tool (E3)". Gate: typecheck/lint/prettier/vitest 631/e2e 30. -->
+
+- [x] P1 Implement/keep CORS-limited `browser_fetch` tool.
+- [x] P1 Label it clearly as CORS-limited. (name + description)
+- [x] P1 Use shared network safety validator. (classifyFetchUrl)
+- [x] P1 No credentials by default. (credentials:'omit')
+- [x] P1 Timeout and max bytes.
+- [x] P1 Do not use `no-cors` as a workaround. (default cors mode)
+- [x] P1 Tests:
+  - [x] CORS/network failure visible;
+  - [x] private network blocked;
+  - [x] max bytes enforced;
+  - [x] safe CORS-enabled response works.
 
 ## Phase E4 — Chrome extension project scaffold
 

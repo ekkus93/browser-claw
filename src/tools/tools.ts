@@ -266,6 +266,74 @@ export const pageReaderTool: Tool = {
 };
 
 /**
+ * Browser Fetch (Part E3): a LOWER-PRIVILEGE, CORS-limited fetch for
+ * CORS-enabled APIs and same-origin endpoints. It returns the RAW response body
+ * (not reduced to readable text) up to a cap. It shares the SSRF validator,
+ * timeout, no-credentials, and byte-cap behavior with Page Reader, and it does
+ * NOT use `no-cors` — a cross-origin endpoint that doesn't send CORS headers
+ * fails visibly. This is NOT the path for arbitrary search-result pages (use the
+ * extension page reader for those).
+ */
+export const browserFetchTool: Tool = {
+  name: 'Browser Fetch',
+  description:
+    'Fetch a URL and return its raw body. CORS-limited: only works for CORS-enabled APIs or same-origin endpoints.',
+  async run(args, ctx) {
+    const raw = typeof args.url === 'string' ? args.url.trim() : '';
+    const safety = classifyFetchUrl(raw);
+    if (!safety.ok) {
+      if (ctx.db && ctx.dispatch) {
+        void recordAudit(ctx.db, ctx.dispatch, {
+          type: 'web.fetch_blocked',
+          summary: `Blocked fetch: ${safety.message}`,
+          source: 'web',
+          risk: 'medium',
+          status: 'failure',
+          toolName: 'Browser Fetch',
+          ...(ctx.skillId ? { skillId: ctx.skillId } : {}),
+        });
+      }
+      throw new Error(safety.message);
+    }
+    const fetchImpl = ctx.fetchImpl ?? fetch;
+    const controller = new AbortController();
+    const timer = setTimeout(
+      () => controller.abort(),
+      ctx.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS,
+    );
+    let response: Response;
+    try {
+      response = await fetchImpl(raw, {
+        signal: controller.signal,
+        redirect: 'follow',
+        credentials: 'omit',
+        // Default mode (cors) — never 'no-cors', which would hide failures and
+        // return an unreadable opaque response (A1.4 / E3).
+      });
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw new Error('Browser Fetch timed out.', { cause: error });
+      }
+      throw new Error(
+        `Browser Fetch could not reach the URL (network/CORS error): ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+        { cause: error },
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!response.ok) {
+      throw new Error(`Browser Fetch failed (${response.status}).`);
+    }
+    return (await readCappedText(response, MAX_PAGE_BYTES)).slice(
+      0,
+      MAX_PAGE_TEXT,
+    );
+  },
+};
+
+/**
  * Remember: persist a memory the agent proposed. Goes through the same
  * propose -> skill-permission -> inline-approval (editable) -> run path as any
  * tool; on run it writes a MemoryRow tagged with its provenance (the active
@@ -317,6 +385,7 @@ export const rememberTool: Tool = {
 
 export const TOOL_REGISTRY: Record<string, Tool> = {
   [pageReaderTool.name]: pageReaderTool,
+  [browserFetchTool.name]: browserFetchTool,
   [rememberTool.name]: rememberTool,
 };
 

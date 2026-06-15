@@ -4,6 +4,7 @@ import {
   parseToolCall,
   runToolCall,
   pageReaderTool,
+  browserFetchTool,
   ToolNotPermittedError,
   UnknownToolError,
 } from './tools.ts';
@@ -186,5 +187,71 @@ describe('Page Reader tool', () => {
       'https://example.com/',
       expect.objectContaining({ credentials: 'omit' }),
     );
+  });
+});
+
+describe('Browser Fetch tool (E3, CORS-limited)', () => {
+  it('returns the raw body for a CORS-enabled response', async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(new Response('{"ok":true}')),
+    ) as unknown as typeof fetch;
+    const text = await browserFetchTool.run(
+      { url: 'https://api.example.com/data' },
+      { fetchImpl },
+    );
+    expect(text).toBe('{"ok":true}');
+    // Raw body — NOT reduced to readable text like Page Reader.
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'https://api.example.com/data',
+      expect.objectContaining({ credentials: 'omit' }),
+    );
+  });
+
+  it('blocks a private/loopback target', async () => {
+    const fetchImpl = vi.fn() as unknown as typeof fetch;
+    await expect(
+      browserFetchTool.run({ url: 'http://127.0.0.1/' }, { fetchImpl }),
+    ).rejects.toThrow(/blocked host/i);
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a CORS/network failure visibly', async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.reject(new TypeError('Failed to fetch')),
+    ) as unknown as typeof fetch;
+    await expect(
+      browserFetchTool.run({ url: 'https://api.example.com/x' }, { fetchImpl }),
+    ).rejects.toThrow(/network\/CORS/i);
+  });
+
+  it('enforces the byte cap', async () => {
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(
+        new Response('x', { headers: { 'content-length': '5000000' } }),
+      ),
+    ) as unknown as typeof fetch;
+    await expect(
+      browserFetchTool.run(
+        { url: 'https://api.example.com/big' },
+        { fetchImpl },
+      ),
+    ).rejects.toThrow(/too large/i);
+  });
+
+  it('times out via AbortController', async () => {
+    const fetchImpl = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          );
+        }),
+    ) as unknown as typeof fetch;
+    await expect(
+      browserFetchTool.run(
+        { url: 'https://api.example.com/slow' },
+        { fetchImpl, timeoutMs: 5 },
+      ),
+    ).rejects.toThrow(/timed out/i);
   });
 });

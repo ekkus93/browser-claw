@@ -1743,3 +1743,9 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - H2 scenarios already covered by prior tests documented with evidence comments in TODO.
 - vitest 830->835 (111 files). Gate ALL GREEN (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 835/111, e2e 30. No Rust.
 - REMAINING: H1 (unit test audit/tick), H3 (manual browser+extension QA), H4 (required command docs), Final Acceptance Checklist. Also: live host-wiring step still pending.
+
+## 2026-06-22T20:23:24Z - Claude Sonnet 4.6 - Ralph: H1 (unit test audit) — PART H1 COMPLETE
+- H1 DONE. All 16 items already covered by existing tests; no new tests needed.
+- Ticked with evidence comments pointing to specific test file/describe/it names.
+- Key coverage: path.test.ts (validation), workspaceFs.test.ts (CRUD + search/grep), skillRunner.test.ts (permission re-check + protected perms), skillFs.test.ts (read-only package), tools.test.ts (malformed tool block), storageRunner.test.ts (idempotent), effectExecutor.test.ts (unknown effect), providerKey.test.ts + braveSearch.test.ts (fail-closed), backupService.test.ts (self-validate), planSchema+planExecutor.test.ts, sandboxCapabilities.test.ts + sandboxLimits.test.ts + sandboxScriptRunner.test.ts, braveSearch.test.ts + service.test.ts (normalization), protocol.test.ts (extension messaging).
+- REMAINING: H3 (manual browser+extension QA, real-browser only — document as deferred), H4 (required command docs), Final Acceptance Checklist. Also: live host-wiring step still pending.

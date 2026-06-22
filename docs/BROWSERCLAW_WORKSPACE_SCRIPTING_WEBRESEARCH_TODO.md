@@ -1075,22 +1075,24 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase H1 — Unit tests
 
-- [ ] P0 Workspace path validation tests.
-- [ ] P0 Workspace CRUD tests.
-- [ ] P1 Workspace search/grep tests.
-- [ ] P0 Skill permission re-check tests.
-- [ ] P0 Protected skill permissions tests.
-- [ ] P0 Read-only package file tests.
-- [ ] P0 Malformed tool block tests.
-- [ ] P1 Idempotent storage effect tests.
-- [ ] P1 Unknown resolve effect tests.
-- [ ] P1 Provider test secret fail-closed tests.
-- [ ] P1 Backup import self-validation tests.
-- [ ] P1 Plan schema/executor tests.
-- [ ] P0 Sandbox forbidden API tests.
-- [ ] P0 Sandbox resource limit tests.
-- [ ] P1 Web provider normalization tests.
-- [ ] P1 Extension messaging protocol tests where possible.
+<!-- H1 audit: all 16 items covered by existing tests. Ticked with evidence. No new tests needed. -->
+
+- [x] P0 Workspace path validation tests. <!-- workspace/path.test.ts — 'validateWorkspacePath — rejects unsafe paths (B2)' + 'accepts and normalizes valid paths (B2)' -->
+- [x] P0 Workspace CRUD tests. <!-- workspace/workspaceFs.test.ts — 'WorkspaceFs CRUD (B3)': create/read/update/delete, overwrite guard, append, mkdir, stat, move, copy, clobber guard, unsafe path rejection, atomic rollback -->
+- [x] P1 Workspace search/grep tests. <!-- workspace/workspaceFs.test.ts — 'WorkspaceFs search + grep (B5)': path/ext/tag/content search, stale-index, grep with line numbers, literal vs regex, binary skip, invalid regex -->
+- [x] P0 Skill permission re-check tests. <!-- runtime/skillRunner.test.ts — 'denies a read outside the declared namespace and audits it' (skill.permission_denied); 'denies effects for a disabled skill'; 'denies effects for an unknown skill' — permissions re-checked on every effect -->
+- [x] P0 Protected skill permissions tests. <!-- runtime/skillRunner.test.ts — 'denies writing a reserved state key and audits it' (skill_state_put with __permissions__ key rejected; skill_permissions row untouched); skills/skillFs.test.ts — 'forbids a skill from reading or writing reserved state keys' -->
+- [x] P0 Read-only package file tests. <!-- skills/skillFs.test.ts — 'writeText never mutates installed package files (A1.3)': writeText on a package file creates an output that shadows it, the original skill_file row is unchanged; 'readText returns a package asset, and a generated output shadows it' -->
+- [x] P0 Malformed tool block tests. <!-- tools/tools.test.ts — 'reports kind "malformed" for invalid JSON (not silent text)'; '... for a missing tool name'; '... when args is not an object'; also 'reports kind "none" when there is no tool block' and 'parses a well-formed tool block' -->
+- [x] P1 Idempotent storage effect tests. <!-- runtime/storageRunner.test.ts — 'is idempotent: replaying the same storage_put upserts one row (A2.1)'; 'different effect keys create distinct rows' -->
+- [x] P1 Unknown resolve effect tests. <!-- runtime/effectExecutor.test.ts — 'records runtime.resolve_unknown_effect with a failure status (A2.2)'; 'fails closed on an unknown effect type (audited + visible)' -->
+- [x] P1 Provider test secret fail-closed tests. <!-- providers/providerKey.test.ts — 'fails closed with secret_locked when the vault is locked'; 'fails with secret_missing when unlocked but no key is stored'; 'deleting a key prevents future provider calls (fails closed)'; webresearch/braveSearch.test.ts — resolveSearchProviderKey: secret_locked, secret_missing -->
+- [x] P1 Backup import self-validation tests. <!-- backup/backupService.test.ts — 'self-validates: rejects an unknown collection regardless of caller (A2.5)'; 'self-validates: rejects a malformed row (A2.5)'; 'self-validates: rejects a row carrying a raw secret (A2.5)'; 'rolls back entirely if any collection fails to import' -->
+- [x] P1 Plan schema/executor tests. <!-- script/planSchema.test.ts — validatePlan: well-formed, unknown op, duplicate ids, unsafe path, bad reference, unsafe URL, step limit, ceiling limits, planCapabilities mapping; script/planExecutor.test.ts — sequential steps with *From refs, invalid plan rejected, stop on failure, output size limit, timeout, cancellation, file-write limit -->
+- [x] P0 Sandbox forbidden API tests. <!-- script/sandboxCapabilities.test.ts — denies fs read/write outside scope (audited), no fs namespace without cap, denies web read outside scope, denies web.search without cap; runtime/sandboxScriptRunner.test.ts (H2) — 'denies access outside the declared scope and audits script.capability_denied (H2)' -->
+- [x] P0 Sandbox resource limit tests. <!-- script/sandboxLimits.test.ts — times out infinite loop, cancels via AbortSignal, rejects over-budget return value, too many file reads, too many file writes, too many web page reads, caps log output, within-limits passes -->
+- [x] P1 Web provider normalization tests. <!-- webresearch/braveSearch.test.ts — 'returns normalized SearchResult[] for a valid Brave API response' (title, url, description→snippet, rank); result with missing description gets no snippet key; webresearch/service.test.ts — 'reads a page and returns normalized content' -->
+- [x] P1 Extension messaging protocol tests where possible. <!-- extension/protocol.test.ts — parseExtensionRequest (well-formed, unknown types, missing requestId, malformed); isExtensionResponse (success + error, malformed); isAllowedSenderUrl (allowed vs denied origins); newRequestId (unique) -->
 
 ## Phase H2 — Integration tests
 

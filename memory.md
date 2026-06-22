@@ -1735,3 +1735,11 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate ALL GREEN (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 830/111, e2e 30. No Rust.
 - REMAINING: PART H (QA gate H1 unit / H2 integration / H3 manual browser+extension QA / H4 required commands). Also: live host-wiring step (assemble registerRuntimeListeners + effect ports + extension transport into the real store — all F3/G3/E2 bridges built + tested in isolation).
 - NEXT: PART H QA gate.
+
+## 2026-06-22T20:16:01Z - Claude Sonnet 4.6 - Ralph: H2 (integration tests) — PART H2 COMPLETE
+- H2 DONE. New tests added:
+  - sandboxScriptRunner.test.ts +2: 'runs an approved script with fsWrite capability and writes the file (H2)' (script uses mediated fs.writeText -> verified via readText + sandbox_completed audit); 'denies access outside the declared scope and audits script.capability_denied (H2)' (script tries path outside declared fsRead scope -> result.ok=false + script.capability_denied audit).
+  - webresearch/storage.test.ts +3 in new 'web research flow (H2)' describe: search+read+bundle integration (createWebResearchService mocked + storeResearchBundle + workspace FS); extension missing -> reader_unavailable; host permission denied -> page_read_failed.
+- H2 scenarios already covered by prior tests documented with evidence comments in TODO.
+- vitest 830->835 (111 files). Gate ALL GREEN (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 835/111, e2e 30. No Rust.
+- REMAINING: H1 (unit test audit/tick), H3 (manual browser+extension QA), H4 (required command docs), Final Acceptance Checklist. Also: live host-wiring step still pending.

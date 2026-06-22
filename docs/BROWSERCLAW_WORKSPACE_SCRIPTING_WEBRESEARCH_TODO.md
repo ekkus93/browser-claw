@@ -1094,13 +1094,15 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase H2 — Integration tests
 
-- [ ] P1 Agent proposes plan -> user approves -> workspace file written.
-- [ ] P1 Agent proposes sandbox script -> user approves -> mediated file operation succeeds.
-- [ ] P1 Sandbox script requests forbidden capability -> denied/audited.
-- [ ] P1 Search -> read page via mocked extension -> write workspace research bundle.
-- [ ] P1 Extension missing -> web page read unavailable visible.
-- [ ] P1 Host permission denied -> page read fails visibly/audited.
-- [ ] P1 Runtime snapshot/replay does not duplicate storage_put messages.
+<!-- New tests (H2): sandboxScriptRunner.test.ts += 'runs an approved script with fsWrite capability and writes the file (H2)' + 'denies access outside the declared scope and audits script.capability_denied (H2)'; webresearch/storage.test.ts += 'web research flow (H2)' describe (search+read+store, extension missing, host perm denied). vitest 830->835 (111 files). Scenarios already covered by prior tests are documented below with their evidence. Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 835/111. -->
+
+- [x] P1 Agent proposes plan -> user approves -> workspace file written. <!-- planRunner.test.ts 'runs an approved plan and resolves the effect with its outputs' (ctx.fs.readText('/workspace/a.txt') === 'hi') -->
+- [x] P1 Agent proposes sandbox script -> user approves -> mediated file operation succeeds. <!-- sandboxScriptRunner.test.ts 'runs an approved script with fsWrite capability and writes the file (H2)' — fs.writeText via buildSandboxHost, verified readText + sandbox_completed audit -->
+- [x] P1 Sandbox script requests forbidden capability -> denied/audited. <!-- sandboxScriptRunner.test.ts 'denies access outside the declared scope and audits script.capability_denied (H2)' — script tries /workspace/secret.txt outside /workspace/allowed/**, result.ok false + script.capability_denied audit -->
+- [x] P1 Search -> read page via mocked extension -> write workspace research bundle. <!-- webresearch/storage.test.ts 'web research flow (H2)' — createWebResearchService(mock search + mock reader) -> research() -> storeResearchBundle -> fs.readText pagePath contains markdown -->
+- [x] P1 Extension missing -> web page read unavailable visible. <!-- webresearch/storage.test.ts 'extension missing (no reader) -> readPage throws reader_unavailable'; also service.test.ts 'reports reader_unavailable when the reader is missing or unavailable' -->
+- [x] P1 Host permission denied -> page read fails visibly/audited. <!-- webresearch/storage.test.ts 'host permission denied -> readPage throws page_read_failed'; webRunner.test.ts 'surfaces a reader failure as an error result' (audits web.page_read_failed); pageReaderProvider.test.ts maps permission_denied -->
+- [x] P1 Runtime snapshot/replay does not duplicate storage_put messages. <!-- storageRunner.test.ts 'is idempotent: replaying the same storage_put upserts one row (A2.1)' -->
 
 ## Phase H3 — Browser/extension manual QA
 

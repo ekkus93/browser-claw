@@ -129,4 +129,68 @@ describe('runApprovedSandboxScriptEffect (F3)', () => {
     const types = (await db.audit_events.toArray()).map((e) => e.type);
     expect(types).toContain('script.sandbox_rejected');
   });
+
+  // H2: sandbox script -> approve -> mediated file operation succeeds.
+  it('runs an approved script with fsWrite capability and writes the file (H2)', async () => {
+    const writeReq = request({
+      code: `await fs.writeText('/workspace/h2-out.txt', 'written by sandbox')`,
+      capabilities: {
+        fsRead: ['/workspace/**'],
+        fsWrite: ['/workspace/**'],
+        secrets: 'deny',
+      },
+      limits: {
+        timeoutMs: 5000,
+        maxOutputBytes: 100_000,
+        maxFileReads: 10,
+        maxFileWrites: 10,
+      },
+    });
+    await runApprovedSandboxScriptEffect(
+      { ctx, submit },
+      {
+        id: 'e-write',
+        status: 'approved',
+        payloadPreview: JSON.stringify(writeReq),
+      },
+    );
+    expect(await ctx.fs.readText('/workspace/h2-out.txt')).toBe(
+      'written by sandbox',
+    );
+    const types = (await db.audit_events.toArray()).map((e) => e.type);
+    expect(types).toContain('script.sandbox_completed');
+    expect(types).toContain('script.capability_used');
+  });
+
+  // H2: sandbox script requests forbidden capability -> denied/audited.
+  it('denies access outside the declared scope and audits script.capability_denied (H2)', async () => {
+    await ctx.fs.createFile('/workspace/secret.txt', 'do not read', {
+      actor: 'agent',
+      overwrite: true,
+    });
+    const forbiddenReq = request({
+      code: `await fs.readText('/workspace/secret.txt')`,
+      capabilities: {
+        // Only /workspace/allowed/**, not /workspace/secret.txt
+        fsRead: ['/workspace/allowed/**'],
+        secrets: 'deny',
+      },
+    });
+    await runApprovedSandboxScriptEffect(
+      { ctx, submit },
+      {
+        id: 'e-deny',
+        status: 'approved',
+        payloadPreview: JSON.stringify(forbiddenReq),
+      },
+    );
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'e-deny',
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    const types = (await db.audit_events.toArray()).map((e) => e.type);
+    expect(types).toContain('script.capability_denied');
+  });
 });

@@ -1108,15 +1108,30 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase H3 — Browser/extension manual QA
 
-- [ ] P1 Chrome extension installs in dev mode.
-- [ ] P1 BrowserClaw detects extension.
-- [ ] P1 Read current tab works.
-- [ ] P1 Read public search result page works.
-- [ ] P1 Host permission prompt works.
-- [ ] P1 Denied host permission returns clear error.
-- [ ] P1 Extension does not ask for all-sites permission on install.
-- [ ] P1 Extension only accepts messages from BrowserClaw origin.
-- [ ] P1 Background tab closes after read.
+<!-- H3 audit: 2 items code-verified from manifest + unit tests. 7 items require a live Chrome
+     browser with the extension loaded in developer mode — deferred to manual QA session.
+     None of these 7 items block the automated gate (typecheck + lint + vitest + e2e all pass). -->
+
+<!-- DEFERRED — Manual QA checklist (requires Chrome + extension/dev mode + real network):
+     1. Load extension/chrome-web-research/ as an unpacked extension in chrome://extensions.
+     2. Open BrowserClaw dev server (pnpm dev → http://localhost:5173).
+     3. Verify BrowserClaw settings shows extension as detected.
+     4. Click "Read current tab" on a public page — confirm markdown returned.
+     5. Navigate to a page not yet granted host permission — confirm permission prompt appears.
+     6. Deny the permission prompt — confirm error card shows a clear message.
+     7. Read a public search result URL — confirm text/markdown returned in workspace.
+     8. Confirm extension service-worker opens a background tab, reads it, then closes it.
+-->
+
+- [ ] P1 Chrome extension installs in dev mode. <!-- DEFERRED: requires Chrome developer mode, manual load of extension/chrome-web-research/ -->
+- [ ] P1 BrowserClaw detects extension. <!-- DEFERRED: requires live app + extension runtime -->
+- [ ] P1 Read current tab works. <!-- DEFERRED: requires browser + extension -->
+- [ ] P1 Read public search result page works. <!-- DEFERRED: requires browser + extension + real network -->
+- [ ] P1 Host permission prompt works. <!-- DEFERRED: requires browser + extension + ungranted host -->
+- [ ] P1 Denied host permission returns clear error. <!-- DEFERRED: requires browser + extension -->
+- [x] P1 Extension does not ask for all-sites permission on install. <!-- VERIFIED: manifest.json `permissions` is ["tabs","scripting","storage"] only; host access is in `optional_host_permissions` — never granted on install without user action -->
+- [x] P1 Extension only accepts messages from BrowserClaw origin. <!-- VERIFIED: manifest.json `externally_connectable.matches` = ["http://localhost:5173/*","http://127.0.0.1:5173/*"]; isAllowedSenderUrl() in protocol.ts enforces same list; unit-tested in extension/protocol.test.ts 'accepts only allowed BrowserClaw origins' -->
+- [ ] P1 Background tab closes after read. <!-- DEFERRED: requires browser + extension; service-worker.js E7 stub handles read_page but tab lifecycle needs live verification -->
 
 ## Phase H4 — Required commands
 

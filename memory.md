@@ -1749,3 +1749,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Ticked with evidence comments pointing to specific test file/describe/it names.
 - Key coverage: path.test.ts (validation), workspaceFs.test.ts (CRUD + search/grep), skillRunner.test.ts (permission re-check + protected perms), skillFs.test.ts (read-only package), tools.test.ts (malformed tool block), storageRunner.test.ts (idempotent), effectExecutor.test.ts (unknown effect), providerKey.test.ts + braveSearch.test.ts (fail-closed), backupService.test.ts (self-validate), planSchema+planExecutor.test.ts, sandboxCapabilities.test.ts + sandboxLimits.test.ts + sandboxScriptRunner.test.ts, braveSearch.test.ts + service.test.ts (normalization), protocol.test.ts (extension messaging).
 - REMAINING: H3 (manual browser+extension QA, real-browser only — document as deferred), H4 (required command docs), Final Acceptance Checklist. Also: live host-wiring step still pending.
+
+## 2026-06-22T20:32:21Z - Claude Sonnet 4.6 - Ralph: H3 (browser/extension manual QA) — PART H3 COMPLETE
+- H3 DONE. 2 of 9 items code-verified; 7 deferred to manual QA (require live Chrome + extension).
+- Code-verified: manifest.json shows no all-sites permission at install (only optional_host_permissions); origin restriction via externally_connectable + isAllowedSenderUrl in protocol.ts (unit-tested).
+- Deferred: install in dev mode, detection, current tab read, public search page read, host permission prompt, denied-permission error, background tab lifecycle.
+- Deferred items do NOT block automated gate; documented with a manual QA checklist comment.
+- REMAINING: H4 (required command docs), Final Acceptance Checklist.

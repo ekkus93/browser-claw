@@ -26,11 +26,12 @@ import type {
   ModelCacheIndexRow,
   ModelBlobRow,
   BackupHistoryRow,
+  SearchProviderProfileRow,
 } from './types.ts';
 import type { WorkspaceFileMeta } from '../workspace/types.ts';
 
 export const DB_NAME = 'browserclaw';
-export const DB_VERSION = 7;
+export const DB_VERSION = 8;
 
 /** The old (pre-v5) key under which permissions lived inside skill_state. */
 const LEGACY_PERMISSIONS_KEY = '__permissions__';
@@ -50,6 +51,7 @@ const LEGACY_PERMISSIONS_KEY = '__permissions__';
 export class BrowserClawDB extends Dexie {
   app_settings!: Table<AppSettingRow, string>;
   provider_profiles!: Table<ProviderProfileRow, string>;
+  search_provider_profiles!: Table<SearchProviderProfileRow, string>;
   encrypted_secrets!: Table<EncryptedSecretRow, string>;
   conversations!: Table<ConversationRow, string>;
   messages!: Table<MessageRow, string>;
@@ -182,6 +184,13 @@ export class BrowserClawDB extends Dexie {
     // unique path and indexes for listing/sorting. New table; nothing to migrate.
     this.version(7).stores({
       workspace_files: 'id, &path, kind, updatedAt, *tags',
+    });
+
+    // v8 — search provider profiles (Part E2). Stores the Brave Search provider
+    // config (kind, label, apiKeyMode). The API key lives in encrypted_secrets.
+    // New table; nothing to migrate.
+    this.version(8).stores({
+      search_provider_profiles: 'id, kind',
     });
 
     // First-run seed (only fires when the database is created).

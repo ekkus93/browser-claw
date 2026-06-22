@@ -11,10 +11,10 @@ describe('BrowserClawDB', () => {
     expect(db.name).toBe(DB_NAME);
   });
 
-  it('opens with all 21 durable stores (incl. v7 workspace_files)', async () => {
+  it('opens with all 22 durable stores (incl. v8 search_provider_profiles)', async () => {
     await db.open();
     const tableNames = db.tables.map((t) => t.name).sort();
-    expect(tableNames).toHaveLength(21);
+    expect(tableNames).toHaveLength(22);
     expect(tableNames).toEqual([
       'app_settings',
       'audit_events',
@@ -30,6 +30,7 @@ describe('BrowserClawDB', () => {
       'rules',
       'runtime_snapshots',
       'schedules',
+      'search_provider_profiles',
       'skill_files',
       'skill_outputs',
       'skill_permissions',

@@ -27,6 +27,7 @@ const BACKUP_FORMAT = 'clawbackup';
 const COLLECTIONS = [
   'app_settings',
   'provider_profiles',
+  'search_provider_profiles',
   'conversations',
   'messages',
   'memories',
@@ -251,6 +252,7 @@ const isProviderKind = oneOf(
   'llama_server',
   'wllama',
 );
+const isSearchProviderKind = oneOf('brave');
 const isApiKeyMode = oneOf('none', 'session', 'encrypted');
 const isSkillSource = oneOf('bundled', 'clawskill', 'skill_md');
 const isSensitivity = oneOf('normal', 'sensitive');
@@ -288,6 +290,13 @@ const ROW_VALIDATORS: Record<string, RowValidator> = {
   },
   provider_profiles: (r) => {
     if (!isProviderKind(r.kind)) return 'has an invalid provider kind';
+    if (!isApiKeyMode(r.apiKeyMode)) return 'has an invalid apiKeyMode';
+    if (!isStr(r.label)) return 'has a non-string label';
+    return null;
+  },
+  search_provider_profiles: (r) => {
+    if (!isSearchProviderKind(r.kind))
+      return 'has an invalid search provider kind';
     if (!isApiKeyMode(r.apiKeyMode)) return 'has an invalid apiKeyMode';
     if (!isStr(r.label)) return 'has a non-string label';
     return null;

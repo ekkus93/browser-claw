@@ -30,6 +30,17 @@ export interface ProviderProfileRow {
   encryptedSecretId?: string;
 }
 
+export type SearchProviderKind = 'brave';
+
+export interface SearchProviderProfileRow {
+  id: string;
+  kind: SearchProviderKind;
+  label: string;
+  apiKeyMode: 'none' | 'session' | 'encrypted';
+  /** References an encrypted_secrets row — never an inline key. */
+  encryptedSecretId?: string;
+}
+
 export interface EncryptedSecretRow {
   id: string;
   label: string;

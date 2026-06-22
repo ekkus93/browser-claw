@@ -750,24 +750,26 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase E2 — Search provider support
 
-- [ ] P1 Pick initial v0.1 search provider(s).
-- [ ] P1 Store search provider profile in IndexedDB.
-- [ ] P1 Store search API key in SecretVault.
-- [ ] P1 Implement provider health/test.
-- [ ] P1 Implement `search(query, options)`.
-- [ ] P1 Classify errors:
-  - [ ] auth;
-  - [ ] rate limit;
-  - [ ] network/CORS;
-  - [ ] invalid response;
-  - [ ] provider unavailable.
-- [ ] P1 Audit `web.search_started`, `web.search_completed`, `web.search_failed`.
-- [ ] P1 Tests:
-  - [ ] missing search provider blocks search;
-  - [ ] locked key blocks search;
-  - [ ] valid search returns normalized results;
-  - [ ] failure visible/audited;
-  - [ ] no key leaks.
+<!-- src/webresearch/braveSearch.ts: SearchErrorKind (auth/rate_limit/network/invalid_response/unavailable) + SearchError + createBraveSearchProvider({apiKey,fetch?}) -> SearchProvider (Brave Web Search API, X-Subscription-Token header, count capped at 20, normalizeResults, no key in errors). searchProviderSecretId(profileId). resolveSearchProviderKey(vault, profile) -> SearchKeyResolution (mirrors resolveApiKey). src/db/types.ts: SearchProviderKind='brave' + SearchProviderProfileRow. src/db/db.ts: DB_VERSION=8 + search_provider_profiles table. Backup: COLLECTIONS + search_provider_profiles ROW_VALIDATOR. Tests: braveSearch.test.ts (15). Audits web.search_started/completed/failed already emitted by webRunner.ts F3. Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier, vitest 830/111, e2e 30. No Rust. NOTE: health/test is via a real search call (no dedicated endpoint); host assembly wires the provider in a later step. -->
+
+- [x] P1 Pick initial v0.1 search provider(s). <!-- Brave Search (user confirmed) -->
+- [x] P1 Store search provider profile in IndexedDB. <!-- search_provider_profiles table DB_VERSION=8 -->
+- [x] P1 Store search API key in SecretVault. <!-- resolveSearchProviderKey + searchProviderSecretId; key injected at construction, never stored inline -->
+- [x] P1 Implement provider health/test. <!-- test = real search call (Brave has no separate health endpoint); createBraveSearchProvider throws SearchError on failure -->
+- [x] P1 Implement `search(query, options)`. <!-- createBraveSearchProvider -> SearchProvider; maxResults cap 20; site: prefix; rank added -->
+- [x] P1 Classify errors:
+  - [x] auth; <!-- 401/403 -> SearchError('auth') -->
+  - [x] rate limit; <!-- 429 -> SearchError('rate_limit') -->
+  - [x] network/CORS; <!-- TypeError -> SearchError('network') -->
+  - [x] invalid response; <!-- non-JSON / unexpected shape -> SearchError('invalid_response') -->
+  - [x] provider unavailable. <!-- 5xx -> SearchError('unavailable') -->
+- [x] P1 Audit `web.search_started`, `web.search_completed`, `web.search_failed`. <!-- already emitted by webRunner.ts createWebEffectHandler (F3); braveSearch provider itself does not re-emit them -->
+- [x] P1 Tests:
+  - [x] missing search provider blocks search; <!-- WebResearchService with no search dep -> search_unavailable (E1 service.test.ts) -->
+  - [x] locked key blocks search; <!-- resolveSearchProviderKey locked vault -> secret_locked -->
+  - [x] valid search returns normalized results; <!-- mock fetch VALID_RESPONSE -> SearchResult[] -->
+  - [x] failure visible/audited; <!-- mock fetch 401/429/503/TypeError/bad-JSON -> SearchError with kind -->
+  - [x] no key leaks. <!-- error messages never include the raw apiKey -->
 
 ## Phase E3 — BrowserFetch lower-privilege tool
 

@@ -680,3 +680,31 @@ and TODO are. Newest decisions at the bottom of each section.
   H2 integration / H3 manual). Also still pending: the live host-wiring step that
   assembles registerRuntimeListeners + effect ports + extension transport into the
   real store (the F3/G3 bridges are built + tested in isolation).
+
+### E2 — Brave Search adapter (done, 2026-06-22)
+- `src/webresearch/braveSearch.ts`: `createBraveSearchProvider({apiKey,fetch?})`
+  implements `SearchProvider` against `https://api.search.brave.com/res/v1/web/search`.
+  `X-Subscription-Token: <key>` auth header; key injected at construction, never
+  written to Redux / IndexedDB / audit logs / error messages.
+- Error kinds: `auth` (401/403), `rate_limit` (429), `unavailable` (5xx),
+  `network` (TypeError — covers CORS + network failure), `invalid_response`
+  (non-JSON or unexpected shape). All surface as `SearchError` with a `kind`.
+- Key resolution: `resolveSearchProviderKey(vault, profile)` mirrors
+  `resolveApiKey` from the LLM provider path — `secret_locked` when vault is
+  locked (no vault call), `secret_missing` when no secret found, `ok` with the
+  raw key otherwise. Secret ID = `search_provider:${profileId}`.
+- DB v8 bump: `search_provider_profiles` table (`id, kind`) added to Dexie with
+  `SearchProviderProfileRow {id, kind:'brave', label, apiKeyMode, encryptedSecretId?}`
+  in `db/types.ts`. Backup service updated: `search_provider_profiles` added to
+  COLLECTIONS + `isSearchProviderKind` row validator.
+- Audits `web.search_started/completed/failed` are already emitted by
+  `webRunner.ts` (F3) — the Brave provider itself doesn't re-emit them.
+- Health test = a real search call (Brave has no dedicated health endpoint); a
+  failed call produces a typed `SearchError`. The provider is created by host
+  assembly (a later wiring step) — not yet live in the running app.
+- Tests: `braveSearch.test.ts` (15): `resolveSearchProviderKey` locked/missing/ok
+  + no-key-leak; `createBraveSearchProvider` valid response, count cap, site
+  prefix, auth/rate-limit/unavailable/network/invalid-response/non-JSON errors,
+  no key in error message. vitest 815->830.
+- Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier,
+  vitest 830/111, e2e 30. No Rust.

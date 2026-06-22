@@ -1135,26 +1135,17 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 
 ## Phase H4 — Required commands
 
-Run and document results:
+<!-- H4 results recorded 2026-06-22. All P0 gates pass. P1 commands documented below. -->
 
-- [ ] P0 `pnpm run typecheck`
-- [ ] P0 `pnpm run lint`
-- [ ] P0 `pnpm run test`
-- [ ] P1 `pnpm run test:e2e`
-- [ ] P1 `pnpm run test:e2e:extended` if available/configured
-- [ ] P1 Chrome extension build command
-- [ ] P1 Chrome extension tests command if separate
-- [ ] P1 `cargo test` if Rust toolchain available
-- [ ] P1 `cargo clippy` if Rust toolchain available
-
-If a command cannot run, document:
-
-```text
-command
-reason
-environment requirement
-whether it blocks acceptance
-```
+- [x] P0 `pnpm run typecheck` <!-- PASS: `tsc -b --noEmit` — 0 errors. -->
+- [x] P0 `pnpm run lint` <!-- PASS: `eslint . --max-warnings 0` — 0 warnings, 0 errors. -->
+- [x] P0 `pnpm run test` <!-- PASS: runs pretest (lint + prettier --check) then `vitest run`. All 835 tests in 111 files pass. Run with `npx vitest run --no-file-parallelism` to enforce single-threaded execution (CPU constraint). -->
+- [x] P1 `pnpm run test:e2e` <!-- PASS: `playwright test` — 30 passed (chromium + firefox). Run with `npx playwright test --workers=1` to enforce single-worker. -->
+- [x] P1 `pnpm run test:e2e:extended` if available/configured <!-- NOT RUN IN THIS ENVIRONMENT. Config exists (playwright.extended.config.ts); spec files: e2e/wasm.extended.spec.ts, e2e/wllama.extended.spec.ts, e2e/models.extended.spec.ts. Requires live network + Hugging Face GGUF model downloads + WASM build; timeout 600 s per test. Explicitly excluded from the normal gate per config comment: "heavy and network-dependent". Does not block acceptance. -->
+- [x] P1 Chrome extension build command <!-- NO BUILD STEP. The extension (extension/chrome-web-research/) is plain static JS (manifest.json + service-worker.js + content-extract.js). Load unpacked directly in Chrome developer mode — no compile step needed. `pnpm run test:extension:e2e` (Dockerized Chromium lane described in extension README) is not yet wired into package.json; unit coverage for protocol/URL/extraction is in src/extension/*.test.ts. -->
+- [x] P1 Chrome extension tests command if separate <!-- No separate extension test script. Unit tests run via `pnpm test` (src/extension/*.test.ts — protocol, hostPermissions, extract, config, pageReaderProvider: all covered). Dockerized e2e lane not yet added. -->
+- [x] P1 `cargo test` if Rust toolchain available <!-- PASS: cargo 1.94.1 / rustc 1.94.1 present. `cargo test --workspace` — 0 tests (claw-core, claw-schema, claw-testkit, claw-wasm crates exist but have no test functions yet; WASM runtime logic not yet ported). Result: ok. 0 passed; 0 failed. -->
+- [x] P1 `cargo clippy` if Rust toolchain available <!-- PASS: `cargo clippy --workspace` — 0 warnings, 0 errors. All 4 crates (claw-schema, claw-core, claw-testkit, claw-wasm) check clean. -->
 
 ---
 

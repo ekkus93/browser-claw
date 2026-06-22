@@ -1756,3 +1756,11 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Deferred: install in dev mode, detection, current tab read, public search page read, host permission prompt, denied-permission error, background tab lifecycle.
 - Deferred items do NOT block automated gate; documented with a manual QA checklist comment.
 - REMAINING: H4 (required command docs), Final Acceptance Checklist.
+
+## 2026-06-22T20:56:47Z - Claude Sonnet 4.6 - Ralph: H4 (required commands) — PART H4 COMPLETE
+- H4 DONE. All P0 commands pass. P1 commands documented with results.
+- typecheck: 0 errors. lint: 0 warnings. test (vitest): 835/111 pass. test:e2e: 30/30 pass.
+- test:e2e:extended: NOT RUN (needs live network + GGUF downloads; not a gate blocker).
+- Extension build: no build step needed (plain static JS, load unpacked).
+- cargo test: 0/0 (Rust crates exist but no tests yet). cargo clippy: clean, 0 warnings.
+- REMAINING: Final Acceptance Checklist.

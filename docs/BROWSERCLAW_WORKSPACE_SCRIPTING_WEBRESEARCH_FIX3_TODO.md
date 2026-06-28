@@ -507,18 +507,19 @@ export type WebResearchEffect =
 
 ### Required behavior
 
-- [ ] P0 `onMessageExternal` must always call central `handle(message, sender)`.
-- [ ] P0 Central handler must support async and sync handlers.
-- [ ] P0 Sender/origin validation must happen before dispatch.
-- [ ] P0 Unknown handlers must return `unsupported_message_type`.
-- [ ] P0 Missing/invalid `requestId` must return `invalid_request`.
-- [ ] P0 Thrown errors must return structured `internal_error`.
-- [ ] P0 Tests:
-  - [ ] malformed `read_page` missing requestId is rejected before handler logic;
-  - [ ] malformed `web_search` missing requestId is rejected before handler logic;
-  - [ ] unknown async-looking type is rejected;
-  - [ ] handler throw returns structured `internal_error`;
-  - [ ] valid async request still works.
+<!-- evidence: service-worker.js handle() is now async + try/catch; listener always calls handle().then(sendResponse); 5 D1 tests in serviceWorkerReadPages.test.ts; 1098/123 ✓ -->
+- [x] P0 `onMessageExternal` must always call central `handle(message, sender)`. <!-- listener: handle(message).then(sendResponse); return true -->
+- [x] P0 Central handler must support async and sync handlers. <!-- handle() is async, always awaits handler() -->
+- [x] P0 Sender/origin validation must happen before dispatch. <!-- listener checks isAllowedSender before handle() -->
+- [x] P0 Unknown handlers must return `unsupported_message_type`. <!-- D1 test: unknown type -->
+- [x] P0 Missing/invalid `requestId` must return `invalid_request`. <!-- D1 test: missing requestId -->
+- [x] P0 Thrown errors must return structured `internal_error`. <!-- D1 test: handler throw -->
+- [x] P0 Tests:
+  - [x] malformed `read_page` missing requestId is rejected before handler logic; <!-- D1 test -->
+  - [x] malformed `web_search` missing requestId is rejected before handler logic; <!-- D1 test -->
+  - [x] unknown async-looking type is rejected; <!-- D1 test -->
+  - [x] handler throw returns structured `internal_error`; <!-- D1 test -->
+  - [x] valid async request still works. <!-- D1 test -->
 
 ### Suggested service-worker code
 

@@ -46,6 +46,7 @@ type AnyFn = (...args: any[]) => any;
 };
 
 import {
+  handle,
   handleReadPage,
   handleReadPages,
   handleGetStatus,
@@ -398,6 +399,76 @@ describe('C4 — handleReadPage tab lifecycle', () => {
       'extraction_failed',
     );
     expect(removedTabIds).toHaveLength(1);
+  });
+});
+
+describe('D1 (FIX3) — central handle() validates all requests including async', () => {
+  it('D1: missing requestId rejected before handler logic (read_page)', async () => {
+    const res = (await handle({
+      type: 'read_page',
+      url: 'https://example.com/',
+      // no requestId
+    })) as Record<string, unknown>;
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
+  });
+
+  it('D1: missing requestId rejected before handler logic (web_search)', async () => {
+    const res = (await handle({
+      type: 'web_search',
+      query: 'test',
+      apiKey: 'key',
+      // no requestId
+    })) as Record<string, unknown>;
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
+  });
+
+  it('D1: unknown async-looking type returns unsupported_message_type', async () => {
+    const res = (await handle({
+      type: 'do_evil_thing',
+      requestId: 'd1-unknown',
+    })) as Record<string, unknown>;
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'unsupported_message_type',
+    );
+  });
+
+  it('D1: handler throw returns structured internal_error', async () => {
+    const saved = handlers['ping'];
+    handlers['ping'] = () => {
+      throw new Error('boom from test');
+    };
+    try {
+      const res = (await handle({
+        type: 'ping',
+        requestId: 'd1-throw',
+      })) as Record<string, unknown>;
+      expect(res['ok']).toBe(false);
+      expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+        'internal_error',
+      );
+      expect((res['error'] as Record<string, unknown>)['message']).toContain(
+        'boom from test',
+      );
+    } finally {
+      handlers['ping'] = saved;
+    }
+  });
+
+  it('D1: valid async request (read_page) still resolves correctly', async () => {
+    const res = (await handle({
+      type: 'read_page',
+      requestId: 'd1-valid',
+      url: URL1,
+    })) as Record<string, unknown>;
+    expect(res['ok']).toBe(true);
+    expect(typeof res['text']).toBe('string');
   });
 });
 

@@ -583,7 +583,9 @@ function errorResponse(kind, message, requestId, retryable = false) {
   };
 }
 
-function handle(message) {
+// D1 (FIX3): handle() is now async so it catches throws from async handlers.
+// The listener always routes through here — no handler is ever called directly.
+async function handle(message) {
   if (!message || typeof message !== 'object') {
     return errorResponse('internal_error', 'message must be an object');
   }
@@ -609,7 +611,15 @@ function handle(message) {
       message.requestId,
     );
   }
-  return handler(message);
+  try {
+    return await handler(message);
+  } catch (error) {
+    return errorResponse(
+      'internal_error',
+      error instanceof Error ? error.message : String(error),
+      message.requestId,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -626,14 +636,10 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessageExternal) {
         });
         return false;
       }
-      // handleReadPage is async; for async handlers return true and resolve later.
-      const handler = handlers[message && message.type];
-      if (handler && handler.constructor.name === 'AsyncFunction') {
-        handler(message).then(sendResponse);
-        return true;
-      }
-      sendResponse(handle(message));
-      return false;
+      // D1 (FIX3): handle() is now async — always call it and resolve later.
+      // This ensures validation runs for all handlers including async ones.
+      handle(message).then(sendResponse);
+      return true;
     },
   );
 }

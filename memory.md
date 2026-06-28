@@ -1984,6 +1984,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T22:53:10Z - Claude Sonnet 4.6 - FIX3 Part D1 (extension central dispatch) DONE
+- service-worker.js handle() made async with try/catch — catches throws from async handlers, returns structured internal_error.
+- listener: always calls handle(message).then(sendResponse); return true — no more async handler bypass.
+- service-worker.d.ts: added handle, errorResponse, isAllowedSender exports.
+- D1 tests: missing requestId (read_page, web_search), unknown type, handler throw, valid async request — all 5 pass.
+- Gate: typecheck ✓, lint ✓, format ✓, 1098/123 vitest ✓.
+- NEXT: C2 (Rust fail-closed validation), E1 (normalizeExtensionStatus), or K1 (silent failure regression tests).
+
 ## 2026-06-28T22:48:46Z - Claude Sonnet 4.6 - FIX3 Part C1+C3 (readPages/research parser + discriminated web_research) DONE
 - agentBlockParser.ts: added readPages + research to KNOWN_WEB_OPS; validateWebRequest validates all 5 ops (non-empty url/query/urls); 6 C1 regression tests added.
 - effectTypes.ts: web_research → discriminated union {mode:'query', query} | {mode:'urls', urls}.

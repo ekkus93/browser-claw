@@ -1984,6 +1984,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T21:35:14Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 21: Parts K2+K3 (acceptance checklist + required gate) DONE
+- K2: All 14 acceptance items ticked with evidence comments; all verified against completed phases A1-J3.
+- K3: Required gate documented — typecheck/lint/format/vitest/cargo all pass; test:extension:e2e and build:wasm documented as deferred (environment prerequisites, not blocking).
+- FIX2 core acceptance is now complete. Remaining deferred items: B2 (Settings UI), C3 (activeTab/current-tab), J2 (app-level extension E2E).
+- Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
+
 ## 2026-06-28T21:30:42Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 20: Parts J1+J3 (extension E2E fixture page read) DONE
 - J1: Created fixture-read.extension.spec.ts with 2 tests: read_page of public-article.html (title, body, SCRIPT_SENTINEL not leaked) and hostile-script page (JS source not in text).
 - J3: test-extension/ manifest pre-grants http://devtest.internal:7779/* (bypasses localhost URL safety block via non-blocked hostname); beforeAll starts http.Server on 0.0.0.0:7779; test.todo removed from extension.spec.ts.

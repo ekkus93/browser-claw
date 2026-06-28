@@ -1770,3 +1770,17 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Summary: Hardening (11/11), Workspace FS (6/6), Script Runtime (6/6), Web Research (8/8), Safety (7/7), QA (6/6).
 - Only genuinely deferred: H3 manual browser/extension QA (7 items need live Chrome), test:e2e:extended (1 Chromium flake in wllama blob cache, not a gate blocker), cargo tests (0 tests — Rust crates exist but logic not ported yet).
 - BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_TODO.md: all phases A–H + Final Acceptance Checklist complete. Ralph Loop for this TODO is DONE.
+
+## 2026-06-28T08:16:41Z - Claude Sonnet 4.6 - Ralph FIX1: completed I1 and J1
+- I1 (large-file guards): workspaceFs.ts + MAX_FULL_TEXT_DECODE_BYTES=2MiB + WorkspaceFileTooLargeError. readTextRange and readLines both check meta.sizeBytes before full decode and throw. Tests +5. vitest 904.
+- J1 (transaction atomicity): install and uninstall each wrapped in db.transaction('rw', [5 tables], ...). Failure path audits skill_install_failed/skill_uninstall_failed before rethrowing. Success audit after tx commits. Tests +4 (rollback skill row, rollback files, failed install audit, failed uninstall audit). vitest 908.
+- Remaining FIX1 items: G1-G3 (Brave Search CORS/extension provider/UI), K1-K3 (Dockerized Chrome E2E lane), L1-L3 (final acceptance gate).
+
+## 2026-06-28T07:42:28Z - Claude Sonnet 4.6 - Ralph FIX1 loop begun on BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX1_TODO.md
+- Prior context (before compaction) completed A3/A4/A5, B1/B2/B3, C1/C2 (and began C3).
+- This session completed C3 (commit 6808dc0): wired parseAgentActionBlock into llmRunner.ts + referenceRuntime.ts.
+  - llmRunner.ts: routes all 6 parse result kinds; malformed audited as 'tool.parse_failed'.
+  - referenceRuntime.ts: plan→script_plan_proposal, script_request→sandbox_script_proposal, web.search→web_search, web.readPage/readCurrentTab→web_page_read.
+  - Tests: llmRunner.test.ts +4, referenceRuntime.test.ts +4. vitest: 866→874, all pass.
+- C3 ticked in FIX1_TODO.md. Pushed.
+- Next: FIX1-D1 (sandbox capability descriptors).

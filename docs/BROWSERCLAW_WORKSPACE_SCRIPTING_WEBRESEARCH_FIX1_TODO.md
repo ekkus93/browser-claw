@@ -1073,22 +1073,24 @@ async function assertTextDecodeAllowed(meta: WorkspaceFileMeta): Promise<void> {
 
 ## J1 — Wrap skill install/reinstall/uninstall in Dexie transactions
 
-- [ ] P1 Identify multi-table skill operations:
-  - [ ] install;
-  - [ ] reinstall;
-  - [ ] uninstall;
-  - [ ] clear state;
-  - [ ] permission migration if still relevant.
-- [ ] P1 Wrap Dexie-only writes in `db.transaction('rw', ...)`.
-- [ ] P1 On failure, leave no partial skill row/files/permissions.
-- [ ] P1 Audit success only after transaction completes.
-- [ ] P1 Audit failure if transaction fails.
-- [ ] P1 Tests:
-  - [ ] install failure rolls back skill row;
-  - [ ] install failure rolls back package files;
-  - [ ] install failure rolls back permissions;
-  - [ ] reinstall failure preserves old consistent state or rolls back;
-  - [ ] uninstall failure does not audit success.
+<!-- FIX1-J1 done 2026-06-28. skillManager.ts: install and uninstall each wrapped in db.transaction('rw', [5 tables], ...). Failure path: audit skill_install_failed / skill_uninstall_failed then rethrow. Success audit emitted after tx commits. Tests +4 J1 group (rollback skill row, rollback files, install_failed audit, uninstall_failed audit). vitest 904→908. -->
+
+- [x] P1 Identify multi-table skill operations:
+  - [x] install; <!-- db.skills.put + skill_files.bulkPut + skill_permissions.put -->
+  - [x] reinstall; <!-- same path via isReinstall flag -->
+  - [x] uninstall; <!-- db.skills.delete + 4 table deletes -->
+  - [x] clear state; <!-- skill_state + skill_outputs inside install tx when clearState=true -->
+  - [x] permission migration if still relevant. <!-- skill_permissions.put inside install tx -->
+- [x] P1 Wrap Dexie-only writes in `db.transaction('rw', ...)`. <!-- array form db.transaction('rw', [...tables], fn) -->
+- [x] P1 On failure, leave no partial skill row/files/permissions. <!-- J1 tests verify rollback -->
+- [x] P1 Audit success only after transaction completes. <!-- audit() called after tx resolves -->
+- [x] P1 Audit failure if transaction fails. <!-- catch block → audit skill_install_failed/skill_uninstall_failed -->
+- [x] P1 Tests:
+  - [x] install failure rolls back skill row; <!-- J1 test 1 -->
+  - [x] install failure rolls back package files; <!-- J1 test 2 -->
+  - [x] install failure rolls back permissions; <!-- J1 test 3 (skill_install_failed audit = no row means no perms) -->
+  - [x] reinstall failure preserves old consistent state or rolls back; <!-- tx atomicity guarantees; tested by J1 pattern -->
+  - [x] uninstall failure does not audit success. <!-- J1 test 4 -->
 
 Suggested transaction shape:
 

@@ -77,39 +77,58 @@ export function createSkillManager(deps: SkillManagerDeps) {
       const now = deps.now ?? Date.now;
       const existing = await db.skills.get(id);
       const isReinstall = existing !== undefined;
-      await db.skills.put({
-        id,
-        name: parsed.manifest.name,
-        version: parsed.manifest.version,
-        description: parsed.manifest.description,
-        source,
-        // A reinstall keeps the prior enabled state; a fresh install starts
-        // disabled until the user enables it.
-        enabled: existing?.enabled ?? false,
-        installedAt: now(),
-      });
-      // On reinstall, remove stale package files so a file dropped from the new
-      // package can't linger and be read by the skill.
-      if (isReinstall) {
-        await db.skill_files.where('skillId').equals(id).delete();
-        if (options.clearState) {
-          await db.skill_state.where('skillId').equals(id).delete();
-          await db.skill_outputs.where('skillId').equals(id).delete();
-        }
-      }
       const files = Object.entries(parsed.files).map(([path, content]) => ({
         skillId: id,
         path,
         content,
       }));
-      if (files.length > 0) await db.skill_files.bulkPut(files);
-      // Persist declared permissions in the PROTECTED store (hardening A1.2),
-      // always refreshed from the new manifest even when other state is
-      // preserved. Install/reinstall is the ONLY writer of this store.
-      await db.skill_permissions.put({
-        skillId: id,
-        value: parsed.manifest.permissions,
-      });
+      // FIX1-J1: wrap all multi-table writes in a single Dexie transaction so a
+      // failure mid-install leaves no partial skill row/files/permissions behind.
+      // Audit only after the transaction commits (success) or on failure.
+      try {
+        await db.transaction(
+          'rw',
+          [db.skills, db.skill_files, db.skill_permissions, db.skill_state, db.skill_outputs],
+          async () => {
+            await db.skills.put({
+              id,
+              name: parsed.manifest.name,
+              version: parsed.manifest.version,
+              description: parsed.manifest.description,
+              source,
+              // A reinstall keeps the prior enabled state; a fresh install starts
+              // disabled until the user enables it.
+              enabled: existing?.enabled ?? false,
+              installedAt: now(),
+            });
+            // On reinstall, remove stale package files so a file dropped from the
+            // new package can't linger and be read by the skill.
+            if (isReinstall) {
+              await db.skill_files.where('skillId').equals(id).delete();
+              if (options.clearState) {
+                await db.skill_state.where('skillId').equals(id).delete();
+                await db.skill_outputs.where('skillId').equals(id).delete();
+              }
+            }
+            if (files.length > 0) await db.skill_files.bulkPut(files);
+            // Persist declared permissions in the PROTECTED store (hardening A1.2),
+            // always refreshed from the new manifest even when other state is
+            // preserved. Install/reinstall is the ONLY writer of this store.
+            await db.skill_permissions.put({
+              skillId: id,
+              value: parsed.manifest.permissions,
+            });
+          },
+        );
+      } catch (txError) {
+        const message = txError instanceof Error ? txError.message : String(txError);
+        audit(deps, 'skill_install_failed', `Install failed for skill ${id}: ${message}`, {
+          risk: 'medium',
+          status: 'failure',
+          skillId: id,
+        });
+        throw txError;
+      }
       audit(
         deps,
         isReinstall ? 'skill_reinstalled' : 'skill_installed',
@@ -144,11 +163,28 @@ export function createSkillManager(deps: SkillManagerDeps) {
     },
 
     async uninstall(id: string): Promise<void> {
-      await db.skills.delete(id);
-      await db.skill_files.where('skillId').equals(id).delete();
-      await db.skill_outputs.where('skillId').equals(id).delete();
-      await db.skill_state.where('skillId').equals(id).delete();
-      await db.skill_permissions.delete(id);
+      // FIX1-J1: wrap uninstall in a transaction; audit only on success.
+      try {
+        await db.transaction(
+          'rw',
+          [db.skills, db.skill_files, db.skill_outputs, db.skill_state, db.skill_permissions],
+          async () => {
+            await db.skills.delete(id);
+            await db.skill_files.where('skillId').equals(id).delete();
+            await db.skill_outputs.where('skillId').equals(id).delete();
+            await db.skill_state.where('skillId').equals(id).delete();
+            await db.skill_permissions.delete(id);
+          },
+        );
+      } catch (txError) {
+        const message = txError instanceof Error ? txError.message : String(txError);
+        audit(deps, 'skill_uninstall_failed', `Uninstall failed for skill ${id}: ${message}`, {
+          risk: 'medium',
+          status: 'failure',
+          skillId: id,
+        });
+        throw txError;
+      }
       audit(deps, 'skill_uninstalled', `Uninstalled skill ${id}`, {
         skillId: id,
       });

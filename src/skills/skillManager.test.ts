@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import auditReducer from '../store/slices/auditSlice.ts';
 import { BrowserClawDB } from '../db/db.ts';
@@ -180,5 +180,110 @@ describe('createSkillManager', () => {
     const types = store.getState().audit.recent.map((e) => e.type);
     expect(types).toContain('skill_disable_failed');
     expect(types).not.toContain('skill_disabled');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// J1 — Dexie transaction atomicity for install / uninstall
+// ---------------------------------------------------------------------------
+
+describe('J1 — skill install/uninstall transaction atomicity', () => {
+  const J1_SKILL_MD = [
+    '---',
+    'name: j1-skill',
+    'version: 1.0.0',
+    'description: J1 test skill',
+    '---',
+    'Do something.',
+  ].join('\n');
+
+  it('J1: failed install leaves no skill row in DB', async () => {
+    await db.open();
+    const store = configureStore({ reducer: { audit: auditReducer } });
+    const manager = createSkillManager({ db, dispatch: store.dispatch });
+
+    // Make skill_permissions.put throw to simulate a mid-transaction failure.
+    const spy = vi.spyOn(db.skill_permissions, 'put').mockRejectedValueOnce(
+      new Error('simulated permissions write failure'),
+    );
+    await expect(
+      manager.install(parseSkillMd(J1_SKILL_MD), 'skill_md'),
+    ).rejects.toThrow(/simulated permissions write failure/);
+    spy.mockRestore();
+
+    // Rollback: no skill row should exist.
+    expect(await db.skills.get('j1-skill')).toBeUndefined();
+  });
+
+  it('J1: failed install leaves no package files in DB', async () => {
+    await db.open();
+    const store = configureStore({ reducer: { audit: auditReducer } });
+    const manager = createSkillManager({ db, dispatch: store.dispatch });
+
+    const mdWithFiles = [
+      '---',
+      'name: j1-files-skill',
+      'version: 1.0.0',
+      'description: J1 files test',
+      '---',
+      '```js entrypoint.js',
+      'export default function run() {}',
+      '```',
+    ].join('\n');
+
+    const spy = vi.spyOn(db.skill_permissions, 'put').mockRejectedValueOnce(
+      new Error('simulated failure'),
+    );
+    await expect(
+      manager.install(parseSkillMd(mdWithFiles), 'skill_md'),
+    ).rejects.toThrow();
+    spy.mockRestore();
+
+    // Rollback: no file rows for this skill.
+    const count = await db.skill_files
+      .where('skillId')
+      .equals('j1-files-skill')
+      .count();
+    expect(count).toBe(0);
+  });
+
+  it('J1: failed install audits skill_install_failed (not skill_installed)', async () => {
+    await db.open();
+    const store = configureStore({ reducer: { audit: auditReducer } });
+    const manager = createSkillManager({ db, dispatch: store.dispatch });
+
+    const spy = vi.spyOn(db.skill_permissions, 'put').mockRejectedValueOnce(
+      new Error('simulated failure'),
+    );
+    await expect(
+      manager.install(parseSkillMd(J1_SKILL_MD), 'skill_md'),
+    ).rejects.toThrow();
+    spy.mockRestore();
+
+    const types = store.getState().audit.recent.map((e) => e.type);
+    expect(types).toContain('skill_install_failed');
+    expect(types).not.toContain('skill_installed');
+  });
+
+  it('J1: failed uninstall does not audit skill_uninstalled', async () => {
+    await db.open();
+    const store = configureStore({ reducer: { audit: auditReducer } });
+    const manager = createSkillManager({ db, dispatch: store.dispatch });
+
+    // First install successfully.
+    await manager.install(parseSkillMd(J1_SKILL_MD), 'skill_md');
+
+    // Make the skills.delete throw mid-transaction.
+    const spy = vi.spyOn(db.skill_permissions, 'delete').mockRejectedValueOnce(
+      new Error('simulated uninstall failure'),
+    );
+    await expect(manager.uninstall('j1-skill')).rejects.toThrow(
+      /simulated uninstall failure/,
+    );
+    spy.mockRestore();
+
+    const types = store.getState().audit.recent.map((e) => e.type);
+    expect(types).toContain('skill_uninstall_failed');
+    expect(types).not.toContain('skill_uninstalled');
   });
 });

@@ -25,8 +25,12 @@ export type SearchAuditEvent =
 
 export interface ChromeExtensionSearchDeps {
   transport: ExtensionTransport;
-  /** API key resolved from SecretVault; forwarded to the extension in-memory. */
-  apiKey?: string;
+  /**
+   * Resolves the API key from SecretVault immediately before each search
+   * request. Throwing SecretFailureKind-branded errors produces a visible
+   * `secret_missing` / `secret_locked` failure. Must never be stored or logged.
+   */
+  resolveApiKey?: () => Promise<string>;
   /** Optional hook for audit events; target must never include the key. */
   onAudit?: (event: SearchAuditEvent, detail?: string) => void;
 }
@@ -37,7 +41,9 @@ export class ExtensionSearchError extends Error {
     | 'auth'
     | 'rate_limit'
     | 'unavailable'
-    | 'invalid_response';
+    | 'invalid_response'
+    | 'secret_missing'
+    | 'secret_locked';
   constructor(kind: ExtensionSearchError['kind'], message: string) {
     super(message);
     this.name = 'ExtensionSearchError';
@@ -79,11 +85,17 @@ export function createExtensionSearchProvider(
       const requestId = newRequestId();
       onAudit?.('web.search_started', query);
 
+      // Resolve API key at call time (never at boot — vault may not be unlocked yet).
+      let apiKey: string | undefined;
+      if (deps.resolveApiKey) {
+        apiKey = await deps.resolveApiKey();
+      }
+
       const message: ExtensionRequest = {
         type: 'web_search',
         requestId,
         query,
-        ...(deps.apiKey !== undefined ? { apiKey: deps.apiKey } : {}),
+        ...(apiKey !== undefined ? { apiKey } : {}),
         ...(options?.maxResults !== undefined
           ? { maxResults: options.maxResults }
           : {}),

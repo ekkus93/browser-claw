@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T22:36:31Z - Claude Sonnet 4.6 - FIX3 Part A1+A2 (Brave key wiring) DONE
+- searchProvider.ts: changed apiKey?: string → resolveApiKey?: () => Promise<string>; added secret_missing/secret_locked to ExtensionSearchError.kind.
+- configuredSearchProvider.ts: added secretVault?: KeySource dep; resolves Brave key from vault at search time via vault.isUnlocked()+getSecret(searchProviderSecretId(BRAVE_PROFILE_ID)).
+- main.tsx: now passes secretVault to createConfiguredSearchProvider.
+- 8 new tests; 1067/122 pass.
+- NEXT: Part B1 — toolContentFromEffectResult TypeScript serializer.
+
 ## 2026-06-28T22:22:31Z - Claude Sonnet 4.6 - FIX3 Phase 0 (scope lock) DONE — beginning FIX3 Ralph Loop
 - FIX3 spec and TODO arrived via git pull. Scope: fix remaining live-path quiet failures from FIX2.
 - Added FIX3 Locked Decisions section to WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md.

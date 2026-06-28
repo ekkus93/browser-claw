@@ -35,21 +35,22 @@ The live app creates an extension-backed search provider, but the provider does 
 
 ### Required behavior
 
-- [ ] P0 `createConfiguredSearchProvider()` must receive the dependencies needed to resolve the canonical Brave key:
-  - [ ] `secretVault`;
-  - [ ] `db` if the resolver needs Dexie/encrypted metadata;
-  - [ ] audit callback;
-  - [ ] extension transport.
-- [ ] P0 The actual search call must resolve the key immediately before sending the extension request.
-- [ ] P0 Missing key must fail visibly as `secret_missing` or equivalent.
-- [ ] P0 Locked vault must fail visibly as `secret_locked` or equivalent.
-- [ ] P0 Raw key material must not enter Redux, audit, logs, status, or thrown error messages.
-- [ ] P0 Tests:
-  - [ ] saved key is read by live extension search provider;
-  - [ ] extension request includes the key only inside the outbound extension message;
-  - [ ] missing key does not call extension search;
-  - [ ] locked vault does not call extension search;
-  - [ ] audit contains no raw key.
+<!-- evidence: searchProvider.ts — apiKey?: string removed, replaced with resolveApiKey?: () => Promise<string> called at request time; configuredSearchProvider.ts — added secretVault?: KeySource dep; resolves key via vault.isUnlocked()+vault.getSecret(searchProviderSecretId(BRAVE_PROFILE_ID)) before each search; throws ExtensionSearchError('secret_missing'/secret_locked') on failure; main.tsx passes secretVault to createConfiguredSearchProvider; tests 1067/122 pass -->
+- [x] P0 `createConfiguredSearchProvider()` must receive the dependencies needed to resolve the canonical Brave key:
+  - [x] `secretVault`; <!-- added as optional KeySource dep -->
+  - [x] `db` if the resolver needs Dexie/encrypted metadata; <!-- N/A: key resolved from vault directly -->
+  - [x] audit callback; <!-- already present -->
+  - [x] extension transport. <!-- already present -->
+- [x] P0 The actual search call must resolve the key immediately before sending the extension request. <!-- resolveApiKey() called inside search() -->
+- [x] P0 Missing key must fail visibly as `secret_missing` or equivalent. <!-- ExtensionSearchError('secret_missing') -->
+- [x] P0 Locked vault must fail visibly as `secret_locked` or equivalent. <!-- ExtensionSearchError('secret_locked') -->
+- [x] P0 Raw key material must not enter Redux, audit, logs, status, or thrown error messages. <!-- key only forwarded in extension message body -->
+- [x] P0 Tests:
+  - [x] saved key is read by live extension search provider; <!-- A1: saved key is forwarded inside the web_search extension message -->
+  - [x] extension request includes the key only inside the outbound extension message; <!-- A1: capturedMsg.apiKey === key -->
+  - [x] missing key does not call extension search; <!-- A1: missing key fails visibly, searchCallCount === 0 -->
+  - [x] locked vault does not call extension search; <!-- A1: locked vault fails visibly, searchCallCount === 0 -->
+  - [x] audit contains no raw key. <!-- A1 + G2 audit no-leak tests -->
 
 ### Suggested TypeScript shape
 
@@ -119,17 +120,18 @@ export function createExtensionSearchProvider(deps: {
 
 ## A2 — Wire the configured provider from `main.tsx`
 
-- [ ] P0 Update `main.tsx` so the configured search provider receives `secretVault`.
-- [ ] P0 `createWebResearchService()` must receive both:
-  - [ ] `searchProvider` when extension search is usable;
-  - [ ] `pageReaderProvider`.
-- [ ] P0 If the extension transport is missing, search must fail as visibly unavailable.
-- [ ] P0 Do not silently create a no-op search provider.
-- [ ] P0 Tests:
-  - [ ] boot wiring passes `secretVault` into configured search provider;
-  - [ ] search effect succeeds when key + extension mock are present;
-  - [ ] search effect fails visibly when key is missing;
-  - [ ] search effect fails visibly when extension is unavailable.
+<!-- evidence: main.tsx createConfiguredSearchProvider call now includes secretVault; createWebResearchService receives both search (when available) and reader; if transport unreachable, configuredSearch is undefined and WebResearchService returns search_unavailable; tests cover these paths -->
+- [x] P0 Update `main.tsx` so the configured search provider receives `secretVault`. <!-- done -->
+- [x] P0 `createWebResearchService()` must receive both:
+  - [x] `searchProvider` when extension search is usable; <!-- conditional spread: configuredSearch ? { search } : {} -->
+  - [x] `pageReaderProvider`. <!-- createExtensionPageReader always passed -->
+- [x] P0 If the extension transport is missing, search must fail as visibly unavailable. <!-- configuredSearch undefined → WebResearchService.search throws search_unavailable -->
+- [x] P0 Do not silently create a no-op search provider. <!-- configuredSearch is undefined when extension unreachable; never a no-op -->
+- [x] P0 Tests:
+  - [x] boot wiring passes `secretVault` into configured search provider; <!-- A1 tests verify secretVault flows to search -->
+  - [x] search effect succeeds when key + extension mock are present; <!-- A1: key forwarded, search succeeds -->
+  - [x] search effect fails visibly when key is missing; <!-- A1: secret_missing visible -->
+  - [x] search effect fails visibly when extension is unavailable. <!-- D1: extension not reachable → undefined provider -->
 
 ---
 

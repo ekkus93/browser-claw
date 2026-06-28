@@ -37,7 +37,7 @@ describe('G2 — createExtensionSearchProvider', () => {
     });
     const provider = createExtensionSearchProvider({
       transport,
-      apiKey: 'test-key',
+      resolveApiKey: async () => 'test-key',
     });
     const results = await provider.search('openai GPT');
     expect(results).toHaveLength(2);
@@ -65,7 +65,7 @@ describe('G2 — createExtensionSearchProvider', () => {
     });
     const provider = createExtensionSearchProvider({
       transport,
-      apiKey: 'bad-key',
+      resolveApiKey: async () => 'bad-key',
     });
     let caught: unknown;
     await provider.search('q').catch((e) => {
@@ -87,7 +87,7 @@ describe('G2 — createExtensionSearchProvider', () => {
     });
     const provider = createExtensionSearchProvider({
       transport,
-      apiKey: 'key',
+      resolveApiKey: async () => 'key',
     });
     let caught: unknown;
     await provider.search('q').catch((e) => {
@@ -108,7 +108,61 @@ describe('G2 — createExtensionSearchProvider', () => {
     expect((caught as ExtensionSearchError).kind).toBe('invalid_response');
   });
 
-  it('G2: no key leakage — apiKey does not appear in audit event details', async () => {
+  it('G2/A1: resolveApiKey throwing secret_missing propagates visibly', async () => {
+    const transport = makeTransport({ ok: true, requestId: 'r1', results: [] });
+    const provider = createExtensionSearchProvider({
+      transport,
+      resolveApiKey: async () => {
+        throw new ExtensionSearchError(
+          'secret_missing',
+          'No API key configured',
+        );
+      },
+    });
+    let caught: unknown;
+    await provider.search('q').catch((e) => {
+      caught = e;
+    });
+    expect(caught).toBeInstanceOf(ExtensionSearchError);
+    expect((caught as ExtensionSearchError).kind).toBe('secret_missing');
+    // Transport must NOT be called if key resolution fails
+    expect(transport.send).not.toHaveBeenCalled();
+  });
+
+  it('G2/A1: resolveApiKey throwing secret_locked propagates visibly', async () => {
+    const transport = makeTransport({ ok: true, requestId: 'r1', results: [] });
+    const provider = createExtensionSearchProvider({
+      transport,
+      resolveApiKey: async () => {
+        throw new ExtensionSearchError('secret_locked', 'Vault is locked');
+      },
+    });
+    let caught: unknown;
+    await provider.search('q').catch((e) => {
+      caught = e;
+    });
+    expect(caught).toBeInstanceOf(ExtensionSearchError);
+    expect((caught as ExtensionSearchError).kind).toBe('secret_locked');
+    expect(transport.send).not.toHaveBeenCalled();
+  });
+
+  it('G2/A1: resolveApiKey result is forwarded in the extension message', async () => {
+    let capturedMsg: Record<string, unknown> | undefined;
+    const transport = {
+      send: vi.fn(async (msg: unknown) => {
+        capturedMsg = msg as Record<string, unknown>;
+        return { ok: true, requestId: 'r1', results: [] };
+      }),
+    };
+    const provider = createExtensionSearchProvider({
+      transport,
+      resolveApiKey: async () => 'live-api-key',
+    });
+    await provider.search('q');
+    expect(capturedMsg?.apiKey).toBe('live-api-key');
+  });
+
+  it('G2: no key leakage — resolved API key does not appear in audit event details', async () => {
     const transport = makeTransport({
       ok: true,
       requestId: 'r1',
@@ -117,7 +171,7 @@ describe('G2 — createExtensionSearchProvider', () => {
     const auditDetails: string[] = [];
     const provider = createExtensionSearchProvider({
       transport,
-      apiKey: 'super-secret-api-key-12345',
+      resolveApiKey: async () => 'super-secret-api-key-12345',
       onAudit: (_event: SearchAuditEvent, detail?: string) => {
         if (detail) auditDetails.push(detail);
       },
@@ -137,7 +191,7 @@ describe('G2 — createExtensionSearchProvider', () => {
     const events: SearchAuditEvent[] = [];
     const provider = createExtensionSearchProvider({
       transport,
-      apiKey: 'key',
+      resolveApiKey: async () => 'key',
       onAudit: (e: SearchAuditEvent) => events.push(e),
     });
     await provider.search('q');
@@ -155,7 +209,7 @@ describe('G2 — createExtensionSearchProvider', () => {
     const events: SearchAuditEvent[] = [];
     const provider = createExtensionSearchProvider({
       transport,
-      apiKey: 'key',
+      resolveApiKey: async () => 'key',
       onAudit: (e: SearchAuditEvent) => events.push(e),
     });
     await provider.search('q').catch(() => {});

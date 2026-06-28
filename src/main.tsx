@@ -238,6 +238,7 @@ async function bootRuntime(): Promise<void> {
   );
   const configuredSearch = await createConfiguredSearchProvider({
     extensionTransport,
+    secretVault,
     onAudit: (event, detail) => {
       const isFail =
         event === 'web.search_failed' || event === 'extension.missing';

@@ -1,4 +1,5 @@
 import type { Command, Effect } from './effectTypes.ts';
+import { toolContentFromEffectResult } from './effectResultSerialization.ts';
 
 /**
  * A faithful TypeScript port of the deterministic `claw-core` runtime
@@ -395,6 +396,21 @@ export function createReferenceRuntime(
             },
           ];
         }
+        // B1 (FIX3): serialize structured web/plan/script/extension results.
+        // readText() returns "" for { results }, { content }, { bundle }, etc.
+        // Use the serializer so no empty tool message is ever stored.
+        const serialized = toolContentFromEffectResult(command.result);
+        if (!serialized.ok) {
+          return [
+            {
+              type: 'audit_append',
+              id: nextId(),
+              event_type: 'runtime.empty_effect_result',
+              summary: serialized.message,
+              risk: 'high',
+            },
+          ];
+        }
         const putId = nextId();
         const llmId = nextId();
         const auditId = nextId();
@@ -408,7 +424,7 @@ export function createReferenceRuntime(
             conversation_id: conversationId,
             store: 'messages',
             key: `m${state.message_count}`,
-            value: { role: 'tool', content: readText(command.result) },
+            value: { role: 'tool', content: serialized.content },
           },
           {
             type: 'llm_request',

@@ -145,23 +145,24 @@ The host resolves web effects with structured shapes like `{ results }`, `{ cont
 
 ### Required behavior
 
-- [ ] P0 Add `toolContentFromEffectResult(result)` in the TypeScript runtime layer.
-- [ ] P0 It must return non-empty string content for:
-  - [ ] `{ ok: true, text: string }`;
-  - [ ] `{ ok: true, results: [...] }`;
-  - [ ] `{ ok: true, content: {...} }`;
-  - [ ] `{ ok: true, contents: [...] }`;
-  - [ ] `{ ok: true, bundle: {...} }`;
-  - [ ] `{ ok: true, response: {...} }`.
-- [ ] P0 It must return an error/null for empty/unrecognized success results.
-- [ ] P0 The TypeScript reference runtime must use this serializer before storing tool messages or issuing follow-up LLM requests.
-- [ ] P0 Tests:
-  - [ ] web search `{ results }` becomes non-empty tool content;
-  - [ ] page read `{ content }` becomes non-empty tool content;
-  - [ ] research `{ bundle }` becomes non-empty tool content;
-  - [ ] extension `{ response }` becomes non-empty tool content;
-  - [ ] empty success result fails visibly and audits;
-  - [ ] no empty tool message is stored.
+<!-- evidence: src/runtime/effectResultSerialization.ts — toolContentFromEffectResult(); referenceRuntime.ts uses it for all web/plan/sandbox/extension success paths; B3 regression tests in effectResultSerialization.test.ts; typecheck ✓, lint ✓, 1087/123 vitest ✓ -->
+- [x] P0 Add `toolContentFromEffectResult(result)` in the TypeScript runtime layer. <!-- src/runtime/effectResultSerialization.ts -->
+- [x] P0 It must return non-empty string content for:
+  - [x] `{ ok: true, text: string }`;
+  - [x] `{ ok: true, results: [...] }`;
+  - [x] `{ ok: true, content: {...} }`;
+  - [x] `{ ok: true, contents: [...] }`;
+  - [x] `{ ok: true, bundle: {...} }`;
+  - [x] `{ ok: true, response: {...} }`.
+- [x] P0 It must return an error/null for empty/unrecognized success results. <!-- ok:false with kind -->
+- [x] P0 The TypeScript reference runtime must use this serializer before storing tool messages or issuing follow-up LLM requests. <!-- referenceRuntime.ts lines ~399 -->
+- [x] P0 Tests:
+  - [x] web search `{ results }` becomes non-empty tool content; <!-- B3 test -->
+  - [x] page read `{ content }` becomes non-empty tool content; <!-- B3 test -->
+  - [x] research `{ bundle }` becomes non-empty tool content; <!-- B1 test -->
+  - [x] extension `{ response }` becomes non-empty tool content; <!-- B1 test -->
+  - [x] empty success result fails visibly and audits; <!-- B3: empty_effect_result audit -->
+  - [x] no empty tool message is stored. <!-- B3: no storage_put on empty result -->
 
 ### Suggested TypeScript code
 
@@ -315,10 +316,11 @@ fn serialize_tool_content(result: &serde_json::Value) -> Result<String, RuntimeP
 
 ## B3 — Add no-empty-tool-message regression tests
 
-- [ ] P0 Add a TypeScript regression test that simulates a successful `web_search` effect resolution and asserts stored tool content is not empty.
-- [ ] P0 Add a TypeScript regression test for `web_page_read` and `web_research` effect resolution.
-- [ ] P0 Add a Rust/WASM regression test for the same shapes.
-- [ ] P0 Assert no follow-up `llm_request` uses an empty tool/result prompt.
+<!-- evidence: effectResultSerialization.test.ts B3 describe block — web_search { results }, web_page_read { content }, empty { ok:true } → audit + no storage_put, no llm_request on empty; Rust tests deferred (B2) -->
+- [x] P0 Add a TypeScript regression test that simulates a successful `web_search` effect resolution and asserts stored tool content is not empty. <!-- B3 test -->
+- [x] P0 Add a TypeScript regression test for `web_page_read` and `web_research` effect resolution. <!-- B3 tests -->
+- [ ] P0 Add a Rust/WASM regression test for the same shapes. <!-- deferred to B2 -->
+- [x] P0 Assert no follow-up `llm_request` uses an empty tool/result prompt. <!-- B3: no llm_request after empty result -->
 
 ---
 

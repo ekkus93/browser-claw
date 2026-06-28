@@ -1984,6 +1984,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T22:41:00Z - Claude Sonnet 4.6 - FIX3 Part B1+B3 (effect-result serializer + no-empty regression) DONE
+- Created src/runtime/effectResultSerialization.ts: toolContentFromEffectResult() handles { text }, { results }, { content }, { contents }, { bundle }, { response }, { outputs }, { value } — all produce non-empty JSON content.
+- referenceRuntime.ts: replaced readText() with toolContentFromEffectResult() for web/plan/sandbox/extension success paths; empty/unrecognized success emits runtime.empty_effect_result audit (no storage_put, no llm_request).
+- B3 regression tests: web_search { results }, web_page_read { content }, empty → audit, no llm_request.
+- B2 (Rust serializer) deferred — TypeScript parts first.
+- Gate: typecheck ✓, lint ✓, 1087/123 vitest ✓.
+- NEXT: C1 — agentBlockParser.ts support readPages/research; C2 — Rust fail-closed validation; C3 — effect mapping.
+
 ## 2026-06-28T22:36:31Z - Claude Sonnet 4.6 - FIX3 Part A1+A2 (Brave key wiring) DONE
 - searchProvider.ts: changed apiKey?: string → resolveApiKey?: () => Promise<string>; added secret_missing/secret_locked to ExtensionSearchError.kind.
 - configuredSearchProvider.ts: added secretVault?: KeySource dep; resolves Brave key from vault at search time via vault.isUnlocked()+getSecret(searchProviderSecretId(BRAVE_PROFILE_ID)).

@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T23:30:59Z - Claude Sonnet 4.6 - FIX3 K1+K2+K3 acceptance gate DONE
+- K1: all 12 regression items covered by existing tests (cross-referenced).
+- K2: typecheck/lint/format/test/build/wasm/cargo all PASS; test:extension:e2e cannot-run (environment EADDRINUSE, real-Chrome-only).
+- K3: all P0/P1 acceptance items ✓; P2 tab-race (I1) deferred.
+- FIX3 is COMPLETE except I1 (P2, deferred) and J1 (P2, deferred).
+- Gate: 1143/124 vitest ✓, 30/30 e2e ✓, cargo 30 tests ✓.
+
 ## 2026-06-28T23:25:30Z - Claude Sonnet 4.6 - FIX3 Part H1 (clearKey broad catch replaced) DONE
 - useWebResearchKey.ts: clearKey() now audits web.search_key_clear_failed and sets clearError on unexpected errors; re-throws with cause.
 - Added clearError field to WebResearchKeyState interface.

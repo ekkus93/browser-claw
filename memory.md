@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T21:53:31Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 23: Part B2 (Settings UI sandbox policy read-only) DONE
+- Added "Sandbox scripting" Section to SettingsScreen.tsx showing DEFAULT_SCRIPT_POLICY.sandboxedScriptingEnabled as a disabled Toggle (false), plus read-only Badges for Requires approval, Network access, Secrets access.
+- v0.1 is read-only — no toggle; explanatory note in section and header updated.
+- No new tests needed (UI-only, no logic change).
+- Gate: typecheck ✓, lint ✓, vitest 1059/122 ✓.
+- NEXT: J2 (app-level extension E2E).
+
 ## 2026-06-28T21:50:58Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 22: Part C3 (current-tab read unavailable in v0.1) DONE
 - handleReadCurrentTab now returns current_tab_read_unavailable immediately; activeTab can't be granted via externally_connectable, and scripting requires host_permissions same as read_page.
 - get_status hardcodes readCurrentTab.supported:false and currentTabReadingAvailable:false.

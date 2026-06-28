@@ -223,13 +223,14 @@ export async function handleSandboxScriptProposal(
 
 ## Phase B2 — Make v0.1 sandbox policy explicit in Settings/UI
 
-- [ ] P1 Add or update Settings UI to show sandbox policy:
-  - [ ] enabled/disabled;
-  - [ ] approval required;
-  - [ ] network denied by default;
-  - [ ] secrets denied.
-- [ ] P1 If user can toggle sandboxing, persist the setting and audit changes.
-- [ ] P1 If user cannot toggle sandboxing yet, show read-only status honestly.
+<!-- evidence: SettingsScreen.tsx — added "Sandbox scripting" Section showing DEFAULT_SCRIPT_POLICY.sandboxedScriptingEnabled (false) as a disabled Toggle, plus read-only Badges for "Requires approval: Always", "Network access: Denied by default", "Secrets access: Denied"; header note updated; no toggle (user cannot change it in v0.1); typecheck/lint/1059 vitest pass -->
+- [x] P1 Add or update Settings UI to show sandbox policy:
+  - [x] enabled/disabled; <!-- disabled Toggle showing DEFAULT_SCRIPT_POLICY.sandboxedScriptingEnabled = false -->
+  - [x] approval required; <!-- Badge: "Always" -->
+  - [x] network denied by default; <!-- Badge: "Denied by default" -->
+  - [x] secrets denied. <!-- Badge: "Denied" -->
+- [x] P1 If user can toggle sandboxing, persist the setting and audit changes. <!-- N/A: cannot toggle in v0.1 -->
+- [x] P1 If user cannot toggle sandboxing yet, show read-only status honestly. <!-- read-only section with explanatory note -->
 
 ---
 

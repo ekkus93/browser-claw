@@ -45,6 +45,7 @@ import { WebResearchStatus } from './settings/WebResearchStatus.tsx';
 import { useWebResearchKey } from './settings/useWebResearchKey.ts';
 import { createChromeExtensionTransport } from '../extension/chromeTransport.ts';
 import { newRequestId } from '../extension/protocol.ts';
+import { DEFAULT_SCRIPT_POLICY } from '../script/scriptPolicy.ts';
 
 // No-op for placeholder controls that are shown disabled until their behavior
 // is implemented (Phase 10 honesty: a control either works or is visibly
@@ -304,8 +305,9 @@ export default function SettingsScreen() {
             <p className="mt-1 text-xs text-muted-subtle">
               Disabled controls are placeholders for upcoming preferences and
               don&apos;t take effect yet. Theme, default provider, fallback
-              provider, approval policy, lock timeout, and &ldquo;Load runtime
-              from CDN&rdquo; are active.
+              provider, approval policy, lock timeout, &ldquo;Load runtime from
+              CDN&rdquo;, and verbose runtime audit are active. Sandbox
+              scripting policy is shown read-only (disabled in v0.1).
             </p>
           </header>
 
@@ -491,6 +493,36 @@ export default function SettingsScreen() {
                     ariaLabel="Auto-update skills"
                   />
                 }
+              />
+            </Section>
+
+            <Section title="Sandbox scripting">
+              <p className="text-xs text-muted">
+                Sandbox scripting (v0.2) is disabled in v0.1. The policy below
+                is read-only; toggling requires a future advanced-mode setting.
+              </p>
+              <Field
+                label="Sandbox scripting enabled"
+                control={
+                  <Toggle
+                    checked={DEFAULT_SCRIPT_POLICY.sandboxedScriptingEnabled}
+                    onCheckedChange={noop}
+                    disabled
+                    ariaLabel="Sandbox scripting enabled"
+                  />
+                }
+              />
+              <Field
+                label="Requires approval"
+                control={<Badge tone="neutral">Always</Badge>}
+              />
+              <Field
+                label="Network access"
+                control={<Badge tone="neutral">Denied by default</Badge>}
+              />
+              <Field
+                label="Secrets access"
+                control={<Badge tone="neutral">Denied</Badge>}
               />
             </Section>
 

@@ -1799,3 +1799,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
   - Tests: llmRunner.test.ts +4, referenceRuntime.test.ts +4. vitest: 866→874, all pass.
 - C3 ticked in FIX1_TODO.md. Pushed.
 - Next: FIX1-D1 (sandbox capability descriptors).
+
+## 2026-06-28T10:09:02Z - Claude Sonnet 4.6 - Ralph FIX2 Iteration 1: A1 (key entry UI) + A2 (live wiring) DONE
+- NEW `src/screens/settings/useWebResearchKey.ts`: hook exposing keyConfigured/vaultLocked/sessionOnly/keyInput+setKeyInput/saveKey/clearKey/saving/saveError. saveKey uses putEncryptedSecret (passphrase vault) or setSessionSecret (session-only); clears input on success. Raw key NEVER touches Redux/Dexie plaintext/audit events.
+- SettingsScreen.tsx: replaced hardcoded `<WebResearchStatus configured={false}/>` with live key entry form (password input, Save/Clear buttons, vault-locked warning, sessionOnly warning, inline error) + useMemo extensionProbe (createChromeExtensionTransport via VITE_CHROME_EXTENSION_ID) + WebResearchStatus wired to webKey.keyConfigured and extensionProbe.
+- FIX: useCallback with conditional `fn | undefined` fails strict TS (exactOptionalPropertyTypes) — switched to useMemo returning fn|undefined; pass to WebResearchStatus via `{...(probe !== undefined ? {probe} : {})}`.
+- FIX: SettingsScreen.test.tsx store was missing secrets/audit reducers (TypeError: Cannot read properties of undefined 'vaultLocked') — added secretsReducer + auditReducer to the renderSettings() store.
+- NEW `src/screens/settings/useWebResearchKey.test.ts`: 11 tests. Key never in Redux JSON; secretMetadataUpserted carries no value/key/secret/token fields; audit events contain no raw key; after clear key absent from vault and Redux; keyConfigured state logic; vaultLocked default true.
+- vitest: 934→945 (116 files). Gate ALL GREEN: typecheck, eslint, prettier, 945/116, build not run this commit (unchanged WASM/Rust).
+- FIX2 REMAINING: A1 "Test connection" inline button (deferred — WebResearchStatus probe covers extension check), A1/A2 researchPaths from audit events (deferred), B1 (read_pages batch handler in service-worker.js), C1 (WebResearchApprovalCard + ChatScreen wiring), D1 (extractPageContent unit tests), E1-E3 (final gate + security checklist).

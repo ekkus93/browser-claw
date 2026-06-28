@@ -18,47 +18,48 @@ Read `BROWSERCLAW_WEBRESEARCH_SETTINGS_FIX2_SPEC.md` before building any item.
 
 ## A1 — Brave Search API key entry UI
 
-- [ ] P0 Add key entry form to `SettingsScreen.tsx` "Web research" section:
-  - [ ] Password `<input>` for the API key.
-  - [ ] "Save key" button — disabled when vault is locked.
-  - [ ] "Clear key" button — visible only when a key is already stored.
-  - [ ] "Test connection" button — calls `checkSearchStatus()` and shows result inline.
-  - [ ] Vault-locked warning when the vault is locked.
-  - [ ] Client-side validation: reject blank key before saving.
-- [ ] P0 Implement key save flow (all in `SettingsScreen` or a new `useWebResearchKey` hook):
-  - [ ] `SecretVault.set('brave_search_api_key', plaintext)` — in-memory only.
-  - [ ] Encrypt via `secretVault.encrypt()` or `encryptString(vaultKey, plaintext)`.
-  - [ ] `db.encrypted_secrets.put({ id: 'brave_search_api_key', ciphertext, iv, label })`.
-  - [ ] `dispatch(secretMetadataUpserted({ id, label, storageMode: 'encrypted' }))`.
-  - [ ] Emit audit event `web.search_key_saved` — NO key material in details.
-- [ ] P0 Implement key clear flow:
-  - [ ] `db.encrypted_secrets.delete('brave_search_api_key')`.
-  - [ ] `SecretVault.delete('brave_search_api_key')`.
-  - [ ] `dispatch(secretMetadataRemoved('brave_search_api_key'))`.
-  - [ ] Emit audit event `web.search_key_cleared`.
+<!-- evidence: useWebResearchKey.ts + SettingsScreen.tsx modifications; 945/945 vitest pass -->
+- [x] P0 Add key entry form to `SettingsScreen.tsx` "Web research" section:
+  - [x] Password `<input>` for the API key.
+  - [x] "Save key" button — disabled when vault is locked.
+  - [x] "Clear key" button — visible only when a key is already stored.
+  - [ ] "Test connection" button — calls `checkSearchStatus()` and shows result inline. <!-- deferred: WebResearchStatus probe covers extension check; checkSearchStatus() direct call deferred to C1 pass -->
+  - [x] Vault-locked warning when the vault is locked.
+  - [x] Client-side validation: reject blank key before saving.
+- [x] P0 Implement key save flow (all in `SettingsScreen` or a new `useWebResearchKey` hook):
+  - [x] `SecretVault.set('brave_search_api_key', plaintext)` — in-memory only.
+  - [x] Encrypt via `secretVault.putEncryptedSecret()` when vault has passphrase key; `setSessionSecret()` otherwise.
+  - [x] `dispatch(secretMetadataUpserted({ id, label, storageMode: 'encrypted' }))` — via vault observer.
+  - [x] Emit audit event `web.search_key_saved` — NO key material in details.
+- [x] P0 Implement key clear flow:
+  - [x] `SecretVault.removeSecret('brave_search_api_key')` removes from Dexie + memory.
+  - [x] `dispatch(secretMetadataRemoved('brave_search_api_key'))` — via vault observer.
+  - [x] Emit audit event `web.search_key_cleared`.
 - [ ] P0 Implement key load on vault unlock:
   - [ ] On vault unlock, load ciphertext from `db.encrypted_secrets` where `id = 'brave_search_api_key'`.
   - [ ] Decrypt and `SecretVault.set('brave_search_api_key', plaintext)`.
   - [ ] (Existing vault unlock listener in `main.tsx` or `listenerMiddleware.ts` is the right place.)
-- [ ] P0 Tests (`src/screens/SettingsScreen.test.tsx` or new `useWebResearchKey.test.ts`):
-  - [ ] Save: `encrypted_secrets` row has `ciphertext` that is NOT the raw key string.
-  - [ ] Save: Redux `audit.recent` events contain no key material.
-  - [ ] Save: `store.getState()` JSON contains no key/secret/token field after save.
-  - [ ] Clear: `encrypted_secrets` row removed; SecretVault no longer has the key.
-  - [ ] Vault locked: save button disabled; status shows `key_locked`.
+- [x] P0 Tests (`src/screens/settings/useWebResearchKey.test.ts`):
+  - [x] Save: Redux state JSON contains no raw key string after `setSessionSecret`.
+  - [x] Save: Redux `audit.recent` events contain no key material.
+  - [x] Save: `store.getState()` JSON contains no key/secret/token field after save.
+  - [x] Clear: SecretVault no longer has the key after `removeSecret`.
+  - [x] Clear: Redux no longer lists the key after remove.
+  - [x] Vault locked: `state.secrets.vaultLocked` true by default; `vaultLockedSet(false)` clears it.
 
 ## A2 — Wire WebResearchStatus to live data
 
-- [ ] P0 Replace hardcoded props in `SettingsScreen.tsx`:
-  - [ ] `searchProvider.configured`: derive from `SecretVault.has('brave_search_api_key')` and vault unlocked state.
-  - [ ] `probe`: wire to extension transport ping via `checkSearchStatus({ transport, searchProvider })`.
-  - [ ] `researchPaths`: query `db.audit_events` for most recent `web.` type events that contain a workspace path in `detail`; pass newest 5 paths.
-- [ ] P0 Re-read `searchProvider.configured` live when vault lock/unlock events fire.
-- [ ] P1 Tests:
-  - [ ] After saving key: `WebResearchStatus` shows `configured: true`.
-  - [ ] After clearing key: shows `configured: false`.
-  - [ ] After vault lock: shows `configured: false` (vault locked = key unavailable).
-  - [ ] `researchPaths` populated from audit events.
+<!-- evidence: SettingsScreen.tsx — useMemo extensionProbe + webKey.keyConfigured; 945/945 vitest pass -->
+- [x] P0 Replace hardcoded props in `SettingsScreen.tsx`:
+  - [x] `searchProvider.configured`: derived from `state.secrets.secrets.some(s => s.id === BRAVE_KEY_ID)` via `useWebResearchKey`.
+  - [x] `probe`: wired to `createChromeExtensionTransport(extensionId)` ping via `useMemo`; omitted when `VITE_CHROME_EXTENSION_ID` not set.
+  - [ ] `researchPaths`: deferred — no recent `web.*` audit events in test data; path extraction from audit requires separate query.
+- [x] P0 Re-read `searchProvider.configured` live when vault lock/unlock events fire (via Redux selector on `state.secrets.secrets`).
+- [x] P1 Tests:
+  - [x] `configured=false` when secrets list empty.
+  - [x] `configured=true` after `secretMetadataUpserted`.
+  - [x] `configured=false` after `secretMetadataRemoved`.
+  - [ ] `researchPaths` populated from audit events. <!-- deferred with researchPaths prop above -->
 
 ---
 

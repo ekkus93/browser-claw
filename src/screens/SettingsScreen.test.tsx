@@ -10,6 +10,8 @@ import runtimeReducer, {
   runtimeReady,
   runtimeLoaded,
 } from '../store/slices/runtimeSlice.ts';
+import secretsReducer from '../store/slices/secretsSlice.ts';
+import auditReducer from '../store/slices/auditSlice.ts';
 import SettingsScreen from './SettingsScreen.tsx';
 import { db } from '../db/db.ts';
 import {
@@ -36,6 +38,8 @@ function renderSettings() {
       providers: providersReducer,
       models: modelsReducer,
       runtime: runtimeReducer,
+      secrets: secretsReducer,
+      audit: auditReducer,
     },
   });
   store.dispatch(runtimeReady());

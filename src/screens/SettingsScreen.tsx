@@ -1,4 +1,10 @@
-import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from 'react';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';
 import { runtimeReset } from '../store/slices/runtimeSlice.ts';
 import { db } from '../db/db.ts';
@@ -36,6 +42,9 @@ import { Input } from '../components/ui/Input.tsx';
 import { Button } from '../components/ui/Button.tsx';
 import { Badge } from '../components/ui/Badge.tsx';
 import { WebResearchStatus } from './settings/WebResearchStatus.tsx';
+import { useWebResearchKey } from './settings/useWebResearchKey.ts';
+import { createChromeExtensionTransport } from '../extension/chromeTransport.ts';
+import { newRequestId } from '../extension/protocol.ts';
 
 // No-op for placeholder controls that are shown disabled until their behavior
 // is implemented (Phase 10 honesty: a control either works or is visibly
@@ -251,6 +260,37 @@ export default function SettingsScreen() {
       risk: value ? 'medium' : 'info',
     });
   };
+
+  // Web research key management — Brave Search API key stored via SecretVault.
+  const webKey = useWebResearchKey();
+
+  // Extension availability probe for the Web Research section. Uses the same
+  // VITE_CHROME_EXTENSION_ID as main.tsx. When the env var is absent the probe
+  // is undefined and WebResearchStatus omits the Check button.
+  const extensionId =
+    (import.meta.env.VITE_CHROME_EXTENSION_ID as string | undefined) ?? '';
+  const extensionProbe = useMemo(
+    () =>
+      extensionId
+        ? async (): Promise<{ available: boolean; version?: string }> => {
+            const transport = createChromeExtensionTransport(extensionId);
+            try {
+              const raw = await transport.send({
+                type: 'get_status',
+                requestId: newRequestId(),
+              });
+              const ok =
+                typeof raw === 'object' &&
+                raw !== null &&
+                (raw as Record<string, unknown>)['ok'] === true;
+              return { available: ok };
+            } catch {
+              return { available: false };
+            }
+          }
+        : undefined,
+    [extensionId],
+  );
 
   return (
     <div className="overflow-y-auto">
@@ -496,9 +536,78 @@ export default function SettingsScreen() {
             </Section>
 
             <Section title="Web research">
-              <WebResearchStatus
-                searchProvider={{ name: 'Brave Search', configured: false }}
-              />
+              <div className="flex flex-col gap-3">
+                {webKey.vaultLocked ? (
+                  <p className="text-xs text-muted">
+                    Vault is locked. Unlock it in the Security section to save
+                    or clear the Brave Search API key.
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex flex-col gap-2">
+                      <label
+                        htmlFor="brave-api-key"
+                        className="text-xs font-medium text-text"
+                      >
+                        Brave Search API key
+                        {webKey.sessionOnly && (
+                          <span className="ml-2 text-muted">
+                            (session only — vault has no passphrase)
+                          </span>
+                        )}
+                      </label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="brave-api-key"
+                          type="password"
+                          placeholder="BSA…"
+                          value={webKey.keyInput}
+                          onChange={(e) => {
+                            webKey.setKeyInput(e.target.value);
+                          }}
+                          className="flex-1 font-mono text-sm"
+                          aria-label="Brave Search API key"
+                        />
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => void webKey.saveKey()}
+                          disabled={webKey.saving || !webKey.keyInput.trim()}
+                        >
+                          {webKey.saving ? 'Saving…' : 'Save key'}
+                        </Button>
+                        {webKey.keyConfigured && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => void webKey.clearKey()}
+                          >
+                            Clear
+                          </Button>
+                        )}
+                      </div>
+                      {webKey.saveError && (
+                        <p
+                          className="text-xs text-danger"
+                          role="alert"
+                          aria-live="polite"
+                        >
+                          {webKey.saveError}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+                <WebResearchStatus
+                  searchProvider={{
+                    name: 'Brave Search',
+                    configured: webKey.keyConfigured,
+                  }}
+                  {...(extensionProbe !== undefined
+                    ? { probe: extensionProbe }
+                    : {})}
+                />
+              </div>
             </Section>
           </div>
         </main>

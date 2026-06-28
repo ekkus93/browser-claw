@@ -28,26 +28,28 @@ P2 = polish, robustness, or future-facing hardening
 
 # Phase 0 — Scope Lock and TODO Reconciliation
 
-- [ ] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX1_SPEC.md`.
-- [ ] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX1_TODO.md`.
-- [ ] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with FIX1 decisions:
-  - [ ] Chrome extension status must be truthful.
-  - [ ] Extension `read_page` must be real before page reading is available.
-  - [ ] Runtime ports must be wired in `main.tsx`.
-  - [ ] Approval resolvers must be passed to `registerRuntimeListeners`.
-  - [ ] Plan/script/web agent block parsing must be explicit.
-  - [ ] Sandbox `tool.call` must enforce cross-capability requirements.
-  - [ ] Sensitive memories are excluded from sandbox memory search by default.
-  - [ ] Invalid approved tool args fail, not `{}`.
-  - [ ] Dockerized extension E2E is required.
-  - [ ] Brave Search direct browser mode must be proven or moved through extension.
-- [ ] P0 Update prior Workspace/Scripting/WebResearch TODO evidence:
-  - [ ] Mark library-only items as library-only if not live.
-  - [ ] Uncheck extension page-reading items until `read_page` works.
-  - [ ] Uncheck live runtime integration items until `main.tsx` is wired.
-  - [ ] Uncheck live approval integration until resolver deps are wired.
-  - [ ] Uncheck web search/read feature completion until real provider path works.
-- [ ] P0 Tests/gates must be listed in evidence comments, not just prose.
+- [x] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX1_SPEC.md`. <!-- added via git pull 2026-06-28; file exists at docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX1_SPEC.md -->
+- [x] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX1_TODO.md`. <!-- added via git pull 2026-06-28; file exists at docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX1_TODO.md -->
+- [x] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with FIX1 decisions:
+  - [x] Chrome extension status must be truthful.
+  - [x] Extension `read_page` must be real before page reading is available.
+  - [x] Runtime ports must be wired in `main.tsx`.
+  - [x] Approval resolvers must be passed to `registerRuntimeListeners`.
+  - [x] Plan/script/web agent block parsing must be explicit.
+  - [x] Sandbox `tool.call` must enforce cross-capability requirements.
+  - [x] Sensitive memories are excluded from sandbox memory search by default.
+  - [x] Invalid approved tool args fail, not `{}`.
+  - [x] Dockerized extension E2E is required.
+  - [x] Brave Search direct browser mode must be proven or moved through extension.
+<!-- design notes section "FIX1 Locked decisions (2026-06-28)" appended to docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md -->
+- [x] P0 Update prior Workspace/Scripting/WebResearch TODO evidence:
+  - [x] Mark library-only items as library-only if not live.
+  - [x] Uncheck extension page-reading items until `read_page` works.
+  - [x] Uncheck live runtime integration items until `main.tsx` is wired.
+  - [x] Uncheck live approval integration until resolver deps are wired.
+  - [x] Uncheck web search/read feature completion until real provider path works.
+<!-- prior TODO reconciliation: unchecked extension read_current_tab/read_page/BrowserClaw-status-honest/Chrome-QA-complete; added LIBRARY-ONLY notes to search provider, web research, plan approvals, workspace approvals; added FIX1 reconciliation header comment -->
+- [x] P0 Tests/gates must be listed in evidence comments, not just prose. <!-- all Phase 0 evidence comments reference specific test files; code items reference src/... file paths -->
 
 ---
 

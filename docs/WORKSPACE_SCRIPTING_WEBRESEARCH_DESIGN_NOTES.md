@@ -708,3 +708,47 @@ and TODO are. Newest decisions at the bottom of each section.
   no key in error message. vitest 815->830.
 - Gate green (single-threaded): typecheck, eslint --max-warnings 0, prettier,
   vitest 830/111, e2e 30. No Rust.
+
+## FIX1 Locked decisions (2026-06-28)
+
+These decisions apply to the FIX1 correction and integration pass. See
+`docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX1_SPEC.md` and
+`...FIX1_TODO.md` for the full scope.
+
+- **Chrome extension status must be truthful.** `service-worker.js`
+  `get_status` currently returns `pageReadingAvailable: true` but `read_page`
+  is not implemented (the `default:` branch returns `unsupported`). FIX1-A1
+  must fix this before any extension capability can be marked complete.
+- **Extension `read_page` must exist before page-reading items are live.**
+  BrowserClaw-side protocol wrappers (`pageReaderProvider.ts`) exist, but the
+  service worker only handles `ping` / `get_status`. FIX1-A3 implements real
+  `read_page`; FIX1-A4 implements `read_current_tab`.
+- **Runtime ports must be wired in `main.tsx`.** The plan/workspace/
+  sandboxScript/web/extension handlers are built and isolated-tested (F2–F3),
+  but not live. FIX1-B1 assembles them into the real store at boot.
+- **Approval resolvers must be passed to `registerRuntimeListeners`.** FIX1-B2
+  wires resolver deps (resolvePlanApproval, resolveSandboxApproval, …) so
+  approvals actually resolve runtime effects in the live app.
+- **Plan/script/web agent block parsing must be explicit.** The LLM runner
+  handles tool blocks but not `browserclaw-plan` / `browserclaw-script` /
+  `browserclaw-web` fenced blocks. FIX1-C2/C3 implement the unified parser
+  and wire it after each provider response.
+- **Sandbox `tool.call` must enforce cross-capability requirements.** A sandbox
+  with `tools: ['Page Reader']` but no `webRead`/`webSearch` cap can currently
+  reach network behavior through the generic tool path. FIX1-D1/D2 add
+  per-tool capability descriptors and enforce them before execution.
+- **Sensitive memories are excluded from sandbox `memory.search` by default.**
+  FIX1-E1 adds a `sensitivity !== 'sensitive'` filter; a separate high-risk
+  `memorySensitiveRead` capability is P2 and not implemented in v0.1.
+- **Invalid approved tool args fail, not `{}`.** `parseArgs()` must become
+  `parseApprovedArgsOrThrow()`: invalid JSON or non-object rejects with
+  `tool.args_parse_failed` audit; the tool is not run. FIX1-F1 implements this.
+- **Dockerized extension E2E is required.** FIX1-K1/K2 add a Playwright
+  persistent-context lane (`pnpm run test:extension:e2e`) that proves the
+  extension loads, connects, reads a fixture page, and blocks private URLs.
+  Manual QA covers store packaging and host-permission prompts only.
+- **Brave Search direct browser mode must be proven or moved through extension.**
+  `braveSearch.ts` is a working `SearchProvider` library adapter, but it has
+  not been tested from a real browser origin (CORS may block it). FIX1-G1/G2
+  verify behavior; if CORS is a problem, the extension-backed search path
+  becomes the required default.

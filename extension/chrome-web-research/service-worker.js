@@ -2,9 +2,14 @@
  * BrowserClaw Web Research Companion — MV3 background service worker.
  *
  * Accepts messages ONLY from the allowed BrowserClaw origins (enforced by the
- * manifest's `externally_connectable` plus a defensive sender check). v0.1
- * handles `ping` / `get_status`; `read_page` / `read_current_tab` land in E7.
- * It is read-only and never reads cookies, fills forms, or runs page scripts.
+ * manifest's `externally_connectable` plus a defensive sender check). Handles:
+ *   ping / get_status  (v0.1 — implemented)
+ *   read_page          (FIX1-A3 — stub: undefined)
+ *   read_current_tab   (FIX1-A4 — stub: undefined)
+ *
+ * get_status reports capabilities truthfully: pageReadingAvailable is false
+ * until read_page is wired into the handlers object. It is read-only and never
+ * reads cookies, fills forms, or runs page scripts.
  *
  * Protocol mirrors src/extension/protocol.ts (the BrowserClaw-side copy).
  */
@@ -21,6 +26,49 @@ function isAllowedSender(sender) {
   return ALLOWED_ORIGINS.some((origin) => url.startsWith(origin + '/'));
 }
 
+function handlePing(message) {
+  return { ok: true, requestId: message.requestId, type: 'pong' };
+}
+
+function handleGetStatus(message) {
+  const readPage = typeof handlers.read_page === 'function';
+  const readCurrentTab = typeof handlers.read_current_tab === 'function';
+  const requestHostPermission =
+    typeof handlers.request_host_permission === 'function';
+  return {
+    ok: true,
+    requestId: message.requestId,
+    protocolVersion: PROTOCOL_VERSION,
+    extensionVersion: EXTENSION_VERSION,
+    capabilities: {
+      ping: true,
+      getStatus: true,
+      readPage,
+      readCurrentTab,
+      requestHostPermission,
+    },
+    pageReadingAvailable: readPage,
+    currentTabReadingAvailable: readCurrentTab,
+  };
+}
+
+/**
+ * Handler registry. Add entries here when implementing new capabilities.
+ * get_status inspects this object to report truthful capability flags:
+ *   pageReadingAvailable        = typeof handlers.read_page === 'function'
+ *   currentTabReadingAvailable  = typeof handlers.read_current_tab === 'function'
+ */
+const handlers = {
+  ping: handlePing,
+  get_status: handleGetStatus,
+  // FIX1-A3: read_page will be added here when implemented.
+  read_page: undefined,
+  // FIX1-A4: read_current_tab will be added here when implemented.
+  read_current_tab: undefined,
+  // FIX1-A3: request_host_permission will be added here when implemented.
+  request_host_permission: undefined,
+};
+
 function handle(message) {
   if (!message || typeof message.type !== 'string') {
     return {
@@ -28,27 +76,18 @@ function handle(message) {
       error: { kind: 'internal_error', message: 'bad message' },
     };
   }
-  switch (message.type) {
-    case 'ping':
-      return { ok: true, requestId: message.requestId, type: 'pong' };
-    case 'get_status':
-      return {
-        ok: true,
-        requestId: message.requestId,
-        protocolVersion: PROTOCOL_VERSION,
-        version: EXTENSION_VERSION,
-        pageReadingAvailable: true,
-      };
-    default:
-      return {
-        ok: false,
-        requestId: message.requestId,
-        error: {
-          kind: 'unsupported',
-          message: `unknown message type: ${message.type}`,
-        },
-      };
+  const handler = handlers[message.type];
+  if (typeof handler !== 'function') {
+    return {
+      ok: false,
+      requestId: message.requestId,
+      error: {
+        kind: 'unsupported',
+        message: `unknown message type: ${message.type}`,
+      },
+    };
   }
+  return handler(message);
 }
 
 // This file runs in the extension's service-worker context, where `chrome` is a
@@ -70,4 +109,4 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessageExternal) {
   );
 }
 
-export { handle, isAllowedSender, ALLOWED_ORIGINS, PROTOCOL_VERSION };
+export { handle, handleGetStatus, handlers, isAllowedSender, ALLOWED_ORIGINS, PROTOCOL_VERSION, EXTENSION_VERSION };

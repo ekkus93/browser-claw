@@ -57,16 +57,18 @@ P2 = polish, robustness, or future-facing hardening
 
 ## A1 — Make extension status truthful
 
-- [ ] P0 Update extension `get_status` so it never claims unavailable features.
-- [ ] P0 If `read_page` is not implemented, return `pageReadingAvailable: false`.
-- [ ] P0 If `read_current_tab` is not implemented, return `currentTabReadingAvailable: false`.
-- [ ] P0 Add a version/capabilities object to status.
-- [ ] P0 BrowserClaw UI must treat missing/false capability as unavailable.
-- [ ] P0 Tests:
-  - [ ] extension status false when handlers absent;
-  - [ ] extension status true only when handlers registered;
-  - [ ] UI shows unavailable state when page reading false;
-  - [ ] unsupported request returns explicit error.
+<!-- FIX1-A1 done 2026-06-28. extension/chrome-web-research/service-worker.js: converted to handlers-object pattern; handleGetStatus() inspects typeof handlers.read_page/read_current_tab === 'function' → pageReadingAvailable/currentTabReadingAvailable (both false until A3/A4 add the handlers); added capabilities object with per-feature booleans; added extensionVersion/protocolVersion. BrowserClaw side: pageReaderProvider.ts isAvailable() now calls get_status (not ping) and returns true only when raw.pageReadingAvailable === true. Tests: pageReaderProvider.test.ts +4 (A1 labels; updated existing ping test to get_status); WebResearchStatus.test.tsx +1 (A1 unavailable probe). vitest 835→839. -->
+
+- [x] P0 Update extension `get_status` so it never claims unavailable features.
+- [x] P0 If `read_page` is not implemented, return `pageReadingAvailable: false`.
+- [x] P0 If `read_current_tab` is not implemented, return `currentTabReadingAvailable: false`.
+- [x] P0 Add a version/capabilities object to status.
+- [x] P0 BrowserClaw UI must treat missing/false capability as unavailable.
+- [x] P0 Tests:
+  - [x] extension status false when handlers absent; <!-- pageReaderProvider.test.ts 'A1: reports unavailable when get_status returns pageReadingAvailable: false' -->
+  - [x] extension status true only when handlers registered; <!-- pageReaderProvider.test.ts 'A1: reports available only when get_status returns pageReadingAvailable: true' -->
+  - [x] UI shows unavailable state when page reading false; <!-- WebResearchStatus.test.tsx 'A1: shows unavailable state when probe reports page reading unavailable' -->
+  - [x] unsupported request returns explicit error. <!-- pageReaderProvider.test.ts 'A1: unsupported request returns ok:false error result' -->
 
 Suggested service-worker shape:
 

@@ -81,4 +81,23 @@ describe('WebResearchStatus (G3)', () => {
       screen.queryByRole('button', { name: 'Check' }),
     ).not.toBeInTheDocument();
   });
+
+  // FIX1-A1: when probe returns available:false (because get_status returned
+  // pageReadingAvailable:false), the UI must show "Not detected" not "Connected".
+  it('A1: shows unavailable state when probe reports page reading unavailable', async () => {
+    const user = userEvent.setup();
+    const probe = vi.fn(() => Promise.resolve({ available: false }));
+    render(
+      <WebResearchStatus
+        searchProvider={{ name: 'Brave Search', configured: true }}
+        probe={probe}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+    expect(probe).toHaveBeenCalled();
+    expect(await screen.findByText('Not detected')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Install the companion extension/i),
+    ).toBeInTheDocument();
+  });
 });

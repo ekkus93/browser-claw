@@ -9,11 +9,21 @@ function transport(
 }
 
 describe('createExtensionPageReader (E9)', () => {
-  it('reports availability from a ping/pong', async () => {
+  it('reports availability from get_status with pageReadingAvailable:true', async () => {
     const audits: string[] = [];
     const reader = createExtensionPageReader({
       transport: transport((m) =>
-        m.type === 'ping' ? { ok: true, requestId: 'r', type: 'pong' } : {},
+        m.type === 'get_status'
+          ? {
+              ok: true,
+              requestId: 'r',
+              protocolVersion: 1,
+              extensionVersion: '0.1.0',
+              capabilities: { ping: true, getStatus: true, readPage: true },
+              pageReadingAvailable: true,
+              currentTabReadingAvailable: true,
+            }
+          : {},
       ),
       onAudit: (e) => audits.push(e),
     });
@@ -26,6 +36,63 @@ describe('createExtensionPageReader (E9)', () => {
       transport: { send: () => Promise.reject(new Error('no extension')) },
     });
     expect(await reader.isAvailable()).toBe(false);
+  });
+
+  // FIX1-A1: isAvailable() now calls get_status and checks pageReadingAvailable.
+  it('A1: reports unavailable when get_status returns pageReadingAvailable: false', async () => {
+    const audits: string[] = [];
+    const reader = createExtensionPageReader({
+      transport: transport((m) =>
+        m.type === 'get_status'
+          ? {
+              ok: true,
+              requestId: 'r',
+              protocolVersion: 1,
+              extensionVersion: '0.1.0',
+              capabilities: { ping: true, getStatus: true, readPage: false },
+              pageReadingAvailable: false,
+              currentTabReadingAvailable: false,
+            }
+          : {},
+      ),
+      onAudit: (e) => audits.push(e),
+    });
+    expect(await reader.isAvailable()).toBe(false);
+    expect(audits).toContain('extension.missing');
+  });
+
+  it('A1: reports available only when get_status returns pageReadingAvailable: true', async () => {
+    const audits: string[] = [];
+    const reader = createExtensionPageReader({
+      transport: transport((m) =>
+        m.type === 'get_status'
+          ? {
+              ok: true,
+              requestId: 'r',
+              protocolVersion: 1,
+              extensionVersion: '0.2.0',
+              capabilities: { ping: true, getStatus: true, readPage: true },
+              pageReadingAvailable: true,
+              currentTabReadingAvailable: true,
+            }
+          : {},
+      ),
+      onAudit: (e) => audits.push(e),
+    });
+    expect(await reader.isAvailable()).toBe(true);
+    expect(audits).toContain('extension.connected');
+  });
+
+  it('A1: unsupported request returns ok:false error result', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: false,
+        requestId: 'r',
+        error: { kind: 'unsupported', message: 'unknown message type: read_page' },
+      })),
+    });
+    const result = await reader.readPage({ url: 'https://example.com/' });
+    expect(result).toMatchObject({ ok: false, error: { kind: 'internal_error' } });
   });
 
   it('maps a successful read into a PageReadResult', async () => {

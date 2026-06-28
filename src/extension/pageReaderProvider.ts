@@ -135,10 +135,13 @@ export function createExtensionPageReader(
     async isAvailable(): Promise<boolean> {
       try {
         const raw = await deps.transport.send({
-          type: 'ping',
+          type: 'get_status',
           requestId: newRequestId(),
         });
-        const available = isExtensionResponse(raw) && raw.ok === true;
+        const available =
+          isExtensionResponse(raw) &&
+          raw.ok === true &&
+          raw['pageReadingAvailable'] === true;
         deps.onAudit?.(available ? 'extension.connected' : 'extension.missing');
         return available;
       } catch {

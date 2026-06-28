@@ -1873,3 +1873,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Added @types/node as devDependency (needed for node:fs/node:path/node:url type declarations in test file).
 - Gate: typecheck ✓, lint ✓, vitest 986/120 ✓ (6 new tests, 1 new file).
 - NEXT: Part B1 — enforce ScriptExecutionPolicy before queuing sandbox approvals (P0).
+
+## 2026-06-28T19:56:09Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 5: Part B1 (ScriptExecutionPolicy enforcement) DONE
+- Updated createSandboxScriptEffectHandler() in sandboxScriptRunner.ts: added optional loadScriptExecutionPolicy dep (defaults to DEFAULT_SCRIPT_POLICY).
+- Handler now checks !sandboxedScriptingEnabled before queueing approval → records audit script.sandbox_blocked_by_policy (risk:high, status:failure) + resolves effect as failure {kind:'script_policy_denied'}.
+- Also checks !advancedMode (when sandboxing enabled but advanced mode off) → same audit event + resolves as failure {kind:'advanced_mode_required'}.
+- DEFAULT_SCRIPT_POLICY has sandboxedScriptingEnabled:false, so v0.1 blocks all sandbox requests by default.
+- Added 5 B1 tests: disabled blocks, advanced-mode blocks, enabled queues, audit recorded, default (no policy fn) blocks.
+- Existing 2 F3 tests updated to pass ENABLED_POLICY so they still test the approval-queuing path.
+- Gate: typecheck ✓, lint ✓, vitest 990/120 ✓ (4 net new tests).
+- NEXT: Part B2 — Settings UI for sandbox policy (P1).

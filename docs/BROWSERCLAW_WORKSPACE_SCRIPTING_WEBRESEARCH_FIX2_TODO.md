@@ -145,25 +145,26 @@ fn effects_for_llm_result(&mut self, id: String, result: serde_json::Value) -> V
 
 ## Phase B1 — Enforce `ScriptExecutionPolicy` before queuing sandbox approvals
 
+<!-- evidence: sandboxScriptRunner.ts updated: added loadScriptExecutionPolicy dep (optional, defaults to DEFAULT_SCRIPT_POLICY); checks !sandboxedScriptingEnabled → audit script.sandbox_blocked_by_policy + resolve failure; checks !advancedMode → same; only queues approval when both gates pass. DEFAULT_SCRIPT_POLICY has sandboxedScriptingEnabled:false so v0.1 blocks by default. 5 new B1 tests (disabled blocks, advanced-mode blocks, audit recorded, default blocks, enabled queues); 990/120 vitest pass, lint+typecheck clean -->
 ### Problem
 
 The policy says sandboxed scripting can be disabled/gated, but the handler may queue proposals anyway.
 
-- [ ] P0 Update `createSandboxScriptEffectHandler()` to load/check policy.
-- [ ] P0 If sandboxing is disabled:
-  - [ ] do not queue approval;
-  - [ ] do not run script;
-  - [ ] audit `script.sandbox_blocked_by_policy`;
-  - [ ] resolve runtime effect as failure;
-  - [ ] show visible error.
-- [ ] P0 If advanced mode is required and disabled, same behavior.
-- [ ] P0 If v0.1 intentionally enables sandboxing, update `DEFAULT_SCRIPT_POLICY` and docs honestly.
-- [ ] P0 Tests:
-  - [ ] disabled policy blocks valid script request;
-  - [ ] advanced-mode-required policy blocks when advanced mode off;
-  - [ ] enabled policy queues approval;
-  - [ ] policy block is audited;
-  - [ ] policy block resolves runtime effect as failure.
+- [x] P0 Update `createSandboxScriptEffectHandler()` to load/check policy.
+- [x] P0 If sandboxing is disabled:
+  - [x] do not queue approval;
+  - [x] do not run script;
+  - [x] audit `script.sandbox_blocked_by_policy`;
+  - [x] resolve runtime effect as failure;
+  - [x] show visible error.
+- [x] P0 If advanced mode is required and disabled, same behavior.
+- [x] P0 If v0.1 intentionally enables sandboxing, update `DEFAULT_SCRIPT_POLICY` and docs honestly. <!-- DEFAULT_SCRIPT_POLICY keeps sandboxedScriptingEnabled:false for v0.1; no change needed -->
+- [x] P0 Tests:
+  - [x] disabled policy blocks valid script request;
+  - [x] advanced-mode-required policy blocks when advanced mode off;
+  - [x] enabled policy queues approval;
+  - [x] policy block is audited;
+  - [x] policy block resolves runtime effect as failure.
 
 ### Helpful TypeScript sketch
 

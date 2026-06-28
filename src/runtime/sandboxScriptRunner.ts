@@ -16,6 +16,11 @@ import {
   type ScriptRuntimeContext,
 } from '../script/scriptRuntime.ts';
 import { validateScriptRequest } from '../script/scriptRequest.ts';
+import {
+  DEFAULT_SCRIPT_POLICY,
+  type ScriptExecutionPolicy,
+} from '../script/scriptPolicy.ts';
+import { recordAudit } from '../audit/auditSink.ts';
 import type { Command, Effect } from './effectTypes.ts';
 
 type SandboxScriptEffect = Extract<Effect, { type: 'sandbox_script_proposal' }>;
@@ -24,14 +29,65 @@ export interface SandboxScriptEffectDeps {
   /** Sandbox capability/audit context (workspace fs, db, dispatch, web, tools). */
   ctx: ScriptRuntimeContext;
   submit: (command: Command) => Promise<void>;
+  /** Load the current script execution policy. Defaults to DEFAULT_SCRIPT_POLICY. */
+  loadScriptExecutionPolicy?: () => Promise<ScriptExecutionPolicy>;
 }
 
 export function createSandboxScriptEffectHandler(
   deps: SandboxScriptEffectDeps,
 ) {
   return async (effect: SandboxScriptEffect): Promise<void> => {
-    // proposeScript validates, audits sandbox_requested | sandbox_rejected, and
-    // builds the approval-card preview.
+    const policy = deps.loadScriptExecutionPolicy
+      ? await deps.loadScriptExecutionPolicy()
+      : DEFAULT_SCRIPT_POLICY;
+
+    if (!policy.sandboxedScriptingEnabled) {
+      void recordAudit(deps.ctx.db, deps.ctx.dispatch, {
+        type: 'script.sandbox_blocked_by_policy',
+        summary: 'Sandboxed scripting is disabled by policy.',
+        source: 'script',
+        risk: 'high',
+        status: 'failure',
+        effectId: effect.id,
+      });
+      await deps.submit({
+        type: 'resolve_effect',
+        id: effect.id,
+        result: {
+          ok: false,
+          error: {
+            kind: 'script_policy_denied',
+            message: 'Sandboxed scripting is disabled by policy.',
+          },
+        },
+      });
+      return;
+    }
+
+    if (!policy.advancedMode) {
+      void recordAudit(deps.ctx.db, deps.ctx.dispatch, {
+        type: 'script.sandbox_blocked_by_policy',
+        summary: 'Sandboxed scripting requires Advanced Mode.',
+        source: 'script',
+        risk: 'high',
+        status: 'failure',
+        effectId: effect.id,
+      });
+      await deps.submit({
+        type: 'resolve_effect',
+        id: effect.id,
+        result: {
+          ok: false,
+          error: {
+            kind: 'advanced_mode_required',
+            message: 'Sandboxed scripting requires Advanced Mode.',
+          },
+        },
+      });
+      return;
+    }
+
+    // Policy permits sandboxed scripting. Validate and queue for user approval.
     const result = proposeScript(deps.ctx, effect.request);
     if (!result.ok) {
       await deps.submit({

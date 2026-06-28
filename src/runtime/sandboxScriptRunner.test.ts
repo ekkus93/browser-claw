@@ -8,11 +8,22 @@ import {
   SCRIPT_REQUEST_TYPE,
   SCRIPT_REQUEST_VERSION,
 } from '../script/scriptRequest.ts';
-import { SANDBOXED_SCRIPT_RUNTIME } from '../script/scriptPolicy.ts';
+import {
+  SANDBOXED_SCRIPT_RUNTIME,
+  type ScriptExecutionPolicy,
+} from '../script/scriptPolicy.ts';
 import {
   createSandboxScriptEffectHandler,
   runApprovedSandboxScriptEffect,
 } from './sandboxScriptRunner.ts';
+
+const ENABLED_POLICY: ScriptExecutionPolicy = {
+  defaultRuntime: 'plan_dsl',
+  sandboxedScriptingEnabled: true,
+  advancedMode: true,
+};
+const loadEnabled = (): Promise<ScriptExecutionPolicy> =>
+  Promise.resolve(ENABLED_POLICY);
 
 const db = new BrowserClawDB();
 const submit = vi.fn().mockResolvedValue(undefined);
@@ -57,8 +68,12 @@ afterEach(async () => {
 });
 
 describe('createSandboxScriptEffectHandler (F3)', () => {
-  it('queues a valid request for approval', async () => {
-    const handle = createSandboxScriptEffectHandler({ ctx, submit });
+  it('queues a valid request for approval when policy is enabled', async () => {
+    const handle = createSandboxScriptEffectHandler({
+      ctx,
+      submit,
+      loadScriptExecutionPolicy: loadEnabled,
+    });
     await handle({
       type: 'sandbox_script_proposal',
       id: 'e1',
@@ -77,7 +92,11 @@ describe('createSandboxScriptEffectHandler (F3)', () => {
   });
 
   it('resolves an invalid request as a failure (nothing queued)', async () => {
-    const handle = createSandboxScriptEffectHandler({ ctx, submit });
+    const handle = createSandboxScriptEffectHandler({
+      ctx,
+      submit,
+      loadScriptExecutionPolicy: loadEnabled,
+    });
     await handle({
       type: 'sandbox_script_proposal',
       id: 'e2',
@@ -87,6 +106,102 @@ describe('createSandboxScriptEffectHandler (F3)', () => {
       expect.objectContaining({
         type: 'resolve_effect',
         id: 'e2',
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+  });
+
+  // B1: policy enforcement before approval queuing.
+
+  it('B1: disabled policy blocks approval and resolves as failure', async () => {
+    const disabledPolicy: ScriptExecutionPolicy = {
+      defaultRuntime: 'plan_dsl',
+      sandboxedScriptingEnabled: false,
+      advancedMode: false,
+    };
+    const handle = createSandboxScriptEffectHandler({
+      ctx,
+      submit,
+      loadScriptExecutionPolicy: () => Promise.resolve(disabledPolicy),
+    });
+    await handle({
+      type: 'sandbox_script_proposal',
+      id: 'b1-disabled',
+      request: request(),
+    });
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'resolve_effect',
+        id: 'b1-disabled',
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'approvals/approvalRequested' }),
+    );
+  });
+
+  it('B1: advanced-mode-required blocks approval and resolves as failure', async () => {
+    const noAdvanced: ScriptExecutionPolicy = {
+      defaultRuntime: 'plan_dsl',
+      sandboxedScriptingEnabled: true,
+      advancedMode: false,
+    };
+    const handle = createSandboxScriptEffectHandler({
+      ctx,
+      submit,
+      loadScriptExecutionPolicy: () => Promise.resolve(noAdvanced),
+    });
+    await handle({
+      type: 'sandbox_script_proposal',
+      id: 'b1-advanced',
+      request: request(),
+    });
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'resolve_effect',
+        id: 'b1-advanced',
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'approvals/approvalRequested' }),
+    );
+  });
+
+  it('B1: disabled policy block is audited as script.sandbox_blocked_by_policy', async () => {
+    const disabledPolicy: ScriptExecutionPolicy = {
+      defaultRuntime: 'plan_dsl',
+      sandboxedScriptingEnabled: false,
+      advancedMode: false,
+    };
+    const handle = createSandboxScriptEffectHandler({
+      ctx,
+      submit,
+      loadScriptExecutionPolicy: () => Promise.resolve(disabledPolicy),
+    });
+    await handle({
+      type: 'sandbox_script_proposal',
+      id: 'b1-audit',
+      request: request(),
+    });
+    // Allow the fire-and-forget audit write to settle.
+    await new Promise((r) => setTimeout(r, 10));
+    const types = (await db.audit_events.toArray()).map((e) => e.type);
+    expect(types).toContain('script.sandbox_blocked_by_policy');
+  });
+
+  it('B1: default (no loadScriptExecutionPolicy) blocks because DEFAULT_SCRIPT_POLICY disables sandbox', async () => {
+    const handle = createSandboxScriptEffectHandler({ ctx, submit });
+    await handle({
+      type: 'sandbox_script_proposal',
+      id: 'b1-default',
+      request: request(),
+    });
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'resolve_effect',
+        id: 'b1-default',
         result: expect.objectContaining({ ok: false }),
       }),
     );

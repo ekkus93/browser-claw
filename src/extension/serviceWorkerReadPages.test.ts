@@ -47,7 +47,7 @@ type AnyFn = (...args: any[]) => any;
 
 // The service-worker is plain JS — suppress the implicit-any TS error.
 // @ts-expect-error — no declaration file for plain-JS service worker
-import { handleReadPages } from '../../extension/chrome-web-research/service-worker.js';
+import { handleReadPages, handleGetStatus, handlers } from '../../extension/chrome-web-research/service-worker.js';
 
 const BLOCKED = 'http://localhost/page';
 const URL1 = 'https://example.com/page1';
@@ -130,5 +130,57 @@ describe('B1 — handleReadPages (batch)', () => {
   it('B1: requestId echoed in top-level response', async () => {
     const res = await rp({ requestId: 'echo-me', urls: [URL1] });
     expect(res['requestId']).toBe('echo-me');
+  });
+});
+
+describe('C1 — handleGetStatus structured capabilities', () => {
+  type Status = Record<string, unknown>;
+  type Caps = { readPage?: { supported?: boolean; requiresHostPermission?: boolean; permissionRequestSupported?: boolean }; readCurrentTab?: { supported?: boolean; requiresActiveTab?: boolean }; webSearch?: { supported?: boolean } };
+
+  function status(): Status {
+    return handleGetStatus({ requestId: 'r' }) as Status;
+  }
+
+  it('C1: capabilities.readPage.supported matches handlers.read_page registration', () => {
+    const s = status();
+    const caps = s['capabilities'] as Caps;
+    expect(caps['readPage']?.['supported']).toBe(
+      typeof (handlers as Record<string, unknown>)['read_page'] === 'function',
+    );
+  });
+
+  it('C1: capabilities.readPage.requiresHostPermission is always true for MV3', () => {
+    const s = status();
+    const caps = s['capabilities'] as Caps;
+    expect(caps['readPage']?.['requiresHostPermission']).toBe(true);
+  });
+
+  it('C1: capabilities.readPage.permissionRequestSupported is false (request_host_permission not wired)', () => {
+    const s = status();
+    const caps = s['capabilities'] as Caps;
+    expect(caps['readPage']?.['permissionRequestSupported']).toBe(
+      typeof (handlers as Record<string, unknown>)['request_host_permission'] === 'function',
+    );
+  });
+
+  it('C1: pageReadingAvailable is false when permissionRequestSupported is false', () => {
+    const s = status();
+    expect(s['pageReadingAvailable']).toBe(false);
+  });
+
+  it('C1: capabilities.readCurrentTab.supported matches handlers.read_current_tab registration', () => {
+    const s = status();
+    const caps = s['capabilities'] as Caps;
+    expect(caps['readCurrentTab']?.['supported']).toBe(
+      typeof (handlers as Record<string, unknown>)['read_current_tab'] === 'function',
+    );
+  });
+
+  it('C1: status does not lie — currentTabReadingAvailable matches readCurrentTab handler', () => {
+    const s = status();
+    const caps = s['capabilities'] as Caps;
+    expect(s['currentTabReadingAvailable']).toBe(
+      caps['readCurrentTab']?.['supported'],
+    );
   });
 });

@@ -417,15 +417,29 @@ function handleGetStatus(message) {
     requestId: message.requestId,
     protocolVersion: PROTOCOL_VERSION,
     extensionVersion: EXTENSION_VERSION,
+    // C1: structured per-capability objects (replaces flat boolean map).
     capabilities: {
-      ping: true,
-      getStatus: true,
-      readPage,
-      readCurrentTab,
-      requestHostPermission,
-      webSearch,
+      readPage: {
+        supported: readPage,
+        // MV3 tab reads always require host permission for the target origin.
+        requiresHostPermission: true,
+        // Permission can only be requested if that flow is wired (C2).
+        permissionRequestSupported: requestHostPermission,
+      },
+      readCurrentTab: {
+        supported: readCurrentTab,
+        // Requires the activeTab permission or scripting on the focused tab.
+        requiresActiveTab: true,
+      },
+      webSearch: {
+        supported: webSearch,
+        providerConfigured: webSearch,
+      },
     },
-    pageReadingAvailable: readPage,
+    // C1: pageReadingAvailable is true only when BOTH the handler is present AND
+    // the permission request flow is wired — otherwise read_page would fail for
+    // any URL the user has not already pre-granted host permission to.
+    pageReadingAvailable: readPage && requestHostPermission,
     currentTabReadingAvailable: readCurrentTab,
     webSearchAvailable: webSearch,
   };

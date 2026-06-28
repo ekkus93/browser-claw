@@ -237,22 +237,23 @@ export async function handleSandboxScriptProposal(
 
 ## Phase C1 — Make extension `get_status` truthful
 
+<!-- evidence: extension/chrome-web-research/service-worker.js handleGetStatus updated: capabilities is now nested objects per spec (readPage.{supported,requiresHostPermission,permissionRequestSupported}, readCurrentTab.{supported,requiresActiveTab}, webSearch.{supported,providerConfigured}); pageReadingAvailable = readPage && requestHostPermission (was just readPage); flat backward-compat flags kept. 6 new C1 tests in serviceWorkerReadPages.test.ts; 16/1 pageReaderProvider tests pass; 996/120 vitest pass, lint clean -->
 ### Problem
 
 Extension status must not claim `pageReadingAvailable: true` unless `read_page` can actually work.
 
-- [ ] P0 Update extension `get_status`:
-  - [ ] report whether `read_page` handler exists;
-  - [ ] report whether host permission request flow exists;
-  - [ ] report whether current tab read is supported;
-  - [ ] report missing permissions separately from unsupported features.
-- [ ] P0 `pageReadingAvailable` should mean:
-  - [ ] extension can handle `read_page`;
-  - [ ] target permission already exists OR permission request flow is supported.
-- [ ] P0 Tests:
-  - [ ] status says unavailable when read handler disabled/missing;
-  - [ ] status says available only when handler is registered;
-  - [ ] status does not lie about current-tab support.
+- [x] P0 Update extension `get_status`:
+  - [x] report whether `read_page` handler exists;
+  - [x] report whether host permission request flow exists;
+  - [x] report whether current tab read is supported;
+  - [x] report missing permissions separately from unsupported features.
+- [x] P0 `pageReadingAvailable` should mean:
+  - [x] extension can handle `read_page`;
+  - [x] target permission already exists OR permission request flow is supported.
+- [x] P0 Tests:
+  - [x] status says unavailable when read handler disabled/missing;
+  - [x] status says available only when handler is registered;
+  - [x] status does not lie about current-tab support.
 
 ### Helpful extension status shape
 

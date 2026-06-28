@@ -1883,3 +1883,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Existing 2 F3 tests updated to pass ENABLED_POLICY so they still test the approval-queuing path.
 - Gate: typecheck ✓, lint ✓, vitest 990/120 ✓ (4 net new tests).
 - NEXT: Part B2 — Settings UI for sandbox policy (P1).
+
+## 2026-06-28T20:02:42Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 6: Part C1 (extension get_status truthful) DONE
+- Updated extension/chrome-web-research/service-worker.js handleGetStatus: capabilities is now nested objects {readPage:{supported,requiresHostPermission,permissionRequestSupported}, readCurrentTab:{supported,requiresActiveTab}, webSearch:{supported,providerConfigured}}.
+- pageReadingAvailable changed from readPage to readPage && requestHostPermission — because read_page needs the permission request flow to work reliably for arbitrary URLs (MV3 always needs host permissions).
+- request_host_permission remains undefined in handlers, so pageReadingAvailable is now false in v0.1 (truthful).
+- Flat backward-compat flags (pageReadingAvailable, currentTabReadingAvailable, webSearchAvailable) kept for host-side parsing.
+- Added 6 C1 tests in serviceWorkerReadPages.test.ts: structured caps shape, requiresHostPermission always true, permissionRequestSupported reflects handler, pageReadingAvailable false when no flow, currentTabReadingAvailable matches handler, no-lie consistency.
+- Gate: typecheck ✓, lint ✓, vitest 996/120 ✓ (6 net new tests).
+- NEXT: Part C2 — implement request_host_permission in extension + separate from read_page (P0).

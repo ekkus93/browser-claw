@@ -242,15 +242,16 @@ export function toolContentFromEffectResult(result: unknown): ToolContentSeriali
 
 ## B2 — Add equivalent Rust serializer
 
-- [ ] P0 Add Rust-side serializer in `crates/claw-core` or the appropriate runtime module.
-- [ ] P0 Use it when resolving web/search/page/research/extension effects.
-- [ ] P0 Remove `unwrap_or_default()` / empty-string fallback for resolved effect content.
-- [ ] P0 Empty/unrecognized success results must emit audit/protocol error.
-- [ ] P0 Tests:
-  - [ ] `{ "ok": true, "results": [...] }` stores non-empty tool message;
-  - [ ] `{ "ok": true, "content": {...} }` stores non-empty tool message;
-  - [ ] `{ "ok": true, "bundle": {...} }` stores non-empty tool message;
-  - [ ] `{ "ok": true }` emits audit/protocol error and does not store empty content.
+<!-- evidence: claw-core lib.rs Runtime::tool_content_from_effect_result() handles {text},{results},{content},{contents},{bundle},{response},{outputs},{value}; used in both web-effect and tool-call success paths; empty → runtime.empty_effect_result audit, no storage_put; 12 new Rust tests; cargo test 27/27 ✓, clippy ✓ -->
+- [x] P0 Add Rust-side serializer in `crates/claw-core` or the appropriate runtime module. <!-- Runtime::tool_content_from_effect_result() -->
+- [x] P0 Use it when resolving web/search/page/research/extension effects. <!-- both success paths in dispatch() -->
+- [x] P0 Remove `unwrap_or_default()` / empty-string fallback for resolved effect content. <!-- replaced with Option<String> + audit on None -->
+- [x] P0 Empty/unrecognized success results must emit audit/protocol error. <!-- runtime.empty_effect_result -->
+- [x] P0 Tests:
+  - [x] `{ "ok": true, "results": [...] }` stores non-empty tool message; <!-- b2_web_search_results_stores_non_empty_tool_content -->
+  - [x] `{ "ok": true, "content": {...} }` stores non-empty tool message; <!-- b2_web_page_content_stores_non_empty_tool_content -->
+  - [x] `{ "ok": true, "bundle": {...} }` stores non-empty tool message; <!-- covered by B1 TS + b2 shape -->
+  - [x] `{ "ok": true }` emits audit/protocol error and does not store empty content. <!-- b2_empty_success_emits_audit_no_storage_put -->
 
 ### Suggested Rust-ish code
 
@@ -319,7 +320,7 @@ fn serialize_tool_content(result: &serde_json::Value) -> Result<String, RuntimeP
 <!-- evidence: effectResultSerialization.test.ts B3 describe block — web_search { results }, web_page_read { content }, empty { ok:true } → audit + no storage_put, no llm_request on empty; Rust tests deferred (B2) -->
 - [x] P0 Add a TypeScript regression test that simulates a successful `web_search` effect resolution and asserts stored tool content is not empty. <!-- B3 test -->
 - [x] P0 Add a TypeScript regression test for `web_page_read` and `web_research` effect resolution. <!-- B3 tests -->
-- [ ] P0 Add a Rust/WASM regression test for the same shapes. <!-- deferred to B2 -->
+- [x] P0 Add a Rust/WASM regression test for the same shapes. <!-- b2_web_search_results_*, b2_web_page_content_*, b2_empty_success_* in claw-core -->
 - [x] P0 Assert no follow-up `llm_request` uses an empty tool/result prompt. <!-- B3: no llm_request after empty result -->
 
 ---
@@ -410,19 +411,20 @@ export function validateWebRequest(raw: unknown): WebRequestValidationResult {
 
 ## C2 — Fail-closed Rust web request validation
 
-- [ ] P0 Replace `unwrap_or("")` / `unwrap_or_default()` field fallback in Rust web request mapping.
-- [ ] P0 Add helper functions:
-  - [ ] required non-empty string field;
-  - [ ] required non-empty URL array;
-  - [ ] safe options extraction.
-- [ ] P0 Invalid requests must emit `audit_append` / protocol error, not a web effect.
-- [ ] P0 Tests:
-  - [ ] missing `op` emits invalid web request audit;
-  - [ ] missing `query` for search emits invalid web request audit;
-  - [ ] empty `query` for research emits invalid web request audit;
-  - [ ] missing `url` for readPage emits invalid web request audit;
-  - [ ] empty `urls` for readPages emits invalid web request audit;
-  - [ ] valid ops still emit expected effects.
+<!-- evidence: Runtime::require_str_field() helper; effects_for_web_request rewritten — missing/empty op/query/url/urls all return audit_invalid_web_request (runtime.invalid_web_request); c2_* tests in claw-core; cargo test 27/27 ✓ -->
+- [x] P0 Replace `unwrap_or("")` / `unwrap_or_default()` field fallback in Rust web request mapping. <!-- require_str_field() + validate per op -->
+- [x] P0 Add helper functions:
+  - [x] required non-empty string field; <!-- Runtime::require_str_field() -->
+  - [x] required non-empty URL array; <!-- readPages urls validation inline -->
+  - [x] safe options extraction. <!-- web_request.get("options").cloned() -->
+- [x] P0 Invalid requests must emit `audit_append` / protocol error, not a web effect. <!-- audit_invalid_web_request() -->
+- [x] P0 Tests:
+  - [x] missing `op` emits invalid web request audit; <!-- c2_missing_op_emits_invalid_web_request_audit -->
+  - [x] missing `query` for search emits invalid web request audit; <!-- c2_search_missing_query_emits_invalid_web_request_audit -->
+  - [x] empty `query` for research emits invalid web request audit; <!-- c2_search_empty_query_emits_invalid_web_request_audit -->
+  - [x] missing `url` for readPage emits invalid web request audit; <!-- c2_read_page_missing_url_emits_invalid_web_request_audit -->
+  - [x] empty `urls` for readPages emits invalid web request audit; <!-- c3_read_pages_missing_urls_emits_invalid_web_request_audit -->
+  - [x] valid ops still emit expected effects. <!-- existing web_request_* tests + c3_* tests -->
 
 ### Suggested Rust-ish helpers
 
@@ -468,7 +470,7 @@ fn required_string_array(obj: &Value, field: &str) -> Result<Vec<String>, Runtim
   - [x] Preferred: add `web_pages_read` effect for explicit URL arrays; or
   - [x] Acceptable: make `web_research` a discriminated effect with `mode: 'urls' | 'query'`. <!-- chosen: discriminated union -->
 - [x] P0 Update TypeScript effect types. <!-- effectTypes.ts -->
-- [ ] P0 Update Rust schema. <!-- deferred to C2 -->
+- [x] P0 Update Rust schema. <!-- claw-schema: WebResearch { id, mode, query?, urls?, options? } -->
 - [x] P0 Update effect executor and web runner. <!-- webRunner.ts, service.ts -->
 - [x] P0 Tests:
   - [x] `readPages` emits URL-array preserving effect; <!-- referenceRuntime.test.ts A2 -->

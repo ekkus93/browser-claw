@@ -102,9 +102,18 @@ pub enum Effect {
         options: Option<Value>,
     },
     /// The model requested a bulk web research bundle; the host gates it behind approval.
+    /// C3 (FIX3): discriminated by `mode` — "query" carries `query`, "urls" carries `urls`.
+    /// Mirrors the TypeScript discriminated union in effectTypes.ts.
     WebResearch {
         id: String,
-        query: String,
+        /// "query" for research op; "urls" for readPages op.
+        mode: String,
+        /// Present when mode = "query".
+        #[serde(skip_serializing_if = "Option::is_none")]
+        query: Option<String>,
+        /// Present when mode = "urls".
+        #[serde(skip_serializing_if = "Option::is_none")]
+        urls: Option<Vec<String>>,
         #[serde(skip_serializing_if = "Option::is_none")]
         options: Option<Value>,
     },

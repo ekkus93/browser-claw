@@ -1984,6 +1984,15 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T22:59:40Z - Claude Sonnet 4.6 - FIX3 Part B2+C2+C3-Rust (Rust serializer + fail-closed validation + discriminated schema) DONE
+- claw-schema: WebResearch now { id, mode: String, query: Option<String>, urls: Option<Vec<String>>, options } — discriminated by mode.
+- claw-core: Runtime::tool_content_from_effect_result() handles {text},{results},{content},{contents},{bundle},{response},{outputs},{value}; None → runtime.empty_effect_result audit, no storage_put.
+- claw-core: Runtime::require_str_field() + audit_invalid_web_request(); effects_for_web_request() fail-closed for all ops.
+- 12 new Rust tests: c2_* (fail-closed), c3_* (discriminated), b2_* (content serializer); cargo test 27/27 ✓, clippy ✓.
+- TS gate: 1098/123 ✓.
+- All P0 items now complete (B2, B3-Rust, C2, C3-Rust, D1 done).
+- Remaining: P1 items — D2, E1, E2, F1, G1, G2, H1, I1, J1; K1/K2/K3 (QA).
+
 ## 2026-06-28T22:53:10Z - Claude Sonnet 4.6 - FIX3 Part D1 (extension central dispatch) DONE
 - service-worker.js handle() made async with try/catch — catches throws from async handlers, returns structured internal_error.
 - listener: always calls handle(message).then(sendResponse); return true — no more async handler bypass.

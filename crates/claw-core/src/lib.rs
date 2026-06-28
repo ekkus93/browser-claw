@@ -40,23 +40,51 @@ impl Runtime {
         format!("eff-{}", self.state.next_effect_id)
     }
 
+    // C2/C3 (FIX3): fail-closed field extraction helpers.
+    // Returns the non-empty trimmed string or None; caller emits audit on None.
+    fn require_str_field<'a>(obj: &'a Value, field: &str) -> Option<&'a str> {
+        let s = obj.get(field).and_then(Value::as_str)?;
+        if s.trim().is_empty() {
+            None
+        } else {
+            Some(s)
+        }
+    }
+
+    fn audit_invalid_web_request(&mut self, message: String) -> Vec<Effect> {
+        let audit_id = self.next_id();
+        vec![Effect::AuditAppend {
+            id: audit_id,
+            event_type: "runtime.invalid_web_request".to_string(),
+            summary: message,
+            risk: "medium".to_string(),
+        }]
+    }
+
     fn effects_for_web_request(
         &mut self,
         conversation_id: String,
         skill_id: String,
         web_request: &Value,
     ) -> Vec<Effect> {
-        let op = web_request
-            .get("op")
-            .and_then(Value::as_str)
-            .unwrap_or("");
-        match op {
+        let op = match Self::require_str_field(web_request, "op") {
+            Some(op) => op.to_string(),
+            None => {
+                return self.audit_invalid_web_request(
+                    "web_request missing required op field".to_string(),
+                )
+            }
+        };
+        match op.as_str() {
             "search" => {
-                let query = web_request
-                    .get("query")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_string();
+                let query = match Self::require_str_field(web_request, "query") {
+                    Some(q) => q.to_string(),
+                    None => {
+                        return self.audit_invalid_web_request(
+                            "web_request search missing required query field".to_string(),
+                        )
+                    }
+                };
                 let options = web_request.get("options").cloned();
                 let effect_id = self.next_id();
                 self.state
@@ -75,11 +103,14 @@ impl Runtime {
                 }]
             }
             "readPage" => {
-                let url = web_request
-                    .get("url")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_string();
+                let url = match Self::require_str_field(web_request, "url") {
+                    Some(u) => u.to_string(),
+                    None => {
+                        return self.audit_invalid_web_request(
+                            "web_request readPage missing required url field".to_string(),
+                        )
+                    }
+                };
                 let options = web_request.get("options").cloned();
                 let effect_id = self.next_id();
                 self.state
@@ -115,12 +146,16 @@ impl Runtime {
                     request,
                 }]
             }
-            "readPages" | "research" => {
-                let query = web_request
-                    .get("query")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_string();
+            "research" => {
+                // C3 (FIX3): research needs a non-empty query — fail closed if absent.
+                let query = match Self::require_str_field(web_request, "query") {
+                    Some(q) => q.to_string(),
+                    None => {
+                        return self.audit_invalid_web_request(
+                            "web_request research missing required query field".to_string(),
+                        )
+                    }
+                };
                 let options = web_request.get("options").cloned();
                 let effect_id = self.next_id();
                 self.state
@@ -134,7 +169,49 @@ impl Runtime {
                     .insert(effect_id.clone(), skill_id);
                 vec![Effect::WebResearch {
                     id: effect_id,
-                    query,
+                    mode: "query".to_string(),
+                    query: Some(query),
+                    urls: None,
+                    options,
+                }]
+            }
+            "readPages" => {
+                // C3 (FIX3): explicit URL-array reads must not collapse to query:''.
+                let urls_val = web_request.get("urls");
+                let urls: Vec<String> = match urls_val.and_then(Value::as_array) {
+                    Some(arr) if !arr.is_empty() => arr
+                        .iter()
+                        .filter_map(|u| u.as_str())
+                        .filter(|s| !s.trim().is_empty())
+                        .map(str::to_string)
+                        .collect(),
+                    _ => {
+                        return self.audit_invalid_web_request(
+                            "web_request readPages missing required urls array".to_string(),
+                        )
+                    }
+                };
+                if urls.is_empty() {
+                    return self.audit_invalid_web_request(
+                        "web_request readPages urls contained no valid URL strings".to_string(),
+                    );
+                }
+                let options = web_request.get("options").cloned();
+                let effect_id = self.next_id();
+                self.state
+                    .pending
+                    .insert(effect_id.clone(), "web_research".to_string());
+                self.state
+                    .pending_conversation
+                    .insert(effect_id.clone(), conversation_id);
+                self.state
+                    .pending_skill
+                    .insert(effect_id.clone(), skill_id);
+                vec![Effect::WebResearch {
+                    id: effect_id,
+                    mode: "urls".to_string(),
+                    query: None,
+                    urls: Some(urls),
                     options,
                 }]
             }
@@ -381,11 +458,19 @@ impl Runtime {
                                 },
                             ];
                         }
-                        let content = result
-                            .get("text")
-                            .and_then(Value::as_str)
-                            .unwrap_or_default()
-                            .to_string();
+                        // B2 (FIX3): never store an empty tool message.
+                        let content = match Self::tool_content_from_effect_result(&result) {
+                            Some(c) => c,
+                            None => {
+                                let audit_id = self.next_id();
+                                return vec![Effect::AuditAppend {
+                                    id: audit_id,
+                                    event_type: "runtime.empty_effect_result".to_string(),
+                                    summary: "Effect resolved successfully but produced no usable tool content".to_string(),
+                                    risk: "high".to_string(),
+                                }];
+                            }
+                        };
                         self.state.message_count += 1;
                         let put_id = self.next_id();
                         let llm_id = self.next_id();
@@ -453,11 +538,19 @@ impl Runtime {
                         }
                         // Approved: store the tool's result as a tool message,
                         // then ask the model again with that result in context.
-                        let content = result
-                            .get("text")
-                            .and_then(Value::as_str)
-                            .unwrap_or_default()
-                            .to_string();
+                        // B2 (FIX3): use serializer — tool results may be structured.
+                        let content = match Self::tool_content_from_effect_result(&result) {
+                            Some(c) => c,
+                            None => {
+                                let audit_id = self.next_id();
+                                return vec![Effect::AuditAppend {
+                                    id: audit_id,
+                                    event_type: "runtime.empty_effect_result".to_string(),
+                                    summary: "Tool call resolved but produced no usable content".to_string(),
+                                    risk: "high".to_string(),
+                                }];
+                            }
+                        };
                         self.state.message_count += 1;
                         let put_id = self.next_id();
                         let llm_id = self.next_id();
@@ -510,6 +603,77 @@ impl Runtime {
                 }
             }
         }
+    }
+
+    /// B2 (FIX3): Rust equivalent of TypeScript's toolContentFromEffectResult.
+    ///
+    /// Converts a structured effect result into non-empty tool content string.
+    /// Returns None for unrecognized or empty results (caller audits empty_effect_result).
+    ///
+    /// Handled shapes:
+    ///   { text: string }          → the text directly
+    ///   { results: [...] }        → JSON: { type: "web_search_results", results }
+    ///   { content: {...} }        → JSON: { type: "web_page_content", content }
+    ///   { contents: [...] }       → JSON: { type: "web_pages_content", contents }
+    ///   { bundle: {...} }         → JSON: { type: "web_research_bundle", bundle }
+    ///   { response: {...} }       → JSON: { type: "extension_response", response }
+    ///   { outputs: [...] }        → JSON: { type: "plan_outputs", outputs }
+    ///   { value: <any> }          → JSON: { type: "script_result", value }
+    fn tool_content_from_effect_result(result: &Value) -> Option<String> {
+        let obj = result.as_object()?;
+
+        // { text } — direct string content
+        if let Some(text) = obj.get("text").and_then(Value::as_str) {
+            if !text.trim().is_empty() {
+                return Some(text.to_string());
+            }
+            return None;
+        }
+
+        // { results } — web search results array
+        if let Some(results) = obj.get("results") {
+            let out = json!({ "type": "web_search_results", "results": results });
+            return serde_json::to_string(&out).ok();
+        }
+
+        // { content } — single page content object
+        if let Some(content) = obj.get("content") {
+            let out = json!({ "type": "web_page_content", "content": content });
+            return serde_json::to_string(&out).ok();
+        }
+
+        // { contents } — multi-page content array
+        if let Some(contents) = obj.get("contents") {
+            let out = json!({ "type": "web_pages_content", "contents": contents });
+            return serde_json::to_string(&out).ok();
+        }
+
+        // { bundle } — research bundle
+        if let Some(bundle) = obj.get("bundle") {
+            let out = json!({ "type": "web_research_bundle", "bundle": bundle });
+            return serde_json::to_string(&out).ok();
+        }
+
+        // { response } — extension response
+        if let Some(response) = obj.get("response") {
+            let out = json!({ "type": "extension_response", "response": response });
+            return serde_json::to_string(&out).ok();
+        }
+
+        // { outputs } — plan step outputs
+        if let Some(outputs) = obj.get("outputs") {
+            let out = json!({ "type": "plan_outputs", "outputs": outputs });
+            return serde_json::to_string(&out).ok();
+        }
+
+        // { value } — sandboxed script result (value may be null)
+        if obj.contains_key("value") {
+            let value = &obj["value"];
+            let out = json!({ "type": "script_result", "value": value });
+            return serde_json::to_string(&out).ok();
+        }
+
+        None
     }
 }
 
@@ -803,6 +967,239 @@ mod tests {
             }
             other => panic!("expected ExtensionRequest, got {other:?}"),
         }
+    }
+
+    #[test]
+    // C2 (FIX3): fail-closed web request validation
+    #[test]
+    fn c2_search_missing_query_emits_invalid_web_request_audit() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("search"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "op": "search" } }), // no query
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::AuditAppend { event_type, .. } => {
+                assert_eq!(event_type, "runtime.invalid_web_request");
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn c2_read_page_missing_url_emits_invalid_web_request_audit() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("read"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "op": "readPage" } }), // no url
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::AuditAppend { event_type, .. } => {
+                assert_eq!(event_type, "runtime.invalid_web_request");
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn c2_search_empty_query_emits_invalid_web_request_audit() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("search"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "op": "search", "query": "" } }),
+        });
+        match &effects[0] {
+            Effect::AuditAppend { event_type, .. } => {
+                assert_eq!(event_type, "runtime.invalid_web_request");
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn c2_missing_op_emits_invalid_web_request_audit() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("something"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "query": "test" } }), // no op
+        });
+        match &effects[0] {
+            Effect::AuditAppend { event_type, .. } => {
+                assert_eq!(event_type, "runtime.invalid_web_request");
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
+    }
+
+    // C3 (FIX3): discriminated web_research effects
+    #[test]
+    fn c3_research_emits_web_research_mode_query() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("research something"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "op": "research", "query": "AI safety" } }),
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::WebResearch { id, mode, query, urls, .. } => {
+                assert_eq!(id, "eff-3");
+                assert_eq!(mode, "query");
+                assert_eq!(query.as_deref(), Some("AI safety"));
+                assert!(urls.is_none());
+            }
+            other => panic!("expected WebResearch, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn c3_read_pages_emits_web_research_mode_urls() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("read these pages"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": {
+                "op": "readPages",
+                "urls": ["https://a.com/", "https://b.com/"]
+            }}),
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::WebResearch { id, mode, query, urls, .. } => {
+                assert_eq!(id, "eff-3");
+                assert_eq!(mode, "urls");
+                assert!(query.is_none());
+                let u = urls.as_ref().expect("urls present");
+                assert_eq!(u.len(), 2);
+                assert_eq!(u[0], "https://a.com/");
+            }
+            other => panic!("expected WebResearch, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn c3_research_missing_query_emits_invalid_web_request_audit() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("research"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "op": "research" } }), // no query
+        });
+        match &effects[0] {
+            Effect::AuditAppend { event_type, .. } => {
+                assert_eq!(event_type, "runtime.invalid_web_request");
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn c3_read_pages_missing_urls_emits_invalid_web_request_audit() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("readPages"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "op": "readPages" } }), // no urls
+        });
+        match &effects[0] {
+            Effect::AuditAppend { event_type, .. } => {
+                assert_eq!(event_type, "runtime.invalid_web_request");
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
+    }
+
+    // B2 (FIX3): no empty tool messages for structured web results
+    #[test]
+    fn b2_web_search_results_stores_non_empty_tool_content() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("search something"));
+        let eff2 = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "op": "search", "query": "rust" } }),
+        });
+        let web_search_id = match &eff2[0] {
+            Effect::WebSearch { id, .. } => id.clone(),
+            other => panic!("expected WebSearch, got {other:?}"),
+        };
+        let eff3 = rt.dispatch(Command::ResolveEffect {
+            id: web_search_id,
+            result: json!({
+                "ok": true,
+                "results": [{ "title": "A", "url": "https://a.com", "rank": 1 }]
+            }),
+        });
+        let stored = eff3.iter().find_map(|e| match e {
+            Effect::StoragePut { value, .. } => Some(value.clone()),
+            _ => None,
+        });
+        let stored = stored.expect("storage_put must exist");
+        assert_eq!(stored["role"], "tool");
+        let content = stored["content"].as_str().expect("content is string");
+        assert!(!content.is_empty(), "tool content must not be empty");
+        assert!(content.contains("web_search_results"));
+    }
+
+    #[test]
+    fn b2_empty_success_emits_audit_no_storage_put() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("search something"));
+        let eff2 = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "op": "search", "query": "rust" } }),
+        });
+        let web_search_id = match &eff2[0] {
+            Effect::WebSearch { id, .. } => id.clone(),
+            other => panic!("expected WebSearch, got {other:?}"),
+        };
+        // Resolve with empty success — no recognized content field.
+        let eff3 = rt.dispatch(Command::ResolveEffect {
+            id: web_search_id,
+            result: json!({ "ok": true }),
+        });
+        assert!(
+            eff3.iter().all(|e| !matches!(e, Effect::StoragePut { .. })),
+            "must not emit storage_put for empty result"
+        );
+        assert!(
+            eff3.iter().any(|e| matches!(e, Effect::AuditAppend { event_type, .. } if event_type == "runtime.empty_effect_result")),
+            "must emit empty_effect_result audit"
+        );
+    }
+
+    #[test]
+    fn b2_web_page_content_stores_non_empty_tool_content() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("read page"));
+        let eff2 = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "op": "readPage", "url": "https://x.com/" } }),
+        });
+        let page_read_id = match &eff2[0] {
+            Effect::WebPageRead { id, .. } => id.clone(),
+            other => panic!("expected WebPageRead, got {other:?}"),
+        };
+        let eff3 = rt.dispatch(Command::ResolveEffect {
+            id: page_read_id,
+            result: json!({
+                "ok": true,
+                "content": { "url": "https://x.com/", "text": "body text", "length": 9 }
+            }),
+        });
+        let stored = eff3.iter().find_map(|e| match e {
+            Effect::StoragePut { value, .. } => Some(value.clone()),
+            _ => None,
+        });
+        let stored = stored.expect("storage_put must exist");
+        let content = stored["content"].as_str().expect("content is string");
+        assert!(!content.is_empty());
+        assert!(content.contains("web_page_content"));
     }
 
     #[test]

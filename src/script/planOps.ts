@@ -221,10 +221,18 @@ async function webOp(
 
 function callTool(ctx: PlanOpContext, args: Args): Promise<string> {
   const name = str(args, 'tool');
+  if (
+    args.args !== undefined &&
+    (typeof args.args !== 'object' ||
+      args.args === null ||
+      Array.isArray(args.args))
+  ) {
+    throw new PlanOpError(
+      `tool.call '${name}': args must be a JSON object, not ${Array.isArray(args.args) ? 'array' : typeof args.args}`,
+    );
+  }
   const toolArgs =
-    typeof args.args === 'object' &&
-    args.args !== null &&
-    !Array.isArray(args.args)
+    args.args !== undefined
       ? (args.args as Args)
       : {};
   return runToolCall(

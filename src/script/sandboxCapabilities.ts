@@ -446,10 +446,20 @@ export function buildSandboxHost(
         const name = str(rawName, 'tool');
         // FIX1-D3: count every tool.call attempt (including denied) toward limit.
         tracker?.countToolCall();
+        if (
+          rawArgs !== undefined &&
+          (typeof rawArgs !== 'object' ||
+            rawArgs === null ||
+            Array.isArray(rawArgs))
+        ) {
+          deny(
+            'tool.call',
+            name,
+            `args must be a JSON object, not ${Array.isArray(rawArgs) ? 'array' : typeof rawArgs}`,
+          );
+        }
         const toolArgs =
-          typeof rawArgs === 'object' &&
-          rawArgs !== null &&
-          !Array.isArray(rawArgs)
+          typeof rawArgs === 'object' && rawArgs !== null && !Array.isArray(rawArgs)
             ? (rawArgs as Record<string, unknown>)
             : {};
         // FIX1-D2: enforce cross-capability requirements declared in the descriptor.

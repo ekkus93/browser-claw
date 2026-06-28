@@ -1962,6 +1962,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1042/122 ✓.
 - NEXT: Part F3 — tool args parser must fail everywhere (P1).
 
+## 2026-06-28T21:00:19Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 17: Part F3 (tool args fail-closed) DONE
+- planOps.callTool now throws PlanOpError for non-object args (array/string/number); undefined still allowed (no-arg tool path).
+- sandboxCapabilities tool.call now calls deny() for non-object rawArgs; toolRunner.parseApprovedArgsOrThrow was already fail-closed.
+- 7 F3 tests across planOps.test.ts and sandboxCapabilities.test.ts.
+- Gate: typecheck ✓, lint ✓, vitest 1049/122 ✓.
+- NEXT: Part G1 — shared memory retrieval policy (P1).
+
 ## 2026-06-28T20:26:54Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 10: Part D2 (canonicalize search secret key IDs) DONE
 - useWebResearchKey.ts: BRAVE_KEY_ID changed from 'brave_search_api_key' to searchProviderSecretId(BRAVE_PROFILE_ID) = 'search_provider:brave'. Now UI and runtime use the same key ID.
 - resolveSearchProviderKey already used searchProviderSecretId — already correct; no change needed.

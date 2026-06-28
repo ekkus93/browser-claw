@@ -340,6 +340,62 @@ describe('D3 — maxToolCalls limit', () => {
 });
 
 // ---------------------------------------------------------------------------
+// F3 — sandbox tool.call fail-closed args validation
+// ---------------------------------------------------------------------------
+
+describe('F3 — sandbox tool.call fail-closed args validation', () => {
+  let f3Audits: CapabilityAudit[];
+  let f3Ctx: SandboxCapabilityContext;
+
+  beforeEach(async () => {
+    const db3 = new BrowserClawDB();
+    await db3.open();
+    const fs3 = new WorkspaceFs({ db: db3, content: new MemoryContentStore() });
+    f3Audits = [];
+    f3Ctx = {
+      fs: fs3,
+      db: db3,
+      dispatch: vi.fn(),
+      onAudit: (e) => f3Audits.push(e),
+    };
+  });
+
+  it('F3: sandbox tool.call with array args is denied and audited', async () => {
+    const result = await runSandboxedScript(
+      'return await tool.call("Remember", [1, 2, 3]);',
+      { host: buildSandboxHost(f3Ctx, { tools: ['Remember'] }) },
+    );
+    expect(result.ok).toBe(false);
+    const denied = f3Audits.some((a) => !a.allowed && a.capability === 'tool.call');
+    expect(denied).toBe(true);
+  });
+
+  it('F3: sandbox tool.call with string args is denied and audited', async () => {
+    const result = await runSandboxedScript(
+      'return await tool.call("Remember", "bad args");',
+      { host: buildSandboxHost(f3Ctx, { tools: ['Remember'] }) },
+    );
+    expect(result.ok).toBe(false);
+    const denied = f3Audits.some((a) => !a.allowed && a.capability === 'tool.call');
+    expect(denied).toBe(true);
+  });
+
+  it('F3: sandbox tool.call with undefined args is allowed (no-arg tool path)', async () => {
+    const result = await runSandboxedScript(
+      'return await tool.call("Remember", undefined);',
+      { host: buildSandboxHost(f3Ctx, { tools: ['Remember'] }) },
+    );
+    // Tool itself may fail (missing required args), but no capability denial
+    const capDenied = f3Audits.some(
+      (a) => !a.allowed && a.capability === 'tool.call',
+    );
+    expect(capDenied).toBe(false);
+    // result is ok:false because Remember needs title+text — but not from a denied args check
+    expect(result.ok).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // E1 — sensitive memory filtering in sandbox memory.search
 // ---------------------------------------------------------------------------
 

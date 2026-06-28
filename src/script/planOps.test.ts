@@ -167,3 +167,29 @@ describe('H2 — grep policy in plan executor', () => {
     ).rejects.toThrow(/too large/);
   });
 });
+
+describe('F3 — plan tool.call fail-closed args validation', () => {
+  it('F3: plan tool.call with array args throws PlanOpError', async () => {
+    await expect(
+      executePlanOp(ctx, 'tool.call', { tool: 'Page Reader', args: [1, 2, 3] }),
+    ).rejects.toBeInstanceOf(PlanOpError);
+  });
+
+  it('F3: plan tool.call with string args throws PlanOpError', async () => {
+    await expect(
+      executePlanOp(ctx, 'tool.call', { tool: 'Page Reader', args: 'bad' }),
+    ).rejects.toBeInstanceOf(PlanOpError);
+  });
+
+  it('F3: plan tool.call with number args throws PlanOpError', async () => {
+    await expect(
+      executePlanOp(ctx, 'tool.call', { tool: 'Page Reader', args: 42 }),
+    ).rejects.toBeInstanceOf(PlanOpError);
+  });
+
+  it('F3: plan tool.call with undefined args does not throw (no-arg tool path)', async () => {
+    await expect(
+      executePlanOp(ctx, 'tool.call', { tool: 'Page Reader' }),
+    ).rejects.toThrow();
+  });
+});

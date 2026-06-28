@@ -651,11 +651,12 @@ export function requireStringField(
 
 ## Phase F3 — Tool args parser must fail everywhere
 
-- [ ] P1 Ensure approved tool execution uses fail-closed args parser.
-- [ ] P1 Ensure sandbox `tool.call` uses fail-closed args validation.
-- [ ] P1 Ensure plan `tool.call` uses fail-closed args validation.
-- [ ] P1 No path should coerce invalid args to `{}`.
-- [ ] P1 Tests for each path.
+<!-- evidence: planOps.callTool now throws PlanOpError for non-object args (array/string/number); sandboxCapabilities tool.call now calls deny() for non-object rawArgs; undefined args still allowed (no-arg tool path); toolRunner.parseApprovedArgsOrThrow was already fail-closed; 7 F3 tests across planOps.test.ts and sandboxCapabilities.test.ts; 1049/122 vitest pass, lint+typecheck clean -->
+- [x] P1 Ensure approved tool execution uses fail-closed args parser.
+- [x] P1 Ensure sandbox `tool.call` uses fail-closed args validation.
+- [x] P1 Ensure plan `tool.call` uses fail-closed args validation.
+- [x] P1 No path should coerce invalid args to `{}`.
+- [x] P1 Tests for each path.
 
 ---
 

@@ -17,6 +17,7 @@
 import type { BrowserClawDB } from '../db/db.ts';
 import type { AppDispatch } from '../store/store.ts';
 import type { MemoryRow } from '../db/types.ts';
+import { filterMemoriesForAutomatedAccess } from '../memories/retrieveMemories.ts';
 import {
   runToolCall,
   TOOL_CAPABILITY_DESCRIPTORS,
@@ -412,11 +413,9 @@ export function buildSandboxHost(
         const all = tag
           ? await ctx.db.memories.where('tags').equals(tag).toArray()
           : await ctx.db.memories.toArray();
-        // FIX1-E1: exclude sensitive memories — they must never appear in
-        // sandbox output, errors, or audit entries.
-        const visible = all.filter(
-          (m: MemoryRow) => m.sensitivity !== 'sensitive',
-        );
+        // G1: exclude sensitive memories via shared policy (never appear in
+        // sandbox output, errors, or audit entries).
+        const visible = filterMemoriesForAutomatedAccess(all);
         const matched = text
           ? visible.filter(
               (m: MemoryRow) =>

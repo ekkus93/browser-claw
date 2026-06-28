@@ -168,6 +168,54 @@ describe('H2 — grep policy in plan executor', () => {
   });
 });
 
+describe('G1 — plan memory.search excludes sensitive memories', () => {
+  it('G1: sensitive memory not returned from plan memory.search', async () => {
+    await ctx.db.memories.put({
+      id: 'ms1',
+      title: 'Normal',
+      text: 'okay',
+      tags: [],
+      source: 'user',
+      createdBy: 'user',
+      createdAt: Date.now(),
+      pinned: false,
+      sensitivity: 'normal',
+    });
+    await ctx.db.memories.put({
+      id: 'ms2',
+      title: 'Secret',
+      text: 'private data',
+      tags: [],
+      source: 'user',
+      createdBy: 'user',
+      createdAt: Date.now(),
+      pinned: false,
+      sensitivity: 'sensitive',
+    });
+    const result = await executePlanOp(ctx, 'memory.search', {});
+    const ids = (result as { id: string }[]).map((r) => r.id);
+    expect(ids).toContain('ms1');
+    expect(ids).not.toContain('ms2');
+  });
+
+  it('G1: normal memory is returned from plan memory.search', async () => {
+    await ctx.db.memories.put({
+      id: 'mn1',
+      title: 'Normal',
+      text: 'fine',
+      tags: [],
+      source: 'user',
+      createdBy: 'user',
+      createdAt: Date.now(),
+      pinned: false,
+      sensitivity: 'normal',
+    });
+    const result = await executePlanOp(ctx, 'memory.search', {});
+    const ids = (result as { id: string }[]).map((r) => r.id);
+    expect(ids).toContain('mn1');
+  });
+});
+
 describe('F3 — plan tool.call fail-closed args validation', () => {
   it('F3: plan tool.call with array args throws PlanOpError', async () => {
     await expect(

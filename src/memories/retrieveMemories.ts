@@ -1,5 +1,27 @@
 import type { MemoryRow } from '../db/types.ts';
 
+export type MemorySearchPolicy = {
+  includeSensitive?: boolean;
+  limit?: number;
+};
+
+/**
+ * Filter memories for automated access (plan / sandbox / LLM context). By
+ * default, sensitive memories are excluded — they must never appear in agent
+ * output, errors, or audit entries without explicit opt-in.
+ */
+export function filterMemoriesForAutomatedAccess<
+  T extends { sensitivity?: string },
+>(rows: T[], policy: MemorySearchPolicy = {}): T[] {
+  const filtered =
+    policy.includeSensitive === true
+      ? rows
+      : rows.filter((row) => row.sensitivity !== 'sensitive');
+  return typeof policy.limit === 'number'
+    ? filtered.slice(0, policy.limit)
+    : filtered;
+}
+
 /**
  * Pure selection of which saved memories to surface into an LLM prompt for a
  * turn. Kept separate from the runner so the ranking is unit-testable and has

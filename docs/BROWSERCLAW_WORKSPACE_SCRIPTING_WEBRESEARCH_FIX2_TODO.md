@@ -664,18 +664,19 @@ export function requireStringField(
 
 ## Phase G1 — Shared memory retrieval policy
 
-- [ ] P1 Add shared function for automated memory searches.
-- [ ] P1 Default behavior excludes `sensitive` memories.
-- [ ] P1 Use shared function in:
-  - [ ] LLM context retrieval if not already;
-  - [ ] sandbox `memory.search`;
-  - [ ] plan `memory.search`;
-  - [ ] any web/script future memory tools.
-- [ ] P1 Tests:
-  - [ ] sensitive memory not returned to plan;
-  - [ ] sensitive memory not returned to sandbox;
-  - [ ] normal memory still returned;
-  - [ ] pinned sensitive memory still excluded unless explicit future capability exists.
+<!-- evidence: added filterMemoriesForAutomatedAccess+MemorySearchPolicy to retrieveMemories.ts; sandboxCapabilities.ts and planOps.ts both use the shared function; LLM path (selectMemoriesForContext) already excluded sensitive; 5 G1 unit tests in retrieveMemories.test.ts + 2 G1 integration tests in planOps.test.ts; existing E1 sandbox tests cover sandbox path; 1056/122 vitest pass, lint+typecheck clean -->
+- [x] P1 Add shared function for automated memory searches.
+- [x] P1 Default behavior excludes `sensitive` memories.
+- [x] P1 Use shared function in:
+  - [x] LLM context retrieval if not already; <!-- selectMemoriesForContext already excluded sensitive -->
+  - [x] sandbox `memory.search`;
+  - [x] plan `memory.search`;
+  - [x] any web/script future memory tools. <!-- covered by shared function -->
+- [x] P1 Tests:
+  - [x] sensitive memory not returned to plan;
+  - [x] sensitive memory not returned to sandbox; <!-- E1 tests in sandboxCapabilities.test.ts -->
+  - [x] normal memory still returned;
+  - [x] pinned sensitive memory still excluded unless explicit future capability exists.
 
 ### Helpful code sketch
 
@@ -703,9 +704,10 @@ export function filterMemoriesForAutomatedAccess<T extends { sensitivity?: strin
 
 ## Phase G2 — Future sensitive memory capability placeholder
 
-- [ ] P2 Add design note for future `memorySensitiveRead` capability.
-- [ ] P2 Do not implement it unless user explicitly requests it.
-- [ ] P2 If requested later, it must be high-risk and approval-gated.
+<!-- evidence: design note: a future memorySensitiveRead capability would pass {includeSensitive:true} to filterMemoriesForAutomatedAccess; not yet implemented; MemorySearchPolicy.includeSensitive is the extension point -->
+- [x] P2 Add design note for future `memorySensitiveRead` capability.
+- [x] P2 Do not implement it unless user explicitly requests it.
+- [x] P2 If requested later, it must be high-risk and approval-gated.
 
 ---
 

@@ -12,6 +12,7 @@
 import type { BrowserClawDB } from '../db/db.ts';
 import type { AppDispatch } from '../store/store.ts';
 import type { MemoryRow } from '../db/types.ts';
+import { filterMemoriesForAutomatedAccess } from '../memories/retrieveMemories.ts';
 import { runToolCall, type ToolContext } from '../tools/tools.ts';
 import { WorkspaceFs } from '../workspace/workspaceFs.ts';
 import {
@@ -175,8 +176,9 @@ async function searchMemory(
   const all = tag
     ? await ctx.db.memories.where('tags').equals(tag).toArray()
     : await ctx.db.memories.toArray();
-  if (!query) return all;
-  return all.filter(
+  const visible = filterMemoriesForAutomatedAccess(all);
+  if (!query) return visible;
+  return visible.filter(
     (m) =>
       m.title.toLowerCase().includes(query) ||
       m.text.toLowerCase().includes(query),

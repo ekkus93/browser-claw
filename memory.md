@@ -1969,6 +1969,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1049/122 ✓.
 - NEXT: Part G1 — shared memory retrieval policy (P1).
 
+## 2026-06-28T21:05:39Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 18: Parts G1+G2 (shared memory retrieval policy) DONE
+- Added filterMemoriesForAutomatedAccess+MemorySearchPolicy to src/memories/retrieveMemories.ts.
+- sandboxCapabilities.ts and planOps.ts both use the shared function; LLM path (selectMemoriesForContext) was already compliant.
+- G2: design note — future memorySensitiveRead would pass {includeSensitive:true}; not implemented.
+- 5 G1 unit tests in retrieveMemories.test.ts + 2 G1 integration tests in planOps.test.ts.
+- Gate: typecheck ✓, lint ✓, vitest 1056/122 ✓.
+- NEXT: Part H — Sandbox Tool Capability Safety (H1, H2, H3).
+
 ## 2026-06-28T20:26:54Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 10: Part D2 (canonicalize search secret key IDs) DONE
 - useWebResearchKey.ts: BRAVE_KEY_ID changed from 'brave_search_api_key' to searchProviderSecretId(BRAVE_PROFILE_ID) = 'search_provider:brave'. Now UI and runtime use the same key ID.
 - resolveSearchProviderKey already used searchProviderSecretId — already correct; no change needed.

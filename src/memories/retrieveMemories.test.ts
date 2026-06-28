@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MemoryRow } from '../db/types.ts';
 import {
+  filterMemoriesForAutomatedAccess,
   selectMemoriesForContext,
   formatMemoryContext,
 } from './retrieveMemories.ts';
@@ -94,5 +95,40 @@ describe('formatMemoryContext', () => {
     ]);
     expect(block).toContain('Relevant saved memories');
     expect(block).toContain('- Rust: ownership');
+  });
+});
+
+describe('G1 — filterMemoriesForAutomatedAccess', () => {
+  const normal = { id: 'n1', sensitivity: 'normal' as const, title: 'ok', text: 'fine' };
+  const sensitive = { id: 's1', sensitivity: 'sensitive' as const, title: 'secret', text: 'private' };
+
+  it('G1: sensitive memory excluded by default', () => {
+    const result = filterMemoriesForAutomatedAccess([normal, sensitive]);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.id).toBe('n1');
+  });
+
+  it('G1: normal memory included by default', () => {
+    const result = filterMemoriesForAutomatedAccess([normal]);
+    expect(result).toHaveLength(1);
+  });
+
+  it('G1: includeSensitive:true includes sensitive memory', () => {
+    const result = filterMemoriesForAutomatedAccess([normal, sensitive], {
+      includeSensitive: true,
+    });
+    expect(result).toHaveLength(2);
+  });
+
+  it('G1: limit caps the returned count', () => {
+    const rows = [normal, { ...normal, id: 'n2' }, { ...normal, id: 'n3' }];
+    const result = filterMemoriesForAutomatedAccess(rows, { limit: 2 });
+    expect(result).toHaveLength(2);
+  });
+
+  it('G1: pinned sensitive memory is still excluded without includeSensitive', () => {
+    const pinnedSensitive = { id: 'ps', sensitivity: 'sensitive' as const, title: 'top secret', text: 'shh', pinned: true };
+    const result = filterMemoriesForAutomatedAccess([normal, pinnedSensitive]);
+    expect(result.every((r) => r.sensitivity !== 'sensitive')).toBe(true);
   });
 });

@@ -3,8 +3,13 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks.ts';
 import { db } from '../../db/db.ts';
 import { secretVault } from '../../secrets/vault.ts';
 import { recordAudit } from '../../audit/auditSink.ts';
+import {
+  searchProviderSecretId,
+  BRAVE_PROFILE_ID,
+} from '../../webresearch/braveSearch.ts';
 
-export const BRAVE_KEY_ID = 'brave_search_api_key';
+// D2: canonical key ID is search_provider:brave (matches resolveSearchProviderKey)
+export const BRAVE_KEY_ID = searchProviderSecretId(BRAVE_PROFILE_ID);
 export const BRAVE_KEY_LABEL = 'Brave Search API key';
 
 export interface WebResearchKeyState {

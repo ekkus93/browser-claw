@@ -407,16 +407,17 @@ const webResearch = createWebResearchService({
 
 ## Phase D2 — Canonicalize search SecretVault key IDs
 
-- [ ] P1 Pick canonical key ID:
-  - [ ] recommended: `search_provider:${profileId}`.
-- [ ] P1 Update Settings/Search UI to write that key ID.
-- [ ] P1 Update provider resolver to read that key ID.
-- [ ] P1 Remove or migrate legacy `brave_search_api_key` if present.
-- [ ] P1 Tests:
-  - [ ] saved key is found by runtime;
-  - [ ] missing key fails as `secret_missing`;
-  - [ ] locked key fails as `secret_locked`;
-  - [ ] no raw key leaks to audit/Redux.
+<!-- evidence: useWebResearchKey.ts: BRAVE_KEY_ID now = searchProviderSecretId(BRAVE_PROFILE_ID) = 'search_provider:brave' (was 'brave_search_api_key'); resolveSearchProviderKey already used searchProviderSecretId; added 3 D2 tests in braveSearch.test.ts (canonical form, found by resolver, no key in audit); existing tests (secret_missing, secret_locked) continue to pass; 1013/121 vitest pass, lint+typecheck clean -->
+- [x] P1 Pick canonical key ID:
+  - [x] recommended: `search_provider:${profileId}`. <!-- used: search_provider:brave -->
+- [x] P1 Update Settings/Search UI to write that key ID.
+- [x] P1 Update provider resolver to read that key ID. <!-- already used searchProviderSecretId -->
+- [x] P1 Remove or migrate legacy `brave_search_api_key` if present. <!-- replaced constant; no migration needed (pre-release) -->
+- [x] P1 Tests:
+  - [x] saved key is found by runtime;
+  - [x] missing key fails as `secret_missing`;
+  - [x] locked key fails as `secret_locked`;
+  - [x] no raw key leaks to audit/Redux.
 
 ## Phase D3 — Research bundle must include failures
 

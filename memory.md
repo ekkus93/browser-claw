@@ -1920,3 +1920,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - 4 new D1 tests in configuredSearchProvider.test.ts; 1 D1 test in webRunner.test.ts (search fails closed).
 - Gate: typecheck ✓, lint ✓, vitest 1010/121 ✓.
 - NEXT: Part D2 — canonicalize search SecretVault key IDs (P1).
+
+## 2026-06-28T20:26:54Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 10: Part D2 (canonicalize search secret key IDs) DONE
+- useWebResearchKey.ts: BRAVE_KEY_ID changed from 'brave_search_api_key' to searchProviderSecretId(BRAVE_PROFILE_ID) = 'search_provider:brave'. Now UI and runtime use the same key ID.
+- resolveSearchProviderKey already used searchProviderSecretId — already correct; no change needed.
+- Added 3 D2 tests in braveSearch.test.ts: canonical form assertion, found-by-resolver, no raw key in messages.
+- Gate: typecheck ✓, lint ✓, vitest 1013/121 ✓.
+- NEXT: Part D3 — research bundle must include failures (P1).

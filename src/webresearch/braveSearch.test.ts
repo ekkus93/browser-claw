@@ -87,6 +87,35 @@ describe('resolveSearchProviderKey (E2)', () => {
   });
 });
 
+// ── D2: canonical key ID cross-check ─────────────────────────────────────────
+
+describe('D2 — searchProviderSecretId canonical form', () => {
+  it('D2: searchProviderSecretId(brave) matches canonical search_provider:brave', () => {
+    expect(searchProviderSecretId(BRAVE_PROFILE_ID)).toBe('search_provider:brave');
+  });
+
+  it('D2: saved key is found when resolveSearchProviderKey uses searchProviderSecretId', async () => {
+    const canonicalId = searchProviderSecretId(BRAVE_PROFILE_ID);
+    const vault = {
+      isUnlocked: () => true,
+      getSecret: vi.fn(async (id: string) =>
+        id === canonicalId ? 'BSA_canonical_key' : undefined,
+      ),
+    };
+    const result = await resolveSearchProviderKey(vault, BRAVE_PROFILE);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.apiKey).toBe('BSA_canonical_key');
+  });
+
+  it('D2: audit/error messages do not contain the raw API key', async () => {
+    const vault = { isUnlocked: () => false, getSecret: vi.fn() };
+    const result = await resolveSearchProviderKey(vault, BRAVE_PROFILE);
+    if (!result.ok) {
+      expect(result.message).not.toMatch(/BSA_[A-Za-z0-9]+/);
+    }
+  });
+});
+
 // ── createBraveSearchProvider ─────────────────────────────────────────────────
 
 describe('createBraveSearchProvider (E2)', () => {

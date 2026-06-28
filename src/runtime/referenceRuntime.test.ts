@@ -258,6 +258,69 @@ describe('referenceRuntime', () => {
     expect(effects.some((e) => e.type === 'storage_put')).toBe(false);
   });
 
+  it('E2: web_request missing op emits protocol error', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('do something'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { query: 'hello' } },
+    });
+    expect(effects[0]).toMatchObject({
+      type: 'audit_append',
+      event_type: 'runtime.invalid_web_request',
+      risk: 'medium',
+    });
+    expect(effects.some((e) => e.type === 'web_search')).toBe(false);
+  });
+
+  it('E2: web_request search with missing query emits protocol error', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('search something'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'search' } },
+    });
+    expect(effects[0]).toMatchObject({
+      type: 'audit_append',
+      event_type: 'runtime.invalid_web_request',
+      risk: 'medium',
+    });
+    expect(effects.some((e) => e.type === 'web_search')).toBe(false);
+  });
+
+  it('E2: web_request readPage with missing url emits protocol error', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('read a page'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'readPage' } },
+    });
+    expect(effects[0]).toMatchObject({
+      type: 'audit_append',
+      event_type: 'runtime.invalid_web_request',
+      risk: 'medium',
+    });
+    expect(effects.some((e) => e.type === 'web_page_read')).toBe(false);
+  });
+
+  it('E2: web_request search with empty query emits protocol error', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('search'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'search', query: '   ' } },
+    });
+    expect(effects[0]).toMatchObject({
+      type: 'audit_append',
+      event_type: 'runtime.invalid_web_request',
+      risk: 'medium',
+    });
+  });
+
   it('A2: empty text result emits protocol error, not empty assistant message', () => {
     const runtime = createReferenceRuntime();
     runtime.dispatch(submit('hi'));

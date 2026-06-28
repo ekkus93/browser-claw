@@ -540,10 +540,11 @@ function effectsForWebRequest(id: string, request: WebRequest): Effect[] {
 
 ## Phase E2 — Validate web request payloads fail-closed
 
-- [ ] P1 Validate `web_request` shape before emitting effects.
-- [ ] P1 Missing query/url/op must produce protocol error.
-- [ ] P1 Unsupported op must produce protocol error.
-- [ ] P1 Tests for malformed web requests.
+<!-- evidence: referenceRuntime.ts: added E2 validation — missing/empty op → audit_append runtime.invalid_web_request; op:search with missing/empty query → audit_append; op:readPage with missing/empty url → audit_append; unknown op → audit_append runtime.unknown_web_request (was already there); 4 E2 tests in referenceRuntime.test.ts; 1024/121 vitest pass, lint+typecheck clean -->
+- [x] P1 Validate `web_request` shape before emitting effects.
+- [x] P1 Missing query/url/op must produce protocol error.
+- [x] P1 Unsupported op must produce protocol error. <!-- already existed (A2 test) -->
+- [x] P1 Tests for malformed web requests.
 
 ---
 

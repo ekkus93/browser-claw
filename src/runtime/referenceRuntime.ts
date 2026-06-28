@@ -229,20 +229,53 @@ export function createReferenceRuntime(
         if (webRequest !== null) {
           const proposalId = nextId();
           const op = webRequest.op;
-          const query =
-            typeof webRequest.query === 'string' ? webRequest.query : '';
-          const url = typeof webRequest.url === 'string' ? webRequest.url : '';
+          // E2: missing op is a protocol error, not a silent fallback.
+          if (typeof op !== 'string' || op.trim() === '') {
+            return [
+              {
+                type: 'audit_append',
+                id: proposalId,
+                event_type: 'runtime.invalid_web_request',
+                summary: 'web_request missing required op field',
+                risk: 'medium',
+              },
+            ];
+          }
           if (op === 'search') {
+            // E2: missing query is a protocol error, not a silent fallback.
+            if (typeof webRequest.query !== 'string' || webRequest.query.trim() === '') {
+              return [
+                {
+                  type: 'audit_append',
+                  id: proposalId,
+                  event_type: 'runtime.invalid_web_request',
+                  summary: 'web_request search missing required query field',
+                  risk: 'medium',
+                },
+              ];
+            }
             state.pending[proposalId] = 'web_search';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;
-            return [{ type: 'web_search', id: proposalId, query }];
+            return [{ type: 'web_search', id: proposalId, query: webRequest.query }];
           }
           if (op === 'readPage') {
+            // E2: missing url is a protocol error, not a silent fallback.
+            if (typeof webRequest.url !== 'string' || webRequest.url.trim() === '') {
+              return [
+                {
+                  type: 'audit_append',
+                  id: proposalId,
+                  event_type: 'runtime.invalid_web_request',
+                  summary: 'web_request readPage missing required url field',
+                  risk: 'medium',
+                },
+              ];
+            }
             state.pending[proposalId] = 'web_page_read';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;
-            return [{ type: 'web_page_read', id: proposalId, url }];
+            return [{ type: 'web_page_read', id: proposalId, url: webRequest.url }];
           }
           if (op === 'readCurrentTab') {
             state.pending[proposalId] = 'extension_request';
@@ -257,6 +290,7 @@ export function createReferenceRuntime(
             ];
           }
           if (op === 'readPages' || op === 'research') {
+            const query = typeof webRequest.query === 'string' ? webRequest.query : '';
             state.pending[proposalId] = 'web_research';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;

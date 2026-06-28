@@ -1943,6 +1943,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1020/121 ✓.
 - NEXT: Part E2 — validate web request payloads fail-closed (P1).
 
+## 2026-06-28T20:42:43Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 14: Part E2 (validate web request payloads fail-closed) DONE
+- referenceRuntime.ts: added E2 validation in web_request branch — missing/empty op → audit_append runtime.invalid_web_request; op:search missing/empty query → same; op:readPage missing/empty url → same. Unknown op already had audit_append.
+- 4 E2 tests in referenceRuntime.test.ts (missing op, missing query, missing url, empty query).
+- Gate: typecheck ✓, lint ✓, vitest 1024/121 ✓.
+- NEXT: Part F1 — shared approval payload parsing helper (P0).
+
 ## 2026-06-28T20:26:54Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 10: Part D2 (canonicalize search secret key IDs) DONE
 - useWebResearchKey.ts: BRAVE_KEY_ID changed from 'brave_search_api_key' to searchProviderSecretId(BRAVE_PROFILE_ID) = 'search_provider:brave'. Now UI and runtime use the same key ID.
 - resolveSearchProviderKey already used searchProviderSecretId — already correct; no change needed.

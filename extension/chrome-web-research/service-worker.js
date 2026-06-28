@@ -69,23 +69,43 @@ const handlers = {
   request_host_permission: undefined,
 };
 
+/**
+ * Build a structured error response. All extension error responses follow this
+ * shape. `retryable` defaults to false; set true for transient failures.
+ */
+function errorResponse(kind, message, requestId, retryable = false) {
+  return {
+    ok: false,
+    ...(requestId !== undefined ? { requestId } : {}),
+    error: { kind, message, retryable },
+  };
+}
+
 function handle(message) {
-  if (!message || typeof message.type !== 'string') {
-    return {
-      ok: false,
-      error: { kind: 'internal_error', message: 'bad message' },
-    };
+  if (!message || typeof message !== 'object') {
+    return errorResponse('internal_error', 'message must be an object');
+  }
+  if (typeof message.type !== 'string' || message.type.length === 0) {
+    return errorResponse(
+      'invalid_request',
+      'message type must be a non-empty string',
+      message.requestId,
+    );
+  }
+  if (typeof message.requestId !== 'string' || message.requestId.length === 0) {
+    return errorResponse(
+      'invalid_request',
+      'message requestId must be a non-empty string',
+      undefined,
+    );
   }
   const handler = handlers[message.type];
   if (typeof handler !== 'function') {
-    return {
-      ok: false,
-      requestId: message.requestId,
-      error: {
-        kind: 'unsupported',
-        message: `unknown message type: ${message.type}`,
-      },
-    };
+    return errorResponse(
+      'unsupported_message_type',
+      `unknown message type: ${message.type}`,
+      message.requestId,
+    );
   }
   return handler(message);
 }
@@ -109,4 +129,4 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessageExternal) {
   );
 }
 
-export { handle, handleGetStatus, handlers, isAllowedSender, ALLOWED_ORIGINS, PROTOCOL_VERSION, EXTENSION_VERSION };
+export { handle, handleGetStatus, handlers, isAllowedSender, errorResponse, ALLOWED_ORIGINS, PROTOCOL_VERSION, EXTENSION_VERSION };

@@ -41,15 +41,26 @@ export interface ExtensionPageReaderDeps {
 }
 
 const ERROR_KIND_MAP: Record<ExtensionErrorKind, PageReadErrorKind> = {
+  // A2 canonical error kinds
+  unsupported_message_type: 'internal_error',
+  invalid_request: 'internal_error',
+  origin_not_allowed: 'permission_denied',
   permission_denied: 'permission_denied',
+  host_permission_missing: 'permission_denied',
+  url_blocked: 'unsupported_url',
+  tab_create_failed: 'internal_error',
+  page_load_timeout: 'timeout',
+  script_injection_failed: 'internal_error',
+  extraction_failed: 'extraction_failed',
+  output_too_large: 'internal_error',
+  internal_error: 'internal_error',
+  // Legacy kinds
   timeout: 'timeout',
   navigation_failed: 'navigation_failed',
-  extraction_failed: 'extraction_failed',
   unsupported_url: 'unsupported_url',
   extension_missing: 'extension_missing',
   unsupported: 'internal_error',
   forbidden: 'permission_denied',
-  internal_error: 'internal_error',
 };
 
 function toError(

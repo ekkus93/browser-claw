@@ -91,3 +91,65 @@ describe('newRequestId', () => {
     expect(newRequestId()).not.toBe(newRequestId());
   });
 });
+
+// FIX1-A2: canonical error kinds accepted by isExtensionResponse
+describe('isExtensionResponse A2 error kinds', () => {
+  const a2Kinds = [
+    'unsupported_message_type',
+    'invalid_request',
+    'origin_not_allowed',
+    'host_permission_missing',
+    'url_blocked',
+    'tab_create_failed',
+    'page_load_timeout',
+    'script_injection_failed',
+    'output_too_large',
+  ] as const;
+
+  it('accepts all A2 error kinds in error responses', () => {
+    for (const kind of a2Kinds) {
+      expect(
+        isExtensionResponse({
+          ok: false,
+          requestId: 'r1',
+          error: { kind, message: 'test' },
+        }),
+      ).toBe(true);
+    }
+  });
+
+  it('A2: valid read_page request accepted', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'read_page',
+        requestId: 'r1',
+        url: 'https://example.com/article',
+      }).ok,
+    ).toBe(true);
+  });
+
+  it('A2: invalid URL (missing) in read_page rejected', () => {
+    expect(
+      parseExtensionRequest({ type: 'read_page', requestId: 'r1' }).ok,
+    ).toBe(false);
+  });
+
+  it('A2: missing requestId rejected', () => {
+    expect(parseExtensionRequest({ type: 'ping' }).ok).toBe(false);
+    expect(parseExtensionRequest({ type: 'get_status' }).ok).toBe(false);
+  });
+
+  it('A2: unknown type rejected', () => {
+    expect(
+      parseExtensionRequest({ type: 'unknown_type', requestId: 'r1' }).ok,
+    ).toBe(false);
+  });
+
+  it('A2: unknown origin rejected by isAllowedSenderUrl', () => {
+    expect(
+      isAllowedSenderUrl('https://attacker.example/x', [
+        'http://localhost:5173',
+      ]),
+    ).toBe(false);
+  });
+});

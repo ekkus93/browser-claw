@@ -50,15 +50,26 @@ const REQUEST_TYPES: readonly ExtensionRequestType[] = [
 ];
 
 export type ExtensionErrorKind =
+  // A2 canonical error kinds (used by A3+ service-worker handlers)
+  | 'unsupported_message_type'
+  | 'invalid_request'
+  | 'origin_not_allowed'
   | 'permission_denied'
+  | 'host_permission_missing'
+  | 'url_blocked'
+  | 'tab_create_failed'
+  | 'page_load_timeout'
+  | 'script_injection_failed'
+  | 'extraction_failed'
+  | 'output_too_large'
+  | 'internal_error'
+  // Legacy kinds (v0.1 service-worker; kept for backward compat)
   | 'timeout'
   | 'navigation_failed'
-  | 'extraction_failed'
   | 'unsupported_url'
   | 'extension_missing'
   | 'unsupported'
-  | 'forbidden'
-  | 'internal_error';
+  | 'forbidden';
 
 export interface ExtensionError {
   kind: ExtensionErrorKind;

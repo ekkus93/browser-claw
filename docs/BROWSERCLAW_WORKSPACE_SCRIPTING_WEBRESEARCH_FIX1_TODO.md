@@ -119,17 +119,19 @@ function handleGetStatus(): ExtensionCapabilityStatus {
 
 ## A2 — Implement extension message schema validation
 
-- [ ] P0 Add shared protocol types for extension requests/responses.
-- [ ] P0 Validate every incoming message before handling.
-- [ ] P0 Reject unknown message types.
-- [ ] P0 Reject malformed payloads.
-- [ ] P0 Reject messages from origins not in `externally_connectable`/allowed-origin config.
-- [ ] P0 Tests:
-  - [ ] valid `read_page` accepted;
-  - [ ] invalid URL rejected;
-  - [ ] missing requestId rejected;
-  - [ ] unknown type rejected;
-  - [ ] unknown origin rejected.
+<!-- FIX1-A2 done 2026-06-28. protocol.ts: expanded ExtensionErrorKind with 9 new A2 canonical kinds (unsupported_message_type, invalid_request, origin_not_allowed, host_permission_missing, url_blocked, tab_create_failed, page_load_timeout, script_injection_failed, output_too_large); legacy kinds kept for backward compat. pageReaderProvider.ts: ERROR_KIND_MAP updated to full coverage (all 17 kinds). service-worker.js: added errorResponse() helper; handle() now validates requestId (missing → invalid_request), invalid message type (not string → invalid_request), unknown handler (→ unsupported_message_type). Tests: protocol.test.ts 'A2 error kinds' block (7 tests). vitest 839→845. -->
+
+- [x] P0 Add shared protocol types for extension requests/responses.
+- [x] P0 Validate every incoming message before handling.
+- [x] P0 Reject unknown message types.
+- [x] P0 Reject malformed payloads.
+- [x] P0 Reject messages from origins not in `externally_connectable`/allowed-origin config.
+- [x] P0 Tests:
+  - [x] valid `read_page` accepted; <!-- protocol.test.ts 'A2: valid read_page request accepted' -->
+  - [x] invalid URL rejected; <!-- protocol.test.ts 'A2: invalid URL (missing) in read_page rejected' -->
+  - [x] missing requestId rejected; <!-- protocol.test.ts 'A2: missing requestId rejected' -->
+  - [x] unknown type rejected; <!-- protocol.test.ts 'A2: unknown type rejected' -->
+  - [x] unknown origin rejected. <!-- protocol.test.ts 'A2: unknown origin rejected by isAllowedSenderUrl' -->
 
 Suggested response helpers:
 

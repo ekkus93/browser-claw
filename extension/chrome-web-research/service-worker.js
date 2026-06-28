@@ -625,6 +625,7 @@ export {
   isAllowedSender,
   errorResponse,
   classifyExtensionUrl,
+  extractPageContent,
   ALLOWED_ORIGINS,
   PROTOCOL_VERSION,
   EXTENSION_VERSION,

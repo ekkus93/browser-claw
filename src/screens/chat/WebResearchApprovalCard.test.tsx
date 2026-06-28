@@ -10,10 +10,11 @@ function makeApproval(
   return {
     id: 'test-id',
     kind: 'web_page_read',
+    title: 'Web research',
+    summary: 'Read a page',
     risk: 'low',
     status: 'pending',
     payloadPreview: JSON.stringify({ urls: ['https://example.com/page'] }),
-    createdAt: 1000,
     ...overrides,
   };
 }

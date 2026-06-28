@@ -122,18 +122,20 @@ Read `BROWSERCLAW_WEBRESEARCH_SETTINGS_FIX2_SPEC.md` before building any item.
 
 ## D1 — Unit test extractPageContent
 
-- [ ] P1 Make `extractPageContent` importable for Vitest:
-  - [ ] Option A: extract the function to a shared ES module `extension/chrome-web-research/extractPageContent.mjs` (or `.js`); import it in both `service-worker.js` and the test.
-  - [ ] Option B: duplicate a pure version under `src/extension/extractPageContent.ts` for testing. Choose A if the build pipeline allows `type: module` in the extension; choose B otherwise.
-- [ ] P1 Write tests (`src/extension/extractPageContent.test.ts` or `extension/chrome-web-research/extractPageContent.test.js`):
-  - [ ] `og:title` preferred over `<h1>` over `<title>`.
-  - [ ] `<script>` and `<style>` tag content removed from output text.
-  - [ ] Multiple whitespace/newlines collapsed to single space.
-  - [ ] Output longer than `MAX_CHARS` truncated at `MAX_CHARS`.
-  - [ ] `finalUrl` returned as passed in.
-  - [ ] Empty `<body>` returns result without throwing.
-  - [ ] Hostile DOM (`document.querySelectorAll = () => []`) returns degraded but non-throwing result.
-  - [ ] `<noscript>` contents excluded from text.
+<!-- evidence: extractPageContent exported from service-worker.js + src/extension/extractPageContent.test.ts; 972/972 vitest pass -->
+- [x] P1 Make `extractPageContent` importable for Vitest:
+  - [x] Exported directly from `service-worker.js` (Option A variant — no separate module needed; Vitest can import plain JS from extension/).
+- [x] P1 Write tests in `src/extension/extractPageContent.test.ts`:
+  - [x] `og:title` preferred over `<title>` over `<h1>`.
+  - [x] `<title>` used when no og:title.
+  - [x] `<h1>` used when no og:title and no `<title>`.
+  - [x] `<script>` and `<style>` tag content removed from output text.
+  - [x] Multiple whitespace/newlines collapsed to single space.
+  - [x] Output longer than `maxChars` truncated at `maxChars`.
+  - [x] `finalUrl` returned (jsdom default `about:blank`).
+  - [x] Empty `<body>` returns ok without throwing.
+  - [x] `<noscript>` contents excluded from text.
+  - [x] Hostile DOM (`querySelectorAll` throws) returns degraded but non-throwing result.
 
 ---
 

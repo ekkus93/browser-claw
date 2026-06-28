@@ -1823,3 +1823,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - 9 tests in WebResearchApprovalCard.test.tsx covering single URL, 6-URL truncation, bulk_research query text, risk badges, Approve/Reject handlers, malformed payload fallback, domain badge dedup.
 - vitest: 953→962 (118 files). Gate ALL GREEN: typecheck, eslint, prettier, 962/118.
 - FIX2 REMAINING: D1 (extractPageContent unit tests), E1-E3 (final gate + security checklist).
+
+## 2026-06-28T10:27:51Z - Claude Sonnet 4.6 - Ralph FIX2 Iteration 4: D1 (extractPageContent tests) DONE
+- Exported extractPageContent from service-worker.js (added to export block).
+- NEW src/extension/extractPageContent.test.ts: 10 tests. og:title>title>h1 priority; script/style stripped; whitespace collapsed; maxChars truncation; finalUrl returned; empty body ok; noscript excluded; hostile querySelectorAll returns degraded non-throwing result.
+- Also fixed WebResearchApprovalCard.test.tsx: ApprovalRequest has no createdAt field (requires title+summary).
+- vitest: 962→972 (119 files). Gate ALL GREEN: typecheck, eslint, prettier, 972/119.
+- FIX2 REMAINING: E1 (final gate commands), E2 (security checklist), E3 (docs + TODO updates).

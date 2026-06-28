@@ -498,18 +498,19 @@ export async function research(query: string, options: ResearchOptions): Promise
 
 ## Phase E1 — Add explicit current-tab effect/request
 
-- [ ] P1 Add distinct current-tab effect:
-  - [ ] `extension_request { op: "read_current_tab" }`; or
-  - [ ] `web_current_tab_read`.
-- [ ] P1 Do not represent current-tab read as `url: ""`.
-- [ ] P1 Update TypeScript runtime.
-- [ ] P1 Update Rust/WASM runtime.
-- [ ] P1 Update effect executor.
-- [ ] P1 Update extension handler.
-- [ ] P1 Tests:
-  - [ ] model `readCurrentTab` emits current-tab effect;
-  - [ ] current-tab unavailable fails visibly;
-  - [ ] current-tab supported succeeds through extension mock.
+<!-- evidence: WASM already emits {type:'extension_request', request:{op:'read_current_tab'}} (A3 smoke test); extensionRunner.ts: added normalizeRequest() translates {op:'read_current_tab'} → {type:'read_current_tab', requestId:newRequestId()} before parseExtensionRequest; extension handler handleReadCurrentTab already wired; 3 E1 tests in extensionRunner.test.ts (WASM format translated+sent, extension missing fails visible, valid format unchanged); 1020/121 vitest pass, lint+typecheck clean -->
+- [x] P1 Add distinct current-tab effect:
+  - [x] `extension_request { op: "read_current_tab" }`; <!-- WASM emits this, extensionRunner normalizes op→type -->
+  - [x] `web_current_tab_read`. <!-- not used; extension_request path is the chosen approach -->
+- [x] P1 Do not represent current-tab read as `url: ""`.
+- [x] P1 Update TypeScript runtime. <!-- extensionRunner.ts: normalizeRequest() added -->
+- [x] P1 Update Rust/WASM runtime. <!-- already done (A3 smoke test) -->
+- [x] P1 Update effect executor. <!-- effectExecutor already routes extension_request to extension port -->
+- [x] P1 Update extension handler. <!-- handleReadCurrentTab already registered -->
+- [x] P1 Tests:
+  - [x] model `readCurrentTab` emits current-tab effect; <!-- A3 smoke test -->
+  - [x] current-tab unavailable fails visibly; <!-- E1 test: extension missing → extension_missing error -->
+  - [x] current-tab supported succeeds through extension mock. <!-- E1 test: mock transport → ok:true -->
 
 ### Helpful parser/routing sketch
 

@@ -1935,6 +1935,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Ticked D4 checkbox with evidence in TODO.
 - NEXT: Part E1 — add explicit current-tab effect/request (P1).
 
+## 2026-06-28T20:38:31Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 13: Part E1 (current-tab effect) DONE
+- WASM already emits {type:'extension_request', request:{op:'read_current_tab'}} (A3 smoke test confirms).
+- extensionRunner.ts: added normalizeRequest() that translates {op:'X'} → {type:'X', requestId:newRequestId()} before parseExtensionRequest; solves WASM op-vs-type format mismatch.
+- handleReadCurrentTab already registered in extension SW; effectExecutor already routes extension_request to extension port.
+- Added 3 E1 tests: WASM format translated and sent to extension, extension missing causes ok:false extension_missing, valid {type,requestId} format passes through unchanged.
+- Gate: typecheck ✓, lint ✓, vitest 1020/121 ✓.
+- NEXT: Part E2 — validate web request payloads fail-closed (P1).
+
 ## 2026-06-28T20:26:54Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 10: Part D2 (canonicalize search secret key IDs) DONE
 - useWebResearchKey.ts: BRAVE_KEY_ID changed from 'brave_search_api_key' to searchProviderSecretId(BRAVE_PROFILE_ID) = 'search_provider:brave'. Now UI and runtime use the same key ID.
 - resolveSearchProviderKey already used searchProviderSecretId — already correct; no change needed.

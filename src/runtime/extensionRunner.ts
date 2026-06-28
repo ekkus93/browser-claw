@@ -14,6 +14,7 @@ import { recordAudit } from '../audit/auditSink.ts';
 import { extensionAuditEvent } from '../audit/auditEvents.ts';
 import {
   isExtensionResponse,
+  newRequestId,
   parseExtensionRequest,
   type ExtensionRequest,
 } from '../extension/protocol.ts';
@@ -61,9 +62,27 @@ async function sendAndResolve(
   }
 }
 
+/**
+ * The WASM runtime emits extension_request effects with an `op` field instead
+ * of `type` (e.g. `{ op: 'read_current_tab' }`). Translate those to the
+ * canonical ExtensionRequest shape (`{ type, requestId }`).
+ */
+function normalizeRequest(raw: unknown): unknown {
+  if (
+    typeof raw === 'object' &&
+    raw !== null &&
+    'op' in raw &&
+    !('type' in raw)
+  ) {
+    const { op, ...rest } = raw as Record<string, unknown>;
+    return { type: op, requestId: newRequestId(), ...rest };
+  }
+  return raw;
+}
+
 export function createExtensionEffectHandler(deps: ExtensionEffectDeps) {
   return async (effect: ExtensionEffect): Promise<void> => {
-    const parsed = parseExtensionRequest(effect.request);
+    const parsed = parseExtensionRequest(normalizeRequest(effect.request));
     if (!parsed.ok) {
       await deps.submit({
         type: 'resolve_effect',

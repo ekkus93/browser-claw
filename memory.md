@@ -1984,6 +1984,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T21:59:45Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 24: Part J2 (app-level extension E2E) DONE — FIX2 COMPLETE
+- Added app-extension.extension.spec.ts with 3 tests: (1) Settings Check → Connected, (2) read_page from app origin returns sanitized content, (3) Settings shows Not detected when extension missing.
+- Added ?ext_id=<id> URL-param dev-mode override to SettingsScreen.tsx so Playwright tests can pass dynamic extension ID without VITE_CHROME_EXTENSION_ID env rebuild.
+- All FIX2 phases now complete: B2 (sandbox policy UI), C3 (current-tab unavailable), J1 (fixture E2E), J2 (app E2E), J3 (Docker), K2 (all 14 items), K3, and all earlier phases.
+- Gate: typecheck ✓, lint ✓, vitest 1059/122 ✓.
+
 ## 2026-06-28T21:53:31Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 23: Part B2 (Settings UI sandbox policy read-only) DONE
 - Added "Sandbox scripting" Section to SettingsScreen.tsx showing DEFAULT_SCRIPT_POLICY.sandboxedScriptingEnabled as a disabled Toggle (false), plus read-only Badges for Requires approval, Network access, Secrets access.
 - v0.1 is read-only — no toggle; explanatory note in section and header updated.

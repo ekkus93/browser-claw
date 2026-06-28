@@ -268,8 +268,13 @@ export default function SettingsScreen() {
   // Extension availability probe for the Web Research section. Uses the same
   // VITE_CHROME_EXTENSION_ID as main.tsx. When the env var is absent the probe
   // is undefined and WebResearchStatus omits the Check button.
+  // In dev mode, ?ext_id=<id> in the URL overrides the env var so that E2E
+  // tests can supply the dynamically-assigned extension ID without a rebuild.
   const extensionId =
-    (import.meta.env.VITE_CHROME_EXTENSION_ID as string | undefined) ?? '';
+    (import.meta.env.VITE_CHROME_EXTENSION_ID as string | undefined) ||
+    (import.meta.env.DEV
+      ? (new URLSearchParams(window.location.search).get('ext_id') ?? '')
+      : '');
   const extensionProbe = useMemo(
     () =>
       extensionId

@@ -22,9 +22,10 @@ import { Select } from '../components/ui/Select.tsx';
 import { MessageBubble } from './chat/MessageBubble.tsx';
 import { ApprovalCard } from './chat/ApprovalCard.tsx';
 import { ScriptApprovalCard } from './chat/ScriptApprovalCard.tsx';
+import { WebResearchApprovalCard } from './chat/WebResearchApprovalCard.tsx';
 
-/** The two script-runtime approval kinds use the richer script card (G2). */
 const SCRIPT_APPROVAL_KINDS = new Set(['plan', 'sandbox_script']);
+const WEB_APPROVAL_KINDS = new Set(['web_page_read', 'bulk_research']);
 import { ChatComposer } from './chat/ChatComposer.tsx';
 
 export default function ChatScreen() {
@@ -136,6 +137,13 @@ export default function ChatScreen() {
               {pendingApprovals.map((approval) =>
                 SCRIPT_APPROVAL_KINDS.has(approval.kind) ? (
                   <ScriptApprovalCard
+                    key={approval.id}
+                    approval={approval}
+                    onApprove={(id) => resolve(id, 'approved')}
+                    onReject={(id) => resolve(id, 'rejected')}
+                  />
+                ) : WEB_APPROVAL_KINDS.has(approval.kind) ? (
+                  <WebResearchApprovalCard
                     key={approval.id}
                     approval={approval}
                     onApprove={(id) => resolve(id, 'approved')}

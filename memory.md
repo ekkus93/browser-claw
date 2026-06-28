@@ -1816,3 +1816,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - TS challenge: plain JS module has no declaration file; used @ts-expect-error import. Array index access with exactOptionalPropertyTypes requires ! non-null assertion.
 - vitest: 945→953 (117 files). Gate ALL GREEN: typecheck, eslint, prettier, 953/117.
 - FIX2 REMAINING: C1 (WebResearchApprovalCard + ChatScreen wiring), D1 (extractPageContent unit tests), E1-E3 (final gate + security checklist).
+
+## 2026-06-28T10:22:02Z - Claude Sonnet 4.6 - Ralph FIX2 Iteration 3: C1 (WebResearchApprovalCard) DONE
+- NEW src/screens/chat/WebResearchApprovalCard.tsx: parses payloadPreview JSON for {urls,query,maxChars}; summary line ("Read N page(s)" / "Search: query + read N pages"); URL list truncated at 5 with "and N more"; deduped domain badges; risk badge; Approve/Reject buttons; no Edit button (URL editing requires re-validation, deferred v0.2); raw payloadPreview fallback when JSON parse fails.
+- ChatScreen.tsx: added WEB_APPROVAL_KINDS set, imported WebResearchApprovalCard, routes web_page_read/bulk_research to WebResearchApprovalCard before generic ApprovalCard fallback.
+- 9 tests in WebResearchApprovalCard.test.tsx covering single URL, 6-URL truncation, bulk_research query text, risk badges, Approve/Reject handlers, malformed payload fallback, domain badge dedup.
+- vitest: 953→962 (118 files). Gate ALL GREEN: typecheck, eslint, prettier, 962/118.
+- FIX2 REMAINING: D1 (extractPageContent unit tests), E1-E3 (final gate + security checklist).

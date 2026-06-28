@@ -542,14 +542,16 @@ registerRuntimeListeners(startAppListening, host, {
 
 ## C1 — Define block syntax
 
-- [ ] P0 Support fenced blocks:
-  - [ ] `browserclaw-plan`;
-  - [ ] `browserclaw-script`;
-  - [ ] `browserclaw-web`;
-  - [ ] existing `tool`.
-- [ ] P0 Only one actionable block per assistant reply in v0.1 unless explicitly supported.
-- [ ] P0 Multiple actionable blocks should fail explicitly.
-- [ ] P0 Unknown `browserclaw-*` block types should fail explicitly.
+<!-- FIX1-C1 done 2026-06-28. src/script/agentBlockParser.ts: ACTION_BLOCK_RE matches tool | browserclaw-plan | browserclaw-script | browserclaw-web | browserclaw-[\w-]+. Exactly-one enforcement: multiple → malformed. Unknown browserclaw-* → malformed. Syntax as recommended: backtick-fenced with lang as block type, body as JSON. -->
+
+- [x] P0 Support fenced blocks:
+  - [x] `browserclaw-plan`; <!-- ACTION_BLOCK_RE + 'browserclaw-plan' case -->
+  - [x] `browserclaw-script`; <!-- ACTION_BLOCK_RE + 'browserclaw-script' case -->
+  - [x] `browserclaw-web`; <!-- ACTION_BLOCK_RE + 'browserclaw-web' case -->
+  - [x] existing `tool`. <!-- delegates to parseToolCall from tools.ts -->
+- [x] P0 Only one actionable block per assistant reply in v0.1 unless explicitly supported. <!-- matches.length > 1 → malformed -->
+- [x] P0 Multiple actionable blocks should fail explicitly. <!-- kind:'malformed', blockType:'multiple' -->
+- [x] P0 Unknown `browserclaw-*` block types should fail explicitly. <!-- default case → malformed with 'Unsupported BrowserClaw block type' -->
 
 Recommended syntax:
 
@@ -573,24 +575,26 @@ Recommended syntax:
 
 ## C2 — Implement unified parser
 
-- [ ] P0 Implement `parseAgentActionBlock(text)`.
-- [ ] P0 Return explicit union.
-- [ ] P0 Use existing validators:
-  - [ ] tool schema;
-  - [ ] plan schema;
-  - [ ] script request schema;
-  - [ ] web request schema.
-- [ ] P0 Malformed block must not become normal assistant text.
-- [ ] P0 Tests:
-  - [ ] no block -> normal text;
-  - [ ] valid tool block -> tool action;
-  - [ ] valid plan block -> plan action;
-  - [ ] valid script block -> script action;
-  - [ ] valid web block -> web action;
-  - [ ] invalid JSON -> malformed;
-  - [ ] valid JSON invalid schema -> malformed;
-  - [ ] multiple actionable blocks -> malformed;
-  - [ ] unknown block -> malformed.
+<!-- FIX1-C2 done 2026-06-28. src/script/agentBlockParser.ts: AgentActionParseResult union (none/tool_call/plan/script_request/web_request/malformed); parseAgentActionBlock(text); BrowserClawWebRequest (inline type) + validateWebRequest (classifyFetchUrl for readPage URLs); delegates to validatePlan/validateScriptRequest/parseToolCall. Tests: agentBlockParser.test.ts 11 tests covering all spec cases. vitest 855→866. -->
+
+- [x] P0 Implement `parseAgentActionBlock(text)`. <!-- src/script/agentBlockParser.ts -->
+- [x] P0 Return explicit union. <!-- AgentActionParseResult: none|tool_call|plan|script_request|web_request|malformed -->
+- [x] P0 Use existing validators:
+  - [x] tool schema; <!-- parseToolCall from tools.ts -->
+  - [x] plan schema; <!-- validatePlan from planSchema.ts -->
+  - [x] script request schema; <!-- validateScriptRequest from scriptRequest.ts -->
+  - [x] web request schema. <!-- validateWebRequest (inline in agentBlockParser.ts) -->
+- [x] P0 Malformed block must not become normal assistant text. <!-- malformed kind distinct from none; malformed returns {kind:'malformed'} never {kind:'none'} -->
+- [x] P0 Tests:
+  - [x] no block -> normal text; <!-- agentBlockParser.test.ts 'no block → kind:none' -->
+  - [x] valid tool block -> tool action; <!-- agentBlockParser.test.ts 'valid tool block → kind:tool_call' -->
+  - [x] valid plan block -> plan action; <!-- agentBlockParser.test.ts 'valid plan block → kind:plan' -->
+  - [x] valid script block -> script action; <!-- agentBlockParser.test.ts 'valid script block → kind:script_request' -->
+  - [x] valid web block -> web action; <!-- agentBlockParser.test.ts 'valid web readPage/search block → kind:web_request' -->
+  - [x] invalid JSON -> malformed; <!-- agentBlockParser.test.ts 'invalid JSON in a plan block → kind:malformed' -->
+  - [x] valid JSON invalid schema -> malformed; <!-- agentBlockParser.test.ts 'valid JSON but invalid schema → kind:malformed' -->
+  - [x] multiple actionable blocks -> malformed; <!-- agentBlockParser.test.ts 'multiple actionable blocks → kind:malformed' -->
+  - [x] unknown block -> malformed. <!-- agentBlockParser.test.ts 'unknown browserclaw-* block type → kind:malformed' -->
 
 Suggested parser skeleton:
 

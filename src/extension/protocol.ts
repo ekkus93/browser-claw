@@ -72,6 +72,8 @@ export type ExtensionErrorKind =
   | 'extraction_failed'
   | 'output_too_large'
   | 'internal_error'
+  // C2: permission request flow must be done from extension popup (user gesture)
+  | 'permission_flow_required'
   // Legacy kinds (v0.1 service-worker; kept for backward compat)
   | 'timeout'
   | 'navigation_failed'

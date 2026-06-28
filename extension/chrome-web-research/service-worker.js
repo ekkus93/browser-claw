@@ -126,6 +126,62 @@ async function requestHostPermissionForUrl(rawUrl) {
 }
 
 // ---------------------------------------------------------------------------
+// C2 — request_host_permission handler
+// Explicit, separate flow for acquiring host permission. read_page no longer
+// requests permission opportunistically; callers must send this message first
+// when pageReadingAvailable is true but the target URL lacks a permission.
+// ---------------------------------------------------------------------------
+
+async function handleRequestHostPermission(message) {
+  const { requestId, origin } = message;
+
+  if (typeof origin !== 'string' || origin.length === 0) {
+    return errorResponse(
+      'invalid_request',
+      'request_host_permission requires a non-empty string origin',
+      requestId,
+    );
+  }
+
+  const parsed = classifyExtensionUrl(origin);
+  if (!parsed.ok) {
+    return errorResponse('url_blocked', parsed.reason, requestId);
+  }
+  const pattern = `${parsed.url.protocol}//${parsed.url.host}/*`;
+
+  let granted;
+  try {
+    granted = await chrome.permissions.request({ origins: [pattern] });
+  } catch {
+    // Chrome throws when called outside a user gesture (requires extension popup).
+    return {
+      ok: false,
+      requestId,
+      error: {
+        kind: 'permission_flow_required',
+        message:
+          'Host permission must be granted from the extension action popup.',
+        retryable: false,
+      },
+    };
+  }
+
+  if (!granted) {
+    return {
+      ok: false,
+      requestId,
+      error: {
+        kind: 'permission_denied',
+        message: `User denied host permission for ${pattern}.`,
+        retryable: false,
+      },
+    };
+  }
+
+  return { ok: true, requestId, origin: pattern };
+}
+
+// ---------------------------------------------------------------------------
 // Tab lifecycle helpers
 // ---------------------------------------------------------------------------
 
@@ -212,16 +268,16 @@ async function handleReadPage(message) {
     return errorResponse('url_blocked', safety.reason, requestId);
   }
 
+  // C2: do not opportunistically request permission here. read_page returns
+  // host_permission_missing when permission is absent; the caller must use
+  // request_host_permission separately to acquire permission first.
   const hasPerm = await hasHostPermission(url);
   if (!hasPerm) {
-    const granted = await requestHostPermissionForUrl(url).catch(() => false);
-    if (!granted) {
-      return errorResponse(
-        'host_permission_missing',
-        `Host permission not granted for ${safety.url.host}`,
-        requestId,
-      );
-    }
+    return errorResponse(
+      'host_permission_missing',
+      `Host permission not granted for ${safety.url.host}`,
+      requestId,
+    );
   }
 
   let tabId;
@@ -554,7 +610,7 @@ const handlers = {
   read_page: handleReadPage, // FIX1-A3
   read_current_tab: handleReadCurrentTab, // FIX1-A4
   read_pages: handleReadPages, // FIX2-B1
-  request_host_permission: undefined,
+  request_host_permission: handleRequestHostPermission, // C2
   web_search: handleWebSearch, // FIX1-G2
 };
 
@@ -635,6 +691,7 @@ export {
   handleReadCurrentTab,
   handleReadPages,
   handleGetStatus,
+  handleRequestHostPermission,
   handlers,
   isAllowedSender,
   errorResponse,

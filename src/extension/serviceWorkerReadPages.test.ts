@@ -47,7 +47,7 @@ type AnyFn = (...args: any[]) => any;
 
 // The service-worker is plain JS — suppress the implicit-any TS error.
 // @ts-expect-error — no declaration file for plain-JS service worker
-import { handleReadPages, handleGetStatus, handlers } from '../../extension/chrome-web-research/service-worker.js';
+import { handleReadPage, handleReadPages, handleGetStatus, handleRequestHostPermission, handlers } from '../../extension/chrome-web-research/service-worker.js';
 
 const BLOCKED = 'http://localhost/page';
 const URL1 = 'https://example.com/page1';
@@ -155,7 +155,7 @@ describe('C1 — handleGetStatus structured capabilities', () => {
     expect(caps['readPage']?.['requiresHostPermission']).toBe(true);
   });
 
-  it('C1: capabilities.readPage.permissionRequestSupported is false (request_host_permission not wired)', () => {
+  it('C1/C2: capabilities.readPage.permissionRequestSupported matches request_host_permission handler', () => {
     const s = status();
     const caps = s['capabilities'] as Caps;
     expect(caps['readPage']?.['permissionRequestSupported']).toBe(
@@ -163,9 +163,13 @@ describe('C1 — handleGetStatus structured capabilities', () => {
     );
   });
 
-  it('C1: pageReadingAvailable is false when permissionRequestSupported is false', () => {
+  it('C1/C2: pageReadingAvailable reflects both readPage handler and permissionRequestSupported', () => {
     const s = status();
-    expect(s['pageReadingAvailable']).toBe(false);
+    const caps = s['capabilities'] as Caps;
+    const expected =
+      caps['readPage']?.['supported'] === true &&
+      caps['readPage']?.['permissionRequestSupported'] === true;
+    expect(s['pageReadingAvailable']).toBe(expected);
   });
 
   it('C1: capabilities.readCurrentTab.supported matches handlers.read_current_tab registration', () => {
@@ -182,5 +186,97 @@ describe('C1 — handleGetStatus structured capabilities', () => {
     expect(s['currentTabReadingAvailable']).toBe(
       caps['readCurrentTab']?.['supported'],
     );
+  });
+});
+
+describe('C2 — handleReadPage does not request permission opportunistically', () => {
+  afterEach(() => {
+    // Restore default stubs.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.permissions.contains = async () => true;
+  });
+
+  it('C2: returns host_permission_missing when permission is absent (no request attempted)', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.permissions.contains = async () => false;
+    const requestAttempted = { value: false };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.permissions.request = async () => {
+      requestAttempted.value = true;
+      return true;
+    };
+    const res = await (handleReadPage as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+      requestId: 'r',
+      url: 'https://example.com/',
+    });
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe('host_permission_missing');
+    expect(requestAttempted.value).toBe(false);
+  });
+
+  it('C2: succeeds when host permission is already present', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.permissions.contains = async () => true;
+    const res = await (handleReadPage as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+      requestId: 'r',
+      url: 'https://example.com/',
+    });
+    expect(res['ok']).toBe(true);
+  });
+});
+
+describe('C2 — handleRequestHostPermission', () => {
+  afterEach(() => {
+    // Restore default stubs.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.permissions.request = async () => true;
+  });
+
+  it('C2: returns ok:true when permission is granted', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.permissions.request = async () => true;
+    const res = await (handleRequestHostPermission as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+      requestId: 'r',
+      origin: 'https://example.com/',
+    });
+    expect(res['ok']).toBe(true);
+  });
+
+  it('C2: returns permission_denied when user denies', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.permissions.request = async () => false;
+    const res = await (handleRequestHostPermission as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+      requestId: 'r',
+      origin: 'https://example.com/',
+    });
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe('permission_denied');
+  });
+
+  it('C2: returns permission_flow_required when Chrome throws (requires user gesture)', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.permissions.request = async () => {
+      throw new Error('requires user gesture');
+    };
+    const res = await (handleRequestHostPermission as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+      requestId: 'r',
+      origin: 'https://example.com/',
+    });
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe('permission_flow_required');
+  });
+
+  it('C2: returns invalid_request for empty origin', async () => {
+    const res = await (handleRequestHostPermission as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+      requestId: 'r',
+      origin: '',
+    });
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe('invalid_request');
+  });
+
+  it('C2: get_status now reports request_host_permission as supported (pageReadingAvailable:true)', () => {
+    const s = (handleGetStatus as (m: Record<string, unknown>) => Record<string, unknown>)({ requestId: 'r' });
+    expect(s['pageReadingAvailable']).toBe(true);
   });
 });

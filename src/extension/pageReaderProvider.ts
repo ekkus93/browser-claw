@@ -54,6 +54,8 @@ const ERROR_KIND_MAP: Record<ExtensionErrorKind, PageReadErrorKind> = {
   extraction_failed: 'extraction_failed',
   output_too_large: 'internal_error',
   internal_error: 'internal_error',
+  // C2: permission flow required (needs extension popup / user gesture)
+  permission_flow_required: 'permission_denied',
   // Legacy kinds
   timeout: 'timeout',
   navigation_failed: 'navigation_failed',

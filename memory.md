@@ -1892,3 +1892,15 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Added 6 C1 tests in serviceWorkerReadPages.test.ts: structured caps shape, requiresHostPermission always true, permissionRequestSupported reflects handler, pageReadingAvailable false when no flow, currentTabReadingAvailable matches handler, no-lie consistency.
 - Gate: typecheck ✓, lint ✓, vitest 996/120 ✓ (6 net new tests).
 - NEXT: Part C2 — implement request_host_permission in extension + separate from read_page (P0).
+
+## 2026-06-28T20:11:18Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 7: Part C2 (separate host-permission from read_page) DONE
+- Removed opportunistic requestHostPermissionForUrl() call from handleReadPage in service-worker.js — now returns host_permission_missing immediately if no permission.
+- Implemented handleRequestHostPermission(message): validates origin, calls chrome.permissions.request; returns ok:true|error{kind:'permission_denied'}|error{kind:'permission_flow_required'} (if Chrome throws — requires user gesture in popup).
+- Registered request_host_permission: handleRequestHostPermission in handlers; exported function.
+- Added permission_flow_required to ExtensionErrorKind in protocol.ts.
+- Added permission_flow_required→permission_denied mapping to ERROR_KIND_MAP in pageReaderProvider.ts.
+- pageReadingAvailable is now true (both readPage and request_host_permission are wired).
+- Updated C1 tests that were checking for false to use the dynamic approach (matches handler registration).
+- Added 7 C2 tests: read_page permission missing, read_page permission present, request granted, denied, flow required, invalid origin, pageReadingAvailable now true.
+- Gate: typecheck ✓, lint ✓, vitest 1003/120 ✓.
+- NEXT: Part C3 — activeTab permission or make read_current_tab unavailable (P1).

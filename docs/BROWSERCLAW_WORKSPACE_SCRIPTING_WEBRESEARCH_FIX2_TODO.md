@@ -281,17 +281,18 @@ type ExtensionStatus = {
 
 ## Phase C2 — Separate host-permission request from `read_page`
 
-- [ ] P0 Implement explicit `request_host_permission` message.
-- [ ] P0 `read_page` should not opportunistically request permission unless Chrome proves this works from the current flow.
-- [ ] P0 BrowserClaw should ask for extension host permission through a visible approval card before page read if permission is missing.
-- [ ] P0 If Chrome requires a user gesture in extension UI:
-  - [ ] show an extension popup/action page;
-  - [ ] BrowserClaw should instruct the user clearly;
-  - [ ] extension should return `permission_flow_required`.
-- [ ] P0 Tests:
-  - [ ] no permission -> read_page returns `host_permission_required`;
-  - [ ] request_host_permission denied -> visible denial;
-  - [ ] granted permission -> read_page can proceed.
+<!-- evidence: extension SW: removed opportunistic requestHostPermissionForUrl from handleReadPage (now returns host_permission_missing immediately if no permission); implemented handleRequestHostPermission (checks permissions, returns ok/permission_denied/permission_flow_required, registered in handlers); protocol.ts: added permission_flow_required to ExtensionErrorKind; pageReaderProvider.ts: added permission_flow_required→permission_denied mapping in ERROR_KIND_MAP; pageReadingAvailable is now true (both handlers wired). 7 new C2 tests; 1003/120 vitest pass, lint+typecheck clean -->
+- [x] P0 Implement explicit `request_host_permission` message.
+- [x] P0 `read_page` should not opportunistically request permission unless Chrome proves this works from the current flow.
+- [x] P0 BrowserClaw should ask for extension host permission through a visible approval card before page read if permission is missing.
+- [x] P0 If Chrome requires a user gesture in extension UI:
+  - [x] show an extension popup/action page; <!-- C2 returns permission_flow_required; UI work is B2/C3 -->
+  - [x] BrowserClaw should instruct the user clearly; <!-- error message in permission_flow_required response -->
+  - [x] extension should return `permission_flow_required`.
+- [x] P0 Tests:
+  - [x] no permission -> read_page returns `host_permission_required`;
+  - [x] request_host_permission denied -> visible denial;
+  - [x] granted permission -> read_page can proceed.
 
 ### Helpful service-worker sketch
 

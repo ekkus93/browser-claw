@@ -26,7 +26,7 @@ describe('WebResearchStatus (G3)', () => {
       screen.getByText(/Install the companion extension/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/chrome:\/\/extensions/)).toBeInTheDocument();
-    expect(screen.getByText(/CORS policy/i)).toBeInTheDocument();
+    expect(screen.getByText(/proxies the Brave/i)).toBeInTheDocument();
   });
 
   it('hides install instructions when the extension is connected', () => {
@@ -99,5 +99,134 @@ describe('WebResearchStatus (G3)', () => {
     expect(
       screen.getByText(/Install the companion extension/i),
     ).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// E2 (FIX3) — per-capability rows when capabilities prop is provided
+// ---------------------------------------------------------------------------
+
+import type { WebResearchCapabilityStatus } from '../../extension/normalizeExtensionStatus.ts';
+
+function allReady(): WebResearchCapabilityStatus {
+  return {
+    extensionConnected: true,
+    pageReadingSupported: true,
+    hostPermissionFlowSupported: true,
+    currentTabSupported: false,
+    webSearchHandlerSupported: true,
+    braveKeyConfigured: true,
+    vaultLocked: false,
+    liveSearchReady: true,
+  };
+}
+
+describe('E2 — capability rows', () => {
+  it('E2: shows Connected extension row when connected', () => {
+    render(
+      <WebResearchStatus
+        searchProvider={{ name: 'Brave Search', configured: true }}
+        capabilities={allReady()}
+      />,
+    );
+    expect(screen.getByText('Connected')).toBeInTheDocument();
+    expect(screen.getByText('Live web search')).toBeInTheDocument();
+    expect(screen.getByText('Ready')).toBeInTheDocument();
+  });
+
+  it('E2: shows Not detected and install instructions when extension missing', () => {
+    render(
+      <WebResearchStatus
+        searchProvider={{ name: 'Brave Search', configured: true }}
+        capabilities={{
+          ...allReady(),
+          extensionConnected: false,
+          liveSearchReady: false,
+        }}
+      />,
+    );
+    expect(screen.getAllByText('Not detected').length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/Install the companion extension/i),
+    ).toBeInTheDocument();
+  });
+
+  it('E2: shows page reading Available when supported', () => {
+    render(
+      <WebResearchStatus
+        searchProvider={{ name: 'Brave Search', configured: true }}
+        capabilities={allReady()}
+      />,
+    );
+    expect(screen.getByText('Page reading')).toBeInTheDocument();
+    expect(screen.getAllByText('Available').length).toBeGreaterThan(0);
+  });
+
+  it('E2: shows page reading Unavailable when not supported', () => {
+    render(
+      <WebResearchStatus
+        searchProvider={{ name: 'Brave Search', configured: false }}
+        capabilities={{
+          ...allReady(),
+          pageReadingSupported: false,
+          liveSearchReady: false,
+        }}
+      />,
+    );
+    expect(screen.getByText('Unavailable')).toBeInTheDocument();
+  });
+
+  it('E2: shows current tab Unsupported in v0.1', () => {
+    render(
+      <WebResearchStatus
+        searchProvider={{ name: 'Brave Search', configured: true }}
+        capabilities={{ ...allReady(), currentTabSupported: false }}
+      />,
+    );
+    expect(screen.getByText('Unsupported in v0.1')).toBeInTheDocument();
+  });
+
+  it('E2: shows Brave key Missing when not configured', () => {
+    render(
+      <WebResearchStatus
+        searchProvider={{ name: 'Brave Search', configured: false }}
+        capabilities={{
+          ...allReady(),
+          braveKeyConfigured: false,
+          liveSearchReady: false,
+        }}
+      />,
+    );
+    expect(screen.getByText('Brave Search key')).toBeInTheDocument();
+    expect(screen.getByText('Missing')).toBeInTheDocument();
+    expect(screen.getByText('Not ready')).toBeInTheDocument();
+  });
+
+  it('E2: shows Vault locked when vault is locked', () => {
+    render(
+      <WebResearchStatus
+        searchProvider={{ name: 'Brave Search', configured: true }}
+        capabilities={{
+          ...allReady(),
+          vaultLocked: true,
+          liveSearchReady: false,
+        }}
+      />,
+    );
+    expect(screen.getByText('Vault locked')).toBeInTheDocument();
+  });
+
+  it('E2: live web search Not ready when key missing and extension present', () => {
+    render(
+      <WebResearchStatus
+        searchProvider={{ name: 'Brave Search', configured: false }}
+        capabilities={{
+          ...allReady(),
+          braveKeyConfigured: false,
+          liveSearchReady: false,
+        }}
+      />,
+    );
+    expect(screen.getByText('Not ready')).toBeInTheDocument();
   });
 });

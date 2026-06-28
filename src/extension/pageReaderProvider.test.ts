@@ -389,8 +389,9 @@ describe('createExtensionPageReader (E9)', () => {
     });
     expect(results[0]?.ok).toBe(true);
     expect(results[1]?.ok).toBe(false);
-    if (!results[1]?.ok) {
-      expect(results[1].error.kind).toBe('unsupported_url');
+    const slot1 = results[1];
+    if (slot1 && !slot1.ok) {
+      expect(slot1.error.kind).toBe('unsupported_url');
     }
   });
 

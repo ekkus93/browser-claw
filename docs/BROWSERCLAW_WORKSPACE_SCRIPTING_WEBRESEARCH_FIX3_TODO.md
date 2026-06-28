@@ -646,15 +646,16 @@ export function normalizeExtensionStatus(args: {
 
 ## E2 — Update Settings UI copy
 
-- [ ] P1 Replace single ambiguous “Connected” style status with separate rows/badges:
-  - [ ] Extension: Connected / Not detected;
-  - [ ] Page reading: Available / Unavailable / Permission required;
-  - [ ] Current tab: Unsupported in v0.1;
-  - [ ] Web search handler: Available / Unavailable;
-  - [ ] Brave key: Configured / Missing / Vault locked;
-  - [ ] Live web search: Ready / Not ready.
-- [ ] P1 Do not imply direct Brave browser CORS is production-ready.
-- [ ] P1 Tests for status rendering.
+<!-- evidence: WebResearchStatus.tsx CapabilityRows component; 8 E2 tests; 1131/124 vitest ✓ -->
+- [x] P1 Replace single ambiguous “Connected” style status with separate rows/badges:
+  - [x] Extension: Connected / Not detected;
+  - [x] Page reading: Available / Unavailable / Permission required;
+  - [x] Current tab: Unsupported in v0.1;
+  - [x] Web search handler: Available / Unavailable;
+  - [x] Brave key: Configured / Missing / Vault locked;
+  - [x] Live web search: Ready / Not ready.
+- [x] P1 Do not imply direct Brave browser CORS is production-ready.
+- [x] P1 Tests for status rendering.
 
 ---
 

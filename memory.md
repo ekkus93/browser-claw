@@ -1984,6 +1984,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T23:14:40Z - Claude Sonnet 4.6 - FIX3 Part E2 (Settings UI capability rows) DONE
+- WebResearchStatus.tsx: added optional `capabilities` prop (WebResearchCapabilityStatus).
+- When provided, renders CapabilityRows with separate rows per capability.
+- Fixed old CORS note test to match updated footer text.
+- 8 E2 tests for all capability states.
+- Gate: typecheck ✓, lint ✓, format ✓, 1131/124 vitest ✓.
+- Remaining P1: G1, G2, H1, I1, J1, K1/K2/K3.
+
 ## 2026-06-28T23:09:04Z - Claude Sonnet 4.6 - FIX3 Part E1 (normalizeExtensionStatus helper) DONE
 - Created src/extension/normalizeExtensionStatus.ts with WebResearchCapabilityStatus type + helper.
 - Computes: extensionConnected, pageReadingSupported, hostPermissionFlowSupported, currentTabSupported, webSearchHandlerSupported, braveKeyConfigured, vaultLocked, liveSearchReady.

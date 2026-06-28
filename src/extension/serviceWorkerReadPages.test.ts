@@ -53,6 +53,7 @@ import {
   handleRequestHostPermission,
   handleReadCurrentTab,
   handlers,
+  validateMessageSchema,
 } from '../../extension/chrome-web-research/service-worker.js';
 
 const BLOCKED = 'http://localhost/page';
@@ -493,5 +494,124 @@ describe('C3 — read_current_tab unavailable in v0.1', () => {
     const rct = caps['readCurrentTab'] as Record<string, unknown>;
     expect(rct['supported']).toBe(false);
     expect(s['currentTabReadingAvailable']).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D2 (FIX3) — per-message schema validation in central dispatch
+// ---------------------------------------------------------------------------
+
+describe('D2 — central dispatch schema validation', () => {
+  function err(res: unknown) {
+    return (res as Record<string, unknown>)['error'] as Record<string, unknown>;
+  }
+
+  it('D2: read_page with missing url returns invalid_request', async () => {
+    const res = await handle({ type: 'read_page', requestId: 'd2-rp-miss' });
+    expect((res as Record<string, unknown>)['ok']).toBe(false);
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('D2: read_page with empty url returns invalid_request', async () => {
+    const res = await handle({
+      type: 'read_page',
+      requestId: 'd2-rp-empty',
+      url: '',
+    });
+    expect((res as Record<string, unknown>)['ok']).toBe(false);
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('D2: read_pages with empty urls array returns invalid_request', async () => {
+    const res = await handle({
+      type: 'read_pages',
+      requestId: 'd2-rpages-empty',
+      urls: [],
+    });
+    expect((res as Record<string, unknown>)['ok']).toBe(false);
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('D2: read_pages with missing urls returns invalid_request', async () => {
+    const res = await handle({
+      type: 'read_pages',
+      requestId: 'd2-rpages-miss',
+    });
+    expect((res as Record<string, unknown>)['ok']).toBe(false);
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('D2: web_search with missing query returns invalid_request', async () => {
+    const res = await handle({
+      type: 'web_search',
+      requestId: 'd2-ws-noq',
+      apiKey: 'k',
+    });
+    expect((res as Record<string, unknown>)['ok']).toBe(false);
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('D2: web_search with missing apiKey returns permission_denied', async () => {
+    const res = await handle({
+      type: 'web_search',
+      requestId: 'd2-ws-nok',
+      query: 'x',
+    });
+    expect((res as Record<string, unknown>)['ok']).toBe(false);
+    expect(err(res)['kind']).toBe('permission_denied');
+  });
+
+  it('D2: request_host_permission with missing origin returns invalid_request', async () => {
+    const res = await handle({
+      type: 'request_host_permission',
+      requestId: 'd2-rhp-miss',
+    });
+    expect((res as Record<string, unknown>)['ok']).toBe(false);
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('D2: read_current_tab with no extra fields is allowed (returns unavailable)', async () => {
+    const res = await handle({
+      type: 'read_current_tab',
+      requestId: 'd2-rct-ok',
+    });
+    expect((res as Record<string, unknown>)['ok']).toBe(false);
+    expect(err(res)['kind']).toBe('current_tab_read_unavailable');
+  });
+
+  it('D2: validateMessageSchema returns null for valid read_page', () => {
+    const res = validateMessageSchema({
+      type: 'read_page',
+      requestId: 'x',
+      url: 'https://a.com/',
+    });
+    expect(res).toBeNull();
+  });
+
+  it('D2: validateMessageSchema returns null for valid read_pages', () => {
+    const res = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'x',
+      urls: ['https://a.com/'],
+    });
+    expect(res).toBeNull();
+  });
+
+  it('D2: validateMessageSchema returns null for valid web_search', () => {
+    const res = validateMessageSchema({
+      type: 'web_search',
+      requestId: 'x',
+      query: 'q',
+      apiKey: 'k',
+    });
+    expect(res).toBeNull();
+  });
+
+  it('D2: validateMessageSchema returns null for read_current_tab', () => {
+    const res = validateMessageSchema({
+      type: 'read_current_tab',
+      requestId: 'x',
+    });
+    expect(res).toBeNull();
   });
 });

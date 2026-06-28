@@ -15,6 +15,7 @@ export declare function errorResponse(
   requestId?: unknown,
   retryable?: boolean,
 ): MsgResult;
+export declare function validateMessageSchema(msg: Msg): MsgResult | null;
 export declare const handlers: Record<string, (msg: Msg) => unknown>;
 export declare const isAllowedSender: (sender: unknown) => boolean;
 export declare const ALLOWED_ORIGINS: string[];

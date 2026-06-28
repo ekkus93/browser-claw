@@ -569,13 +569,14 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
 
 ## D2 — Add per-message schema checks inside central dispatch
 
-- [ ] P1 Validate payload schema before calling the handler body:
-  - [ ] `read_page` requires URL string;
-  - [ ] `read_pages` requires non-empty URL array;
-  - [ ] `web_search` requires query and API key;
-  - [ ] `request_host_permission` requires URL/origin;
-  - [ ] `read_current_tab` is allowed but returns unavailable in v0.1.
-- [ ] P1 Tests for each invalid payload.
+<!-- evidence: validateMessageSchema() in handle() before handler; 12 D2 tests; 1113/123 vitest ✓ -->
+- [x] P1 Validate payload schema before calling the handler body:
+  - [x] `read_page` requires URL string;
+  - [x] `read_pages` requires non-empty URL array;
+  - [x] `web_search` requires query and API key;
+  - [x] `request_host_permission` requires URL/origin;
+  - [x] `read_current_tab` is allowed but returns unavailable in v0.1.
+- [x] P1 Tests for each invalid payload.
 
 ---
 

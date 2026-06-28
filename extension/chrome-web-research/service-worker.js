@@ -583,6 +583,73 @@ function errorResponse(kind, message, requestId, retryable = false) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// D2 (FIX3): Central per-message schema validation — runs in handle() before
+// the handler body is called. Defense-in-depth; handlers still validate for
+// richer error messages, but this gate catches obviously malformed payloads.
+// ---------------------------------------------------------------------------
+
+/**
+ * Return an invalid_request errorResponse if the message payload is missing
+ * required fields, or null if it passes.
+ */
+function validateMessageSchema(message) {
+  const id = message.requestId;
+  const type = message.type;
+
+  if (type === 'read_page') {
+    if (typeof message.url !== 'string' || message.url.trim().length === 0) {
+      return errorResponse(
+        'invalid_request',
+        'read_page requires a non-empty string url',
+        id,
+      );
+    }
+  } else if (type === 'read_pages') {
+    if (!Array.isArray(message.urls) || message.urls.length === 0) {
+      return errorResponse(
+        'invalid_request',
+        'read_pages requires a non-empty string[] urls',
+        id,
+      );
+    }
+  } else if (type === 'web_search') {
+    if (
+      typeof message.query !== 'string' ||
+      message.query.trim().length === 0
+    ) {
+      return errorResponse(
+        'invalid_request',
+        'web_search requires a non-empty string query',
+        id,
+      );
+    }
+    if (
+      typeof message.apiKey !== 'string' ||
+      message.apiKey.trim().length === 0
+    ) {
+      return errorResponse(
+        'permission_denied',
+        'web_search requires a non-empty string apiKey',
+        id,
+      );
+    }
+  } else if (type === 'request_host_permission') {
+    if (
+      typeof message.origin !== 'string' ||
+      message.origin.trim().length === 0
+    ) {
+      return errorResponse(
+        'invalid_request',
+        'request_host_permission requires a non-empty string origin',
+        id,
+      );
+    }
+  }
+  // read_current_tab, ping, get_status: no required payload fields.
+  return null;
+}
+
 // D1 (FIX3): handle() is now async so it catches throws from async handlers.
 // The listener always routes through here — no handler is ever called directly.
 async function handle(message) {
@@ -611,6 +678,9 @@ async function handle(message) {
       message.requestId,
     );
   }
+  // D2 (FIX3): validate required payload fields before invoking the handler.
+  const schemaError = validateMessageSchema(message);
+  if (schemaError) return schemaError;
   try {
     return await handler(message);
   } catch (error) {
@@ -654,6 +724,7 @@ export {
   handlers,
   isAllowedSender,
   errorResponse,
+  validateMessageSchema,
   classifyExtensionUrl,
   extractPageContent,
   ALLOWED_ORIGINS,

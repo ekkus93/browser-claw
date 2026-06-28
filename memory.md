@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T23:06:54Z - Claude Sonnet 4.6 - FIX3 Part D2 (central dispatch per-message schema validation) DONE
+- validateMessageSchema() in service-worker.js called from handle() before handler dispatch.
+- Validates: read_page.url, read_pages.urls[], web_search.query+apiKey, request_host_permission.origin.
+- 12 D2 tests added; validateMessageSchema exported and added to .d.ts.
+- Gate: typecheck ✓, lint ✓, format ✓, 1113/123 vitest ✓.
+- Remaining P1: E1, E2, G1, G2, H1, I1, J1, K1/K2/K3.
+
 ## 2026-06-28T23:03:44Z - Claude Sonnet 4.6 - FIX3 Part F1 (pageReaderProvider.readPages → single read_pages message) DONE
 - pageReaderProvider.ts readPages() now sends ONE read_pages message to extension (no loop).
 - Per-slot failure preserved from response.results[].

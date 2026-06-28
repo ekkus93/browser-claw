@@ -319,3 +319,58 @@ describe('D3 — maxToolCalls limit', () => {
     expect(tracker.tripped).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// E1 — sensitive memory filtering in sandbox memory.search
+// ---------------------------------------------------------------------------
+
+describe('E1 — sensitive memory filtering', () => {
+  async function searchMemories(query: string) {
+    const audits: CapabilityAudit[] = [];
+    const results = await runSandboxedScript(
+      `const r = await memory.search({ query: ${JSON.stringify(query)} }); return r;`,
+      {
+        host: buildSandboxHost(
+          { ...ctx, onAudit: (e) => audits.push(e) },
+          { memoryRead: true },
+        ),
+      },
+    );
+    return { results, audits };
+  }
+
+  beforeEach(async () => {
+    await db.memories.clear();
+  });
+
+  it('E1: normal memory is returned', async () => {
+    await db.memories.put({ id: 'e1n', title: 'Note', text: 'visible content', tags: [], source: 'user', createdBy: 'user', createdAt: 1, pinned: false, sensitivity: 'normal' });
+    const { results } = await searchMemories('visible');
+    expect(results.ok).toBe(true);
+    expect((results.value as unknown[]).length).toBe(1);
+  });
+
+  it('E1: pinned non-sensitive memory is returned', async () => {
+    await db.memories.put({ id: 'e1p', title: 'Pinned', text: 'pinned data', tags: [], source: 'user', createdBy: 'user', createdAt: 1, pinned: true, sensitivity: 'normal' });
+    const { results } = await searchMemories('pinned');
+    expect(results.ok).toBe(true);
+    expect((results.value as unknown[]).length).toBe(1);
+  });
+
+  it('E1: sensitive memory is excluded', async () => {
+    await db.memories.put({ id: 'e1s', title: 'Secret', text: 'my api key is abc123', tags: [], source: 'user', createdBy: 'user', createdAt: 1, pinned: false, sensitivity: 'sensitive' });
+    const { results } = await searchMemories('api key');
+    expect(results.ok).toBe(true);
+    expect((results.value as unknown[]).length).toBe(0);
+  });
+
+  it('E1: audit target contains ids only — no memory text', async () => {
+    await db.memories.put({ id: 'e1a', title: 'Audit Test', text: 'audit-check content', tags: [], source: 'user', createdBy: 'user', createdAt: 1, pinned: false, sensitivity: 'normal' });
+    const { audits } = await searchMemories('audit-check');
+    const memAudit = audits.find((a) => a.capability === 'memory.search');
+    expect(memAudit).toBeDefined();
+    // target should contain the id but not the memory text
+    expect(memAudit?.target).toContain('e1a');
+    expect(memAudit?.target).not.toContain('audit-check content');
+  });
+});

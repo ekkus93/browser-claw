@@ -390,14 +390,24 @@ export function buildSandboxHost(
         const all = tag
           ? await ctx.db.memories.where('tags').equals(tag).toArray()
           : await ctx.db.memories.toArray();
+        // FIX1-E1: exclude sensitive memories — they must never appear in
+        // sandbox output, errors, or audit entries.
+        const visible = all.filter(
+          (m: MemoryRow) => m.sensitivity !== 'sensitive',
+        );
         const matched = text
-          ? all.filter(
+          ? visible.filter(
               (m: MemoryRow) =>
                 m.title.toLowerCase().includes(text) ||
                 m.text.toLowerCase().includes(text),
             )
-          : all;
-        audit({ capability: 'memory.search', allowed: true });
+          : visible;
+        // Audit contains only count/ids — never full text (E1).
+        audit({
+          capability: 'memory.search',
+          allowed: true,
+          target: matched.map((m: MemoryRow) => m.id).join(','),
+        });
         return matched.map((m) => ({
           id: m.id,
           title: m.title,

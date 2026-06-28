@@ -14,6 +14,10 @@ import type { AppDispatch } from '../store/store.ts';
 import type { MemoryRow } from '../db/types.ts';
 import { runToolCall, type ToolContext } from '../tools/tools.ts';
 import { WorkspaceFs } from '../workspace/workspaceFs.ts';
+import {
+  DEFAULT_AGENT_GREP_POLICY,
+  validateGrepRequest,
+} from '../workspace/types.ts';
 import type { WebResearchService } from '../webresearch/types.ts';
 
 export interface PlanOpContext {
@@ -113,15 +117,19 @@ export async function executePlanOp(
           ? { extension: args.extension }
           : {}),
       });
-    case 'fs.grep':
-      return ctx.fs.grep({
+    case 'fs.grep': {
+      const grepQuery = {
         pattern: str(args, 'pattern'),
         ...(typeof args.path === 'string' ? { path: args.path } : {}),
         ...(typeof args.isRegex === 'boolean' ? { isRegex: args.isRegex } : {}),
         ...(typeof args.ignoreCase === 'boolean'
           ? { ignoreCase: args.ignoreCase }
           : {}),
-      });
+      };
+      // FIX1-H2: enforce grep policy for plan-originated grep requests.
+      validateGrepRequest(grepQuery, DEFAULT_AGENT_GREP_POLICY);
+      return ctx.fs.grep(grepQuery);
+    }
     case 'memory.create':
       return createMemory(ctx, args);
     case 'memory.search':

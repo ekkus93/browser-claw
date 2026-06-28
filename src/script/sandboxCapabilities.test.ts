@@ -374,3 +374,36 @@ describe('E1 — sensitive memory filtering', () => {
     expect(memAudit?.target).not.toContain('audit-check content');
   });
 });
+
+// ---------------------------------------------------------------------------
+// H1 — Grep policy enforcement in sandbox fs.grep
+// ---------------------------------------------------------------------------
+
+describe('H1 — grep policy in sandbox fs.grep', () => {
+  beforeEach(async () => {
+    await ctx.fs.createFile('/workspace/h1.ts', 'const a = 1;\nconst b = 2;', { overwrite: true, actor: 'user' });
+  });
+
+  async function sandboxGrep(query: Record<string, unknown>) {
+    return runSandboxedScript(
+      `return await fs.grep(${JSON.stringify(query)});`,
+      { host: buildSandboxHost(ctx, { fsRead: ['/workspace/**'] }) },
+    );
+  }
+
+  it('H1: literal grep works by default', async () => {
+    const result = await sandboxGrep({ pattern: 'const' });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect((result.value as unknown[]).length).toBeGreaterThan(0);
+  });
+
+  it('H1: regex grep denied without capability', async () => {
+    const result = await sandboxGrep({ pattern: '(const|let)', isRegex: true });
+    expect(result.ok).toBe(false);
+  });
+
+  it('H1: excessive pattern length rejected', async () => {
+    const result = await sandboxGrep({ pattern: 'x'.repeat(201) });
+    expect(result.ok).toBe(false);
+  });
+});

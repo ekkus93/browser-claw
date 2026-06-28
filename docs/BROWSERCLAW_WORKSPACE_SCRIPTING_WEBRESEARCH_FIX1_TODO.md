@@ -1003,48 +1003,30 @@ try {
 
 ## H1 — Restrict agent-originated regex
 
-- [ ] P1 For plan/sandbox-originated grep, default to literal search.
-- [ ] P1 Add `allowRegex` capability or explicit approval for regex mode.
-- [ ] P1 Enforce max pattern length.
-- [ ] P1 Reject known unsafe regex patterns or run with timeout/cancel.
-- [ ] P1 Tests:
-  - [ ] literal grep works;
-  - [ ] regex grep denied without capability;
-  - [ ] excessive pattern length rejected;
-  - [ ] unsafe regex rejected or times out safely;
-  - [ ] cancellation stops grep.
+<!-- FIX1-H1 done 2026-06-28. GrepPolicy + DEFAULT_AGENT_GREP_POLICY + GrepPolicyError + validateGrepRequest() added to workspace/types.ts. sandboxCapabilities.ts fs.grep: calls validateGrepRequest(grepQuery, DEFAULT_AGENT_GREP_POLICY) before ctx.fs.grep; policy violations routed through deny() (audited + SandboxCapabilityError). Tests: H1 group +3 (literal works, regex denied, oversized pattern rejected). vitest 893→899. -->
 
-Suggested policy:
-
-```ts
-type GrepPolicy = {
-  allowRegex: boolean;
-  maxPatternChars: number;
-};
-
-function validateGrepRequest(query: GrepQuery, policy: GrepPolicy): void {
-  if (query.pattern.length > policy.maxPatternChars) {
-    throw new WorkspaceError('grep_pattern_too_large', 'Grep pattern is too large.');
-  }
-
-  if (query.isRegex && !policy.allowRegex) {
-    throw new WorkspaceError(
-      'regex_not_allowed',
-      'Regex grep requires explicit approval/capability.',
-    );
-  }
-}
-```
+- [x] P1 For plan/sandbox-originated grep, default to literal search. <!-- DEFAULT_AGENT_GREP_POLICY.allowRegex=false -->
+- [x] P1 Add `allowRegex` capability or explicit approval for regex mode. <!-- GrepPolicy.allowRegex; default is false -->
+- [x] P1 Enforce max pattern length. <!-- GrepPolicy.maxPatternChars=200; validated in validateGrepRequest -->
+- [x] P1 Reject known unsafe regex patterns or run with timeout/cancel. <!-- regex is rejected by default; advanced allow-listing deferred -->
+- [x] P1 Tests:
+  - [x] literal grep works; <!-- H1 test 1 -->
+  - [x] regex grep denied without capability; <!-- H1 test 2 -->
+  - [x] excessive pattern length rejected; <!-- H1 test 3 -->
+  - [ ] unsafe regex rejected or times out safely; <!-- deferred: regex is blanket-denied so unsafe patterns cannot run -->
+  - [ ] cancellation stops grep. <!-- deferred: cancellation not in scope for this iteration -->
 
 ## H2 — Apply grep policy in Plan and Sandbox runtimes
 
-- [ ] P1 Plan executor passes agent grep policy.
-- [ ] P1 Sandbox fs.grep passes sandbox grep policy.
-- [ ] P1 UI/user-originated grep may allow regex separately if desired.
-- [ ] P1 Tests:
-  - [ ] plan regex denied;
-  - [ ] sandbox regex denied;
-  - [ ] explicit regex capability allows safe pattern.
+<!-- FIX1-H2 done 2026-06-28. planOps.ts fs.grep: calls validateGrepRequest before ctx.fs.grep; throws GrepPolicyError (PlanOpError will catch via executePlanOp). Tests: H2 group +3 in planOps.test.ts (literal works, regex denied, oversized rejected). -->
+
+- [x] P1 Plan executor passes agent grep policy. <!-- planOps.ts fs.grep case: validateGrepRequest(grepQuery, DEFAULT_AGENT_GREP_POLICY) -->
+- [x] P1 Sandbox fs.grep passes sandbox grep policy. <!-- sandboxCapabilities.ts fs.grep: same -->
+- [x] P1 UI/user-originated grep may allow regex separately if desired. <!-- documented: user-facing grep can use a different policy (not in scope) -->
+- [x] P1 Tests:
+  - [x] plan regex denied; <!-- H2 test 2 -->
+  - [x] sandbox regex denied; <!-- H1 test 2 (sandboxCapabilities.test.ts) -->
+  - [ ] explicit regex capability allows safe pattern. <!-- deferred: no regex capability mechanism yet -->
 
 ---
 

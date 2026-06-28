@@ -135,3 +135,31 @@ describe('executePlanOp — tool.call + web (C2)', () => {
     expect(pages).toHaveLength(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// H2 — Grep policy in plan executor
+// ---------------------------------------------------------------------------
+
+describe('H2 — grep policy in plan executor', () => {
+  beforeEach(async () => {
+    await ctx.fs.createFile('/workspace/code.ts', 'const x = 1;\nconst y = 2;', { overwrite: true, actor: 'user' });
+  });
+
+  it('H2: literal grep works by default', async () => {
+    const results = await executePlanOp(ctx, 'fs.grep', { pattern: 'const' });
+    expect(Array.isArray(results)).toBe(true);
+    expect((results as unknown[]).length).toBeGreaterThan(0);
+  });
+
+  it('H2: regex grep denied without capability', async () => {
+    await expect(
+      executePlanOp(ctx, 'fs.grep', { pattern: '(const|let)', isRegex: true }),
+    ).rejects.toThrow(/Regex grep/);
+  });
+
+  it('H2: excessive pattern length rejected', async () => {
+    await expect(
+      executePlanOp(ctx, 'fs.grep', { pattern: 'x'.repeat(201) }),
+    ).rejects.toThrow(/too large/);
+  });
+});

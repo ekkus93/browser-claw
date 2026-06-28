@@ -473,7 +473,7 @@ describe('F1 — parseApprovedArgsOrThrow', () => {
     const fetchImpl = vi.fn(() => Promise.resolve(new Response('<p>ok</p>'))) as unknown as typeof fetch;
     await runApprovedToolCall(
       { db, dispatch: store.dispatch, submit, ctx: { fetchImpl } },
-      { id: 'eff-f1', status: 'approved', toolName: 'Page Reader', argsJson, skillId: 'web-search' },
+      { id: 'eff-f1', status: 'approved', toolName: 'Page Reader', ...(argsJson !== undefined ? { argsJson } : {}), skillId: 'web-search' },
     );
     const auditTypes = store.getState().audit.recent.map((e) => e.type);
     return { submit, auditTypes };

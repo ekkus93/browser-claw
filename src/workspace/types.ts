@@ -66,6 +66,53 @@ export interface GrepQuery {
   limit?: number;
 }
 
+// ---------------------------------------------------------------------------
+// H1 — Grep policy for agent-originated requests
+// ---------------------------------------------------------------------------
+
+/** Controls whether agent-originated grep can use regex and the max pattern length. */
+export interface GrepPolicy {
+  /** Regex mode is allowed (default false for agent-originated grepping). */
+  allowRegex: boolean;
+  /** Maximum pattern length in characters (default 200). */
+  maxPatternChars: number;
+}
+
+/** Default agent-originated grep policy: literal only, max 200 chars. */
+export const DEFAULT_AGENT_GREP_POLICY: GrepPolicy = {
+  allowRegex: false,
+  maxPatternChars: 200,
+};
+
+/** Thrown when a grep request violates the active policy. */
+export class GrepPolicyError extends Error {
+  readonly kind: 'grep_pattern_too_large' | 'regex_not_allowed';
+  constructor(kind: GrepPolicyError['kind'], message: string) {
+    super(message);
+    this.name = 'GrepPolicyError';
+    this.kind = kind;
+  }
+}
+
+/**
+ * Validate a grep request against the active policy. Throws {@link GrepPolicyError}
+ * for policy violations. Call before passing to WorkspaceFs.grep().
+ */
+export function validateGrepRequest(query: GrepQuery, policy: GrepPolicy): void {
+  if (query.pattern.length > policy.maxPatternChars) {
+    throw new GrepPolicyError(
+      'grep_pattern_too_large',
+      `Grep pattern is too large (${query.pattern.length} chars; max ${policy.maxPatternChars}).`,
+    );
+  }
+  if (query.isRegex && !policy.allowRegex) {
+    throw new GrepPolicyError(
+      'regex_not_allowed',
+      'Regex grep requires explicit approval/capability.',
+    );
+  }
+}
+
 export interface GrepResult {
   path: string;
   /** 1-based line number of the match. */

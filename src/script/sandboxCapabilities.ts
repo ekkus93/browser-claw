@@ -24,7 +24,12 @@ import {
 } from '../tools/tools.ts';
 import { normalizeWorkspacePath } from '../workspace/path.ts';
 import { WorkspaceFs } from '../workspace/workspaceFs.ts';
-import type { GrepResult, WorkspaceSearchResult } from '../workspace/types.ts';
+import {
+  DEFAULT_AGENT_GREP_POLICY,
+  validateGrepRequest,
+  type GrepResult,
+  type WorkspaceSearchResult,
+} from '../workspace/types.ts';
 import type { WebResearchService } from '../webresearch/types.ts';
 import {
   runSandboxedScript,
@@ -311,7 +316,7 @@ export function buildSandboxHost(
           return deny('fs.grep', '*', 'no read capability');
         }
         const query = (rawQuery ?? {}) as Record<string, unknown>;
-        const hits = await ctx.fs.grep({
+        const grepQuery = {
           pattern: str(query.pattern, 'pattern'),
           ...(typeof query.path === 'string' ? { path: query.path } : {}),
           ...(typeof query.isRegex === 'boolean'
@@ -320,7 +325,15 @@ export function buildSandboxHost(
           ...(typeof query.ignoreCase === 'boolean'
             ? { ignoreCase: query.ignoreCase }
             : {}),
-        });
+        };
+        // FIX1-H1: enforce grep policy (literal only, max pattern length).
+        try {
+          validateGrepRequest(grepQuery, DEFAULT_AGENT_GREP_POLICY);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          return deny('fs.grep', grepQuery.pattern, message);
+        }
+        const hits = await ctx.fs.grep(grepQuery);
         const scoped = hits.filter((h: GrepResult) =>
           matchesAnyScope(h.path, capabilities.fsRead),
         );

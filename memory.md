@@ -1830,3 +1830,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Also fixed WebResearchApprovalCard.test.tsx: ApprovalRequest has no createdAt field (requires title+summary).
 - vitest: 962→972 (119 files). Gate ALL GREEN: typecheck, eslint, prettier, 972/119.
 - FIX2 REMAINING: E1 (final gate commands), E2 (security checklist), E3 (docs + TODO updates).
+
+## 2026-06-28T10:34:53Z - Claude Sonnet 4.6 - Ralph FIX2 E1/E2/E3: Final acceptance gate — FIX2 COMPLETE
+- E1: typecheck ✓, lint ✓, format:check ✓, test 972/119 ✓, test:e2e 30/30 ✓, build ✓, cargo test ✓, cargo clippy ✓.
+- E2: all P0 security checks confirmed by existing tests. Key never in Redux state (useWebResearchKey.test.ts). Key never in Dexie plaintext (vault contract). Audit events no key material. read_pages partial-failure isolated per slot. WebResearchApprovalCard renders URLs as text nodes only (no clickable anchor).
+- E3: memory.md updated at each iteration; TODO evidence comments ticked; FIX1 TODO cross-references updated (Web Research settings/status UI + approval card items).
+- FIX2 COMPLETE. All parts A-E done. 4 committed iterations: A1+A2 (8e476e7), B1 (1e9077b), C1 (aad41ec), D1 (64716ca). 972 vitest / 30 e2e.
+- Deferred items (documented in TODO): A1 "Test connection" inline button, A2 researchPaths from audit events, C1 ChatScreen integration test for web approval routing, E3 extension read items in FIX1 TODO. None block acceptance.

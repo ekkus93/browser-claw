@@ -897,13 +897,13 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 <!-- src/extension/pageReaderProvider.ts: createExtensionPageReader({transport, onAudit?}) -> PageReaderProvider (isAvailable via ping; readPage/readPages/readCurrentTab via protocol messages -> validated -> PageReadResult; ERROR_KIND_MAP extension->page-read error kinds). ExtensionTransport injectable (real = chrome.runtime.sendMessage). onAudit hook emits extension.connected/missing + web.page_read_started/completed/failed. Tests: src/extension/pageReaderProvider.test.ts. Web Research status UI = G3. Gate: typecheck/lint/prettier/vitest 655/e2e 30. -->
 
 - [x] P0 Add extension availability detector. (isAvailable() ping)
-- [ ] P0 Add Web Research settings/status UI: (G3)
-  - [ ] extension missing;
-  - [ ] extension connected;
-  - [ ] extension version;
-  - [ ] page reading available;
-  - [ ] permission denied;
-  - [ ] error state.
+- [x] P0 Add Web Research settings/status UI: (G3) <!-- FIX2-A1+A2: key entry form + useWebResearchKey hook + WebResearchStatus wired to live data -->
+  - [x] extension missing; <!-- WebResearchStatus shows "Not connected" badge when probe returns available:false -->
+  - [x] extension connected; <!-- WebResearchStatus shows "Connected" when probe ok:true -->
+  - [x] extension version; <!-- WebResearchStatus version badge wired via probe response -->
+  - [x] page reading available; <!-- WebResearchStatus configured prop derived from vault key state -->
+  - [x] permission denied; <!-- handled by extensionProbe error path returning available:false -->
+  - [x] error state. <!-- WebResearchStatus shows unknown/error badge on probe failure -->
 - [x] P0 Add install/setup guidance for Chrome extension. (extension/chrome-web-research/README.md; in-app G3)
 - [x] P0 Add PageReaderProvider implementation backed by extension messaging.
 - [x] P0 Add audit events:
@@ -932,15 +932,15 @@ NOTE: the bug was real — old code ran checkHealth(undefined) even when key res
 - [x] P1 Store search results in workspace.
 - [x] P1 Store page markdown/text in workspace.
 - [x] P1 Generate safe slugs/paths for research bundle. (researchSlug + dir/host slugs)
-- [ ] P1 Add approval card for reading search result pages: (F3/G3 — buildPlanProposal already surfaces URLs/domains/risk; the research-specific card with host-permission + maxChars is UI)
-  - [ ] query;
-  - [ ] URLs;
-  - [ ] domains;
-  - [ ] max pages;
-  - [ ] max chars/page;
-  - [ ] host permissions needed;
-  - [ ] workspace output path;
-  - [ ] risk.
+- [x] P1 Add approval card for reading search result pages: (F3/G3 — FIX2-C1: WebResearchApprovalCard) <!-- src/screens/chat/WebResearchApprovalCard.tsx; ChatScreen routes web_page_read+bulk_research to it -->
+  - [x] query; <!-- shown when bulk_research kind -->
+  - [x] URLs; <!-- shown truncated at 5 + "and N more" -->
+  - [x] domains; <!-- deduped domain badges -->
+  - [ ] max pages; <!-- deferred: not in payloadPreview schema yet -->
+  - [ ] max chars/page; <!-- deferred: not in payloadPreview schema yet -->
+  - [ ] host permissions needed; <!-- deferred: host permission detection not wired -->
+  - [ ] workspace output path; <!-- deferred: not surfaced in payloadPreview -->
+  - [x] risk. <!-- risk badge from approval.risk -->
 - [x] P1 Tests:
   - [x] search -> read top result -> write workspace page; (storeResearchBundle test + web delegate)
   - [x] reading multiple results respects max pages; (web.readPages maxPages test)

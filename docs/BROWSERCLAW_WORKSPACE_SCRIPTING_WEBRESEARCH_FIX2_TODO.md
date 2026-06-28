@@ -351,23 +351,24 @@ async function handleRequestHostPermission(
 
 ## Phase C4 — Implement real extension `read_page` success path
 
-- [ ] P0 `read_page` must:
-  - [ ] validate URL with shared policy;
-  - [ ] require host permission;
-  - [ ] open or reuse inactive tab safely;
-  - [ ] inject content extraction script;
-  - [ ] return title/text/markdown/finalUrl;
-  - [ ] close temporary tab if extension opened it;
-  - [ ] enforce timeout;
-  - [ ] enforce max chars;
-  - [ ] sanitize output.
-- [ ] P0 Tests:
-  - [ ] successful fixture page read;
-  - [ ] script/style removed;
-  - [ ] max chars enforced;
-  - [ ] tab cleanup on success;
-  - [ ] tab cleanup on failure;
-  - [ ] permission denied returns explicit error.
+<!-- evidence: handleReadPage already implements all requirements; added 2 C4 tab-cleanup tests in serviceWorkerReadPages.test.ts (success and extraction-failure both call chrome.tabs.remove(42)); D1 extractPageContent tests cover sanitization+maxChars; C2 tests cover permission-denied path; 1005/120 vitest pass, lint+typecheck clean -->
+- [x] P0 `read_page` must:
+  - [x] validate URL with shared policy;
+  - [x] require host permission;
+  - [x] open or reuse inactive tab safely;
+  - [x] inject content extraction script;
+  - [x] return title/text/markdown/finalUrl;
+  - [x] close temporary tab if extension opened it;
+  - [x] enforce timeout;
+  - [x] enforce max chars;
+  - [x] sanitize output.
+- [x] P0 Tests:
+  - [x] successful fixture page read; <!-- C2 test: succeeds when permission present -->
+  - [x] script/style removed; <!-- D1 extractPageContent tests -->
+  - [x] max chars enforced; <!-- D1 extractPageContent tests -->
+  - [x] tab cleanup on success; <!-- C4 test added -->
+  - [x] tab cleanup on failure; <!-- C4 test added -->
+  - [x] permission denied returns explicit error. <!-- C2 test: host_permission_missing -->
 
 ---
 

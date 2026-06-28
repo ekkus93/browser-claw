@@ -1904,3 +1904,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Added 7 C2 tests: read_page permission missing, read_page permission present, request granted, denied, flow required, invalid origin, pageReadingAvailable now true.
 - Gate: typecheck ✓, lint ✓, vitest 1003/120 ✓.
 - NEXT: Part C3 — activeTab permission or make read_current_tab unavailable (P1).
+
+## 2026-06-28T20:15:22Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 8: Part C4 (read_page success path) DONE
+- handleReadPage already implemented all C4 requirements (URL validation, host permission check, inactive tab, content extraction, cleanup in finally block, timeout, maxChars, sanitization).
+- Added 2 C4 tab cleanup tests: success case and extraction-failed case both verify chrome.tabs.remove(42) is called.
+- Covered by D1 tests (extractPageContent: sanitization, maxChars) and C2 tests (permission denied, success read).
+- Gate: typecheck ✓, lint ✓, vitest 1005/120 ✓.
+- NEXT: Part D1 — wire search provider in main app (P1). Skipping C3 (P1) for now since D1 is also P1 but Part D items cover important functionality gaps.

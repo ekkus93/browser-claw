@@ -280,3 +280,60 @@ describe('C2 — handleRequestHostPermission', () => {
     expect(s['pageReadingAvailable']).toBe(true);
   });
 });
+
+describe('C4 — handleReadPage tab lifecycle', () => {
+  const removedTabIds: number[] = [];
+
+  beforeEach(() => {
+    removedTabIds.length = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.permissions.contains = async () => true;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.tabs.remove = async (id: number) => {
+      removedTabIds.push(id);
+    };
+  });
+
+  afterEach(() => {
+    // Restore defaults.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.tabs.remove = async () => undefined;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.scripting.executeScript = async ({ args }: { args: [{ maxChars: number }] }) => [
+      {
+        result: {
+          ok: true,
+          finalUrl: 'https://example.com/',
+          title: 'Example',
+          text: 'x'.repeat(Math.min(args[0].maxChars, 10)),
+          markdown: 'body',
+          excerpt: 'body',
+          length: 10,
+        },
+      },
+    ];
+  });
+
+  it('C4: tab is closed after successful read', async () => {
+    await (handleReadPage as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+      requestId: 'r',
+      url: 'https://example.com/',
+    });
+    expect(removedTabIds).toHaveLength(1);
+    expect(removedTabIds[0]).toBe(42);
+  });
+
+  it('C4: tab is closed after failed extraction', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).chrome.scripting.executeScript = async () => [
+      { result: { ok: false, error: 'no readable content' } },
+    ];
+    const res = await (handleReadPage as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+      requestId: 'r',
+      url: 'https://example.com/',
+    });
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe('extraction_failed');
+    expect(removedTabIds).toHaveLength(1);
+  });
+});

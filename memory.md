@@ -1844,3 +1844,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Key FIX2 scope: Rust/WASM runtime must handle plan/script/web result shapes (Part A); script policy enforcement (Part B); extension permission flow cleanup (Part C); WebResearch wiring + failure reporting (Part D); current-tab routing (Part E); approval payload fail-closed (Part F); memory privacy (Part G); sandbox tool safety (Part H); extension E2E (Part J).
 - Gate green: typecheck ✓, lint ✓, format:check ✓, vitest 972/119 ✓.
 - NEXT: Part A1 — update claw-schema + claw-core to detect plan/script_request/web_request shapes and emit corresponding effects; add Rust tests; rebuild WASM.
+
+## 2026-06-28T19:35:48Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 2: Part A1 (Rust/WASM parity for plan/script/web) DONE
+- NEW claw-schema Effect variants: ScriptPlanProposal{id,plan}, SandboxScriptProposal{id,request}, WebSearch{id,query,options?}, WebPageRead{id,url,options?}, WebResearch{id,query,options?}, ExtensionRequest{id,request}.
+- NEW claw-core effects_for_web_request() helper: dispatches search→WebSearch, readPage→WebPageRead, readCurrentTab→ExtensionRequest{op:"read_current_tab"}, readPages/research→WebResearch, unknown op→AuditAppend protocol error.
+- FIXED claw-core llm_request resolver: detects plan/script_request/web_request before text fallback; empty text → AuditAppend protocol error (not empty message); unknown shape → AuditAppend runtime.unknown_llm_result_shape (not empty message).
+- NEW resolution handler for plan_proposal/sandbox_script_proposal/web_search/web_page_read/web_research/extension_request: mirrors tool_call (store result + continue LLM, or store error note on failure).
+- 7 new Rust tests: plan→ScriptPlanProposal, script_request→SandboxScriptProposal, search→WebSearch, readPage→WebPageRead, readCurrentTab→ExtensionRequest, unknown shape→protocol error, normal text→assistant message. 15/15 cargo test pass.
+- WASM rebuilt (pnpm run build:wasm); cargo clippy clean; vitest 972/119 pass; typecheck/lint clean.
+- NEXT: Part A2 — keep TypeScript reference runtime in parity (update referenceRuntime.ts to match Rust behavior for plan/script/web shapes).

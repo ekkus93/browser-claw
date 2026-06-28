@@ -40,6 +40,116 @@ impl Runtime {
         format!("eff-{}", self.state.next_effect_id)
     }
 
+    fn effects_for_web_request(
+        &mut self,
+        conversation_id: String,
+        skill_id: String,
+        web_request: &Value,
+    ) -> Vec<Effect> {
+        let op = web_request
+            .get("op")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        match op {
+            "search" => {
+                let query = web_request
+                    .get("query")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                let options = web_request.get("options").cloned();
+                let effect_id = self.next_id();
+                self.state
+                    .pending
+                    .insert(effect_id.clone(), "web_search".to_string());
+                self.state
+                    .pending_conversation
+                    .insert(effect_id.clone(), conversation_id);
+                self.state
+                    .pending_skill
+                    .insert(effect_id.clone(), skill_id);
+                vec![Effect::WebSearch {
+                    id: effect_id,
+                    query,
+                    options,
+                }]
+            }
+            "readPage" => {
+                let url = web_request
+                    .get("url")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                let options = web_request.get("options").cloned();
+                let effect_id = self.next_id();
+                self.state
+                    .pending
+                    .insert(effect_id.clone(), "web_page_read".to_string());
+                self.state
+                    .pending_conversation
+                    .insert(effect_id.clone(), conversation_id);
+                self.state
+                    .pending_skill
+                    .insert(effect_id.clone(), skill_id);
+                vec![Effect::WebPageRead {
+                    id: effect_id,
+                    url,
+                    options,
+                }]
+            }
+            "readCurrentTab" => {
+                let options = web_request.get("options").cloned();
+                let request = json!({ "op": "read_current_tab", "options": options });
+                let effect_id = self.next_id();
+                self.state
+                    .pending
+                    .insert(effect_id.clone(), "extension_request".to_string());
+                self.state
+                    .pending_conversation
+                    .insert(effect_id.clone(), conversation_id);
+                self.state
+                    .pending_skill
+                    .insert(effect_id.clone(), skill_id);
+                vec![Effect::ExtensionRequest {
+                    id: effect_id,
+                    request,
+                }]
+            }
+            "readPages" | "research" => {
+                let query = web_request
+                    .get("query")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+                let options = web_request.get("options").cloned();
+                let effect_id = self.next_id();
+                self.state
+                    .pending
+                    .insert(effect_id.clone(), "web_research".to_string());
+                self.state
+                    .pending_conversation
+                    .insert(effect_id.clone(), conversation_id);
+                self.state
+                    .pending_skill
+                    .insert(effect_id.clone(), skill_id);
+                vec![Effect::WebResearch {
+                    id: effect_id,
+                    query,
+                    options,
+                }]
+            }
+            _ => {
+                let audit_id = self.next_id();
+                vec![Effect::AuditAppend {
+                    id: audit_id,
+                    event_type: "runtime.unknown_web_request".to_string(),
+                    summary: format!("Unknown web_request op: {op}"),
+                    risk: "medium".to_string(),
+                }]
+            }
+        }
+    }
+
     /// Advance the state machine, returning the effects the host must perform.
     pub fn dispatch(&mut self, command: Command) -> Vec<Effect> {
         match command {
@@ -140,6 +250,137 @@ impl Runtime {
                                 risk: "medium".to_string(),
                             }];
                         }
+                        // Plan proposal: model produced a structured plan.
+                        if let Some(plan) = result.get("plan") {
+                            let proposal_id = self.next_id();
+                            self.state.pending.insert(
+                                proposal_id.clone(),
+                                "plan_proposal".to_string(),
+                            );
+                            self.state
+                                .pending_conversation
+                                .insert(proposal_id.clone(), conversation_id);
+                            self.state
+                                .pending_skill
+                                .insert(proposal_id.clone(), skill_id);
+                            return vec![Effect::ScriptPlanProposal {
+                                id: proposal_id,
+                                plan: plan.clone(),
+                            }];
+                        }
+                        // Sandbox script request: model asked to run sandboxed JS.
+                        if let Some(script_request) = result.get("script_request") {
+                            let proposal_id = self.next_id();
+                            self.state.pending.insert(
+                                proposal_id.clone(),
+                                "sandbox_script_proposal".to_string(),
+                            );
+                            self.state
+                                .pending_conversation
+                                .insert(proposal_id.clone(), conversation_id);
+                            self.state
+                                .pending_skill
+                                .insert(proposal_id.clone(), skill_id);
+                            return vec![Effect::SandboxScriptProposal {
+                                id: proposal_id,
+                                request: script_request.clone(),
+                            }];
+                        }
+                        // Web request: model wants to search or read pages.
+                        if let Some(web_request) = result.get("web_request") {
+                            return self.effects_for_web_request(
+                                conversation_id,
+                                skill_id,
+                                web_request,
+                            );
+                        }
+                        // Text response: store as assistant message.
+                        if let Some(text) =
+                            result.get("text").and_then(Value::as_str)
+                        {
+                            if text.trim().is_empty() {
+                                let audit_id = self.next_id();
+                                return vec![Effect::AuditAppend {
+                                    id: audit_id,
+                                    event_type: "runtime.invalid_empty_llm_result"
+                                        .to_string(),
+                                    summary: "LLM result text was empty".to_string(),
+                                    risk: "medium".to_string(),
+                                }];
+                            }
+                            let content = text.to_string();
+                            self.state.message_count += 1;
+                            let put_id = self.next_id();
+                            let audit_id = self.next_id();
+                            return vec![
+                                Effect::StoragePut {
+                                    id: put_id,
+                                    conversation_id,
+                                    store: "messages".to_string(),
+                                    key: format!("m{}", self.state.message_count),
+                                    value: json!({
+                                        "role": "assistant",
+                                        "content": content
+                                    }),
+                                },
+                                Effect::AuditAppend {
+                                    id: audit_id,
+                                    event_type: "llm_response_received".to_string(),
+                                    summary: "Assistant message stored".to_string(),
+                                    risk: "info".to_string(),
+                                },
+                            ];
+                        }
+                        // Unknown shape: emit protocol error, never an empty message.
+                        let audit_id = self.next_id();
+                        vec![Effect::AuditAppend {
+                            id: audit_id,
+                            event_type: "runtime.unknown_llm_result_shape".to_string(),
+                            summary: "LLM result had no recognized shape".to_string(),
+                            risk: "high".to_string(),
+                        }]
+                    }
+                    // Plan/sandbox/web effects resolve the same way as tool calls:
+                    // store result as a message and ask the model again, or store
+                    // an error note on failure.
+                    Some(
+                        "plan_proposal"
+                        | "sandbox_script_proposal"
+                        | "web_search"
+                        | "web_page_read"
+                        | "web_research"
+                        | "extension_request",
+                    ) => {
+                        if result.get("ok") == Some(&Value::Bool(false))
+                            || result.get("error").is_some()
+                        {
+                            self.state.message_count += 1;
+                            let put_id = self.next_id();
+                            let audit_id = self.next_id();
+                            return vec![
+                                Effect::StoragePut {
+                                    id: put_id,
+                                    conversation_id,
+                                    store: "messages".to_string(),
+                                    key: format!(
+                                        "m{}",
+                                        self.state.message_count
+                                    ),
+                                    value: json!({
+                                        "role": "tool",
+                                        "content": "Operation was not completed."
+                                    }),
+                                },
+                                Effect::AuditAppend {
+                                    id: audit_id,
+                                    event_type: "runtime.effect_rejected"
+                                        .to_string(),
+                                    summary: "Effect rejected or failed"
+                                        .to_string(),
+                                    risk: "low".to_string(),
+                                },
+                            ];
+                        }
                         let content = result
                             .get("text")
                             .and_then(Value::as_str)
@@ -147,19 +388,34 @@ impl Runtime {
                             .to_string();
                         self.state.message_count += 1;
                         let put_id = self.next_id();
+                        let llm_id = self.next_id();
                         let audit_id = self.next_id();
+                        self.state
+                            .pending
+                            .insert(llm_id.clone(), "llm_request".to_string());
+                        self.state
+                            .pending_conversation
+                            .insert(llm_id.clone(), conversation_id.clone());
+                        self.state
+                            .pending_skill
+                            .insert(llm_id.clone(), skill_id);
                         vec![
                             Effect::StoragePut {
                                 id: put_id,
-                                conversation_id,
+                                conversation_id: conversation_id.clone(),
                                 store: "messages".to_string(),
                                 key: format!("m{}", self.state.message_count),
-                                value: json!({ "role": "assistant", "content": content }),
+                                value: json!({ "role": "tool", "content": content }),
+                            },
+                            Effect::LlmRequest {
+                                id: llm_id,
+                                conversation_id,
+                                prompt: String::new(),
                             },
                             Effect::AuditAppend {
                                 id: audit_id,
-                                event_type: "llm_response_received".to_string(),
-                                summary: "Assistant message stored".to_string(),
+                                event_type: "runtime.effect_resolved".to_string(),
+                                summary: "Effect result stored".to_string(),
                                 risk: "info".to_string(),
                             },
                         ]
@@ -433,6 +689,158 @@ mod tests {
             Effect::AuditAppend { event_type, .. }
                 if event_type == "runtime.resolve_unknown_effect"
         ));
+    }
+
+    // --- A1 tests: plan/script/web result shape detection ---
+
+    #[test]
+    fn plan_result_emits_script_plan_proposal() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("make a plan"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({
+                "plan": {
+                    "steps": [{ "op": "fs.readText", "path": "/workspace/data.txt" }]
+                }
+            }),
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::ScriptPlanProposal { id, plan } => {
+                assert_eq!(id, "eff-3");
+                assert!(plan.get("steps").is_some());
+            }
+            other => panic!("expected ScriptPlanProposal, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn script_request_result_emits_sandbox_script_proposal() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("run a script"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({
+                "script_request": {
+                    "type": "browserclaw_script_request",
+                    "version": 1,
+                    "runtime": "sandboxed_script",
+                    "title": "Compute something",
+                    "reason": "Need arithmetic",
+                    "code": "return 1 + 1;",
+                    "capabilities": { "secrets": "deny", "network": "deny" },
+                    "limits": { "timeoutMs": 5000, "maxOutputBytes": 1024,
+                                "maxFileReads": 0, "maxFileWrites": 0 }
+                }
+            }),
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::SandboxScriptProposal { id, request } => {
+                assert_eq!(id, "eff-3");
+                assert_eq!(request["title"], "Compute something");
+            }
+            other => panic!("expected SandboxScriptProposal, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn web_request_search_emits_web_search() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("search the web"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({
+                "web_request": { "op": "search", "query": "rust async" }
+            }),
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::WebSearch { id, query, .. } => {
+                assert_eq!(id, "eff-3");
+                assert_eq!(query, "rust async");
+            }
+            other => panic!("expected WebSearch, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn web_request_read_page_emits_web_page_read() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("read a page"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({
+                "web_request": { "op": "readPage", "url": "https://example.com" }
+            }),
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::WebPageRead { id, url, .. } => {
+                assert_eq!(id, "eff-3");
+                assert_eq!(url, "https://example.com");
+            }
+            other => panic!("expected WebPageRead, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn web_request_read_current_tab_emits_extension_request() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("read current tab"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({
+                "web_request": { "op": "readCurrentTab" }
+            }),
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::ExtensionRequest { id, request } => {
+                assert_eq!(id, "eff-3");
+                assert_eq!(request["op"], "read_current_tab");
+            }
+            other => panic!("expected ExtensionRequest, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn unknown_llm_result_shape_emits_protocol_error() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("hello"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "unexpected_field": "something" }),
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::AuditAppend { event_type, risk, .. } => {
+                assert_eq!(event_type, "runtime.unknown_llm_result_shape");
+                assert_eq!(risk, "high");
+            }
+            other => panic!("expected AuditAppend protocol error, got {other:?}"),
+        }
+        // No assistant message stored (no StoragePut emitted).
+        assert!(!effects
+            .iter()
+            .any(|e| matches!(e, Effect::StoragePut { .. })));
+    }
+
+    #[test]
+    fn normal_text_result_still_stores_assistant_message() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("hi"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "text": "hello there" }),
+        });
+        let stored = effects.iter().find_map(|e| match e {
+            Effect::StoragePut { value, .. } => Some(value),
+            _ => None,
+        });
+        assert_eq!(stored.expect("storage_put")["role"], "assistant");
+        assert_eq!(stored.expect("storage_put")["content"], "hello there");
     }
 
     #[test]

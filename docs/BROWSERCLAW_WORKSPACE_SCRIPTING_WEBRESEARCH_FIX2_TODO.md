@@ -32,6 +32,8 @@ P2 = polish, robustness, or future-facing hardening
 
 ## Phase A1 — Add plan/script/web result support to Rust/WASM runtime
 
+<!-- evidence: claw-schema new Effect variants (ScriptPlanProposal, SandboxScriptProposal, WebSearch, WebPageRead, WebResearch, ExtensionRequest); claw-core effects_for_web_request + updated llm_request resolver; WASM rebuilt; 15 Rust tests pass (cargo test -p claw-core); 972/119 vitest pass; cargo clippy clean -->
+
 ### Problem
 
 The TypeScript reference runtime understands more LLM result shapes than the Rust/WASM runtime. In WASM mode, a valid plan/script/web result can become an empty assistant message.
@@ -49,26 +51,26 @@ result.text            -> storage_put assistant message
 unknown result shape   -> protocol error/audit, not empty message
 ```
 
-- [ ] P0 Update `crates/claw-schema` with any missing effect variants needed by the Rust core.
-- [ ] P0 Update `crates/claw-core` LLM result handling:
-  - [ ] detect `plan`;
-  - [ ] detect `script_request`;
-  - [ ] detect `web_request.op === "search"`;
-  - [ ] detect `web_request.op === "readPage"`;
-  - [ ] detect `web_request.op === "readPages"` or `research`;
-  - [ ] detect `web_request.op === "readCurrentTab"` and route explicitly;
-  - [ ] detect malformed/unknown result shapes.
-- [ ] P0 Unknown/nonconforming LLM result shape must emit a protocol error/audit event.
-- [ ] P0 Do not use `unwrap_or_default()` to turn missing text into an empty assistant message.
-- [ ] P0 Rebuild WASM.
-- [ ] P0 Add Rust tests:
-  - [ ] `{ "plan": ... }` emits `ScriptPlanProposal`;
-  - [ ] `{ "script_request": ... }` emits `SandboxScriptProposal`;
-  - [ ] `{ "web_request": { "op": "search" } }` emits web search effect;
-  - [ ] `{ "web_request": { "op": "readPage" } }` emits page read effect;
-  - [ ] `{ "web_request": { "op": "readCurrentTab" } }` emits current-tab effect;
-  - [ ] unknown result shape emits protocol error/audit;
-  - [ ] normal text still stores assistant message.
+- [x] P0 Update `crates/claw-schema` with any missing effect variants needed by the Rust core.
+- [x] P0 Update `crates/claw-core` LLM result handling:
+  - [x] detect `plan`;
+  - [x] detect `script_request`;
+  - [x] detect `web_request.op === "search"`;
+  - [x] detect `web_request.op === "readPage"`;
+  - [x] detect `web_request.op === "readPages"` or `research`;
+  - [x] detect `web_request.op === "readCurrentTab"` and route explicitly;
+  - [x] detect malformed/unknown result shapes.
+- [x] P0 Unknown/nonconforming LLM result shape must emit a protocol error/audit event.
+- [x] P0 Do not use `unwrap_or_default()` to turn missing text into an empty assistant message.
+- [x] P0 Rebuild WASM.
+- [x] P0 Add Rust tests:
+  - [x] `{ "plan": ... }` emits `ScriptPlanProposal`;
+  - [x] `{ "script_request": ... }` emits `SandboxScriptProposal`;
+  - [x] `{ "web_request": { "op": "search" } }` emits web search effect;
+  - [x] `{ "web_request": { "op": "readPage" } }` emits page read effect;
+  - [x] `{ "web_request": { "op": "readCurrentTab" } }` emits current-tab effect;
+  - [x] unknown result shape emits protocol error/audit;
+  - [x] normal text still stores assistant message.
 
 ### Helpful Rust-ish sketch
 

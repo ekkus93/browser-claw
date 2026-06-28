@@ -77,6 +77,42 @@ pub enum Effect {
         id: String,
         snapshot: Value,
     },
+    /// The model emitted a structured plan; the host decides whether to execute it.
+    ScriptPlanProposal {
+        id: String,
+        plan: Value,
+    },
+    /// The model requested sandboxed script execution; the host gates it behind approval.
+    SandboxScriptProposal {
+        id: String,
+        request: Value,
+    },
+    /// The model requested a web search; the host executes it (no approval needed).
+    WebSearch {
+        id: String,
+        query: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        options: Option<Value>,
+    },
+    /// The model requested reading a specific page; the host gates it behind approval.
+    WebPageRead {
+        id: String,
+        url: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        options: Option<Value>,
+    },
+    /// The model requested a bulk web research bundle; the host gates it behind approval.
+    WebResearch {
+        id: String,
+        query: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        options: Option<Value>,
+    },
+    /// The model requested an extension operation (e.g. read_current_tab).
+    ExtensionRequest {
+        id: String,
+        request: Value,
+    },
 }
 
 /// A command the host sends into the runtime.

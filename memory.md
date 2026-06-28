@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T22:22:31Z - Claude Sonnet 4.6 - FIX3 Phase 0 (scope lock) DONE — beginning FIX3 Ralph Loop
+- FIX3 spec and TODO arrived via git pull. Scope: fix remaining live-path quiet failures from FIX2.
+- Added FIX3 Locked Decisions section to WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md.
+- Key FIX3 issues: Brave key not passed to live search; structured results → empty tool messages; Rust validation not fail-closed; readPages/research routing wrong; async extension handlers bypass central validation; status UI too coarse.
+- Ralph Loop target: docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX3_TODO.md.
+- NEXT: Part A1 — wire Brave key into configured search provider.
+
 ## 2026-06-28T21:59:45Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 24: Part J2 (app-level extension E2E) DONE — FIX2 COMPLETE
 - Added app-extension.extension.spec.ts with 3 tests: (1) Settings Check → Connected, (2) read_page from app origin returns sanitized content, (3) Settings shows Not detected when extension missing.
 - Added ?ext_id=<id> URL-param dev-mode override to SettingsScreen.tsx so Playwright tests can pass dynamic extension ID without VITE_CHROME_EXTENSION_ID env rebuild.

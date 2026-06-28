@@ -10,17 +10,18 @@ P2 = polish, robustness, or future hardening
 
 ## Phase 0 — Scope lock
 
-- [ ] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX3_SPEC.md`.
-- [ ] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX3_TODO.md`.
-- [ ] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a short FIX3 section:
-  - [ ] FIX3 fixes remaining live-path quiet failures from FIX2 review.
-  - [ ] Search provider must use the saved Brave key at request time.
-  - [ ] Structured web results must not become empty tool messages.
-  - [ ] Rust/WASM and TypeScript web-request validation must match.
-  - [ ] Extension async handlers must go through central validation.
-  - [ ] Status UI must be capability-specific.
-- [ ] P0 Do not add broad new features in this pass.
-- [ ] P0 Update `memory.md` with a real `date -u` timestamp, model name, and concise summary.
+<!-- evidence: FIX3_SPEC.md and FIX3_TODO.md arrived via git pull 2026-06-28; FIX3 section added to WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md covering all six bullet points; memory.md updated with real date -u timestamp; no new features added in this pass -->
+- [x] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX3_SPEC.md`. <!-- arrived via git pull -->
+- [x] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX3_TODO.md`. <!-- arrived via git pull -->
+- [x] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a short FIX3 section:
+  - [x] FIX3 fixes remaining live-path quiet failures from FIX2 review.
+  - [x] Search provider must use the saved Brave key at request time.
+  - [x] Structured web results must not become empty tool messages.
+  - [x] Rust/WASM and TypeScript web-request validation must match.
+  - [x] Extension async handlers must go through central validation.
+  - [x] Status UI must be capability-specific.
+- [x] P0 Do not add broad new features in this pass.
+- [x] P0 Update `memory.md` with a real `date -u` timestamp, model name, and concise summary.
 
 ---
 

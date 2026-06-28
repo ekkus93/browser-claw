@@ -818,3 +818,53 @@ These decisions apply to the FIX2 safety hardening and integration pass. See
   SecretVault (decrypted in-memory only) under the canonical key ID
   `search_provider:brave` and forwarded to the extension in-message (never
   persisted to localStorage or Redux). (K1 documentation requirement.)
+
+## FIX3 Locked decisions (2026-06-28)
+
+These decisions apply to the FIX3 live-path correctness pass. See
+`docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX3_SPEC.md` and
+`...FIX3_TODO.md` for the full scope.
+
+- **FIX3 fixes remaining live-path quiet failures from FIX2.** FIX2 put in place
+  library-level building blocks; FIX3 connects them so real requests actually
+  work. No broad new features are added in this pass.
+- **Search provider must resolve the saved Brave key at request time.** A
+  boot-time captured API key is not acceptable. `createConfiguredSearchProvider()`
+  must receive `secretVault` and resolve the key immediately before each
+  extension search request. Missing key → `secret_missing`; locked vault →
+  `secret_locked`. Raw key must never enter Redux, audit, logs, or error messages.
+- **Structured web effect results must never become empty tool messages.** A shared
+  TypeScript `toolContentFromEffectResult()` serializer must handle `{ results }`,
+  `{ content }`, `{ contents }`, `{ bundle }`, and `{ response }` shapes. An
+  equivalent Rust serializer must exist in `claw-core`. An empty or unrecognized
+  success result must fail audibly, not silently.
+- **Rust/WASM and TypeScript web-request validation must match and fail-closed.**
+  `unwrap_or("")` / `unwrap_or_default()` fallbacks for web-request fields are
+  removed. Missing/empty `op`, `query`, `url`, or `urls` emits
+  `runtime.invalid_web_request`; no empty-query or empty-url effects are emitted.
+- **`research` and `readPages` are supported end-to-end in v0.1.** Both ops are
+  accepted by the parser and runtime. `readPages` maps to a discriminated
+  `web_research { mode: 'urls' }` or a dedicated `web_pages_read` effect — not to
+  `query: ''`. Explicit URL arrays must be preserved.
+- **Extension async handlers must go through central `handle()`.** `onMessageExternal`
+  must always delegate to the central handler. Sender/origin, message shape,
+  `type`, `requestId`, and handler existence are validated before dispatch. Thrown
+  exceptions must return structured `internal_error`, not crash the service worker.
+- **Settings status is capability-specific.** A single "Connected" badge is
+  replaced with separate rows for: extension connected, page reading, host
+  permission flow, current-tab (unsupported v0.1), web search handler, Brave key,
+  and live search readiness. Collapsing these into one badge was identified as
+  misleading in FIX3 review.
+- **`read_pages` is live through the provider.** `pageReaderProvider.readPages()`
+  sends a single `read_pages` batch message to the extension. Sequential fallback
+  is disallowed unless explicitly configured and audited.
+- **Strict approval payload parsing throughout.** `runApprovedWebPageRead()` and
+  `runApprovedExtensionPermission()` both use strict `parseApprovalPayloadObject()`
+  + `requireStringField()`. Lenient parsing that produces empty URL/origin is
+  removed; malformed payloads fail with audit, not silently.
+- **Brave key clear errors are visible and audited.** The broad catch in
+  `useWebResearchKey.clearKey()` is replaced by an intentional handler that
+  ignores `not-found` but audits and shows a UI error on vault or storage failure.
+- **`waitForTabComplete()` race is fixed (P2).** The extension now checks existing
+  tab status before attaching the `onUpdated` listener, so a tab that completes
+  before listener setup does not time out.

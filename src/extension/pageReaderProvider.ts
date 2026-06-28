@@ -56,6 +56,8 @@ const ERROR_KIND_MAP: Record<ExtensionErrorKind, PageReadErrorKind> = {
   internal_error: 'internal_error',
   // C2: permission flow required (needs extension popup / user gesture)
   permission_flow_required: 'permission_denied',
+  // C3: current-tab read not supported in v0.1
+  current_tab_read_unavailable: 'internal_error',
   // Legacy kinds
   timeout: 'timeout',
   navigation_failed: 'navigation_failed',

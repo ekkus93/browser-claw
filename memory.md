@@ -1984,6 +1984,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T21:50:58Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 22: Part C3 (current-tab read unavailable in v0.1) DONE
+- handleReadCurrentTab now returns current_tab_read_unavailable immediately; activeTab can't be granted via externally_connectable, and scripting requires host_permissions same as read_page.
+- get_status hardcodes readCurrentTab.supported:false and currentTabReadingAvailable:false.
+- ExtensionErrorKind union updated; pageReaderProvider.ts ERROR_KIND_MAP updated; service-worker.d.ts updated (now sync function).
+- 2 C3 tests (unavailable error + get_status false); C1 test description updated for new expected behavior.
+- Gate: typecheck ✓, lint ✓, vitest 1059/122 ✓.
+- NEXT: B2 (Settings UI sandbox policy) or J2 (app-level extension E2E).
+
 ## 2026-06-28T21:35:14Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 21: Parts K2+K3 (acceptance checklist + required gate) DONE
 - K2: All 14 acceptance items ticked with evidence comments; all verified against completed phases A1-J3.
 - K3: Required gate documented — typecheck/lint/format/vitest/cargo all pass; test:extension:e2e and build:wasm documented as deferred (environment prerequisites, not blocking).

@@ -340,14 +340,12 @@ async function handleRequestHostPermission(
 
 ## Phase C3 — Add `activeTab` or make current-tab read unavailable
 
-- [ ] P1 If `read_current_tab` is supported:
-  - [ ] add `activeTab` permission if needed;
-  - [ ] require user invocation where Chrome requires it;
-  - [ ] implement handler;
-  - [ ] test it.
-- [ ] P1 If not supported yet:
-  - [ ] `get_status.capabilities.readCurrentTab.supported = false`;
-  - [ ] runtime/UI returns `current_tab_read_unavailable`.
+<!-- evidence: handleReadCurrentTab now returns current_tab_read_unavailable immediately; get_status hardcodes readCurrentTab.supported:false and currentTabReadingAvailable:false; ExtensionErrorKind and pageReaderProvider.ts ERROR_KIND_MAP updated; 2 C3 tests; C1 test description updated; typecheck/lint/1059 vitest pass -->
+- [x] P1 If `read_current_tab` is supported:
+  - N/A — not supported in v0.1. activeTab is not grantable via externally_connectable; scripting also needs host_permissions (same as read_page). Use read_page with explicit URL instead.
+- [x] P1 If not supported yet:
+  - [x] `get_status.capabilities.readCurrentTab.supported = false`; <!-- hardcoded false in handleGetStatus -->
+  - [x] runtime/UI returns `current_tab_read_unavailable`. <!-- handleReadCurrentTab returns errorResponse('current_tab_read_unavailable', ...) -->
 
 ## Phase C4 — Implement real extension `read_page` success path
 

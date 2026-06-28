@@ -50,6 +50,7 @@ import {
   handleReadPages,
   handleGetStatus,
   handleRequestHostPermission,
+  handleReadCurrentTab,
   handlers,
 } from '../../extension/chrome-web-research/service-worker.js';
 
@@ -186,16 +187,15 @@ describe('C1 — handleGetStatus structured capabilities', () => {
     expect(s['pageReadingAvailable']).toBe(expected);
   });
 
-  it('C1: capabilities.readCurrentTab.supported matches handlers.read_current_tab registration', () => {
+  it('C1/C3: capabilities.readCurrentTab.supported is false (C3: unavailable in v0.1)', () => {
+    // C3 overrides the derived value: handler is registered but not available
+    // because activeTab cannot be granted via externally_connectable.
     const s = status();
     const caps = s['capabilities'] as Caps;
-    expect(caps['readCurrentTab']?.['supported']).toBe(
-      typeof (handlers as Record<string, unknown>)['read_current_tab'] ===
-        'function',
-    );
+    expect(caps['readCurrentTab']?.['supported']).toBe(false);
   });
 
-  it('C1: status does not lie — currentTabReadingAvailable matches readCurrentTab handler', () => {
+  it('C1: status does not lie — currentTabReadingAvailable matches readCurrentTab.supported', () => {
     const s = status();
     const caps = s['capabilities'] as Caps;
     expect(s['currentTabReadingAvailable']).toBe(
@@ -398,5 +398,29 @@ describe('C4 — handleReadPage tab lifecycle', () => {
       'extraction_failed',
     );
     expect(removedTabIds).toHaveLength(1);
+  });
+});
+
+describe('C3 — read_current_tab unavailable in v0.1', () => {
+  it('C3: read_current_tab returns current_tab_read_unavailable', () => {
+    const res = handleReadCurrentTab({ requestId: 'c3-unavail' }) as Record<
+      string,
+      unknown
+    >;
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'current_tab_read_unavailable',
+    );
+  });
+
+  it('C3: get_status reports readCurrentTab.supported = false', () => {
+    const s = handleGetStatus({ requestId: 'c3-status' }) as Record<
+      string,
+      unknown
+    >;
+    const caps = s['capabilities'] as Record<string, unknown>;
+    const rct = caps['readCurrentTab'] as Record<string, unknown>;
+    expect(rct['supported']).toBe(false);
+    expect(s['currentTabReadingAvailable']).toBe(false);
   });
 });

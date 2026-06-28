@@ -74,6 +74,8 @@ export type ExtensionErrorKind =
   | 'internal_error'
   // C2: permission request flow must be done from extension popup (user gesture)
   | 'permission_flow_required'
+  // C3: current-tab read unavailable in v0.1 (activeTab not grantable via externally_connectable)
+  | 'current_tab_read_unavailable'
   // Legacy kinds (v0.1 service-worker; kept for backward compat)
   | 'timeout'
   | 'navigation_failed'

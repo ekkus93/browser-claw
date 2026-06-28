@@ -340,71 +340,22 @@ async function handleReadPage(message) {
 }
 
 // ---------------------------------------------------------------------------
-// read_current_tab handler (FIX1-A4)
+// read_current_tab handler (FIX1-A4 / C3)
 // ---------------------------------------------------------------------------
+// C3: current-tab read is not supported in v0.1. The activeTab permission
+// requires a direct user gesture (browser action click) to be granted; it is
+// not available through the externally_connectable sendMessage path that
+// BrowserClaw uses. Scripting also requires host_permissions for the active
+// tab's URL, which is the same requirement as read_page — so read_current_tab
+// offers no advantage over read_page + explicit URL. This handler returns
+// current_tab_read_unavailable immediately; get_status reports supported:false.
 
-async function handleReadCurrentTab(message) {
-  const { requestId, maxChars, timeoutMs: _timeoutMs } = message;
-
-  let tabs;
-  try {
-    tabs = await chrome.tabs.query({ active: true, currentWindow: true });
-  } catch (e) {
-    return errorResponse(
-      'internal_error',
-      'Could not query active tab',
-      requestId,
-    );
-  }
-
-  const tab = tabs && tabs[0];
-  if (!tab || tab.id === undefined || tab.id === null) {
-    return errorResponse('internal_error', 'No active tab found', requestId);
-  }
-
-  const tabUrl = tab.url || tab.pendingUrl || '';
-  if (tabUrl) {
-    const safety = classifyExtensionUrl(tabUrl);
-    if (!safety.ok) {
-      return errorResponse('url_blocked', safety.reason, requestId);
-    }
-  }
-
-  try {
-    const [injection] = await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      func: extractPageContent,
-      args: [{ maxChars: maxChars ?? DEFAULT_MAX_CHARS }],
-    });
-
-    const result = injection && injection.result;
-    if (!result || !result.ok) {
-      return errorResponse(
-        'extraction_failed',
-        (result && result.error) || 'Could not extract readable page content',
-        requestId,
-      );
-    }
-
-    return {
-      ok: true,
-      requestId,
-      url: tabUrl,
-      finalUrl: result.finalUrl,
-      title: result.title,
-      ...(result.siteName ? { siteName: result.siteName } : {}),
-      text: result.text,
-      markdown: result.markdown,
-      excerpt: result.excerpt,
-      length: result.length,
-    };
-  } catch (e) {
-    return errorResponse(
-      'script_injection_failed',
-      e instanceof Error ? e.message : String(e),
-      requestId,
-    );
-  }
+function handleReadCurrentTab(message) {
+  return errorResponse(
+    'current_tab_read_unavailable',
+    'Current tab reading is not supported in v0.1. Use read_page with an explicit URL instead.',
+    message.requestId,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -483,8 +434,10 @@ function handleGetStatus(message) {
         permissionRequestSupported: requestHostPermission,
       },
       readCurrentTab: {
-        supported: readCurrentTab,
-        // Requires the activeTab permission or scripting on the focused tab.
+        // C3: not supported in v0.1 — activeTab is not granted via
+        // externally_connectable; scripting needs host_permissions for the
+        // target URL (same requirement as read_page). Use read_page instead.
+        supported: false,
         requiresActiveTab: true,
       },
       webSearch: {
@@ -496,7 +449,7 @@ function handleGetStatus(message) {
     // the permission request flow is wired — otherwise read_page would fail for
     // any URL the user has not already pre-granted host permission to.
     pageReadingAvailable: readPage && requestHostPermission,
-    currentTabReadingAvailable: readCurrentTab,
+    currentTabReadingAvailable: false,
     webSearchAvailable: webSearch,
   };
 }

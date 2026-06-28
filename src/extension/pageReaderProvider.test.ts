@@ -146,6 +146,49 @@ describe('createExtensionPageReader (E9)', () => {
     expect(result).toMatchObject({ ok: false, error: { kind: 'timeout' } });
   });
 
+  // FIX1-A4: BrowserClaw-side tests for read_current_tab.
+  // Active tab live tests require real Chrome — deferred to FIX1-K1.
+  it('A4: read_current_tab success is mapped to a PageReadResult', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: true,
+        requestId: 'r',
+        finalUrl: 'https://example.com/current',
+        title: 'Current Page',
+        text: 'page content',
+        markdown: 'page content',
+        excerpt: 'page content',
+        length: 12,
+      })),
+    });
+    const result = await reader.readCurrentTab({});
+    expect(result).toMatchObject({ ok: true, text: 'page content', title: 'Current Page' });
+  });
+
+  it('A4: no active tab (internal_error) maps to internal_error PageReadError', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: false,
+        requestId: 'r',
+        error: { kind: 'internal_error', message: 'No active tab found', retryable: false },
+      })),
+    });
+    const result = await reader.readCurrentTab({});
+    expect(result).toMatchObject({ ok: false, error: { kind: 'internal_error' } });
+  });
+
+  it('A4: blocked current tab URL returns unsupported_url', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: false,
+        requestId: 'r',
+        error: { kind: 'url_blocked', message: 'Blocked host: 192.168.1.1', retryable: false },
+      })),
+    });
+    const result = await reader.readCurrentTab({});
+    expect(result).toMatchObject({ ok: false, error: { kind: 'unsupported_url' } });
+  });
+
   it('maps a successful read into a PageReadResult', async () => {
     const reader = createExtensionPageReader({
       transport: transport(() => ({

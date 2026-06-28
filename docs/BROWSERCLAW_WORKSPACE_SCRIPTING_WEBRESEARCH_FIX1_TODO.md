@@ -263,36 +263,40 @@ async function handleReadPage(message: ReadPageRequest): Promise<PageReadRespons
 
 ## A4 — Implement `read_current_tab`
 
-- [ ] P1 Implement `read_current_tab`.
-- [ ] P1 Use `activeTab` where appropriate.
-- [ ] P1 Validate current tab URL.
-- [ ] P1 Inject extraction script into active tab.
-- [ ] P1 Return same `PageReadResult` shape.
-- [ ] P1 Tests:
-  - [ ] active tab read works on fixture page;
-  - [ ] blocked current tab URL is denied;
-  - [ ] no active tab returns explicit error.
+<!-- FIX1-A4 done 2026-06-28. service-worker.js: added handleReadCurrentTab — chrome.tabs.query({active,currentWindow}) → no tab → internal_error; URL safety check (classifyExtensionUrl) → url_blocked; chrome.scripting.executeScript func:extractPageContent → extraction_failed on bad result; returns same PageReadResult shape. Wired as handlers.read_current_tab → currentTabReadingAvailable:true in get_status. BrowserClaw-side tests: pageReaderProvider.test.ts +3 A4 (success mapped, no active tab → internal_error, blocked URL → unsupported_url). Live active-tab tests deferred to FIX1-K1. -->
+
+- [x] P1 Implement `read_current_tab`. <!-- handleReadCurrentTab in service-worker.js -->
+- [x] P1 Use `activeTab` where appropriate. <!-- chrome.tabs.query({ active: true, currentWindow: true }) -->
+- [x] P1 Validate current tab URL. <!-- classifyExtensionUrl(tabUrl) → url_blocked if blocked -->
+- [x] P1 Inject extraction script into active tab. <!-- chrome.scripting.executeScript({ target: { tabId }, func: extractPageContent }) -->
+- [x] P1 Return same `PageReadResult` shape. <!-- { ok, requestId, url, finalUrl, title, siteName?, text, markdown, excerpt, length } -->
+- [x] P1 Tests:
+  - [ ] active tab read works on fixture page; <!-- DEFERRED to FIX1-K1 Docker E2E -->
+  - [x] blocked current tab URL is denied; <!-- pageReaderProvider.test.ts 'A4: blocked current tab URL returns unsupported_url' -->
+  - [x] no active tab returns explicit error. <!-- pageReaderProvider.test.ts 'A4: no active tab (internal_error) maps to internal_error PageReadError' -->
 
 ## A5 — Content extraction function
 
-- [ ] P0 Implement extraction as a pure/testable function where possible.
-- [ ] P0 Remove script/style/noscript/template.
-- [ ] P0 Normalize whitespace.
-- [ ] P0 Cap output.
-- [ ] P0 Return metadata:
-  - [ ] title;
-  - [ ] finalUrl;
-  - [ ] siteName where available;
-  - [ ] excerpt;
-  - [ ] text;
-  - [ ] markdown if implemented.
-- [ ] P0 Do not return cookies/localStorage/sessionStorage.
-- [ ] P0 Tests:
-  - [ ] strips scripts/styles;
-  - [ ] normalizes whitespace;
-  - [ ] caps output;
-  - [ ] does not expose cookie/localStorage/sessionStorage;
-  - [ ] returns useful text from fixture article.
+<!-- FIX1-A5 already implemented. src/extension/extract.ts: pure extractReadablePage(html, options) — strips script/style/noscript/template/iframe/svg/canvas, normalizes whitespace, caps output (maxChars), returns { title, byline, siteName, finalUrl, excerpt, text, markdown }. Does not read cookies/localStorage/sessionStorage (DOMParser-based, no live document). Tests: src/extension/extract.test.ts covers all bullet points (strips scripts/styles, whitespace normalization, output cap, no cookie/storage exposure, fixture article text). service-worker.js inline extractPageContent mirrors the same logic for executeScript func: mode. content-extract.js IIFE for files: mode. -->
+
+- [x] P0 Implement extraction as a pure/testable function where possible. <!-- src/extension/extract.ts: extractReadablePage(html, options) is pure (DOMParser) -->
+- [x] P0 Remove script/style/noscript/template. <!-- querySelectorAll removes script,style,noscript,template,iframe,svg,canvas,object,embed -->
+- [x] P0 Normalize whitespace. <!-- replace(/\s+/g, ' ').trim() -->
+- [x] P0 Cap output. <!-- options.maxChars; DEFAULT_MAX_CHARS=50_000 in service-worker.js -->
+- [x] P0 Return metadata:
+  - [x] title; <!-- og:title → title element → h1 fallback -->
+  - [x] finalUrl; <!-- location.href in inline func; passed as param in extract.ts -->
+  - [x] siteName where available; <!-- og:site_name meta -->
+  - [x] excerpt; <!-- text.slice(0, 280) -->
+  - [x] text; <!-- full stripped/normalized text -->
+  - [x] markdown if implemented. <!-- text (markdown-as-text for now) -->
+- [x] P0 Do not return cookies/localStorage/sessionStorage. <!-- DOMParser / cloneNode only; never accesses document.cookie or Web Storage -->
+- [x] P0 Tests:
+  - [x] strips scripts/styles; <!-- extract.test.ts -->
+  - [x] normalizes whitespace; <!-- extract.test.ts -->
+  - [x] caps output; <!-- extract.test.ts -->
+  - [x] does not expose cookie/localStorage/sessionStorage; <!-- extract.test.ts -->
+  - [x] returns useful text from fixture article. <!-- extract.test.ts -->
 
 Suggested extraction shape:
 

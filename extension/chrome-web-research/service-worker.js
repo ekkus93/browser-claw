@@ -270,6 +270,70 @@ async function handleReadPage(message) {
 }
 
 // ---------------------------------------------------------------------------
+// read_current_tab handler (FIX1-A4)
+// ---------------------------------------------------------------------------
+
+async function handleReadCurrentTab(message) {
+  const { requestId, maxChars, timeoutMs: _timeoutMs } = message;
+
+  let tabs;
+  try {
+    tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  } catch (e) {
+    return errorResponse('internal_error', 'Could not query active tab', requestId);
+  }
+
+  const tab = tabs && tabs[0];
+  if (!tab || tab.id === undefined || tab.id === null) {
+    return errorResponse('internal_error', 'No active tab found', requestId);
+  }
+
+  const tabUrl = tab.url || tab.pendingUrl || '';
+  if (tabUrl) {
+    const safety = classifyExtensionUrl(tabUrl);
+    if (!safety.ok) {
+      return errorResponse('url_blocked', safety.reason, requestId);
+    }
+  }
+
+  try {
+    const [injection] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: extractPageContent,
+      args: [{ maxChars: maxChars ?? DEFAULT_MAX_CHARS }],
+    });
+
+    const result = injection && injection.result;
+    if (!result || !result.ok) {
+      return errorResponse(
+        'extraction_failed',
+        (result && result.error) || 'Could not extract readable page content',
+        requestId,
+      );
+    }
+
+    return {
+      ok: true,
+      requestId,
+      url: tabUrl,
+      finalUrl: result.finalUrl,
+      title: result.title,
+      ...(result.siteName ? { siteName: result.siteName } : {}),
+      text: result.text,
+      markdown: result.markdown,
+      excerpt: result.excerpt,
+      length: result.length,
+    };
+  } catch (e) {
+    return errorResponse(
+      'script_injection_failed',
+      e instanceof Error ? e.message : String(e),
+      requestId,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Core message handlers
 // ---------------------------------------------------------------------------
 
@@ -306,8 +370,8 @@ function handleGetStatus(message) {
 const handlers = {
   ping: handlePing,
   get_status: handleGetStatus,
-  read_page: handleReadPage,       // FIX1-A3
-  read_current_tab: undefined,     // FIX1-A4
+  read_page: handleReadPage,              // FIX1-A3
+  read_current_tab: handleReadCurrentTab, // FIX1-A4
   request_host_permission: undefined,
 };
 
@@ -385,6 +449,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime?.onMessageExternal) {
 export {
   handle,
   handleReadPage,
+  handleReadCurrentTab,
   handleGetStatus,
   handlers,
   isAllowedSender,

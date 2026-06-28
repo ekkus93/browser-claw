@@ -38,6 +38,7 @@ function makeWeb(over: Partial<WebResearchService> = {}): WebResearchService {
             length: 4,
           },
         ],
+        failures: [],
       }),
     ),
     ...over,

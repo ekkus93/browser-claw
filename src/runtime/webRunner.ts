@@ -322,14 +322,15 @@ export async function runApprovedBulkResearch(
       query,
       sanitizeResearchOptions(parsed?.options),
     );
+    const failCount = bundle.failures?.length ?? 0;
+    const summary =
+      failCount > 0
+        ? `Research completed: ${query} (${bundle.pages.length} pages, ${String(failCount)} failed)`
+        : `Research completed: ${query} (${bundle.pages.length} pages)`;
     void recordAudit(
       deps.db,
       deps.dispatch,
-      webAuditEvent(
-        'web.research_completed',
-        `Research completed: ${query} (${bundle.pages.length} pages)`,
-        { status: 'success' },
-      ),
+      webAuditEvent('web.research_completed', summary, { status: 'success' }),
     );
     await deps.submit({
       type: 'resolve_effect',

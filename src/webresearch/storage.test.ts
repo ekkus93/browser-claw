@@ -124,6 +124,7 @@ describe('storeResearchBundle (E10)', () => {
           length: 6,
         },
       ],
+      failures: [],
     };
     const stored = await storeResearchBundle(fs, bundle, () => 42);
 

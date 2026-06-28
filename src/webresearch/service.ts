@@ -8,6 +8,7 @@
 import {
   WebResearchError,
   type PageContent,
+  type PageReadFailure,
   type PageReaderProvider,
   type PageReadRequest,
   type ResearchBundle,
@@ -77,6 +78,7 @@ export function createWebResearchService(
     const results = await search(query, options);
     const maxPages = options.maxPages ?? 3;
     const pages: PageContent[] = [];
+    const failures: PageReadFailure[] = [];
     for (const result of results.slice(0, maxPages)) {
       try {
         pages.push(
@@ -86,12 +88,21 @@ export function createWebResearchService(
             ...(options.maxChars ? { maxChars: options.maxChars } : {}),
           }),
         );
-      } catch {
-        // A single unreadable page (e.g. permission denied) doesn't fail the
-        // whole bundle — it's simply omitted; the caller sees fewer pages.
+      } catch (err) {
+        failures.push({
+          url: result.url,
+          kind: 'internal_error',
+          message: err instanceof Error ? err.message : String(err),
+        });
       }
     }
-    return { query, results, pages };
+    if (pages.length === 0 && failures.length > 0) {
+      throw new WebResearchError(
+        'all_page_reads_failed',
+        `All ${String(failures.length)} result page(s) failed to read.`,
+      );
+    }
+    return { query, results, pages, failures };
   }
 
   return { search, readPage, research };

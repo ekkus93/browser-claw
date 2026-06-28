@@ -75,11 +75,20 @@ export type PageReadResult =
   | ({ ok: true } & PageContent)
   | { ok: false; url: string; error: PageReadError };
 
-/** A stored research run: the query, its results, and the pages read. */
+/** One failed page-read within a research run. */
+export interface PageReadFailure {
+  url: string;
+  kind: PageReadErrorKind;
+  message: string;
+}
+
+/** A stored research run: the query, its results, pages read, and any page failures. */
 export interface ResearchBundle {
   query: string;
   results: SearchResult[];
   pages: PageContent[];
+  /** Page reads that failed (non-empty when some URLs could not be read). */
+  failures: PageReadFailure[];
   summary?: string;
 }
 
@@ -93,7 +102,8 @@ export type WebResearchErrorKind =
   | 'search_unavailable'
   | 'search_failed'
   | 'reader_unavailable'
-  | 'page_read_failed';
+  | 'page_read_failed'
+  | 'all_page_reads_failed';
 
 export class WebResearchError extends Error {
   readonly kind: WebResearchErrorKind;

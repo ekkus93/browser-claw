@@ -5,6 +5,7 @@ import {
   type PageReaderProvider,
   type PageReadResult,
   type SearchProvider,
+  type SearchResult,
 } from './types.ts';
 
 const searchProvider = (
@@ -74,7 +75,7 @@ describe('WebResearchService facade (E1)', () => {
     });
   });
 
-  it('research() combines search + page reads into a bundle, skipping failures', async () => {
+  it('research() combines search + page reads into a bundle (capped at maxPages)', async () => {
     const reader = readerWith(okPage);
     const svc = createWebResearchService({
       search: searchProvider([
@@ -87,5 +88,90 @@ describe('WebResearchService facade (E1)', () => {
     expect(bundle.query).toBe('q');
     expect(bundle.results).toHaveLength(2);
     expect(bundle.pages).toHaveLength(1); // capped at maxPages
+    expect(bundle.failures).toHaveLength(0);
+  });
+});
+
+const failedPage: PageReadResult = {
+  ok: false,
+  url: 'https://x/a',
+  error: { kind: 'permission_denied', message: 'denied' },
+};
+
+function twoResults(): SearchResult[] {
+  return [
+    { title: 'A', url: 'https://x/a' },
+    { title: 'B', url: 'https://x/b' },
+  ];
+}
+
+describe('D3 — research bundle includes failures', () => {
+  it('D3: one failed page appears in failures array', async () => {
+    // First URL fails, second succeeds.
+    let call = 0;
+    const reader: PageReaderProvider = {
+      isAvailable: () => Promise.resolve(true),
+      readPage: vi.fn(() => {
+        call += 1;
+        return Promise.resolve(call === 1 ? failedPage : okPage);
+      }),
+      readPages: vi.fn(),
+      readCurrentTab: vi.fn(),
+    };
+    const svc = createWebResearchService({
+      search: searchProvider(twoResults()),
+      reader,
+    });
+    const bundle = await svc.research('q', { maxPages: 2 });
+    expect(bundle.pages).toHaveLength(1);
+    expect(bundle.failures).toHaveLength(1);
+    expect(bundle.failures[0]?.url).toBe('https://x/a');
+    expect(bundle.failures[0]?.message).toContain('denied');
+  });
+
+  it('D3: partial success reports both pages and failures', async () => {
+    let call = 0;
+    const reader: PageReaderProvider = {
+      isAvailable: () => Promise.resolve(true),
+      readPage: vi.fn(() => {
+        call += 1;
+        return Promise.resolve(call % 2 === 0 ? okPage : failedPage);
+      }),
+      readPages: vi.fn(),
+      readCurrentTab: vi.fn(),
+    };
+    const threeResults: SearchResult[] = [
+      { title: 'A', url: 'https://x/a' },
+      { title: 'B', url: 'https://x/b' },
+      { title: 'C', url: 'https://x/c' },
+    ];
+    const svc = createWebResearchService({
+      search: searchProvider(threeResults),
+      reader,
+    });
+    const bundle = await svc.research('q', { maxPages: 3 });
+    expect(bundle.pages.length + bundle.failures.length).toBe(3);
+    expect(bundle.pages.length).toBeGreaterThan(0);
+    expect(bundle.failures.length).toBeGreaterThan(0);
+  });
+
+  it('D3: all failed page reads throws WebResearchError all_page_reads_failed', async () => {
+    const reader = readerWith(failedPage);
+    const svc = createWebResearchService({
+      search: searchProvider(twoResults()),
+      reader,
+    });
+    await expect(svc.research('q', { maxPages: 2 })).rejects.toMatchObject({
+      kind: 'all_page_reads_failed',
+    });
+  });
+
+  it('D3: successful research with no failures includes empty failures array', async () => {
+    const svc = createWebResearchService({
+      search: searchProvider([{ title: 'A', url: 'https://x/a' }]),
+      reader: readerWith(okPage),
+    });
+    const bundle = await svc.research('q', { maxPages: 1 });
+    expect(bundle.failures).toEqual([]);
   });
 });

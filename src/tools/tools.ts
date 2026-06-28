@@ -389,6 +389,59 @@ export const TOOL_REGISTRY: Record<string, Tool> = {
   [rememberTool.name]: rememberTool,
 };
 
+// ---------------------------------------------------------------------------
+// D1 — Tool capability descriptors
+// ---------------------------------------------------------------------------
+
+export type ToolCategory =
+  | 'pure'
+  | 'network'
+  | 'workspace_read'
+  | 'workspace_write'
+  | 'memory_read'
+  | 'memory_write';
+
+/** Declares what a tool does and what sandbox capabilities it requires. */
+export interface ToolCapabilityDescriptor {
+  name: string;
+  categories: ToolCategory[];
+  risk: 'low' | 'medium' | 'high';
+  requires: {
+    webSearch?: boolean;
+    webRead?: boolean;
+    fsRead?: boolean;
+    fsWrite?: boolean;
+    memoryRead?: boolean;
+    memoryWrite?: boolean;
+    mediatedNetwork?: boolean;
+  };
+}
+
+/**
+ * Capability descriptor for every tool in TOOL_REGISTRY. A missing entry means
+ * "pure" — only tool permission is required (enforced by runToolCall).
+ */
+export const TOOL_CAPABILITY_DESCRIPTORS: Record<string, ToolCapabilityDescriptor> = {
+  'Page Reader': {
+    name: 'Page Reader',
+    categories: ['network'],
+    risk: 'medium',
+    requires: { mediatedNetwork: true, webRead: true },
+  },
+  'Browser Fetch': {
+    name: 'Browser Fetch',
+    categories: ['network'],
+    risk: 'medium',
+    requires: { mediatedNetwork: true, webRead: true },
+  },
+  'Remember': {
+    name: 'Remember',
+    categories: ['memory_write'],
+    risk: 'low',
+    requires: {},
+  },
+};
+
 export interface RunToolOptions {
   /** Tool names the caller (skill) is allowed to run — its declared tools. */
   allowedTools: readonly string[];

@@ -6,10 +6,16 @@ import { WorkspaceFs } from '../workspace/workspaceFs.ts';
 import { runSandboxedScript } from './sandbox.ts';
 import {
   buildSandboxHost,
+  LimitTracker,
   type CapabilityAudit,
   type SandboxCapabilityContext,
 } from './sandboxCapabilities.ts';
 import type { ScriptCapabilities } from './scriptPolicy.ts';
+import {
+  TOOL_CAPABILITY_DESCRIPTORS,
+  TOOL_REGISTRY,
+} from '../tools/tools.ts';
+import type { ToolCategory } from '../tools/tools.ts';
 
 const db = new BrowserClawDB();
 const dispatch = vi.fn();
@@ -168,19 +174,148 @@ describe('sandbox capability proxy — memory + tool (D4)', () => {
     expect(ungranted).toEqual({ ok: true, value: 'undefined' });
   });
 
-  it('routes tool.call through the permission model', async () => {
+  it('routes tool.call through the permission model (requires webRead + mediated network — D2)', async () => {
     const fetchImpl = vi.fn(() =>
       Promise.resolve(new Response('<p>hi</p>')),
     ) as unknown as typeof fetch;
+    // D2: Page Reader is a network tool and requires both webRead capability and
+    // network: 'mediated'. The script must declare both alongside tools.
     const result = await runSandboxedScript(
       'return await tool.call("Page Reader", { url: "https://example.com" });',
       {
         host: buildSandboxHost(
           { ...ctx, toolCtx: { fetchImpl } },
-          { tools: ['Page Reader'] },
+          {
+            tools: ['Page Reader'],
+            network: 'mediated',
+            webRead: ['https://example.com'],
+          },
         ),
       },
     );
     expect(result).toEqual({ ok: true, value: 'hi' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D1 — descriptor tests (in tools.ts, tested here for convenience)
+// ---------------------------------------------------------------------------
+
+const VALID_CATEGORIES: ToolCategory[] = [
+  'pure',
+  'network',
+  'workspace_read',
+  'workspace_write',
+  'memory_read',
+  'memory_write',
+];
+
+describe('D1 — ToolCapabilityDescriptor', () => {
+  it('every registered tool has a descriptor', () => {
+    const toolNames = Object.keys(TOOL_REGISTRY);
+    expect(toolNames.length).toBeGreaterThan(0);
+    for (const name of toolNames) {
+      expect(TOOL_CAPABILITY_DESCRIPTORS[name]).toBeDefined();
+    }
+  });
+
+  it('descriptor categories are all from the valid set', () => {
+    for (const [, desc] of Object.entries(TOOL_CAPABILITY_DESCRIPTORS)) {
+      for (const cat of desc.categories) {
+        expect(VALID_CATEGORIES).toContain(cat);
+      }
+    }
+  });
+
+  it('network tools are in the network category and require webRead + mediatedNetwork', () => {
+    for (const [, desc] of Object.entries(TOOL_CAPABILITY_DESCRIPTORS)) {
+      if (desc.categories.includes('network')) {
+        expect(desc.requires.mediatedNetwork).toBe(true);
+        expect(desc.requires.webRead).toBe(true);
+      }
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D2 — cross-capability enforcement tests
+// ---------------------------------------------------------------------------
+
+describe('D2 — cross-capability enforcement in tool.call', () => {
+  let d2Audits: CapabilityAudit[];
+  let d2Ctx: SandboxCapabilityContext;
+
+  beforeEach(async () => {
+    const db2 = new BrowserClawDB();
+    await db2.open();
+    const fs2 = new WorkspaceFs({ db: db2, content: new MemoryContentStore() });
+    d2Audits = [];
+    d2Ctx = { fs: fs2, db: db2, dispatch: vi.fn(), onAudit: (e) => d2Audits.push(e) };
+  });
+
+  async function call(caps: ScriptCapabilities, toolName: string) {
+    return runSandboxedScript(
+      `return await tool.call(${JSON.stringify(toolName)}, {});`,
+      { host: buildSandboxHost(d2Ctx, caps) },
+    );
+  }
+
+  it('D2: Page Reader denied with only tools capability (no web)', async () => {
+    const result = await call({ tools: ['Page Reader'] }, 'Page Reader');
+    expect(result.ok).toBe(false);
+    expect(d2Audits.some((a) => !a.allowed && a.target === 'Page Reader')).toBe(true);
+  });
+
+  it('D2: Page Reader allowed with tools + network:mediated + webRead', async () => {
+    const fetchImpl = vi.fn(() => Promise.resolve(new Response('<p>ok</p>'))) as unknown as typeof fetch;
+    const result = await runSandboxedScript(
+      'return await tool.call("Page Reader", { url: "https://example.com" });',
+      {
+        host: buildSandboxHost(
+          { ...d2Ctx, toolCtx: { fetchImpl } },
+          { tools: ['Page Reader'], network: 'mediated', webRead: ['https://example.com'] },
+        ),
+      },
+    );
+    expect(result).toEqual({ ok: true, value: 'ok' });
+  });
+
+  it('D2: pure tool (Remember) allowed with only tools capability', async () => {
+    const result = await call({ tools: ['Remember'] }, 'Remember');
+    // Remember needs db and title+text args to succeed, but it should pass the capability check.
+    // The tool itself will fail (missing args), but not from a capability denial.
+    expect(result.ok).toBe(false);
+    const denied = d2Audits.some((a) => !a.allowed && a.capability === 'tool.call');
+    expect(denied).toBe(false);
+  });
+
+  it('D2: denial is audited', async () => {
+    await call({ tools: ['Page Reader'] }, 'Page Reader');
+    expect(d2Audits.some((a) => a.capability === 'tool.call' && !a.allowed)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D3 — maxToolCalls limit
+// ---------------------------------------------------------------------------
+
+describe('D3 — maxToolCalls limit', () => {
+  it('D3: rejects tool.call when maxToolCalls is exceeded', () => {
+    const tracker = new LimitTracker({
+      timeoutMs: 5000,
+      maxOutputBytes: 1024,
+      maxFileReads: 10,
+      maxFileWrites: 10,
+      maxToolCalls: 1,
+    });
+    tracker.countToolCall(); // call 1 — allowed
+    expect(() => tracker.countToolCall()).toThrow(/maxToolCalls/);
+    expect(tracker.tripped).toMatch(/maxToolCalls/);
+  });
+
+  it('D3: maxToolCalls undefined means unlimited', () => {
+    const tracker = new LimitTracker({ timeoutMs: 5000, maxOutputBytes: 1024, maxFileReads: 10, maxFileWrites: 10 });
+    for (let i = 0; i < 100; i++) tracker.countToolCall();
+    expect(tracker.tripped).toBeNull();
   });
 });

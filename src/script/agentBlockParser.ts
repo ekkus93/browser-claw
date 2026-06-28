@@ -122,7 +122,6 @@ export function parseAgentActionBlock(text: string): AgentActionParseResult {
   }
 
   // matches.length === 1 at this point (checked above)
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   const match = matches[0]!;
   const blockType = match[1] ?? '';
   const rawJson = match[2] ?? '';

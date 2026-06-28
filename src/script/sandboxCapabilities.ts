@@ -17,7 +17,11 @@
 import type { BrowserClawDB } from '../db/db.ts';
 import type { AppDispatch } from '../store/store.ts';
 import type { MemoryRow } from '../db/types.ts';
-import { runToolCall, type ToolContext } from '../tools/tools.ts';
+import {
+  runToolCall,
+  TOOL_CAPABILITY_DESCRIPTORS,
+  type ToolContext,
+} from '../tools/tools.ts';
 import { normalizeWorkspacePath } from '../workspace/path.ts';
 import { WorkspaceFs } from '../workspace/workspaceFs.ts';
 import type { GrepResult, WorkspaceSearchResult } from '../workspace/types.ts';
@@ -79,6 +83,7 @@ export class LimitTracker {
   private bytesWritten = 0;
   private webRequests = 0;
   private pagesRead = 0;
+  private toolCalls = 0;
   private logBytes = 0;
   private readonly limits: ScriptLimits;
 
@@ -142,6 +147,47 @@ export class LimitTracker {
       this.trip(`maxLogBytes (${max}) exceeded`);
     }
     this.logs.push(text);
+  }
+
+  /** FIX1-D3: count every attempted tool.call (including denied ones). */
+  countToolCall(): void {
+    this.toolCalls += 1;
+    const max = this.limits.maxToolCalls;
+    if (max !== undefined && this.toolCalls > max) {
+      this.trip(`maxToolCalls (${max}) exceeded`);
+    }
+  }
+}
+
+/**
+ * FIX1-D2: Enforce cross-capability requirements before a sandbox tool.call.
+ * Checks that the capability manifest grants the capabilities a tool requires
+ * (beyond the base `capabilities.tools` permission enforced by runToolCall).
+ * Throws {@link SandboxCapabilityError} with a descriptive message on any
+ * violation; the deny callback also emits an audit entry.
+ */
+function assertSandboxToolAllowed(
+  name: string,
+  capabilities: ScriptCapabilities,
+  deny: (capability: string, target: string, reason: string) => never,
+): void {
+  const descriptor = TOOL_CAPABILITY_DESCRIPTORS[name];
+  if (!descriptor) return; // Unknown tool → pure; runToolCall will reject if truly unknown.
+
+  if (descriptor.requires.mediatedNetwork && capabilities.network !== 'mediated') {
+    deny('tool.call', name, `${name} requires capabilities.network "mediated"`);
+  }
+  if (descriptor.requires.webRead && (capabilities.webRead?.length ?? 0) === 0) {
+    deny('tool.call', name, `${name} requires capabilities.webRead`);
+  }
+  if (descriptor.requires.webSearch && capabilities.webSearch !== true) {
+    deny('tool.call', name, `${name} requires capabilities.webSearch`);
+  }
+  if (descriptor.requires.fsWrite && (capabilities.fsWrite?.length ?? 0) === 0) {
+    deny('tool.call', name, `${name} requires capabilities.fsWrite`);
+  }
+  if (descriptor.requires.memoryRead && capabilities.memoryRead !== true) {
+    deny('tool.call', name, `${name} requires capabilities.memoryRead`);
   }
 }
 
@@ -366,12 +412,16 @@ export function buildSandboxHost(
     host.tool = {
       call: async (rawName, rawArgs) => {
         const name = str(rawName, 'tool');
+        // FIX1-D3: count every tool.call attempt (including denied) toward limit.
+        tracker?.countToolCall();
         const toolArgs =
           typeof rawArgs === 'object' &&
           rawArgs !== null &&
           !Array.isArray(rawArgs)
             ? (rawArgs as Record<string, unknown>)
             : {};
+        // FIX1-D2: enforce cross-capability requirements declared in the descriptor.
+        assertSandboxToolAllowed(name, capabilities, deny);
         // runToolCall enforces the permission model against allowedTools.
         const output = await runToolCall(
           { name, args: toolArgs },

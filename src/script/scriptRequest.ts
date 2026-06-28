@@ -45,6 +45,8 @@ export interface ScriptLimits {
   maxTotalBytesWritten?: number;
   maxWebRequests?: number;
   maxPagesRead?: number;
+  /** FIX1-D3: maximum tool.call invocations (attempted, including denied). */
+  maxToolCalls?: number;
 }
 
 export interface BrowserClawScriptRequest {

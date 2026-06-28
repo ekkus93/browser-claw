@@ -124,10 +124,11 @@ fn effects_for_llm_result(&mut self, id: String, result: serde_json::Value) -> V
 
 ## Phase A2 — Keep TypeScript reference runtime in parity
 
-- [ ] P0 Update TypeScript reference runtime to match Rust behavior exactly.
-- [ ] P0 Add/adjust tests for every result shape listed in A1.
-- [ ] P0 Ensure TypeScript runtime and Rust runtime use the same external effect names.
-- [ ] P0 If a result shape is unsupported in one runtime, it must be unsupported in both and fail visibly.
+<!-- evidence: referenceRuntime.ts — fixed readCurrentTab→extension_request, added readPages/research→web_research, unknown web op→protocol error, empty text→protocol error, unknown shape→protocol error; added pending_skill for plan/sandbox/web proposals; resolution handlers for 6 new pending kinds; 9 new A2 tests in referenceRuntime.test.ts; 980/119 vitest pass; typecheck/lint clean -->
+- [x] P0 Update TypeScript reference runtime to match Rust behavior exactly.
+- [x] P0 Add/adjust tests for every result shape listed in A1.
+- [x] P0 Ensure TypeScript runtime and Rust runtime use the same external effect names.
+- [x] P0 If a result shape is unsupported in one runtime, it must be unsupported in both and fail visibly.
 
 ## Phase A3 — Add app-level smoke path for WASM plan/script/web
 

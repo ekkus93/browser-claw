@@ -49,6 +49,17 @@ function readText(result: unknown): string {
   return '';
 }
 
+/**
+ * Like readText but returns `undefined` when the `text` field is absent,
+ * so callers can distinguish "no text field" from "empty text field".
+ */
+function readTextStrict(result: unknown): string | undefined {
+  if (typeof result !== 'object' || result === null) return undefined;
+  if (!('text' in result)) return undefined;
+  const text = (result as { text: unknown }).text;
+  return typeof text === 'string' ? text : undefined;
+}
+
 /** A resolution is a failure when the host marks it `ok: false` or `error`. */
 function isFailure(result: unknown): boolean {
   if (typeof result !== 'object' || result === null) return false;
@@ -193,6 +204,7 @@ export function createReferenceRuntime(
           const proposalId = nextId();
           state.pending[proposalId] = 'script_plan_proposal';
           state.pending_conversation[proposalId] = conversationId;
+          state.pending_skill[proposalId] = skillId;
           return [{ type: 'script_plan_proposal', id: proposalId, plan }];
         }
 
@@ -202,6 +214,7 @@ export function createReferenceRuntime(
           const proposalId = nextId();
           state.pending[proposalId] = 'sandbox_script_proposal';
           state.pending_conversation[proposalId] = conversationId;
+          state.pending_skill[proposalId] = skillId;
           return [
             {
               type: 'sandbox_script_proposal',
@@ -211,31 +224,138 @@ export function createReferenceRuntime(
           ];
         }
 
-        // FIX1-C3: the model proposed a web op (search / readPage / readCurrentTab).
+        // FIX1-C3 / A2: the model proposed a web op.
         const webRequest = readWebRequest(command.result);
         if (webRequest !== null) {
           const proposalId = nextId();
           const op = webRequest.op;
-          state.pending_conversation[proposalId] = conversationId;
           const query =
             typeof webRequest.query === 'string' ? webRequest.query : '';
           const url = typeof webRequest.url === 'string' ? webRequest.url : '';
           if (op === 'search') {
             state.pending[proposalId] = 'web_search';
+            state.pending_conversation[proposalId] = conversationId;
+            state.pending_skill[proposalId] = skillId;
             return [{ type: 'web_search', id: proposalId, query }];
           }
           if (op === 'readPage') {
             state.pending[proposalId] = 'web_page_read';
+            state.pending_conversation[proposalId] = conversationId;
+            state.pending_skill[proposalId] = skillId;
             return [{ type: 'web_page_read', id: proposalId, url }];
           }
-          // readCurrentTab and future ops: emit as web_page_read.
-          state.pending[proposalId] = 'web_page_read';
-          return [{ type: 'web_page_read', id: proposalId, url }];
+          if (op === 'readCurrentTab') {
+            state.pending[proposalId] = 'extension_request';
+            state.pending_conversation[proposalId] = conversationId;
+            state.pending_skill[proposalId] = skillId;
+            return [
+              {
+                type: 'extension_request',
+                id: proposalId,
+                request: { op: 'read_current_tab' },
+              },
+            ];
+          }
+          if (op === 'readPages' || op === 'research') {
+            state.pending[proposalId] = 'web_research';
+            state.pending_conversation[proposalId] = conversationId;
+            state.pending_skill[proposalId] = skillId;
+            return [{ type: 'web_research', id: proposalId, query }];
+          }
+          // Unknown op: protocol error. proposalId was allocated but not tracked.
+          return [
+            {
+              type: 'audit_append',
+              id: proposalId,
+              event_type: 'runtime.unknown_web_request',
+              summary: `Unknown web_request op: ${String(op)}`,
+              risk: 'medium',
+            },
+          ];
         }
 
+        // Text response: store as assistant message.
+        const text = readTextStrict(command.result);
+        if (text !== undefined) {
+          if (text.trim() === '') {
+            return [
+              {
+                type: 'audit_append',
+                id: nextId(),
+                event_type: 'runtime.invalid_empty_llm_result',
+                summary: 'LLM result text was empty',
+                risk: 'medium',
+              },
+            ];
+          }
+          state.message_count += 1;
+          const putId = nextId();
+          const auditId = nextId();
+          return [
+            {
+              type: 'storage_put',
+              id: putId,
+              conversation_id: conversationId,
+              store: 'messages',
+              key: `m${state.message_count}`,
+              value: { role: 'assistant', content: text },
+            },
+            {
+              type: 'audit_append',
+              id: auditId,
+              event_type: 'llm_response_received',
+              summary: 'Assistant message stored',
+              risk: 'info',
+            },
+          ];
+        }
+        // Unknown shape: emit protocol error, never an empty message.
+        return [
+          {
+            type: 'audit_append',
+            id: nextId(),
+            event_type: 'runtime.unknown_llm_result_shape',
+            summary: 'LLM result had no recognized shape',
+            risk: 'high',
+          },
+        ];
+      }
+      // Plan/sandbox/web effects resolve the same way as tool calls: store
+      // result as a message and ask the model again, or store an error note.
+      if (
+        kind === 'script_plan_proposal' ||
+        kind === 'sandbox_script_proposal' ||
+        kind === 'web_search' ||
+        kind === 'web_page_read' ||
+        kind === 'web_research' ||
+        kind === 'extension_request'
+      ) {
         state.message_count += 1;
+        if (isFailure(command.result)) {
+          return [
+            {
+              type: 'storage_put',
+              id: nextId(),
+              conversation_id: conversationId,
+              store: 'messages',
+              key: `m${state.message_count}`,
+              value: { role: 'tool', content: 'Operation was not completed.' },
+            },
+            {
+              type: 'audit_append',
+              id: nextId(),
+              event_type: 'runtime.effect_rejected',
+              summary: 'Effect rejected or failed',
+              risk: 'low',
+            },
+          ];
+        }
         const putId = nextId();
+        const llmId = nextId();
         const auditId = nextId();
+        state.pending[llmId] = 'llm_request';
+        state.pending_conversation[llmId] = conversationId;
+        state.pending_skill[llmId] = skillId;
         return [
           {
             type: 'storage_put',
@@ -243,13 +363,19 @@ export function createReferenceRuntime(
             conversation_id: conversationId,
             store: 'messages',
             key: `m${state.message_count}`,
-            value: { role: 'assistant', content: readText(command.result) },
+            value: { role: 'tool', content: readText(command.result) },
+          },
+          {
+            type: 'llm_request',
+            id: llmId,
+            conversation_id: conversationId,
+            prompt: '',
           },
           {
             type: 'audit_append',
             id: auditId,
-            event_type: 'llm_response_received',
-            summary: 'Assistant message stored',
+            event_type: 'runtime.effect_resolved',
+            summary: 'Effect result stored',
             risk: 'info',
           },
         ];

@@ -199,4 +199,135 @@ describe('referenceRuntime', () => {
     });
     expect(effects.some((e) => e.type === 'web_page_read')).toBe(true);
   });
+
+  // A2: parity with Rust — all result shapes and error paths match.
+
+  it('A2: emits extension_request for readCurrentTab (not web_page_read with empty url)', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('read current tab'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'readCurrentTab' } },
+    });
+    expect(effects).toHaveLength(1);
+    const e = effects[0];
+    expect(e?.type).toBe('extension_request');
+    if (e?.type === 'extension_request') {
+      expect((e.request as { op: string }).op).toBe('read_current_tab');
+    }
+  });
+
+  it('A2: emits web_research for readPages web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('read pages'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'readPages', query: 'climate change' } },
+    });
+    expect(effects).toHaveLength(1);
+    expect(effects[0]?.type).toBe('web_research');
+  });
+
+  it('A2: emits web_research for research web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('do research'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'research', query: 'AI trends' } },
+    });
+    expect(effects[0]?.type).toBe('web_research');
+  });
+
+  it('A2: unknown web_request op emits protocol error, not storage_put', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('do something'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'unknownOp' } },
+    });
+    expect(effects).toHaveLength(1);
+    expect(effects[0]).toMatchObject({
+      type: 'audit_append',
+      event_type: 'runtime.unknown_web_request',
+      risk: 'medium',
+    });
+    expect(effects.some((e) => e.type === 'storage_put')).toBe(false);
+  });
+
+  it('A2: empty text result emits protocol error, not empty assistant message', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('hi'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { text: '' },
+    });
+    expect(effects).toHaveLength(1);
+    expect(effects[0]).toMatchObject({
+      type: 'audit_append',
+      event_type: 'runtime.invalid_empty_llm_result',
+      risk: 'medium',
+    });
+    expect(effects.some((e) => e.type === 'storage_put')).toBe(false);
+  });
+
+  it('A2: unknown LLM result shape emits protocol error, not empty assistant message', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('hi'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { unexpected_field: 'something' },
+    });
+    expect(effects).toHaveLength(1);
+    expect(effects[0]).toMatchObject({
+      type: 'audit_append',
+      event_type: 'runtime.unknown_llm_result_shape',
+      risk: 'high',
+    });
+    expect(effects.some((e) => e.type === 'storage_put')).toBe(false);
+  });
+
+  it('A2: web_search resolution stores result and continues with LLM request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('search'));
+    runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'search', query: 'rust async' } },
+    });
+    // Resolve the web_search effect
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-3',
+      result: { text: 'search results here' },
+    });
+    expect(effects.some((e) => e.type === 'storage_put')).toBe(true);
+    expect(effects.some((e) => e.type === 'llm_request')).toBe(true);
+  });
+
+  it('A2: plan/sandbox/web effect failure stores error note, no LLM continue', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('search'));
+    runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'search', query: 'test' } },
+    });
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-3',
+      result: { ok: false, error: { kind: 'search_unavailable' } },
+    });
+    const put = effects.find((e) => e.type === 'storage_put');
+    expect(put?.type).toBe('storage_put');
+    if (put?.type === 'storage_put') {
+      expect(put.value).toMatchObject({ role: 'tool' });
+    }
+    expect(effects.some((e) => e.type === 'llm_request')).toBe(false);
+  });
 });

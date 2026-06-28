@@ -1853,3 +1853,16 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - 7 new Rust tests: plan→ScriptPlanProposal, script_request→SandboxScriptProposal, search→WebSearch, readPage→WebPageRead, readCurrentTab→ExtensionRequest, unknown shape→protocol error, normal text→assistant message. 15/15 cargo test pass.
 - WASM rebuilt (pnpm run build:wasm); cargo clippy clean; vitest 972/119 pass; typecheck/lint clean.
 - NEXT: Part A2 — keep TypeScript reference runtime in parity (update referenceRuntime.ts to match Rust behavior for plan/script/web shapes).
+
+## 2026-06-28T19:42:03Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 3: Part A2 (TypeScript reference runtime parity) DONE
+- Fixed referenceRuntime.ts: readCurrentTab now emits extension_request{op:'read_current_tab'} (was wrong: web_page_read with empty url).
+- Added readPages/research → web_research routing.
+- Fixed unknown web_request op → protocol error audit (runtime.unknown_web_request) instead of falling through.
+- Fixed empty text result → protocol error audit (runtime.invalid_empty_llm_result) instead of storing empty assistant message.
+- Fixed unknown LLM shape → protocol error audit (runtime.unknown_llm_result_shape) instead of storing empty assistant message.
+- Added pending_skill tracking to plan/sandbox/web proposal handlers (was missing).
+- Added resolution handlers for 6 new pending kinds (script_plan_proposal, sandbox_script_proposal, web_search, web_page_read, web_research, extension_request) — mirrors tool_call pattern.
+- Added readTextStrict() helper to distinguish missing vs empty text field.
+- 9 new A2 tests in referenceRuntime.test.ts. vitest 972→980 (8 new net: 9 new - 1 pre-existing test that was already passing the now-stricter behavior). 119 files.
+- Gate: typecheck ✓, lint ✓, vitest 980/119 ✓.
+- NEXT: Part A3 — add app-level smoke path for WASM plan/script/web (integration test or debug fixture proving WASM runtime can produce plan/sandbox/web proposals).

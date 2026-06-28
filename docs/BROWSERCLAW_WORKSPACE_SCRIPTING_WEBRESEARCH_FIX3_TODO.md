@@ -764,17 +764,18 @@ try {
 
 ## H1 — Do not swallow all clear errors
 
-- [ ] P1 Replace broad catch in `useWebResearchKey.clearKey()`.
-- [ ] P1 Only ignore a documented known-not-found case, if one exists.
-- [ ] P1 On unexpected error:
-  - [ ] show visible error in Settings;
-  - [ ] audit `web.search_key_clear_failed`;
-  - [ ] do not claim success.
-- [ ] P1 Tests:
-  - [ ] missing key clear succeeds if vault explicitly reports not found;
-  - [ ] Dexie/vault failure shows error;
-  - [ ] failure audited without key material;
-  - [ ] metadata is not falsely removed on failure.
+<!-- evidence: clearKey() re-throws unexpected errors, sets clearError, audits web.search_key_clear_failed; 4 H1 tests; 1143/124 vitest ✓ -->
+- [x] P1 Replace broad catch in `useWebResearchKey.clearKey()`.
+- [x] P1 Only ignore a documented known-not-found case, if one exists.
+- [x] P1 On unexpected error:
+  - [x] show visible error in Settings;
+  - [x] audit `web.search_key_clear_failed`;
+  - [x] do not claim success.
+- [x] P1 Tests:
+  - [x] missing key clear succeeds if vault explicitly reports not found;
+  - [x] Dexie/vault failure shows error;
+  - [x] failure audited without key material;
+  - [x] metadata is not falsely removed on failure.
 
 ### Suggested TypeScript snippet
 

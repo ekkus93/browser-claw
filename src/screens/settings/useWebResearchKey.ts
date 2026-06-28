@@ -29,6 +29,8 @@ export interface WebResearchKeyState {
   clearKey: () => Promise<void>;
   saving: boolean;
   saveError: string | null;
+  /** H1 (FIX3): non-null when clearKey() fails unexpectedly. */
+  clearError: string | null;
 }
 
 /**
@@ -51,6 +53,7 @@ export function useWebResearchKey(): WebResearchKeyState {
   const [keyInput, setKeyInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [clearError, setClearError] = useState<string | null>(null);
 
   const sessionOnly = !vaultLocked && !secretVault.canStoreEncrypted();
 
@@ -92,6 +95,8 @@ export function useWebResearchKey(): WebResearchKeyState {
   };
 
   const clearKey = async (): Promise<void> => {
+    // H1 (FIX3): do not swallow unexpected errors — only treat actual removal as success.
+    setClearError(null);
     try {
       await secretVault.removeSecret(BRAVE_KEY_ID);
       await recordAudit(db, dispatch, {
@@ -101,8 +106,19 @@ export function useWebResearchKey(): WebResearchKeyState {
         status: 'success',
         risk: 'medium',
       });
-    } catch {
-      // Key may not exist in the store; ignore.
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Failed to clear key.';
+      setClearError('Could not clear Brave Search key. Try again.');
+      void recordAudit(db, dispatch, {
+        type: 'web.search_key_clear_failed',
+        summary: 'Failed to clear Brave Search key.',
+        source: 'user',
+        status: 'failure',
+        risk: 'medium',
+      });
+      // Re-throw so callers that await clearKey() know it failed.
+      throw new Error(message, { cause: error });
     }
   };
 
@@ -116,5 +132,6 @@ export function useWebResearchKey(): WebResearchKeyState {
     clearKey,
     saving,
     saveError,
+    clearError,
   };
 }

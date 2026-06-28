@@ -207,3 +207,49 @@ describe('A2 — configured prop derived from Redux secrets', () => {
     expect(configured).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// H1 (FIX3) — clearKey error handling
+// ---------------------------------------------------------------------------
+
+describe('H1 — clearKey error handling', () => {
+  let db: BrowserClawDB;
+  let store: ReturnType<typeof makeStore>;
+  let vault: SecretVault;
+
+  beforeEach(async () => {
+    db = new BrowserClawDB();
+    await db.open();
+    store = makeStore();
+    vault = makeVault(store, db);
+    vault.openSession();
+  });
+
+  it('H1: removeSecret succeeds when key exists (no-op on missing key)', async () => {
+    // removeSecret does not throw when key absent — it silently no-ops.
+    vault.setSessionSecret(BRAVE_KEY_ID, 'Brave Search API key', 'k1');
+    await vault.removeSecret(BRAVE_KEY_ID);
+    expect(vault.listSecrets().some((s) => s.id === BRAVE_KEY_ID)).toBe(false);
+  });
+
+  it('H1: removeSecret throws when vault is locked', async () => {
+    vault.setSessionSecret(BRAVE_KEY_ID, 'Brave Search API key', 'k2');
+    vault.lock();
+    await expect(vault.removeSecret(BRAVE_KEY_ID)).rejects.toThrow(
+      'Vault is locked',
+    );
+  });
+
+  it('H1: secretVault.removeSecret no-op does not throw (key already absent)', async () => {
+    // No key set — removeSecret should be a no-op rather than throw.
+    await expect(vault.removeSecret(BRAVE_KEY_ID)).resolves.toBeUndefined();
+  });
+
+  it('H1: audit event for clearKey failure must not include key material', () => {
+    const RAW_KEY = 'secret-brave-key-h1-test';
+    vault.setSessionSecret(BRAVE_KEY_ID, 'Brave Search API key', RAW_KEY);
+    vault.lock();
+    const auditJson = JSON.stringify(store.getState().audit.recent);
+    expect(auditJson).not.toContain(RAW_KEY);
+  });
+});

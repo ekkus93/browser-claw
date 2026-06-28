@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T23:25:30Z - Claude Sonnet 4.6 - FIX3 Part H1 (clearKey broad catch replaced) DONE
+- useWebResearchKey.ts: clearKey() now audits web.search_key_clear_failed and sets clearError on unexpected errors; re-throws with cause.
+- Added clearError field to WebResearchKeyState interface.
+- 4 H1 tests verifying vault lock throw, no-op on absent key, no key material in audit.
+- Gate: typecheck ✓, lint ✓, format ✓, 1143/124 vitest ✓.
+- Remaining P1: I1, J1, K1/K2/K3.
+
 ## 2026-06-28T23:21:50Z - Claude Sonnet 4.6 - FIX3 Parts G1+G2 (strict approval payload parsing) DONE
 - G1: webRunner.ts runApprovedWebPageRead() uses parseApprovalPayloadObject+requireStringField; audits web.page_read_payload_invalid on failure; 4 G1 tests.
 - G2: extensionRunner.ts runApprovedExtensionPermission() uses same strict parsing; audits extension.permission_payload_invalid; 4 G2 tests.

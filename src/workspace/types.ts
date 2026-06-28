@@ -98,7 +98,10 @@ export class GrepPolicyError extends Error {
  * Validate a grep request against the active policy. Throws {@link GrepPolicyError}
  * for policy violations. Call before passing to WorkspaceFs.grep().
  */
-export function validateGrepRequest(query: GrepQuery, policy: GrepPolicy): void {
+export function validateGrepRequest(
+  query: GrepQuery,
+  policy: GrepPolicy,
+): void {
   if (query.pattern.length > policy.maxPatternChars) {
     throw new GrepPolicyError(
       'grep_pattern_too_large',

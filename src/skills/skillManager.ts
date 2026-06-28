@@ -88,7 +88,13 @@ export function createSkillManager(deps: SkillManagerDeps) {
       try {
         await db.transaction(
           'rw',
-          [db.skills, db.skill_files, db.skill_permissions, db.skill_state, db.skill_outputs],
+          [
+            db.skills,
+            db.skill_files,
+            db.skill_permissions,
+            db.skill_state,
+            db.skill_outputs,
+          ],
           async () => {
             await db.skills.put({
               id,
@@ -121,12 +127,18 @@ export function createSkillManager(deps: SkillManagerDeps) {
           },
         );
       } catch (txError) {
-        const message = txError instanceof Error ? txError.message : String(txError);
-        audit(deps, 'skill_install_failed', `Install failed for skill ${id}: ${message}`, {
-          risk: 'medium',
-          status: 'failure',
-          skillId: id,
-        });
+        const message =
+          txError instanceof Error ? txError.message : String(txError);
+        audit(
+          deps,
+          'skill_install_failed',
+          `Install failed for skill ${id}: ${message}`,
+          {
+            risk: 'medium',
+            status: 'failure',
+            skillId: id,
+          },
+        );
         throw txError;
       }
       audit(
@@ -167,7 +179,13 @@ export function createSkillManager(deps: SkillManagerDeps) {
       try {
         await db.transaction(
           'rw',
-          [db.skills, db.skill_files, db.skill_outputs, db.skill_state, db.skill_permissions],
+          [
+            db.skills,
+            db.skill_files,
+            db.skill_outputs,
+            db.skill_state,
+            db.skill_permissions,
+          ],
           async () => {
             await db.skills.delete(id);
             await db.skill_files.where('skillId').equals(id).delete();
@@ -177,12 +195,18 @@ export function createSkillManager(deps: SkillManagerDeps) {
           },
         );
       } catch (txError) {
-        const message = txError instanceof Error ? txError.message : String(txError);
-        audit(deps, 'skill_uninstall_failed', `Uninstall failed for skill ${id}: ${message}`, {
-          risk: 'medium',
-          status: 'failure',
-          skillId: id,
-        });
+        const message =
+          txError instanceof Error ? txError.message : String(txError);
+        audit(
+          deps,
+          'skill_uninstall_failed',
+          `Uninstall failed for skill ${id}: ${message}`,
+          {
+            risk: 'medium',
+            status: 'failure',
+            skillId: id,
+          },
+        );
         throw txError;
       }
       audit(deps, 'skill_uninstalled', `Uninstalled skill ${id}`, {

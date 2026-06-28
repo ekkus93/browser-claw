@@ -142,7 +142,11 @@ describe('executePlanOp — tool.call + web (C2)', () => {
 
 describe('H2 — grep policy in plan executor', () => {
   beforeEach(async () => {
-    await ctx.fs.createFile('/workspace/code.ts', 'const x = 1;\nconst y = 2;', { overwrite: true, actor: 'user' });
+    await ctx.fs.createFile(
+      '/workspace/code.ts',
+      'const x = 1;\nconst y = 2;',
+      { overwrite: true, actor: 'user' },
+    );
   });
 
   it('H2: literal grep works by default', async () => {

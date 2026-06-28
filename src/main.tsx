@@ -20,11 +20,27 @@ import { WorkspaceFs } from './workspace/workspaceFs.ts';
 import { createWebResearchService } from './webresearch/service.ts';
 import { createExtensionPageReader } from './extension/pageReaderProvider.ts';
 import { createChromeExtensionTransport } from './extension/chromeTransport.ts';
-import { createPlanEffectHandler, runApprovedPlanEffect } from './runtime/planRunner.ts';
-import { createSandboxScriptEffectHandler, runApprovedSandboxScriptEffect } from './runtime/sandboxScriptRunner.ts';
-import { createWorkspaceEffectHandler, runApprovedWorkspaceEffect } from './runtime/workspaceRunner.ts';
-import { createWebEffectHandler, runApprovedWebPageRead, runApprovedBulkResearch } from './runtime/webRunner.ts';
-import { createExtensionEffectHandler, runApprovedExtensionPermission } from './runtime/extensionRunner.ts';
+import {
+  createPlanEffectHandler,
+  runApprovedPlanEffect,
+} from './runtime/planRunner.ts';
+import {
+  createSandboxScriptEffectHandler,
+  runApprovedSandboxScriptEffect,
+} from './runtime/sandboxScriptRunner.ts';
+import {
+  createWorkspaceEffectHandler,
+  runApprovedWorkspaceEffect,
+} from './runtime/workspaceRunner.ts';
+import {
+  createWebEffectHandler,
+  runApprovedWebPageRead,
+  runApprovedBulkResearch,
+} from './runtime/webRunner.ts';
+import {
+  createExtensionEffectHandler,
+  runApprovedExtensionPermission,
+} from './runtime/extensionRunner.ts';
 import type { EffectContext } from './runtime/effectExecutor.ts';
 import {
   createReferenceRuntime,
@@ -240,7 +256,8 @@ async function bootRuntime(): Promise<void> {
       dispatch: store.dispatch,
       web: webResearch,
     },
-    submit: (command: Parameters<typeof host.submit>[0]) => host.submit(command),
+    submit: (command: Parameters<typeof host.submit>[0]) =>
+      host.submit(command),
   };
   const sandboxDeps = {
     ctx: {
@@ -249,23 +266,27 @@ async function bootRuntime(): Promise<void> {
       dispatch: store.dispatch,
       web: webResearch,
     },
-    submit: (command: Parameters<typeof host.submit>[0]) => host.submit(command),
+    submit: (command: Parameters<typeof host.submit>[0]) =>
+      host.submit(command),
   };
   const workspaceDeps = {
     ops: { fs: workspaceFs, db, dispatch: store.dispatch },
-    submit: (command: Parameters<typeof host.submit>[0]) => host.submit(command),
+    submit: (command: Parameters<typeof host.submit>[0]) =>
+      host.submit(command),
   };
   const webDeps = {
     web: webResearch,
     db,
     dispatch: store.dispatch,
-    submit: (command: Parameters<typeof host.submit>[0]) => host.submit(command),
+    submit: (command: Parameters<typeof host.submit>[0]) =>
+      host.submit(command),
   };
   const extensionDeps = {
     transport: extensionTransport,
     db,
     dispatch: store.dispatch,
-    submit: (command: Parameters<typeof host.submit>[0]) => host.submit(command),
+    submit: (command: Parameters<typeof host.submit>[0]) =>
+      host.submit(command),
   };
 
   ctx.ports = {

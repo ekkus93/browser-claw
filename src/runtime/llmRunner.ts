@@ -275,7 +275,10 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
       id: effect.id,
       result:
         parsed.kind === 'tool_call'
-          ? { ok: true, tool_call: { name: parsed.call.name, args: parsed.call.args } }
+          ? {
+              ok: true,
+              tool_call: { name: parsed.call.name, args: parsed.call.args },
+            }
           : parsed.kind === 'plan'
             ? { ok: true, plan: parsed.plan }
             : parsed.kind === 'script_request'

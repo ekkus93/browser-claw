@@ -150,7 +150,9 @@ class ToolApprovalError extends Error {
   }
 }
 
-function parseApprovedArgsOrThrow(argsJson: string | undefined): Record<string, unknown> {
+function parseApprovedArgsOrThrow(
+  argsJson: string | undefined,
+): Record<string, unknown> {
   if (!argsJson || argsJson.trim() === '') return {};
   let parsed: unknown;
   try {
@@ -159,7 +161,9 @@ function parseApprovedArgsOrThrow(argsJson: string | undefined): Record<string, 
     throw new ToolApprovalError('Approved tool arguments are not valid JSON.');
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new ToolApprovalError('Approved tool arguments must be a JSON object.');
+    throw new ToolApprovalError(
+      'Approved tool arguments must be a JSON object.',
+    );
   }
   return parsed as Record<string, unknown>;
 }

@@ -202,7 +202,13 @@ export function createReferenceRuntime(
           const proposalId = nextId();
           state.pending[proposalId] = 'sandbox_script_proposal';
           state.pending_conversation[proposalId] = conversationId;
-          return [{ type: 'sandbox_script_proposal', id: proposalId, request: scriptRequest }];
+          return [
+            {
+              type: 'sandbox_script_proposal',
+              id: proposalId,
+              request: scriptRequest,
+            },
+          ];
         }
 
         // FIX1-C3: the model proposed a web op (search / readPage / readCurrentTab).
@@ -211,7 +217,8 @@ export function createReferenceRuntime(
           const proposalId = nextId();
           const op = webRequest.op;
           state.pending_conversation[proposalId] = conversationId;
-          const query = typeof webRequest.query === 'string' ? webRequest.query : '';
+          const query =
+            typeof webRequest.query === 'string' ? webRequest.query : '';
           const url = typeof webRequest.url === 'string' ? webRequest.url : '';
           if (op === 'search') {
             state.pending[proposalId] = 'web_search';

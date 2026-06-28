@@ -3,15 +3,11 @@ import {
   checkSearchStatus,
   type SearchStatusState,
 } from './searchStatusChecker.ts';
-import type { ExtensionRequest } from './protocol.ts';
 import type { SearchProvider } from '../webresearch/types.ts';
 
-function makeTransport(
-  response: unknown,
-  rejects = false,
-) {
+function makeTransport(response: unknown, rejects = false) {
   return {
-    send: vi.fn((_: ExtensionRequest) =>
+    send: vi.fn(() =>
       rejects
         ? Promise.reject(new Error('extension not available'))
         : Promise.resolve(response),
@@ -19,7 +15,10 @@ function makeTransport(
   };
 }
 
-function makeSearchProvider(results: { title: string; url: string }[], fails = false): SearchProvider {
+function makeSearchProvider(
+  results: { title: string; url: string }[],
+  fails = false,
+): SearchProvider {
   return {
     search: vi.fn(() =>
       fails

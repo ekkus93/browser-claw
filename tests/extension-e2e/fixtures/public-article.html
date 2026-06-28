@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fixture Article Title</title>
+    <meta property="og:title" content="Fixture Article Title" />
+    <meta property="og:site_name" content="Fixture Site" />
+  </head>
+  <body>
+    <article>
+      <h1>Fixture Article Title</h1>
+      <p>
+        This is the fixture article body text used by BrowserClaw extension
+        end-to-end tests. It contains predictable, searchable content.
+      </p>
+      <p>
+        The extension should extract this text and return it to BrowserClaw
+        without including script or style content.
+      </p>
+    </article>
+    <script>
+      // This script block must NOT appear in extracted text
+      var SECRET_SCRIPT_SENTINEL = 'SCRIPT_SENTINEL_SHOULD_NOT_LEAK';
+    </script>
+  </body>
+</html>

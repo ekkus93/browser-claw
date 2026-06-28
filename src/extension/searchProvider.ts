@@ -10,7 +10,11 @@ import {
   newRequestId,
   type ExtensionRequest,
 } from './protocol.ts';
-import type { SearchOptions, SearchProvider, SearchResult } from '../webresearch/types.ts';
+import type {
+  SearchOptions,
+  SearchProvider,
+  SearchResult,
+} from '../webresearch/types.ts';
 import type { ExtensionTransport } from './pageReaderProvider.ts';
 
 export type SearchAuditEvent =
@@ -28,11 +32,13 @@ export interface ChromeExtensionSearchDeps {
 }
 
 export class ExtensionSearchError extends Error {
-  readonly kind: 'extension_missing' | 'auth' | 'rate_limit' | 'unavailable' | 'invalid_response';
-  constructor(
-    kind: ExtensionSearchError['kind'],
-    message: string,
-  ) {
+  readonly kind:
+    | 'extension_missing'
+    | 'auth'
+    | 'rate_limit'
+    | 'unavailable'
+    | 'invalid_response';
+  constructor(kind: ExtensionSearchError['kind'], message: string) {
     super(message);
     this.name = 'ExtensionSearchError';
     this.kind = kind;
@@ -66,7 +72,10 @@ export function createExtensionSearchProvider(
   const { transport, onAudit } = deps;
 
   return {
-    async search(query: string, options?: SearchOptions): Promise<SearchResult[]> {
+    async search(
+      query: string,
+      options?: SearchOptions,
+    ): Promise<SearchResult[]> {
       const requestId = newRequestId();
       onAudit?.('web.search_started', query);
 
@@ -75,7 +84,9 @@ export function createExtensionSearchProvider(
         requestId,
         query,
         ...(deps.apiKey !== undefined ? { apiKey: deps.apiKey } : {}),
-        ...(options?.maxResults !== undefined ? { maxResults: options.maxResults } : {}),
+        ...(options?.maxResults !== undefined
+          ? { maxResults: options.maxResults }
+          : {}),
       };
 
       let raw: unknown;
@@ -84,7 +95,9 @@ export function createExtensionSearchProvider(
       } catch (err) {
         onAudit?.(
           'extension.missing',
-          err instanceof Error ? err.message : 'Extension transport unavailable',
+          err instanceof Error
+            ? err.message
+            : 'Extension transport unavailable',
         );
         throw new ExtensionSearchError(
           'extension_missing',
@@ -103,8 +116,9 @@ export function createExtensionSearchProvider(
       if (!raw.ok) {
         const kind = raw.error.kind;
         const searchKind: ExtensionSearchError['kind'] =
-          kind === 'permission_denied' || kind === 'origin_not_allowed' ? 'auth'
-          : 'unavailable';
+          kind === 'permission_denied' || kind === 'origin_not_allowed'
+            ? 'auth'
+            : 'unavailable';
         onAudit?.('web.search_failed', kind);
         throw new ExtensionSearchError(searchKind, raw.error.message);
       }

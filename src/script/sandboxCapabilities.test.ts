@@ -11,10 +11,7 @@ import {
   type SandboxCapabilityContext,
 } from './sandboxCapabilities.ts';
 import type { ScriptCapabilities } from './scriptPolicy.ts';
-import {
-  TOOL_CAPABILITY_DESCRIPTORS,
-  TOOL_REGISTRY,
-} from '../tools/tools.ts';
+import { TOOL_CAPABILITY_DESCRIPTORS, TOOL_REGISTRY } from '../tools/tools.ts';
 import type { ToolCategory } from '../tools/tools.ts';
 
 const db = new BrowserClawDB();
@@ -250,7 +247,12 @@ describe('D2 — cross-capability enforcement in tool.call', () => {
     await db2.open();
     const fs2 = new WorkspaceFs({ db: db2, content: new MemoryContentStore() });
     d2Audits = [];
-    d2Ctx = { fs: fs2, db: db2, dispatch: vi.fn(), onAudit: (e) => d2Audits.push(e) };
+    d2Ctx = {
+      fs: fs2,
+      db: db2,
+      dispatch: vi.fn(),
+      onAudit: (e) => d2Audits.push(e),
+    };
   });
 
   async function call(caps: ScriptCapabilities, toolName: string) {
@@ -263,17 +265,25 @@ describe('D2 — cross-capability enforcement in tool.call', () => {
   it('D2: Page Reader denied with only tools capability (no web)', async () => {
     const result = await call({ tools: ['Page Reader'] }, 'Page Reader');
     expect(result.ok).toBe(false);
-    expect(d2Audits.some((a) => !a.allowed && a.target === 'Page Reader')).toBe(true);
+    expect(d2Audits.some((a) => !a.allowed && a.target === 'Page Reader')).toBe(
+      true,
+    );
   });
 
   it('D2: Page Reader allowed with tools + network:mediated + webRead', async () => {
-    const fetchImpl = vi.fn(() => Promise.resolve(new Response('<p>ok</p>'))) as unknown as typeof fetch;
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(new Response('<p>ok</p>')),
+    ) as unknown as typeof fetch;
     const result = await runSandboxedScript(
       'return await tool.call("Page Reader", { url: "https://example.com" });',
       {
         host: buildSandboxHost(
           { ...d2Ctx, toolCtx: { fetchImpl } },
-          { tools: ['Page Reader'], network: 'mediated', webRead: ['https://example.com'] },
+          {
+            tools: ['Page Reader'],
+            network: 'mediated',
+            webRead: ['https://example.com'],
+          },
         ),
       },
     );
@@ -285,13 +295,17 @@ describe('D2 — cross-capability enforcement in tool.call', () => {
     // Remember needs db and title+text args to succeed, but it should pass the capability check.
     // The tool itself will fail (missing args), but not from a capability denial.
     expect(result.ok).toBe(false);
-    const denied = d2Audits.some((a) => !a.allowed && a.capability === 'tool.call');
+    const denied = d2Audits.some(
+      (a) => !a.allowed && a.capability === 'tool.call',
+    );
     expect(denied).toBe(false);
   });
 
   it('D2: denial is audited', async () => {
     await call({ tools: ['Page Reader'] }, 'Page Reader');
-    expect(d2Audits.some((a) => a.capability === 'tool.call' && !a.allowed)).toBe(true);
+    expect(
+      d2Audits.some((a) => a.capability === 'tool.call' && !a.allowed),
+    ).toBe(true);
   });
 });
 
@@ -314,7 +328,12 @@ describe('D3 — maxToolCalls limit', () => {
   });
 
   it('D3: maxToolCalls undefined means unlimited', () => {
-    const tracker = new LimitTracker({ timeoutMs: 5000, maxOutputBytes: 1024, maxFileReads: 10, maxFileWrites: 10 });
+    const tracker = new LimitTracker({
+      timeoutMs: 5000,
+      maxOutputBytes: 1024,
+      maxFileReads: 10,
+      maxFileWrites: 10,
+    });
     for (let i = 0; i < 100; i++) tracker.countToolCall();
     expect(tracker.tripped).toBeNull();
   });
@@ -344,28 +363,68 @@ describe('E1 — sensitive memory filtering', () => {
   });
 
   it('E1: normal memory is returned', async () => {
-    await db.memories.put({ id: 'e1n', title: 'Note', text: 'visible content', tags: [], source: 'user', createdBy: 'user', createdAt: 1, pinned: false, sensitivity: 'normal' });
+    await db.memories.put({
+      id: 'e1n',
+      title: 'Note',
+      text: 'visible content',
+      tags: [],
+      source: 'user',
+      createdBy: 'user',
+      createdAt: 1,
+      pinned: false,
+      sensitivity: 'normal',
+    });
     const { results } = await searchMemories('visible');
     expect(results.ok).toBe(true);
     if (results.ok) expect((results.value as unknown[]).length).toBe(1);
   });
 
   it('E1: pinned non-sensitive memory is returned', async () => {
-    await db.memories.put({ id: 'e1p', title: 'Pinned', text: 'pinned data', tags: [], source: 'user', createdBy: 'user', createdAt: 1, pinned: true, sensitivity: 'normal' });
+    await db.memories.put({
+      id: 'e1p',
+      title: 'Pinned',
+      text: 'pinned data',
+      tags: [],
+      source: 'user',
+      createdBy: 'user',
+      createdAt: 1,
+      pinned: true,
+      sensitivity: 'normal',
+    });
     const { results } = await searchMemories('pinned');
     expect(results.ok).toBe(true);
     if (results.ok) expect((results.value as unknown[]).length).toBe(1);
   });
 
   it('E1: sensitive memory is excluded', async () => {
-    await db.memories.put({ id: 'e1s', title: 'Secret', text: 'my api key is abc123', tags: [], source: 'user', createdBy: 'user', createdAt: 1, pinned: false, sensitivity: 'sensitive' });
+    await db.memories.put({
+      id: 'e1s',
+      title: 'Secret',
+      text: 'my api key is abc123',
+      tags: [],
+      source: 'user',
+      createdBy: 'user',
+      createdAt: 1,
+      pinned: false,
+      sensitivity: 'sensitive',
+    });
     const { results } = await searchMemories('api key');
     expect(results.ok).toBe(true);
     if (results.ok) expect((results.value as unknown[]).length).toBe(0);
   });
 
   it('E1: audit target contains ids only — no memory text', async () => {
-    await db.memories.put({ id: 'e1a', title: 'Audit Test', text: 'audit-check content', tags: [], source: 'user', createdBy: 'user', createdAt: 1, pinned: false, sensitivity: 'normal' });
+    await db.memories.put({
+      id: 'e1a',
+      title: 'Audit Test',
+      text: 'audit-check content',
+      tags: [],
+      source: 'user',
+      createdBy: 'user',
+      createdAt: 1,
+      pinned: false,
+      sensitivity: 'normal',
+    });
     const { audits } = await searchMemories('audit-check');
     const memAudit = audits.find((a) => a.capability === 'memory.search');
     expect(memAudit).toBeDefined();
@@ -381,7 +440,10 @@ describe('E1 — sensitive memory filtering', () => {
 
 describe('H1 — grep policy in sandbox fs.grep', () => {
   beforeEach(async () => {
-    await ctx.fs.createFile('/workspace/h1.ts', 'const a = 1;\nconst b = 2;', { overwrite: true, actor: 'user' });
+    await ctx.fs.createFile('/workspace/h1.ts', 'const a = 1;\nconst b = 2;', {
+      overwrite: true,
+      actor: 'user',
+    });
   });
 
   async function sandboxGrep(query: Record<string, unknown>) {
@@ -394,7 +456,8 @@ describe('H1 — grep policy in sandbox fs.grep', () => {
   it('H1: literal grep works by default', async () => {
     const result = await sandboxGrep({ pattern: 'const' });
     expect(result.ok).toBe(true);
-    if (result.ok) expect((result.value as unknown[]).length).toBeGreaterThan(0);
+    if (result.ok)
+      expect((result.value as unknown[]).length).toBeGreaterThan(0);
   });
 
   it('H1: regex grep denied without capability', async () => {

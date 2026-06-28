@@ -155,13 +155,18 @@ describe('isExtensionResponse A2 error kinds', () => {
 
   it('G2: web_search with valid query accepted', () => {
     expect(
-      parseExtensionRequest({ type: 'web_search', requestId: 'r1', query: 'openai' }).ok,
+      parseExtensionRequest({
+        type: 'web_search',
+        requestId: 'r1',
+        query: 'openai',
+      }).ok,
     ).toBe(true);
   });
 
   it('G2: web_search with empty query rejected', () => {
     expect(
-      parseExtensionRequest({ type: 'web_search', requestId: 'r1', query: '' }).ok,
+      parseExtensionRequest({ type: 'web_search', requestId: 'r1', query: '' })
+        .ok,
     ).toBe(false);
   });
 
@@ -173,16 +178,31 @@ describe('isExtensionResponse A2 error kinds', () => {
 
   it('G2: web_search with invalid maxResults rejected', () => {
     expect(
-      parseExtensionRequest({ type: 'web_search', requestId: 'r1', query: 'q', maxResults: -1 }).ok,
+      parseExtensionRequest({
+        type: 'web_search',
+        requestId: 'r1',
+        query: 'q',
+        maxResults: -1,
+      }).ok,
     ).toBe(false);
     expect(
-      parseExtensionRequest({ type: 'web_search', requestId: 'r1', query: 'q', maxResults: 1.5 }).ok,
+      parseExtensionRequest({
+        type: 'web_search',
+        requestId: 'r1',
+        query: 'q',
+        maxResults: 1.5,
+      }).ok,
     ).toBe(false);
   });
 
   it('G2: web_search with valid maxResults accepted', () => {
     expect(
-      parseExtensionRequest({ type: 'web_search', requestId: 'r1', query: 'q', maxResults: 5 }).ok,
+      parseExtensionRequest({
+        type: 'web_search',
+        requestId: 'r1',
+        query: 'q',
+        maxResults: 5,
+      }).ok,
     ).toBe(true);
   });
 });

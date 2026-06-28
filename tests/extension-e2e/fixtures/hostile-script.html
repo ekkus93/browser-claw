@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Hostile Script Page</title>
+  </head>
+  <body>
+    <p>This page contains scripts that must not affect extraction.</p>
+    <script>
+      // Attempt to interfere with the content extraction script
+      Object.defineProperty(document, 'body', {
+        get: function () {
+          return null;
+        },
+      });
+      document.querySelectorAll = function () {
+        return [];
+      };
+    </script>
+    <noscript>No script support.</noscript>
+  </body>
+</html>

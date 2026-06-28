@@ -9,9 +9,9 @@ describe('createChromeExtensionTransport (FIX1-B1)', () => {
 
   it('rejects immediately when chrome runtime is absent (non-Chrome environment)', async () => {
     const t = createChromeExtensionTransport('fake-ext-id');
-    await expect(
-      t.send({ type: 'ping', requestId: 'r1' }),
-    ).rejects.toThrow(/Chrome extension runtime not available/);
+    await expect(t.send({ type: 'ping', requestId: 'r1' })).rejects.toThrow(
+      /Chrome extension runtime not available/,
+    );
   });
 
   it('rejects immediately when extension ID is empty', async () => {
@@ -27,9 +27,9 @@ describe('createChromeExtensionTransport (FIX1-B1)', () => {
     };
     try {
       const t = createChromeExtensionTransport('');
-      await expect(
-        t.send({ type: 'ping', requestId: 'r1' }),
-      ).rejects.toThrow(/extension ID not configured/);
+      await expect(t.send({ type: 'ping', requestId: 'r1' })).rejects.toThrow(
+        /extension ID not configured/,
+      );
     } finally {
       if (prevChrome === undefined) {
         delete originalGlobal['chrome'];

@@ -128,14 +128,25 @@ export function parseExtensionRequest(message: unknown): RequestParse {
     }
   }
   if (type === 'web_search') {
-    if (typeof message.query !== 'string' || message.query.trim().length === 0) {
-      return { ok: false, reason: 'web_search requires a non-empty string query' };
+    if (
+      typeof message.query !== 'string' ||
+      message.query.trim().length === 0
+    ) {
+      return {
+        ok: false,
+        reason: 'web_search requires a non-empty string query',
+      };
     }
     if (
       message.maxResults !== undefined &&
-      (typeof message.maxResults !== 'number' || !Number.isInteger(message.maxResults) || message.maxResults < 1)
+      (typeof message.maxResults !== 'number' ||
+        !Number.isInteger(message.maxResults) ||
+        message.maxResults < 1)
     ) {
-      return { ok: false, reason: 'web_search maxResults must be a positive integer' };
+      return {
+        ok: false,
+        reason: 'web_search maxResults must be a positive integer',
+      };
     }
   }
   return { ok: true, request: message as unknown as ExtensionRequest };

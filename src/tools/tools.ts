@@ -421,7 +421,10 @@ export interface ToolCapabilityDescriptor {
  * Capability descriptor for every tool in TOOL_REGISTRY. A missing entry means
  * "pure" — only tool permission is required (enforced by runToolCall).
  */
-export const TOOL_CAPABILITY_DESCRIPTORS: Record<string, ToolCapabilityDescriptor> = {
+export const TOOL_CAPABILITY_DESCRIPTORS: Record<
+  string,
+  ToolCapabilityDescriptor
+> = {
   'Page Reader': {
     name: 'Page Reader',
     categories: ['network'],
@@ -434,7 +437,7 @@ export const TOOL_CAPABILITY_DESCRIPTORS: Record<string, ToolCapabilityDescripto
     risk: 'medium',
     requires: { mediatedNetwork: true, webRead: true },
   },
-  'Remember': {
+  Remember: {
     name: 'Remember',
     categories: ['memory_write'],
     risk: 'low',

@@ -203,9 +203,9 @@ describe('J1 — skill install/uninstall transaction atomicity', () => {
     const manager = createSkillManager({ db, dispatch: store.dispatch });
 
     // Make skill_permissions.put throw to simulate a mid-transaction failure.
-    const spy = vi.spyOn(db.skill_permissions, 'put').mockRejectedValueOnce(
-      new Error('simulated permissions write failure'),
-    );
+    const spy = vi
+      .spyOn(db.skill_permissions, 'put')
+      .mockRejectedValueOnce(new Error('simulated permissions write failure'));
     await expect(
       manager.install(parseSkillMd(J1_SKILL_MD), 'skill_md'),
     ).rejects.toThrow(/simulated permissions write failure/);
@@ -231,9 +231,9 @@ describe('J1 — skill install/uninstall transaction atomicity', () => {
       '```',
     ].join('\n');
 
-    const spy = vi.spyOn(db.skill_permissions, 'put').mockRejectedValueOnce(
-      new Error('simulated failure'),
-    );
+    const spy = vi
+      .spyOn(db.skill_permissions, 'put')
+      .mockRejectedValueOnce(new Error('simulated failure'));
     await expect(
       manager.install(parseSkillMd(mdWithFiles), 'skill_md'),
     ).rejects.toThrow();
@@ -252,9 +252,9 @@ describe('J1 — skill install/uninstall transaction atomicity', () => {
     const store = configureStore({ reducer: { audit: auditReducer } });
     const manager = createSkillManager({ db, dispatch: store.dispatch });
 
-    const spy = vi.spyOn(db.skill_permissions, 'put').mockRejectedValueOnce(
-      new Error('simulated failure'),
-    );
+    const spy = vi
+      .spyOn(db.skill_permissions, 'put')
+      .mockRejectedValueOnce(new Error('simulated failure'));
     await expect(
       manager.install(parseSkillMd(J1_SKILL_MD), 'skill_md'),
     ).rejects.toThrow();
@@ -274,9 +274,9 @@ describe('J1 — skill install/uninstall transaction atomicity', () => {
     await manager.install(parseSkillMd(J1_SKILL_MD), 'skill_md');
 
     // Make the skills.delete throw mid-transaction.
-    const spy = vi.spyOn(db.skill_permissions, 'delete').mockRejectedValueOnce(
-      new Error('simulated uninstall failure'),
-    );
+    const spy = vi
+      .spyOn(db.skill_permissions, 'delete')
+      .mockRejectedValueOnce(new Error('simulated uninstall failure'));
     await expect(manager.uninstall('j1-skill')).rejects.toThrow(
       /simulated uninstall failure/,
     );

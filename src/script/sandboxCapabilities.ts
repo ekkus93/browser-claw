@@ -179,16 +179,25 @@ function assertSandboxToolAllowed(
   const descriptor = TOOL_CAPABILITY_DESCRIPTORS[name];
   if (!descriptor) return; // Unknown tool → pure; runToolCall will reject if truly unknown.
 
-  if (descriptor.requires.mediatedNetwork && capabilities.network !== 'mediated') {
+  if (
+    descriptor.requires.mediatedNetwork &&
+    capabilities.network !== 'mediated'
+  ) {
     deny('tool.call', name, `${name} requires capabilities.network "mediated"`);
   }
-  if (descriptor.requires.webRead && (capabilities.webRead?.length ?? 0) === 0) {
+  if (
+    descriptor.requires.webRead &&
+    (capabilities.webRead?.length ?? 0) === 0
+  ) {
     deny('tool.call', name, `${name} requires capabilities.webRead`);
   }
   if (descriptor.requires.webSearch && capabilities.webSearch !== true) {
     deny('tool.call', name, `${name} requires capabilities.webSearch`);
   }
-  if (descriptor.requires.fsWrite && (capabilities.fsWrite?.length ?? 0) === 0) {
+  if (
+    descriptor.requires.fsWrite &&
+    (capabilities.fsWrite?.length ?? 0) === 0
+  ) {
     deny('tool.call', name, `${name} requires capabilities.fsWrite`);
   }
   if (descriptor.requires.memoryRead && capabilities.memoryRead !== true) {

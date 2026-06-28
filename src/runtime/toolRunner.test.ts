@@ -467,13 +467,29 @@ describe('F1 — parseApprovedArgsOrThrow', () => {
     await db.open();
     await db.skills.clear();
     await db.audit_events.clear();
-    await installSkill({ id: 'web-search', enabled: true, tools: ['Page Reader'] });
-    const store = configureStore({ reducer: { audit: auditReducer, approvals: approvalsReducer } });
-    const submit = vi.fn<(command: unknown) => Promise<void>>().mockResolvedValue(undefined);
-    const fetchImpl = vi.fn(() => Promise.resolve(new Response('<p>ok</p>'))) as unknown as typeof fetch;
+    await installSkill({
+      id: 'web-search',
+      enabled: true,
+      tools: ['Page Reader'],
+    });
+    const store = configureStore({
+      reducer: { audit: auditReducer, approvals: approvalsReducer },
+    });
+    const submit = vi
+      .fn<(command: unknown) => Promise<void>>()
+      .mockResolvedValue(undefined);
+    const fetchImpl = vi.fn(() =>
+      Promise.resolve(new Response('<p>ok</p>')),
+    ) as unknown as typeof fetch;
     await runApprovedToolCall(
       { db, dispatch: store.dispatch, submit, ctx: { fetchImpl } },
-      { id: 'eff-f1', status: 'approved', toolName: 'Page Reader', ...(argsJson !== undefined ? { argsJson } : {}), skillId: 'web-search' },
+      {
+        id: 'eff-f1',
+        status: 'approved',
+        toolName: 'Page Reader',
+        ...(argsJson !== undefined ? { argsJson } : {}),
+        skillId: 'web-search',
+      },
     );
     const auditTypes = store.getState().audit.recent.map((e) => e.type);
     return { submit, auditTypes };
@@ -483,13 +499,19 @@ describe('F1 — parseApprovedArgsOrThrow', () => {
     // Page Reader needs a url, but the key point is the args are parsed as {} without throwing
     const { submit } = await runWithArgs('');
     // The tool itself will fail (no url), but not from args parse failure
-    expect(submit.mock.calls[0]?.[0]).not.toMatchObject({ result: { ok: false, error: { kind: 'tool_args_parse_failed' } } });
+    expect(submit.mock.calls[0]?.[0]).not.toMatchObject({
+      result: { ok: false, error: { kind: 'tool_args_parse_failed' } },
+    });
   });
 
   it('F1: valid object args are accepted', async () => {
-    const { submit } = await runWithArgs(JSON.stringify({ url: 'https://example.com' }));
+    const { submit } = await runWithArgs(
+      JSON.stringify({ url: 'https://example.com' }),
+    );
     // Tool runs (may fail for other reasons like no-cors in jsdom) but not args parse failure
-    expect(submit.mock.calls[0]?.[0]).not.toMatchObject({ result: { ok: false, error: { kind: 'tool_args_parse_failed' } } });
+    expect(submit.mock.calls[0]?.[0]).not.toMatchObject({
+      result: { ok: false, error: { kind: 'tool_args_parse_failed' } },
+    });
   });
 
   it('F1: invalid JSON throws — tool not executed', async () => {

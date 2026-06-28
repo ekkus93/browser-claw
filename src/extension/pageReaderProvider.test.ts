@@ -88,11 +88,17 @@ describe('createExtensionPageReader (E9)', () => {
       transport: transport(() => ({
         ok: false,
         requestId: 'r',
-        error: { kind: 'unsupported', message: 'unknown message type: read_page' },
+        error: {
+          kind: 'unsupported',
+          message: 'unknown message type: read_page',
+        },
       })),
     });
     const result = await reader.readPage({ url: 'https://example.com/' });
-    expect(result).toMatchObject({ ok: false, error: { kind: 'internal_error' } });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: 'internal_error' },
+    });
   });
 
   // FIX1-A3: BrowserClaw-side error kind mappings for read_page responses.
@@ -103,11 +109,18 @@ describe('createExtensionPageReader (E9)', () => {
       transport: transport(() => ({
         ok: false,
         requestId: 'r',
-        error: { kind: 'url_blocked', message: 'Blocked host: localhost', retryable: false },
+        error: {
+          kind: 'url_blocked',
+          message: 'Blocked host: localhost',
+          retryable: false,
+        },
       })),
     });
     const result = await reader.readPage({ url: 'http://localhost/' });
-    expect(result).toMatchObject({ ok: false, error: { kind: 'unsupported_url' } });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: 'unsupported_url' },
+    });
   });
 
   it('A3: extraction_failed maps to extraction_failed PageReadError', async () => {
@@ -115,11 +128,18 @@ describe('createExtensionPageReader (E9)', () => {
       transport: transport(() => ({
         ok: false,
         requestId: 'r',
-        error: { kind: 'extraction_failed', message: 'Could not extract content', retryable: false },
+        error: {
+          kind: 'extraction_failed',
+          message: 'Could not extract content',
+          retryable: false,
+        },
       })),
     });
     const result = await reader.readPage({ url: 'https://example.com/' });
-    expect(result).toMatchObject({ ok: false, error: { kind: 'extraction_failed' } });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: 'extraction_failed' },
+    });
   });
 
   it('A3: host_permission_missing maps to permission_denied PageReadError', async () => {
@@ -127,11 +147,18 @@ describe('createExtensionPageReader (E9)', () => {
       transport: transport(() => ({
         ok: false,
         requestId: 'r',
-        error: { kind: 'host_permission_missing', message: 'Host permission not granted', retryable: false },
+        error: {
+          kind: 'host_permission_missing',
+          message: 'Host permission not granted',
+          retryable: false,
+        },
       })),
     });
     const result = await reader.readPage({ url: 'https://example.com/' });
-    expect(result).toMatchObject({ ok: false, error: { kind: 'permission_denied' } });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: 'permission_denied' },
+    });
   });
 
   it('A3: page_load_timeout maps to timeout PageReadError', async () => {
@@ -139,7 +166,11 @@ describe('createExtensionPageReader (E9)', () => {
       transport: transport(() => ({
         ok: false,
         requestId: 'r',
-        error: { kind: 'page_load_timeout', message: 'timed out', retryable: true },
+        error: {
+          kind: 'page_load_timeout',
+          message: 'timed out',
+          retryable: true,
+        },
       })),
     });
     const result = await reader.readPage({ url: 'https://example.com/' });
@@ -162,7 +193,11 @@ describe('createExtensionPageReader (E9)', () => {
       })),
     });
     const result = await reader.readCurrentTab({});
-    expect(result).toMatchObject({ ok: true, text: 'page content', title: 'Current Page' });
+    expect(result).toMatchObject({
+      ok: true,
+      text: 'page content',
+      title: 'Current Page',
+    });
   });
 
   it('A4: no active tab (internal_error) maps to internal_error PageReadError', async () => {
@@ -170,11 +205,18 @@ describe('createExtensionPageReader (E9)', () => {
       transport: transport(() => ({
         ok: false,
         requestId: 'r',
-        error: { kind: 'internal_error', message: 'No active tab found', retryable: false },
+        error: {
+          kind: 'internal_error',
+          message: 'No active tab found',
+          retryable: false,
+        },
       })),
     });
     const result = await reader.readCurrentTab({});
-    expect(result).toMatchObject({ ok: false, error: { kind: 'internal_error' } });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: 'internal_error' },
+    });
   });
 
   it('A4: blocked current tab URL returns unsupported_url', async () => {
@@ -182,11 +224,18 @@ describe('createExtensionPageReader (E9)', () => {
       transport: transport(() => ({
         ok: false,
         requestId: 'r',
-        error: { kind: 'url_blocked', message: 'Blocked host: 192.168.1.1', retryable: false },
+        error: {
+          kind: 'url_blocked',
+          message: 'Blocked host: 192.168.1.1',
+          retryable: false,
+        },
       })),
     });
     const result = await reader.readCurrentTab({});
-    expect(result).toMatchObject({ ok: false, error: { kind: 'unsupported_url' } });
+    expect(result).toMatchObject({
+      ok: false,
+      error: { kind: 'unsupported_url' },
+    });
   });
 
   it('maps a successful read into a PageReadResult', async () => {

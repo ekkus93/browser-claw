@@ -6,9 +6,7 @@ const VALID_PLAN = JSON.stringify({
   version: 1,
   title: 'Read a file',
   reason: 'The user asked to read a file',
-  steps: [
-    { id: 's1', op: 'fs.readText', path: '/workspace/a.md' },
-  ],
+  steps: [{ id: 's1', op: 'fs.readText', path: '/workspace/a.md' }],
 });
 
 const VALID_SCRIPT = JSON.stringify({
@@ -53,7 +51,10 @@ describe('parseAgentActionBlock (FIX1-C1/C2)', () => {
   });
 
   it('valid tool block → kind:tool_call', () => {
-    const reply = block('tool', JSON.stringify({ tool: 'fs_read', args: { path: '/a' } }));
+    const reply = block(
+      'tool',
+      JSON.stringify({ tool: 'fs_read', args: { path: '/a' } }),
+    );
     const r = parseAgentActionBlock(reply);
     expect(r.kind).toBe('tool_call');
     if (r.kind === 'tool_call') expect(r.call.name).toBe('fs_read');
@@ -105,14 +106,24 @@ describe('parseAgentActionBlock (FIX1-C1/C2)', () => {
 
   it('valid JSON but invalid schema in plan block → kind:malformed', () => {
     const r = parseAgentActionBlock(
-      block('browserclaw-plan', JSON.stringify({ type: 'browserclaw_plan', version: 1, steps: 'not-array' })),
+      block(
+        'browserclaw-plan',
+        JSON.stringify({
+          type: 'browserclaw_plan',
+          version: 1,
+          steps: 'not-array',
+        }),
+      ),
     );
     expect(r.kind).toBe('malformed');
     if (r.kind === 'malformed') expect(r.blockType).toBe('browserclaw-plan');
   });
 
   it('multiple actionable blocks → kind:malformed', () => {
-    const text = block('browserclaw-plan', VALID_PLAN) + '\n' + block('browserclaw-script', VALID_SCRIPT);
+    const text =
+      block('browserclaw-plan', VALID_PLAN) +
+      '\n' +
+      block('browserclaw-script', VALID_SCRIPT);
     const r = parseAgentActionBlock(text);
     expect(r.kind).toBe('malformed');
     if (r.kind === 'malformed') {
@@ -122,7 +133,9 @@ describe('parseAgentActionBlock (FIX1-C1/C2)', () => {
   });
 
   it('unknown browserclaw-* block type → kind:malformed', () => {
-    const r = parseAgentActionBlock(block('browserclaw-unknown', '{"hello": true}'));
+    const r = parseAgentActionBlock(
+      block('browserclaw-unknown', '{"hello": true}'),
+    );
     expect(r.kind).toBe('malformed');
     if (r.kind === 'malformed') {
       expect(r.blockType).toBe('browserclaw-unknown');

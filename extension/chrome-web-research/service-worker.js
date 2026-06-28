@@ -80,9 +80,7 @@ function isBlockedIpv6(rawHost) {
     }
     return true;
   }
-  return (
-    /^fe[89ab]/.test(host) || /^f[cd]/.test(host) || /^ff/.test(host)
-  );
+  return /^fe[89ab]/.test(host) || /^f[cd]/.test(host) || /^ff/.test(host);
 }
 
 function classifyExtensionUrl(raw) {
@@ -156,15 +154,18 @@ function waitForTabComplete(tabId, timeoutMs) {
 
 function extractPageContent({ maxChars }) {
   try {
-    const STRIP = 'script,style,noscript,template,iframe,svg,canvas,object,embed';
+    const STRIP =
+      'script,style,noscript,template,iframe,svg,canvas,object,embed';
     const clone = document.documentElement.cloneNode(true);
     clone.querySelectorAll(STRIP).forEach((el) => el.remove());
 
     const ogTitle = document.querySelector('meta[property="og:title"]');
     const title =
       (ogTitle && ogTitle.getAttribute('content')) ||
-      (document.querySelector('title') && document.querySelector('title').textContent.trim()) ||
-      (document.querySelector('h1') && document.querySelector('h1').textContent.trim()) ||
+      (document.querySelector('title') &&
+        document.querySelector('title').textContent.trim()) ||
+      (document.querySelector('h1') &&
+        document.querySelector('h1').textContent.trim()) ||
       '';
 
     const ogSite = document.querySelector('meta[property="og:site_name"]');
@@ -199,7 +200,11 @@ async function handleReadPage(message) {
   const { requestId, url, format: _format, maxChars, timeoutMs } = message;
 
   if (typeof url !== 'string' || url.length === 0) {
-    return errorResponse('invalid_request', 'read_page requires a url string', requestId);
+    return errorResponse(
+      'invalid_request',
+      'read_page requires a url string',
+      requestId,
+    );
   }
 
   const safety = classifyExtensionUrl(url);
@@ -224,7 +229,11 @@ async function handleReadPage(message) {
     const tab = await chrome.tabs.create({ url, active: false });
     tabId = tab.id;
     if (tabId === undefined || tabId === null) {
-      return errorResponse('tab_create_failed', 'Chrome did not return a tab id', requestId);
+      return errorResponse(
+        'tab_create_failed',
+        'Chrome did not return a tab id',
+        requestId,
+      );
     }
 
     await waitForTabComplete(tabId, timeoutMs ?? DEFAULT_TIMEOUT_MS);
@@ -259,7 +268,12 @@ async function handleReadPage(message) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg === 'page_load_timeout') {
-      return errorResponse('page_load_timeout', 'Page did not finish loading in time', requestId, true);
+      return errorResponse(
+        'page_load_timeout',
+        'Page did not finish loading in time',
+        requestId,
+        true,
+      );
     }
     return errorResponse('internal_error', msg, requestId);
   } finally {
@@ -280,7 +294,11 @@ async function handleReadCurrentTab(message) {
   try {
     tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   } catch (e) {
-    return errorResponse('internal_error', 'Could not query active tab', requestId);
+    return errorResponse(
+      'internal_error',
+      'Could not query active tab',
+      requestId,
+    );
   }
 
   const tab = tabs && tabs[0];
@@ -373,15 +391,18 @@ function handleGetStatus(message) {
 // and is never logged, stored, or included in the response.
 // ---------------------------------------------------------------------------
 
-const BRAVE_SEARCH_URL_SW =
-  'https://api.search.brave.com/res/v1/web/search';
+const BRAVE_SEARCH_URL_SW = 'https://api.search.brave.com/res/v1/web/search';
 const SEARCH_MAX_RESULTS = 20;
 
 async function handleWebSearch(message) {
   const { requestId, query, apiKey, maxResults } = message;
 
   if (typeof query !== 'string' || query.trim().length === 0) {
-    return errorResponse('invalid_request', 'web_search: query must be a non-empty string', requestId);
+    return errorResponse(
+      'invalid_request',
+      'web_search: query must be a non-empty string',
+      requestId,
+    );
   }
 
   const count = Math.min(
@@ -390,11 +411,14 @@ async function handleWebSearch(message) {
   );
 
   if (typeof apiKey !== 'string' || apiKey.trim().length === 0) {
-    return errorResponse('permission_denied', 'web_search: no API key provided', requestId);
+    return errorResponse(
+      'permission_denied',
+      'web_search: no API key provided',
+      requestId,
+    );
   }
 
-  const url =
-    `${BRAVE_SEARCH_URL_SW}?q=${encodeURIComponent(query)}&count=${String(count)}`;
+  const url = `${BRAVE_SEARCH_URL_SW}?q=${encodeURIComponent(query)}&count=${String(count)}`;
 
   let response;
   try {
@@ -432,7 +456,11 @@ async function handleWebSearch(message) {
   try {
     body = await response.json();
   } catch {
-    return errorResponse('internal_error', 'web_search: invalid JSON from provider', requestId);
+    return errorResponse(
+      'internal_error',
+      'web_search: invalid JSON from provider',
+      requestId,
+    );
   }
 
   const web = body && typeof body === 'object' ? body.web : null;
@@ -443,7 +471,9 @@ async function handleWebSearch(message) {
         ? {
             title: typeof r.title === 'string' ? r.title : r.url,
             url: r.url,
-            ...(typeof r.description === 'string' ? { snippet: r.description } : {}),
+            ...(typeof r.description === 'string'
+              ? { snippet: r.description }
+              : {}),
             rank: i + 1,
           }
         : null,
@@ -460,10 +490,10 @@ async function handleWebSearch(message) {
 const handlers = {
   ping: handlePing,
   get_status: handleGetStatus,
-  read_page: handleReadPage,              // FIX1-A3
+  read_page: handleReadPage, // FIX1-A3
   read_current_tab: handleReadCurrentTab, // FIX1-A4
   request_host_permission: undefined,
-  web_search: handleWebSearch,            // FIX1-G2
+  web_search: handleWebSearch, // FIX1-G2
 };
 
 // ---------------------------------------------------------------------------

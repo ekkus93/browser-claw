@@ -138,7 +138,16 @@ describe('referenceRuntime', () => {
     const effects = runtime.dispatch({
       type: 'resolve_effect',
       id: 'eff-2',
-      result: { ok: true, plan: { type: 'browserclaw_plan', version: 1, title: 'T', reason: 'R', steps: [] } },
+      result: {
+        ok: true,
+        plan: {
+          type: 'browserclaw_plan',
+          version: 1,
+          title: 'T',
+          reason: 'R',
+          steps: [],
+        },
+      },
     });
     expect(effects.some((e) => e.type === 'script_plan_proposal')).toBe(true);
     expect(effects.some((e) => e.type === 'storage_put')).toBe(false);
@@ -150,9 +159,19 @@ describe('referenceRuntime', () => {
     const effects = runtime.dispatch({
       type: 'resolve_effect',
       id: 'eff-2',
-      result: { ok: true, script_request: { type: 'browserclaw_script_request', version: 1, runtime: 'sandboxed_script', code: 'return 1;' } },
+      result: {
+        ok: true,
+        script_request: {
+          type: 'browserclaw_script_request',
+          version: 1,
+          runtime: 'sandboxed_script',
+          code: 'return 1;',
+        },
+      },
     });
-    expect(effects.some((e) => e.type === 'sandbox_script_proposal')).toBe(true);
+    expect(effects.some((e) => e.type === 'sandbox_script_proposal')).toBe(
+      true,
+    );
     expect(effects.some((e) => e.type === 'storage_put')).toBe(false);
   });
 
@@ -173,7 +192,10 @@ describe('referenceRuntime', () => {
     const effects = runtime.dispatch({
       type: 'resolve_effect',
       id: 'eff-2',
-      result: { ok: true, web_request: { op: 'readPage', url: 'https://example.com/' } },
+      result: {
+        ok: true,
+        web_request: { op: 'readPage', url: 'https://example.com/' },
+      },
     });
     expect(effects.some((e) => e.type === 'web_page_read')).toBe(true);
   });

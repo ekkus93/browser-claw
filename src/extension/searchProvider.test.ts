@@ -4,11 +4,10 @@ import {
   ExtensionSearchError,
   type SearchAuditEvent,
 } from './searchProvider.ts';
-import type { ExtensionRequest } from './protocol.ts';
 
 function makeTransport(response: unknown, rejects?: boolean) {
   return {
-    send: vi.fn((_msg: ExtensionRequest) =>
+    send: vi.fn(() =>
       rejects
         ? Promise.reject(new Error('chrome not available'))
         : Promise.resolve(response),
@@ -51,7 +50,9 @@ describe('G2 — createExtensionSearchProvider', () => {
     const transport = makeTransport(null, true);
     const provider = createExtensionSearchProvider({ transport });
     let caught: unknown;
-    await provider.search('q').catch((e) => { caught = e; });
+    await provider.search('q').catch((e) => {
+      caught = e;
+    });
     expect(caught).toBeInstanceOf(ExtensionSearchError);
     expect((caught as ExtensionSearchError).kind).toBe('extension_missing');
   });
@@ -62,9 +63,14 @@ describe('G2 — createExtensionSearchProvider', () => {
       requestId: 'r1',
       error: { kind: 'permission_denied', message: '401 Unauthorized' },
     });
-    const provider = createExtensionSearchProvider({ transport, apiKey: 'bad-key' });
+    const provider = createExtensionSearchProvider({
+      transport,
+      apiKey: 'bad-key',
+    });
     let caught: unknown;
-    await provider.search('q').catch((e) => { caught = e; });
+    await provider.search('q').catch((e) => {
+      caught = e;
+    });
     expect(caught).toBeInstanceOf(ExtensionSearchError);
     expect((caught as ExtensionSearchError).kind).toBe('auth');
   });
@@ -73,11 +79,20 @@ describe('G2 — createExtensionSearchProvider', () => {
     const transport = makeTransport({
       ok: false,
       requestId: 'r1',
-      error: { kind: 'internal_error', message: '429 Too Many Requests', retryable: true },
+      error: {
+        kind: 'internal_error',
+        message: '429 Too Many Requests',
+        retryable: true,
+      },
     });
-    const provider = createExtensionSearchProvider({ transport, apiKey: 'key' });
+    const provider = createExtensionSearchProvider({
+      transport,
+      apiKey: 'key',
+    });
     let caught: unknown;
-    await provider.search('q').catch((e) => { caught = e; });
+    await provider.search('q').catch((e) => {
+      caught = e;
+    });
     expect(caught).toBeInstanceOf(ExtensionSearchError);
     expect((caught as ExtensionSearchError).kind).toBe('unavailable');
   });
@@ -86,7 +101,9 @@ describe('G2 — createExtensionSearchProvider', () => {
     const transport = makeTransport('not-a-response-object');
     const provider = createExtensionSearchProvider({ transport });
     let caught: unknown;
-    await provider.search('q').catch((e) => { caught = e; });
+    await provider.search('q').catch((e) => {
+      caught = e;
+    });
     expect(caught).toBeInstanceOf(ExtensionSearchError);
     expect((caught as ExtensionSearchError).kind).toBe('invalid_response');
   });

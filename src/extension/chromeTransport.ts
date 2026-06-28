@@ -25,9 +25,10 @@ type ChromeRuntime = {
 
 function getChromeRuntime(): ChromeRuntime | undefined {
   const g = globalThis as Record<string, unknown>;
-  const cr = typeof g['chrome'] === 'object' && g['chrome'] !== null
-    ? (g['chrome'] as { runtime?: ChromeRuntime })
-    : null;
+  const cr =
+    typeof g['chrome'] === 'object' && g['chrome'] !== null
+      ? (g['chrome'] as { runtime?: ChromeRuntime })
+      : null;
   return cr?.runtime;
 }
 
@@ -53,7 +54,9 @@ export function createChromeExtensionTransport(
         runtime.sendMessage(extensionId, message, (response) => {
           if (runtime.lastError) {
             reject(
-              new Error(runtime.lastError.message ?? 'Extension message failed'),
+              new Error(
+                runtime.lastError.message ?? 'Extension message failed',
+              ),
             );
           } else {
             resolve(response);

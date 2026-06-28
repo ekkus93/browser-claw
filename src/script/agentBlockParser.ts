@@ -129,7 +129,8 @@ export function parseAgentActionBlock(text: string): AgentActionParseResult {
   if (blockType === 'tool') {
     const r = parseToolCall(text);
     if (r.kind === 'none') return { kind: 'none', text };
-    if (r.kind === 'malformed') return { kind: 'malformed', blockType: 'tool', message: r.message };
+    if (r.kind === 'malformed')
+      return { kind: 'malformed', blockType: 'tool', message: r.message };
     return r;
   }
 

@@ -58,14 +58,16 @@ export async function checkSearchStatus(
   if (keyAvailable === false) {
     return {
       status: 'key_locked',
-      message: deps.keyUnavailableMessage ?? 'Search API key is locked or not configured.',
+      message:
+        deps.keyUnavailableMessage ??
+        'Search API key is locked or not configured.',
     };
   }
 
   // If an extension transport is provided, verify the extension is reachable
   // and has web search capability.
   if (transport) {
-    let extOk = false;
+    let extOk: boolean;
     try {
       const raw = await transport.send({
         type: 'get_status',
@@ -81,7 +83,8 @@ export async function checkSearchStatus(
     if (!extOk) {
       return {
         status: 'extension_unavailable',
-        message: 'The BrowserClaw extension is not installed or does not support web search.',
+        message:
+          'The BrowserClaw extension is not installed or does not support web search.',
       };
     }
   }

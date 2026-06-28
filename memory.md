@@ -1771,6 +1771,15 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Only genuinely deferred: H3 manual browser/extension QA (7 items need live Chrome), test:e2e:extended (1 Chromium flake in wllama blob cache, not a gate blocker), cargo tests (0 tests — Rust crates exist but logic not ported yet).
 - BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_TODO.md: all phases A–H + Final Acceptance Checklist complete. Ralph Loop for this TODO is DONE.
 
+## 2026-06-28T08:59:36Z - Claude Sonnet 4.6 - Ralph FIX1: completed K1, K2, K3, L1, L2, L3 — FIX1 DONE
+- K1: tests/extension-e2e/ with playwright.extension.config.ts (chromium-only, webServer pnpm dev). extension.spec.ts: 7 tests (loads, sw ID, ping from allowed origin, get_status capability flags, url_blocked for 127.0.0.1, url_blocked for localhost, unsupported_message_type). Fixture pages: public-article.html, hostile-script.html, huge-page.html. read fixture page deferred as test.todo — local IPs blocked by URL safety.
+- K2: tests/extension-e2e/docker/Dockerfile (FROM playwright:v1.60.0-jammy). package.json: test:extension:e2e and test:extension:e2e:docker scripts.
+- K3: tests/extension-e2e/MANUAL_QA.md — install, connect, host permission, read real page, deny permission, extension unavailable, upgrade, web search, Chrome Web Store checklist.
+- L1: All runnable commands passed. typecheck/lint/format/test/build/cargo test/cargo clippy: all exit 0. 934 vitest tests. Firefox E2E: 2 pre-existing flakes (chromium 15/15 clean). build:extension N/A (plain JS). test:extension:e2e/docker: deferred (no real Chrome/Docker in CI env). build:wasm: Phase 5+ not started.
+- L2: Security checklist complete. P0: CORS block, url_blocked, real read_page all verified. P1: Dockerfile, regex guard, large-file bound, transaction atomicity all done. Sandbox/approval P0s deferred Phase 5+/6+.
+- L3: Extension setup docs (MANUAL_QA.md), large-file limits (exported constants), TODO evidence all updated.
+- FIX1 COMPLETE. BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX1_TODO.md all in-scope items done.
+
 ## 2026-06-28T08:31:18Z - Claude Sonnet 4.6 - Ralph FIX1: completed G1, G2, G3
 - G1 (Brave CORS): BRAVE_DIRECT_CORS_VERIFIED=false in braveSearch.ts. Guard in search(): throws SearchError('unavailable') if !deps.fetch && !deps.corsVerified. Direct Brave provider blocked by default; must route through extension. Tests +4.
 - G2 (extension search): web_search added to protocol.ts + service-worker.js handleWebSearch (calls Brave API, forwards apiKey, normalizes results). searchProvider.ts: createExtensionSearchProvider with onAudit hook; key forwarded in-memory, never logged. Tests +8 (success/auth/rate-limit/missing/no-key-leakage/audits). protocol.test.ts +5.

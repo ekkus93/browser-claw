@@ -637,16 +637,17 @@ export function requireStringField(
 
 ## Phase F2 — Bulk research approval must not fallback to empty query
 
-- [ ] P1 Update bulk research approval resolver.
-- [ ] P1 If payload parse fails:
-  - [ ] do not call `research`;
-  - [ ] audit `web.bulk_research_payload_invalid`;
-  - [ ] resolve runtime effect as failure.
-- [ ] P1 Tests:
-  - [ ] malformed payload does not call research;
-  - [ ] missing query does not call research;
-  - [ ] empty query does not call research;
-  - [ ] failure visible/audited.
+<!-- evidence: runApprovedBulkResearch now uses parseApprovalPayloadObject+requireStringField fail-closed; on failure audits web.bulk_research_payload_invalid and resolves ok:false; 4 F2 tests in webRunner.test.ts; 1042/122 vitest pass, lint+typecheck clean -->
+- [x] P1 Update bulk research approval resolver.
+- [x] P1 If payload parse fails:
+  - [x] do not call `research`;
+  - [x] audit `web.bulk_research_payload_invalid`;
+  - [x] resolve runtime effect as failure.
+- [x] P1 Tests:
+  - [x] malformed payload does not call research;
+  - [x] missing query does not call research;
+  - [x] empty query does not call research;
+  - [x] failure visible/audited.
 
 ## Phase F3 — Tool args parser must fail everywhere
 

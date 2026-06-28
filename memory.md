@@ -1956,6 +1956,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1038/122 ✓.
 - NEXT: Part F2 — bulk research approval must not fallback to empty query (P1).
 
+## 2026-06-28T20:54:31Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 16: Part F2 (bulk research fail-closed payload) DONE
+- runApprovedBulkResearch now uses parseApprovalPayloadObject+requireStringField fail-closed; on failure audits web.bulk_research_payload_invalid and resolves ok:false without calling research().
+- 4 F2 tests in webRunner.test.ts: malformed, missing, missing query, empty query.
+- Gate: typecheck ✓, lint ✓, vitest 1042/122 ✓.
+- NEXT: Part F3 — tool args parser must fail everywhere (P1).
+
 ## 2026-06-28T20:26:54Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 10: Part D2 (canonicalize search secret key IDs) DONE
 - useWebResearchKey.ts: BRAVE_KEY_ID changed from 'brave_search_api_key' to searchProviderSecretId(BRAVE_PROFILE_ID) = 'search_provider:brave'. Now UI and runtime use the same key ID.
 - resolveSearchProviderKey already used searchProviderSecretId — already correct; no change needed.

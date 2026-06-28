@@ -13,7 +13,11 @@ import { approvalRequested } from '../store/slices/approvalsSlice.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { webAuditEvent } from '../audit/auditEvents.ts';
 import { classifyFetchUrl } from '../net/urlSafety.ts';
-import { tryParseApprovalPayload } from './approvalPayload.ts';
+import {
+  parseApprovalPayloadObject,
+  requireStringField,
+  tryParseApprovalPayload,
+} from './approvalPayload.ts';
 import type { AppDispatch } from '../store/store.ts';
 import type { BrowserClawDB } from '../db/db.ts';
 import type {
@@ -284,8 +288,28 @@ export async function runApprovedBulkResearch(
   deps: WebEffectDeps,
   approval: ApprovedBulkResearch,
 ): Promise<void> {
-  const parsed = tryParseApprovalPayload(approval.payloadPreview);
-  const query = typeof parsed?.query === 'string' ? parsed.query : '';
+  let parsed: Record<string, unknown>;
+  let query: string;
+  try {
+    parsed = parseApprovalPayloadObject(approval.payloadPreview, 'Bulk research');
+    query = requireStringField(parsed, 'query', 'Bulk research');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Invalid bulk research payload';
+    void recordAudit(
+      deps.db,
+      deps.dispatch,
+      webAuditEvent('web.bulk_research_payload_invalid', message, {
+        risk: 'medium',
+        status: 'failure',
+      }),
+    );
+    await deps.submit({
+      type: 'resolve_effect',
+      id: approval.id,
+      result: { ok: false, error: { kind: 'web_invalid_payload', message } },
+    });
+    return;
+  }
 
   if (approval.status !== 'approved') {
     void recordAudit(
@@ -313,7 +337,7 @@ export async function runApprovedBulkResearch(
   try {
     const bundle = await deps.web.research(
       query,
-      sanitizeResearchOptions(parsed?.options),
+      sanitizeResearchOptions(parsed.options),
     );
     const failCount = bundle.failures?.length ?? 0;
     const summary =

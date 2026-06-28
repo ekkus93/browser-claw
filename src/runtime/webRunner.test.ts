@@ -234,4 +234,53 @@ describe('runApprovedBulkResearch (F3)', () => {
     expect(web.research).not.toHaveBeenCalled();
     expect(await auditTypes()).toContain('web.research_rejected');
   });
+
+  it('F2: malformed payload does not call research and audits invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'f2-a',
+      status: 'approved',
+      payloadPreview: '{not json}',
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'f2-a',
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+  });
+
+  it('F2: missing payload does not call research and audits invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'f2-b',
+      status: 'approved',
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+  });
+
+  it('F2: missing query does not call research and audits invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'f2-c',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ options: { maxPages: 2 } }),
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+  });
+
+  it('F2: empty query does not call research and audits invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'f2-d',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ query: '   ' }),
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+  });
 });

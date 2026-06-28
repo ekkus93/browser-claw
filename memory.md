@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T23:09:04Z - Claude Sonnet 4.6 - FIX3 Part E1 (normalizeExtensionStatus helper) DONE
+- Created src/extension/normalizeExtensionStatus.ts with WebResearchCapabilityStatus type + helper.
+- Computes: extensionConnected, pageReadingSupported, hostPermissionFlowSupported, currentTabSupported, webSearchHandlerSupported, braveKeyConfigured, vaultLocked, liveSearchReady.
+- 9 E1 tests covering all states and fallbacks.
+- Gate: typecheck ✓, lint ✓, format ✓, 1123/124 vitest ✓.
+- Remaining P1: E2, G1, G2, H1, I1, J1, K1/K2/K3.
+
 ## 2026-06-28T23:06:54Z - Claude Sonnet 4.6 - FIX3 Part D2 (central dispatch per-message schema validation) DONE
 - validateMessageSchema() in service-worker.js called from handle() before handler dispatch.
 - Validates: read_page.url, read_pages.urls[], web_search.query+apiKey, request_host_permission.origin.

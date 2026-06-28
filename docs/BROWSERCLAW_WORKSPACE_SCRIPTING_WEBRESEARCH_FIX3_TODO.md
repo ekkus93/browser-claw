@@ -584,22 +584,23 @@ chrome.runtime.onMessageExternal.addListener((message, sender, sendResponse) => 
 
 ## E1 — Normalize extension status into capability facts
 
-- [ ] P1 Add `normalizeExtensionStatus(raw, keyState)` helper.
-- [ ] P1 It must compute separate fields:
-  - [ ] extension connected;
-  - [ ] page reading supported;
-  - [ ] host permission flow supported;
-  - [ ] current-tab support;
-  - [ ] web search handler supported;
-  - [ ] Brave key configured;
-  - [ ] vault locked;
-  - [ ] live search usable.
-- [ ] P1 Tests:
-  - [ ] connected extension but no key => live search not ready;
-  - [ ] key configured but extension missing => live search not ready;
-  - [ ] handler + key => live search ready;
-  - [ ] current-tab unsupported shows unsupported, not connected failure;
-  - [ ] page-reading unavailable shows separate status.
+<!-- evidence: normalizeExtensionStatus.ts + 9 E1 tests; 1123/124 vitest ✓ -->
+- [x] P1 Add `normalizeExtensionStatus(raw, keyState)` helper.
+- [x] P1 It must compute separate fields:
+  - [x] extension connected;
+  - [x] page reading supported;
+  - [x] host permission flow supported;
+  - [x] current-tab support;
+  - [x] web search handler supported;
+  - [x] Brave key configured;
+  - [x] vault locked;
+  - [x] live search usable.
+- [x] P1 Tests:
+  - [x] connected extension but no key => live search not ready;
+  - [x] key configured but extension missing => live search not ready;
+  - [x] handler + key => live search ready;
+  - [x] current-tab unsupported shows unsupported, not connected failure;
+  - [x] page-reading unavailable shows separate status.
 
 ### Suggested TypeScript helper
 

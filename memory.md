@@ -1866,3 +1866,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - 9 new A2 tests in referenceRuntime.test.ts. vitest 972→980 (8 new net: 9 new - 1 pre-existing test that was already passing the now-stricter behavior). 119 files.
 - Gate: typecheck ✓, lint ✓, vitest 980/119 ✓.
 - NEXT: Part A3 — add app-level smoke path for WASM plan/script/web (integration test or debug fixture proving WASM runtime can produce plan/sandbox/web proposals).
+
+## 2026-06-28T19:49:40Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 4: Part A3 (WASM smoke test) DONE
+- Added src/runtime/wasmSmoke.test.ts: 6 tests load real claw_wasm_bg.wasm via initSync (node:fs readFileSync, no fetch/Vite needed).
+- Covers: plan→script_plan_proposal, script_request→sandbox_script_proposal, web_request search→web_search, web_request readPage→web_page_read, web_request readCurrentTab→extension_request{op:'read_current_tab'}, unknown shape→audit_append runtime.unknown_llm_result_shape.
+- Added @types/node as devDependency (needed for node:fs/node:path/node:url type declarations in test file).
+- Gate: typecheck ✓, lint ✓, vitest 986/120 ✓ (6 new tests, 1 new file).
+- NEXT: Part B1 — enforce ScriptExecutionPolicy before queuing sandbox approvals (P0).

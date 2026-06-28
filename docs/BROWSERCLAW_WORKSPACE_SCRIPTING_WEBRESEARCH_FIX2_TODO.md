@@ -132,11 +132,12 @@ fn effects_for_llm_result(&mut self, id: String, result: serde_json::Value) -> V
 
 ## Phase A3 — Add app-level smoke path for WASM plan/script/web
 
-- [ ] P1 Add an integration test or debug fixture proving the default WASM runtime can produce:
-  - [ ] plan proposal;
-  - [ ] sandbox script proposal;
-  - [ ] web search/page proposal.
-- [ ] P1 If full browser E2E is not practical, add a host-level WASM test that submits a synthetic LLM result to the WASM port and verifies emitted effects.
+<!-- evidence: src/runtime/wasmSmoke.test.ts — 6 tests load real claw_wasm_bg.wasm via initSync+readFileSync, dispatch synthetic LLM results, and assert correct effect types (script_plan_proposal, sandbox_script_proposal, web_search, web_page_read, extension_request{op:read_current_tab}, audit_append unknown_shape); @types/node added as devDependency; 986/120 vitest pass, lint clean -->
+- [x] P1 Add an integration test or debug fixture proving the default WASM runtime can produce:
+  - [x] plan proposal;
+  - [x] sandbox script proposal;
+  - [x] web search/page proposal.
+- [x] P1 If full browser E2E is not practical, add a host-level WASM test that submits a synthetic LLM result to the WASM port and verifies emitted effects.
 
 ---
 

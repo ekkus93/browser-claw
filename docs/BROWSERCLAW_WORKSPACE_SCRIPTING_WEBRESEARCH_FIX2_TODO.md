@@ -376,17 +376,18 @@ async function handleRequestHostPermission(
 
 ## Phase D1 — Wire search provider in main app
 
-- [ ] P1 Decide default v0.1 search provider path:
-  - [ ] extension-backed search provider; or
-  - [ ] direct Brave only if real browser CORS/key behavior is verified.
-- [ ] P1 Construct search provider in `main.tsx`.
-- [ ] P1 Pass search provider into `createWebResearchService()`.
-- [ ] P1 If no search provider is configured, search fails visibly with `search_unavailable`.
-- [ ] P1 Tests:
-  - [ ] main app web service has search when provider configured;
-  - [ ] missing search provider fails closed;
-  - [ ] web_search effect resolves success when provider returns results;
-  - [ ] web_search effect resolves failure when provider missing.
+<!-- evidence: created src/webresearch/configuredSearchProvider.ts (checks get_status webSearchAvailable:true, returns extension search provider or undefined); main.tsx wires await createConfiguredSearchProvider + conditional spread into createWebResearchService; 4 configuredSearchProvider tests + 1 D1 webRunner test; existing service.test.ts covers missing-provider; 1010/121 vitest pass, lint+typecheck clean -->
+- [x] P1 Decide default v0.1 search provider path:
+  - [x] extension-backed search provider; <!-- decision: extension-backed; BRAVE_DIRECT_CORS_VERIFIED=false -->
+  - [x] direct Brave only if real browser CORS/key behavior is verified. <!-- not verified, blocked -->
+- [x] P1 Construct search provider in `main.tsx`.
+- [x] P1 Pass search provider into `createWebResearchService()`.
+- [x] P1 If no search provider is configured, search fails visibly with `search_unavailable`.
+- [x] P1 Tests:
+  - [x] main app web service has search when provider configured;
+  - [x] missing search provider fails closed;
+  - [x] web_search effect resolves success when provider returns results;
+  - [x] web_search effect resolves failure when provider missing.
 
 ### Helpful wiring sketch
 

@@ -79,6 +79,25 @@ describe('createWebEffectHandler (F3)', () => {
     expect(await auditTypes()).toContain('web.search_completed');
   });
 
+  it('D1: web_search effect resolves ok:false when search provider missing', async () => {
+    const web = makeWeb({
+      search: vi.fn().mockRejectedValue(
+        Object.assign(new Error('No search provider is configured.'), {
+          kind: 'search_unavailable',
+        }),
+      ),
+    });
+    const handle = createWebEffectHandler(deps(web));
+    await handle({ type: 'web_search', id: 's2', query: 'missing' });
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 's2',
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    expect(await auditTypes()).toContain('web.search_failed');
+  });
+
   it('queues a page read for approval, fetching nothing yet', async () => {
     const web = makeWeb();
     const handle = createWebEffectHandler(deps(web));

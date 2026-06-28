@@ -18,6 +18,7 @@ import { createSkillManager } from './skills/skillManager.ts';
 import { createContentStore } from './workspace/contentStore.ts';
 import { WorkspaceFs } from './workspace/workspaceFs.ts';
 import { createWebResearchService } from './webresearch/service.ts';
+import { createConfiguredSearchProvider } from './webresearch/configuredSearchProvider.ts';
 import { createExtensionPageReader } from './extension/pageReaderProvider.ts';
 import { createChromeExtensionTransport } from './extension/chromeTransport.ts';
 import {
@@ -235,7 +236,15 @@ async function bootRuntime(): Promise<void> {
   const extensionTransport = createChromeExtensionTransport(
     (import.meta.env.VITE_CHROME_EXTENSION_ID as string | undefined) ?? '',
   );
+  const configuredSearch = await createConfiguredSearchProvider({
+    extensionTransport,
+    onAudit: (event, detail) => {
+      const isFail = event === 'web.search_failed' || event === 'extension.missing';
+      appendAudit(event, detail ?? event, isFail ? 'medium' : 'info', isFail ? 'failure' : 'success');
+    },
+  });
   const webResearch = createWebResearchService({
+    ...(configuredSearch ? { search: configuredSearch } : {}),
     reader: createExtensionPageReader({
       transport: extensionTransport,
       onAudit: (event, detail) => {

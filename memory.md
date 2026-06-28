@@ -1911,3 +1911,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Covered by D1 tests (extractPageContent: sanitization, maxChars) and C2 tests (permission denied, success read).
 - Gate: typecheck ✓, lint ✓, vitest 1005/120 ✓.
 - NEXT: Part D1 — wire search provider in main app (P1). Skipping C3 (P1) for now since D1 is also P1 but Part D items cover important functionality gaps.
+
+## 2026-06-28T20:22:14Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 9: Part D1 (wire search provider in main app) DONE
+- Created src/webresearch/configuredSearchProvider.ts: createConfiguredSearchProvider() checks extension get_status for webSearchAvailable:true, returns createExtensionSearchProvider or undefined (fail closed).
+- main.tsx: await createConfiguredSearchProvider({ extensionTransport, onAudit }) + conditional spread ...(configuredSearch ? { search: configuredSearch } : {}) into createWebResearchService.
+- exactOptionalPropertyTypes strictness required conditional spread instead of passing undefined directly.
+- AuditStatus values are 'success'/'failure'/'pending' not 'info' (that's AuditRiskLevel).
+- 4 new D1 tests in configuredSearchProvider.test.ts; 1 D1 test in webRunner.test.ts (search fails closed).
+- Gate: typecheck ✓, lint ✓, vitest 1010/121 ✓.
+- NEXT: Part D2 — canonicalize search SecretVault key IDs (P1).

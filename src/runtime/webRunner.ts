@@ -16,7 +16,6 @@ import { classifyFetchUrl } from '../net/urlSafety.ts';
 import {
   parseApprovalPayloadObject,
   requireStringField,
-  tryParseApprovalPayload,
 } from './approvalPayload.ts';
 import type { AppDispatch } from '../store/store.ts';
 import type { BrowserClawDB } from '../db/db.ts';
@@ -208,18 +207,13 @@ export async function runApprovedWebPageRead(
   deps: WebEffectDeps,
   approval: ApprovedWebPageRead,
 ): Promise<void> {
-  const parsed = tryParseApprovalPayload(approval.payloadPreview);
-  const url = typeof parsed?.url === 'string' ? parsed.url : undefined;
-
   if (approval.status !== 'approved') {
     void recordAudit(
       deps.db,
       deps.dispatch,
-      webAuditEvent(
-        'web.page_read_rejected',
-        `Web page read rejected: ${url ?? 'unknown'}`,
-        { status: 'rejected' },
-      ),
+      webAuditEvent('web.page_read_rejected', 'Web page read rejected', {
+        status: 'rejected',
+      }),
     );
     await deps.submit({
       type: 'resolve_effect',
@@ -229,7 +223,38 @@ export async function runApprovedWebPageRead(
     return;
   }
 
-  if (!url || !classifyFetchUrl(url).ok) {
+  // G1 (FIX3): strict payload parsing — fail closed on missing/invalid url.
+  let parsed: Record<string, unknown>;
+  let url: string;
+  try {
+    parsed = parseApprovalPayloadObject(
+      approval.payloadPreview,
+      'web_page_read',
+    );
+    url = requireStringField(parsed, 'url', 'web_page_read');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    void recordAudit(
+      deps.db,
+      deps.dispatch,
+      webAuditEvent(
+        'web.page_read_payload_invalid',
+        'Web page read approval payload was invalid.',
+        { status: 'failure' },
+      ),
+    );
+    await deps.submit({
+      type: 'resolve_effect',
+      id: approval.id,
+      result: {
+        ok: false,
+        error: { kind: 'approval_payload_invalid', message, retryable: false },
+      },
+    });
+    return;
+  }
+
+  if (!classifyFetchUrl(url).ok) {
     await deps.submit({
       type: 'resolve_effect',
       id: approval.id,
@@ -251,7 +276,7 @@ export async function runApprovedWebPageRead(
   try {
     const content = await deps.web.readPage(
       url,
-      sanitizeReadOptions(parsed?.options, url),
+      sanitizeReadOptions(parsed.options, url),
     );
     void recordAudit(
       deps.db,

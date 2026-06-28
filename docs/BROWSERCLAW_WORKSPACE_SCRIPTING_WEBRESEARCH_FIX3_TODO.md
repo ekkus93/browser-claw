@@ -712,17 +712,18 @@ async readPages(request: { urls: string[]; maxPages?: number; maxChars?: number 
 
 ## G1 — Replace lenient web page read approval parsing
 
-- [ ] P1 `runApprovedWebPageRead()` must use strict `parseApprovalPayloadObject()`.
-- [ ] P1 It must use `requireStringField(payload, 'url', 'web_page_read')`.
-- [ ] P1 Malformed/missing URL:
-  - [ ] does not call page reader;
-  - [ ] audits `web.page_read_payload_invalid`;
-  - [ ] resolves runtime effect as failure.
-- [ ] P1 Tests:
-  - [ ] malformed JSON does not read page;
-  - [ ] missing URL does not read page;
-  - [ ] empty URL does not read page;
-  - [ ] audit includes failure kind but no sensitive content.
+<!-- evidence: webRunner.ts uses parseApprovalPayloadObject+requireStringField; 4 G1 tests; 1135/124 vitest ✓ -->
+- [x] P1 `runApprovedWebPageRead()` must use strict `parseApprovalPayloadObject()`.
+- [x] P1 It must use `requireStringField(payload, 'url', 'web_page_read')`.
+- [x] P1 Malformed/missing URL:
+  - [x] does not call page reader;
+  - [x] audits `web.page_read_payload_invalid`;
+  - [x] resolves runtime effect as failure.
+- [x] P1 Tests:
+  - [x] malformed JSON does not read page;
+  - [x] missing URL does not read page;
+  - [x] empty URL does not read page;
+  - [x] audit includes failure kind but no sensitive content.
 
 ### Suggested TypeScript snippet
 
@@ -751,10 +752,11 @@ try {
 
 ## G2 — Replace lenient extension permission approval parsing
 
-- [ ] P1 `runApprovedExtensionPermission()` must use strict parsing.
-- [ ] P1 Missing/malformed URL/origin must fail before extension call.
-- [ ] P1 Audit `extension.permission_payload_invalid`.
-- [ ] P1 Tests for malformed, missing, empty payload.
+<!-- evidence: extensionRunner.ts uses parseApprovalPayloadObject+requireStringField; 4 G2 tests; 1139/124 vitest ✓ -->
+- [x] P1 `runApprovedExtensionPermission()` must use strict parsing.
+- [x] P1 Missing/malformed URL/origin must fail before extension call.
+- [x] P1 Audit `extension.permission_payload_invalid`.
+- [x] P1 Tests for malformed, missing, empty payload.
 
 ---
 

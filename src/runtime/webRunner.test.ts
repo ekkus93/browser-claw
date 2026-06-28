@@ -202,6 +202,69 @@ describe('runApprovedWebPageRead (F3)', () => {
     );
     expect(await auditTypes()).toContain('web.page_read_failed');
   });
+
+  // G1 (FIX3): strict payload parsing — fail-closed on malformed/missing URL.
+  it('G1: malformed JSON payload does not call readPage', async () => {
+    const web = makeWeb();
+    await runApprovedWebPageRead(deps(web), {
+      id: 'g1-bad-json',
+      status: 'approved',
+      payloadPreview: 'not-valid-json{{{',
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          ok: false,
+          error: expect.objectContaining({ kind: 'approval_payload_invalid' }),
+        }),
+      }),
+    );
+    expect(await auditTypes()).toContain('web.page_read_payload_invalid');
+  });
+
+  it('G1: missing url field does not call readPage', async () => {
+    const web = makeWeb();
+    await runApprovedWebPageRead(deps(web), {
+      id: 'g1-no-url',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ options: {} }),
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    expect(await auditTypes()).toContain('web.page_read_payload_invalid');
+  });
+
+  it('G1: empty url string does not call readPage', async () => {
+    const web = makeWeb();
+    await runApprovedWebPageRead(deps(web), {
+      id: 'g1-empty-url',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ url: '' }),
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.page_read_payload_invalid');
+  });
+
+  it('G1: audit on payload invalid does not include url value in summary', async () => {
+    const web = makeWeb();
+    await runApprovedWebPageRead(deps(web), {
+      id: 'g1-no-secret',
+      status: 'approved',
+      // Missing url field so requireStringField throws; summary must not echo payload.
+      payloadPreview: JSON.stringify({ notAUrl: 'SECRET_VALUE' }),
+    });
+    const rows = await db.audit_events.toArray();
+    const invalidAudit = rows.find(
+      (a) => a.type === 'web.page_read_payload_invalid',
+    );
+    expect(invalidAudit).toBeDefined();
+    expect(invalidAudit?.summary).not.toContain('SECRET_VALUE');
+  });
 });
 
 describe('runApprovedBulkResearch (F3)', () => {

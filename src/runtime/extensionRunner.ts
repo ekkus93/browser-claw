@@ -12,7 +12,10 @@
 import { approvalRequested } from '../store/slices/approvalsSlice.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { extensionAuditEvent } from '../audit/auditEvents.ts';
-import { tryParseApprovalPayload } from './approvalPayload.ts';
+import {
+  parseApprovalPayloadObject,
+  requireStringField,
+} from './approvalPayload.ts';
 import {
   isExtensionResponse,
   newRequestId,
@@ -132,21 +135,13 @@ export async function runApprovedExtensionPermission(
   deps: ExtensionEffectDeps,
   approval: ApprovedExtensionPermission,
 ): Promise<void> {
-  const parsed = parseExtensionRequest(
-    tryParseApprovalPayload(approval.payloadPreview),
-  );
-
   if (approval.status !== 'approved') {
-    const origin =
-      parsed.ok && parsed.request.type === 'request_host_permission'
-        ? parsed.request.origin
-        : 'unknown';
     void recordAudit(
       deps.db,
       deps.dispatch,
       extensionAuditEvent(
         'extension.permission_rejected',
-        `Extension host permission rejected: ${origin}`,
+        'Extension host permission rejected',
         { status: 'rejected' },
       ),
     );
@@ -157,6 +152,47 @@ export async function runApprovedExtensionPermission(
     });
     return;
   }
+
+  // G2 (FIX3): strict payload parsing — fail closed before extension call.
+  let origin: string;
+  try {
+    const payload = parseApprovalPayloadObject(
+      approval.payloadPreview,
+      'extension_permission',
+    );
+    origin = requireStringField(payload, 'origin', 'extension_permission');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    void recordAudit(
+      deps.db,
+      deps.dispatch,
+      extensionAuditEvent(
+        'extension.permission_payload_invalid',
+        'Extension permission approval payload was invalid.',
+        { status: 'failure' },
+      ),
+    );
+    await deps.submit({
+      type: 'resolve_effect',
+      id: approval.id,
+      result: {
+        ok: false,
+        error: {
+          kind: 'approval_payload_invalid',
+          message,
+          retryable: false,
+        },
+      },
+    });
+    return;
+  }
+
+  // Re-parse to get the full request object for sendAndResolve.
+  const parsed = parseExtensionRequest({
+    type: 'request_host_permission',
+    requestId: newRequestId(),
+    origin,
+  });
 
   if (!parsed.ok || parsed.request.type !== 'request_host_permission') {
     await deps.submit({

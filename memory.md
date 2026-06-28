@@ -1984,6 +1984,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T23:21:50Z - Claude Sonnet 4.6 - FIX3 Parts G1+G2 (strict approval payload parsing) DONE
+- G1: webRunner.ts runApprovedWebPageRead() uses parseApprovalPayloadObject+requireStringField; audits web.page_read_payload_invalid on failure; 4 G1 tests.
+- G2: extensionRunner.ts runApprovedExtensionPermission() uses same strict parsing; audits extension.permission_payload_invalid; 4 G2 tests.
+- Gate: typecheck ✓, lint ✓, format ✓, 1139/124 vitest ✓.
+- Remaining P1: H1, I1, J1, K1/K2/K3.
+
 ## 2026-06-28T23:14:40Z - Claude Sonnet 4.6 - FIX3 Part E2 (Settings UI capability rows) DONE
 - WebResearchStatus.tsx: added optional `capabilities` prop (WebResearchCapabilityStatus).
 - When provided, renders CapabilityRows with separate rows per capability.

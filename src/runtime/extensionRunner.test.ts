@@ -209,4 +209,63 @@ describe('runApprovedExtensionPermission (F3)', () => {
     });
     expect(await auditTypes()).toContain('extension.permission_rejected');
   });
+
+  // G2 (FIX3): strict payload parsing — fail closed before extension call.
+  it('G2: malformed JSON payload does not call transport', async () => {
+    const transport = makeTransport();
+    await runApprovedExtensionPermission(deps(transport), {
+      id: 'g2-bad-json',
+      status: 'approved',
+      payloadPreview: 'not{json',
+    });
+    expect(transport.send).not.toHaveBeenCalled();
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          ok: false,
+          error: expect.objectContaining({ kind: 'approval_payload_invalid' }),
+        }),
+      }),
+    );
+    expect(await auditTypes()).toContain(
+      'extension.permission_payload_invalid',
+    );
+  });
+
+  it('G2: missing origin field does not call transport', async () => {
+    const transport = makeTransport();
+    await runApprovedExtensionPermission(deps(transport), {
+      id: 'g2-no-origin',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ type: 'request_host_permission' }),
+    });
+    expect(transport.send).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain(
+      'extension.permission_payload_invalid',
+    );
+  });
+
+  it('G2: empty origin string does not call transport', async () => {
+    const transport = makeTransport();
+    await runApprovedExtensionPermission(deps(transport), {
+      id: 'g2-empty-origin',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ origin: '' }),
+    });
+    expect(transport.send).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain(
+      'extension.permission_payload_invalid',
+    );
+  });
+
+  it('G2: valid origin passes and calls transport', async () => {
+    const transport = makeTransport();
+    await runApprovedExtensionPermission(deps(transport), {
+      id: 'g2-valid',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ origin: 'https://example.com' }),
+    });
+    expect(transport.send).toHaveBeenCalled();
+    expect(await auditTypes()).toContain('extension.permission_requested');
+  });
 });

@@ -67,18 +67,22 @@ Read `BROWSERCLAW_WEBRESEARCH_SETTINGS_FIX2_SPEC.md` before building any item.
 
 ## B1 — Implement `read_pages` in service-worker.js
 
-- [ ] P1 Add `handleReadPages(message)` to `extension/chrome-web-research/service-worker.js`:
-  - [ ] Validate `message.urls` is a non-empty array of strings (defensive, already validated by host parser).
-  - [ ] Respect `message.maxPages` (default: `urls.length`, cap at 10).
-  - [ ] Call `handleReadPage` for each URL sequentially.
-  - [ ] Collect results into an array; partial URL failures do not abort the batch.
-  - [ ] Return `{ ok: true, requestId: message.requestId, results: [...] }`.
-- [ ] P1 Register in handlers registry: `read_pages: handleReadPages`.
-- [ ] P1 Tests in `src/extension/protocol.test.ts` or new file:
-  - [ ] Single URL batch returns one-element array.
-  - [ ] Blocked URL in batch appears as `{ ok: false, error: { kind: 'url_blocked' } }` without aborting.
-  - [ ] `maxPages` limit: only the first N URLs fetched.
-  - [ ] `parseExtensionRequest` still accepts `read_pages` (existing coverage confirmed).
+<!-- evidence: service-worker.js handleReadPages + serviceWorkerReadPages.test.ts; 953/953 vitest pass -->
+- [x] P1 Add `handleReadPages(message)` to `extension/chrome-web-research/service-worker.js`:
+  - [x] Validate `message.urls` is a non-empty array of strings.
+  - [x] Respect `message.maxPages` (default: `urls.length`, cap at 10 via `READ_PAGES_MAX`).
+  - [x] Call `handleReadPage` for each URL sequentially.
+  - [x] Collect results into an array; partial URL failures do not abort the batch.
+  - [x] Return `{ ok: true, requestId: message.requestId, results: [...] }`.
+- [x] P1 Register in handlers registry: `read_pages: handleReadPages`.
+- [x] P1 Tests in `src/extension/serviceWorkerReadPages.test.ts`:
+  - [x] Single URL batch returns one-element array.
+  - [x] Blocked URL in batch appears as `{ ok: false, error: { kind: 'url_blocked' } }` without aborting.
+  - [x] `maxPages` limit: only the first N URLs fetched.
+  - [x] `maxPages` cap: capped at 10 even if message requests more.
+  - [x] Non-string URL slot: returns invalid_request for that slot.
+  - [x] Empty/non-array urls: returns invalid_request.
+  - [x] `parseExtensionRequest` still accepts `read_pages` (existing protocol.test.ts coverage confirmed).
 
 ---
 

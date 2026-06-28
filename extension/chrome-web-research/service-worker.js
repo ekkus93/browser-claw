@@ -352,6 +352,53 @@ async function handleReadCurrentTab(message) {
 }
 
 // ---------------------------------------------------------------------------
+// read_pages handler (FIX2-B1) — batch variant
+// ---------------------------------------------------------------------------
+
+const READ_PAGES_MAX = 10;
+
+async function handleReadPages(message) {
+  const { requestId, urls, maxPages, maxChars } = message;
+
+  if (!Array.isArray(urls) || urls.length === 0) {
+    return errorResponse(
+      'invalid_request',
+      'read_pages: urls must be a non-empty array',
+      requestId,
+    );
+  }
+
+  const limit = Math.min(
+    typeof maxPages === 'number' && maxPages > 0 ? maxPages : urls.length,
+    READ_PAGES_MAX,
+  );
+
+  const results = [];
+  for (let i = 0; i < limit; i++) {
+    const url = urls[i];
+    if (typeof url !== 'string') {
+      results.push(
+        errorResponse(
+          'invalid_request',
+          `urls[${i}] is not a string`,
+          requestId,
+        ),
+      );
+      continue;
+    }
+    // Reuse the single-page handler; it carries all safety/permission/tab logic.
+    const result = await handleReadPage({
+      requestId,
+      url,
+      maxChars: maxChars ?? DEFAULT_MAX_CHARS,
+    });
+    results.push(result);
+  }
+
+  return { ok: true, requestId, results };
+}
+
+// ---------------------------------------------------------------------------
 // Core message handlers
 // ---------------------------------------------------------------------------
 
@@ -492,6 +539,7 @@ const handlers = {
   get_status: handleGetStatus,
   read_page: handleReadPage, // FIX1-A3
   read_current_tab: handleReadCurrentTab, // FIX1-A4
+  read_pages: handleReadPages, // FIX2-B1
   request_host_permission: undefined,
   web_search: handleWebSearch, // FIX1-G2
 };
@@ -571,6 +619,7 @@ export {
   handle,
   handleReadPage,
   handleReadCurrentTab,
+  handleReadPages,
   handleGetStatus,
   handlers,
   isAllowedSender,

@@ -1808,3 +1808,11 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - NEW `src/screens/settings/useWebResearchKey.test.ts`: 11 tests. Key never in Redux JSON; secretMetadataUpserted carries no value/key/secret/token fields; audit events contain no raw key; after clear key absent from vault and Redux; keyConfigured state logic; vaultLocked default true.
 - vitest: 934→945 (116 files). Gate ALL GREEN: typecheck, eslint, prettier, 945/116, build not run this commit (unchanged WASM/Rust).
 - FIX2 REMAINING: A1 "Test connection" inline button (deferred — WebResearchStatus probe covers extension check), A1/A2 researchPaths from audit events (deferred), B1 (read_pages batch handler in service-worker.js), C1 (WebResearchApprovalCard + ChatScreen wiring), D1 (extractPageContent unit tests), E1-E3 (final gate + security checklist).
+
+## 2026-06-28T10:17:17Z - Claude Sonnet 4.6 - Ralph FIX2 Iteration 2: B1 (read_pages batch handler) DONE
+- NEW handleReadPages in extension/chrome-web-research/service-worker.js: validates urls array, respects maxPages (default=urls.length, cap=10), calls handleReadPage sequentially, partial failures do not abort batch, returns {ok:true, requestId, results}.
+- Registered in handlers registry as read_pages.
+- NEW src/extension/serviceWorkerReadPages.test.ts: 8 tests covering single-URL batch, blocked-URL-in-batch, maxPages limit, maxPages cap at 10, non-string URL slot, empty/non-array urls, requestId echoed.
+- TS challenge: plain JS module has no declaration file; used @ts-expect-error import. Array index access with exactOptionalPropertyTypes requires ! non-null assertion.
+- vitest: 945→953 (117 files). Gate ALL GREEN: typecheck, eslint, prettier, 953/117.
+- FIX2 REMAINING: C1 (WebResearchApprovalCard + ChatScreen wiring), D1 (extractPageContent unit tests), E1-E3 (final gate + security checklist).

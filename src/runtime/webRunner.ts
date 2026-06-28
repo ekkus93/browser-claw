@@ -291,10 +291,14 @@ export async function runApprovedBulkResearch(
   let parsed: Record<string, unknown>;
   let query: string;
   try {
-    parsed = parseApprovalPayloadObject(approval.payloadPreview, 'Bulk research');
+    parsed = parseApprovalPayloadObject(
+      approval.payloadPreview,
+      'Bulk research',
+    );
     query = requireStringField(parsed, 'query', 'Bulk research');
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Invalid bulk research payload';
+    const message =
+      err instanceof Error ? err.message : 'Invalid bulk research payload';
     void recordAudit(
       deps.db,
       deps.dispatch,
@@ -371,4 +375,3 @@ export async function runApprovedBulkResearch(
     });
   }
 }
-

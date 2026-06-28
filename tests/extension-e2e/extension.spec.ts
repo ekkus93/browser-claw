@@ -148,9 +148,6 @@ test('K1: unknown message type returns unsupported_message_type', async () => {
   }
 });
 
-// Fixture-page read requires a non-blocked HTTP origin. All local IPs and
-// hostnames are blocked by the extension URL safety check.
-// Manual verification: see K3 manual QA checklist.
-test.todo(
-  'K1: read fixture page works (deferred — local origins blocked; see K3)',
-);
+// J1 fixture-page read tests are in fixture-read.extension.spec.ts.
+// They use test-extension/ (pre-granted host_permissions for devtest.internal)
+// and require devtest.internal → 127.0.0.1 in /etc/hosts (or Docker --add-host).

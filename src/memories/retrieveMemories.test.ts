@@ -99,8 +99,18 @@ describe('formatMemoryContext', () => {
 });
 
 describe('G1 — filterMemoriesForAutomatedAccess', () => {
-  const normal = { id: 'n1', sensitivity: 'normal' as const, title: 'ok', text: 'fine' };
-  const sensitive = { id: 's1', sensitivity: 'sensitive' as const, title: 'secret', text: 'private' };
+  const normal = {
+    id: 'n1',
+    sensitivity: 'normal' as const,
+    title: 'ok',
+    text: 'fine',
+  };
+  const sensitive = {
+    id: 's1',
+    sensitivity: 'sensitive' as const,
+    title: 'secret',
+    text: 'private',
+  };
 
   it('G1: sensitive memory excluded by default', () => {
     const result = filterMemoriesForAutomatedAccess([normal, sensitive]);
@@ -127,7 +137,13 @@ describe('G1 — filterMemoriesForAutomatedAccess', () => {
   });
 
   it('G1: pinned sensitive memory is still excluded without includeSensitive', () => {
-    const pinnedSensitive = { id: 'ps', sensitivity: 'sensitive' as const, title: 'top secret', text: 'shh', pinned: true };
+    const pinnedSensitive = {
+      id: 'ps',
+      sensitivity: 'sensitive' as const,
+      title: 'top secret',
+      text: 'shh',
+      pinned: true,
+    };
     const result = filterMemoriesForAutomatedAccess([normal, pinnedSensitive]);
     expect(result.every((r) => r.sensitivity !== 'sensitive')).toBe(true);
   });

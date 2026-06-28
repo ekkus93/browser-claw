@@ -32,6 +32,20 @@ Steps to manually verify the BrowserClaw Web Research Companion extension in Chr
 - [ ] Lock the vault or remove the key → search fails with "key locked" status.
 - [ ] Disconnect extension → search fails with "extension unavailable" status.
 
+## J1 fixture page E2E (automated)
+
+The automated fixture page tests in `fixture-read.extension.spec.ts` require `devtest.internal` to resolve to `127.0.0.1`. This hostname is used instead of `localhost` because the extension URL safety check blocks all loopback addresses by name.
+
+**Local prerequisite** (run once):
+
+```sh
+echo "127.0.0.1 devtest.internal" | sudo tee -a /etc/hosts
+```
+
+**Docker** (J3): the `test:extension:e2e:docker` script passes `--add-host devtest.internal:127.0.0.1` automatically.
+
+If `devtest.internal` is not resolvable, the fixture page tests will time out or fail with a navigation error — they will not silently pass.
+
 ## Chrome Web Store packaging checklist (pre-release)
 
 - [ ] `manifest.json` version bumped.

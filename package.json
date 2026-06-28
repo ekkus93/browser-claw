@@ -17,7 +17,7 @@
     "test:e2e": "playwright test",
     "test:e2e:extended": "playwright test -c playwright.extended.config.ts",
     "test:extension:e2e": "playwright test -c tests/extension-e2e/playwright.extension.config.ts",
-    "test:extension:e2e:docker": "docker build -f tests/extension-e2e/docker/Dockerfile -t browserclaw-extension-e2e . && docker run --rm browserclaw-extension-e2e",
+    "test:extension:e2e:docker": "docker build -f tests/extension-e2e/docker/Dockerfile -t browserclaw-extension-e2e . && docker run --rm --add-host devtest.internal:127.0.0.1 browserclaw-extension-e2e",
     "build:wasm": "wasm-pack build crates/claw-wasm --target web --out-dir ../../src/runtime/wasm --out-name claw_wasm"
   },
   "dependencies": {

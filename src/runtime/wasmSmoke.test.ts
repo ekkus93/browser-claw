@@ -28,7 +28,9 @@ function dispatchResolve(
   result: unknown,
 ): AnyEffect[] {
   return JSON.parse(
-    rt.dispatch(JSON.stringify({ type: 'resolve_effect', id: effectId, result })),
+    rt.dispatch(
+      JSON.stringify({ type: 'resolve_effect', id: effectId, result }),
+    ),
   ) as AnyEffect[];
 }
 
@@ -59,7 +61,9 @@ describe('A3: WASM runtime smoke — plan/script/web result shapes', () => {
     const effects = dispatchResolve(rt, llmId, {
       script_request: { type: 'browserclaw_script_request', version: 1 },
     });
-    expect(effects.some((e) => e.type === 'sandbox_script_proposal')).toBe(true);
+    expect(effects.some((e) => e.type === 'sandbox_script_proposal')).toBe(
+      true,
+    );
     expect(effects.some((e) => e.type === 'storage_put')).toBe(false);
   });
 
@@ -94,9 +98,9 @@ describe('A3: WASM runtime smoke — plan/script/web result shapes', () => {
     });
     const er = effects.find((e) => e.type === 'extension_request');
     expect(er).toBeDefined();
-    expect(
-      (er as { request?: { op?: string } }).request?.op,
-    ).toBe('read_current_tab');
+    expect((er as { request?: { op?: string } }).request?.op).toBe(
+      'read_current_tab',
+    );
     expect(effects.some((e) => e.type === 'storage_put')).toBe(false);
   });
 

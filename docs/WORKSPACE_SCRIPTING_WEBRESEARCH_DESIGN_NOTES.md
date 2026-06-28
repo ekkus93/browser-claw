@@ -791,3 +791,30 @@ These decisions apply to the FIX2 safety hardening and integration pass. See
 - **Sandbox tool descriptors deny by default.** A tool missing a capability
   descriptor cannot be called from sandbox (Part H1). The deny-by-default pattern
   ensures new tools are safe until explicitly declared.
+- **Browser extension URL safety cannot fully resolve DNS rebinding or private DNS
+  targets.** The extension URL safety check blocks known local hostnames
+  (`localhost`, `127.0.0.1`, `0.0.0.0`, `::1`) and private IP ranges by pattern,
+  but cannot resolve arbitrary hostnames or detect DNS rebinding attacks where a
+  public name is later resolved to a private IP. This is a known limitation of
+  browser-extension sandboxing; a full mitigation would require OS-level DNS
+  interception outside the browser. Operators deploying BrowserClaw in sensitive
+  environments should be aware that the extension page reader is not a fully
+  DNS-rebinding-safe tool. (K1 documentation requirement.)
+- **Extension page-reading permission flow (v0.1).** The user must grant
+  BrowserClaw host permission for each new origin before `read_page` can succeed.
+  The flow: (1) BrowserClaw sends `request_host_permission`; (2) the extension
+  service worker calls `chrome.permissions.request({origins:[pattern]})`; (3) if
+  Chrome requires a user gesture, `permission_flow_required` is returned and the
+  user must open the extension popup to grant access manually; (4) once granted,
+  `read_page` succeeds. Permissions are stored in Chrome's extension permission
+  store and persist across sessions. (K1 documentation requirement.)
+- **Brave/direct search vs extension-backed (v0.1).** The direct browser Brave
+  Search API path (`createBraveSearchProvider`) is blocked behind
+  `BRAVE_DIRECT_CORS_VERIFIED = false` because the Brave Search API does NOT
+  support browser-origin CORS headers for third-party callers. All production
+  search in v0.1 routes through the Chrome extension (`createExtensionSearchProvider`
+  via `createConfiguredSearchProvider`). The extension forwards the request to the
+  Brave API server-side without CORS restrictions. The Brave API key is stored in
+  SecretVault (decrypted in-memory only) under the canonical key ID
+  `search_provider:brave` and forwarded to the extension in-message (never
+  persisted to localStorage or Redux). (K1 documentation requirement.)

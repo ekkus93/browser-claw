@@ -239,8 +239,14 @@ async function bootRuntime(): Promise<void> {
   const configuredSearch = await createConfiguredSearchProvider({
     extensionTransport,
     onAudit: (event, detail) => {
-      const isFail = event === 'web.search_failed' || event === 'extension.missing';
-      appendAudit(event, detail ?? event, isFail ? 'medium' : 'info', isFail ? 'failure' : 'success');
+      const isFail =
+        event === 'web.search_failed' || event === 'extension.missing';
+      appendAudit(
+        event,
+        detail ?? event,
+        isFail ? 'medium' : 'info',
+        isFail ? 'failure' : 'success',
+      );
     },
   });
   const webResearch = createWebResearchService({

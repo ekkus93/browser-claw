@@ -17,4 +17,8 @@ COPY . .
 # The Playwright image includes Chromium and its dependencies.
 # Extension tests use --headless=new which is supported in Chrome 112+.
 # The tests start the Vite dev server internally via playwright webServer.
+#
+# J1 fixture server uses devtest.internal as a non-blocked hostname for the
+# fixture page server. Docker run passes --add-host devtest.internal:127.0.0.1
+# to wire the hostname (see test:extension:e2e:docker in package.json).
 CMD ["pnpm", "run", "test:extension:e2e", "--reporter=list"]

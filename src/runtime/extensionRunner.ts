@@ -132,7 +132,9 @@ export async function runApprovedExtensionPermission(
   deps: ExtensionEffectDeps,
   approval: ApprovedExtensionPermission,
 ): Promise<void> {
-  const parsed = parseExtensionRequest(tryParseApprovalPayload(approval.payloadPreview));
+  const parsed = parseExtensionRequest(
+    tryParseApprovalPayload(approval.payloadPreview),
+  );
 
   if (approval.status !== 'approved') {
     const origin =

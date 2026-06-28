@@ -233,10 +233,7 @@ function callTool(ctx: PlanOpContext, args: Args): Promise<string> {
       `tool.call '${name}': args must be a JSON object, not ${Array.isArray(args.args) ? 'array' : typeof args.args}`,
     );
   }
-  const toolArgs =
-    args.args !== undefined
-      ? (args.args as Args)
-      : {};
+  const toolArgs = args.args !== undefined ? (args.args as Args) : {};
   return runToolCall(
     { name, args: toolArgs },
     {

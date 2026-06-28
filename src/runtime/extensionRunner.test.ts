@@ -148,9 +148,11 @@ describe('E1 — read_current_tab via extension_request effect', () => {
         result: expect.objectContaining({ ok: false }),
       }),
     );
-    const call = (submit as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as {
-      result: { ok: false; error: { kind: string } };
-    } | undefined;
+    const call = (submit as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as
+      | {
+          result: { ok: false; error: { kind: string } };
+        }
+      | undefined;
     expect(call?.result.error.kind).toBe('extension_missing');
   });
 

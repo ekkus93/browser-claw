@@ -45,9 +45,13 @@ type AnyFn = (...args: any[]) => any;
   runtime: { onMessageExternal: null },
 };
 
-// The service-worker is plain JS — suppress the implicit-any TS error.
-// @ts-expect-error — no declaration file for plain-JS service worker
-import { handleReadPage, handleReadPages, handleGetStatus, handleRequestHostPermission, handlers } from '../../extension/chrome-web-research/service-worker.js';
+import {
+  handleReadPage,
+  handleReadPages,
+  handleGetStatus,
+  handleRequestHostPermission,
+  handlers,
+} from '../../extension/chrome-web-research/service-worker.js';
 
 const BLOCKED = 'http://localhost/page';
 const URL1 = 'https://example.com/page1';
@@ -135,7 +139,15 @@ describe('B1 — handleReadPages (batch)', () => {
 
 describe('C1 — handleGetStatus structured capabilities', () => {
   type Status = Record<string, unknown>;
-  type Caps = { readPage?: { supported?: boolean; requiresHostPermission?: boolean; permissionRequestSupported?: boolean }; readCurrentTab?: { supported?: boolean; requiresActiveTab?: boolean }; webSearch?: { supported?: boolean } };
+  type Caps = {
+    readPage?: {
+      supported?: boolean;
+      requiresHostPermission?: boolean;
+      permissionRequestSupported?: boolean;
+    };
+    readCurrentTab?: { supported?: boolean; requiresActiveTab?: boolean };
+    webSearch?: { supported?: boolean };
+  };
 
   function status(): Status {
     return handleGetStatus({ requestId: 'r' }) as Status;
@@ -159,7 +171,9 @@ describe('C1 — handleGetStatus structured capabilities', () => {
     const s = status();
     const caps = s['capabilities'] as Caps;
     expect(caps['readPage']?.['permissionRequestSupported']).toBe(
-      typeof (handlers as Record<string, unknown>)['request_host_permission'] === 'function',
+      typeof (handlers as Record<string, unknown>)[
+        'request_host_permission'
+      ] === 'function',
     );
   });
 
@@ -176,7 +190,8 @@ describe('C1 — handleGetStatus structured capabilities', () => {
     const s = status();
     const caps = s['capabilities'] as Caps;
     expect(caps['readCurrentTab']?.['supported']).toBe(
-      typeof (handlers as Record<string, unknown>)['read_current_tab'] === 'function',
+      typeof (handlers as Record<string, unknown>)['read_current_tab'] ===
+        'function',
     );
   });
 
@@ -205,19 +220,29 @@ describe('C2 — handleReadPage does not request permission opportunistically', 
       requestAttempted.value = true;
       return true;
     };
-    const res = await (handleReadPage as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+    const res = await (
+      handleReadPage as (
+        m: Record<string, unknown>,
+      ) => Promise<Record<string, unknown>>
+    )({
       requestId: 'r',
       url: 'https://example.com/',
     });
     expect(res['ok']).toBe(false);
-    expect((res['error'] as Record<string, unknown>)['kind']).toBe('host_permission_missing');
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'host_permission_missing',
+    );
     expect(requestAttempted.value).toBe(false);
   });
 
   it('C2: succeeds when host permission is already present', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).chrome.permissions.contains = async () => true;
-    const res = await (handleReadPage as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+    const res = await (
+      handleReadPage as (
+        m: Record<string, unknown>,
+      ) => Promise<Record<string, unknown>>
+    )({
       requestId: 'r',
       url: 'https://example.com/',
     });
@@ -235,7 +260,11 @@ describe('C2 — handleRequestHostPermission', () => {
   it('C2: returns ok:true when permission is granted', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).chrome.permissions.request = async () => true;
-    const res = await (handleRequestHostPermission as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+    const res = await (
+      handleRequestHostPermission as (
+        m: Record<string, unknown>,
+      ) => Promise<Record<string, unknown>>
+    )({
       requestId: 'r',
       origin: 'https://example.com/',
     });
@@ -245,12 +274,18 @@ describe('C2 — handleRequestHostPermission', () => {
   it('C2: returns permission_denied when user denies', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).chrome.permissions.request = async () => false;
-    const res = await (handleRequestHostPermission as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+    const res = await (
+      handleRequestHostPermission as (
+        m: Record<string, unknown>,
+      ) => Promise<Record<string, unknown>>
+    )({
       requestId: 'r',
       origin: 'https://example.com/',
     });
     expect(res['ok']).toBe(false);
-    expect((res['error'] as Record<string, unknown>)['kind']).toBe('permission_denied');
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'permission_denied',
+    );
   });
 
   it('C2: returns permission_flow_required when Chrome throws (requires user gesture)', async () => {
@@ -258,25 +293,39 @@ describe('C2 — handleRequestHostPermission', () => {
     (globalThis as any).chrome.permissions.request = async () => {
       throw new Error('requires user gesture');
     };
-    const res = await (handleRequestHostPermission as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+    const res = await (
+      handleRequestHostPermission as (
+        m: Record<string, unknown>,
+      ) => Promise<Record<string, unknown>>
+    )({
       requestId: 'r',
       origin: 'https://example.com/',
     });
     expect(res['ok']).toBe(false);
-    expect((res['error'] as Record<string, unknown>)['kind']).toBe('permission_flow_required');
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'permission_flow_required',
+    );
   });
 
   it('C2: returns invalid_request for empty origin', async () => {
-    const res = await (handleRequestHostPermission as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+    const res = await (
+      handleRequestHostPermission as (
+        m: Record<string, unknown>,
+      ) => Promise<Record<string, unknown>>
+    )({
       requestId: 'r',
       origin: '',
     });
     expect(res['ok']).toBe(false);
-    expect((res['error'] as Record<string, unknown>)['kind']).toBe('invalid_request');
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
   });
 
   it('C2: get_status now reports request_host_permission as supported (pageReadingAvailable:true)', () => {
-    const s = (handleGetStatus as (m: Record<string, unknown>) => Record<string, unknown>)({ requestId: 'r' });
+    const s = (
+      handleGetStatus as (m: Record<string, unknown>) => Record<string, unknown>
+    )({ requestId: 'r' });
     expect(s['pageReadingAvailable']).toBe(true);
   });
 });
@@ -299,7 +348,11 @@ describe('C4 — handleReadPage tab lifecycle', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (globalThis as any).chrome.tabs.remove = async () => undefined;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalThis as any).chrome.scripting.executeScript = async ({ args }: { args: [{ maxChars: number }] }) => [
+    (globalThis as any).chrome.scripting.executeScript = async ({
+      args,
+    }: {
+      args: [{ maxChars: number }];
+    }) => [
       {
         result: {
           ok: true,
@@ -315,7 +368,11 @@ describe('C4 — handleReadPage tab lifecycle', () => {
   });
 
   it('C4: tab is closed after successful read', async () => {
-    await (handleReadPage as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+    await (
+      handleReadPage as (
+        m: Record<string, unknown>,
+      ) => Promise<Record<string, unknown>>
+    )({
       requestId: 'r',
       url: 'https://example.com/',
     });
@@ -328,12 +385,18 @@ describe('C4 — handleReadPage tab lifecycle', () => {
     (globalThis as any).chrome.scripting.executeScript = async () => [
       { result: { ok: false, error: 'no readable content' } },
     ];
-    const res = await (handleReadPage as (m: Record<string, unknown>) => Promise<Record<string, unknown>>)({
+    const res = await (
+      handleReadPage as (
+        m: Record<string, unknown>,
+      ) => Promise<Record<string, unknown>>
+    )({
       requestId: 'r',
       url: 'https://example.com/',
     });
     expect(res['ok']).toBe(false);
-    expect((res['error'] as Record<string, unknown>)['kind']).toBe('extraction_failed');
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'extraction_failed',
+    );
     expect(removedTabIds).toHaveLength(1);
   });
 });

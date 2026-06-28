@@ -1984,6 +1984,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T21:30:42Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 20: Parts J1+J3 (extension E2E fixture page read) DONE
+- J1: Created fixture-read.extension.spec.ts with 2 tests: read_page of public-article.html (title, body, SCRIPT_SENTINEL not leaked) and hostile-script page (JS source not in text).
+- J3: test-extension/ manifest pre-grants http://devtest.internal:7779/* (bypasses localhost URL safety block via non-blocked hostname); beforeAll starts http.Server on 0.0.0.0:7779; test.todo removed from extension.spec.ts.
+- Dockerfile CMD stays as pnpm run test:extension:e2e; docker run now uses --add-host devtest.internal:127.0.0.1; local prereq documented in MANUAL_QA.md and spec header.
+- Bonus fix: service-worker.d.ts added to give the JS service worker proper TypeScript types, removing the brittle @ts-expect-error that broke after Prettier reformatted the import. ESLint config updated to include *.spec.ts files in the Node.js globals override.
+- Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
+- NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
+
 ## 2026-06-28T20:26:54Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 10: Part D2 (canonicalize search secret key IDs) DONE
 - useWebResearchKey.ts: BRAVE_KEY_ID changed from 'brave_search_api_key' to searchProviderSecretId(BRAVE_PROFILE_ID) = 'search_provider:brave'. Now UI and runtime use the same key ID.
 - resolveSearchProviderKey already used searchProviderSecretId — already correct; no change needed.

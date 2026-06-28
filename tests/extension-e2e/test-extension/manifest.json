@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "BrowserClaw Web Research Companion (Test)",
+  "version": "0.1.0",
+  "description": "Test variant: pre-grants http://devtest.internal:7779/* for J1 fixture page read. Not for production use.",
+  "permissions": ["tabs", "scripting", "storage"],
+  "host_permissions": ["http://devtest.internal:7779/*"],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "externally_connectable": {
+    "matches": ["http://localhost:5173/*", "http://127.0.0.1:5173/*"]
+  },
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  }
+}

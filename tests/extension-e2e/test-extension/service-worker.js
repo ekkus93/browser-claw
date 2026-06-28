@@ -1,0 +1,1 @@
+../../../extension/chrome-web-research/service-worker.js

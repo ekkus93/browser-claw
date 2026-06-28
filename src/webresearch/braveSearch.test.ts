@@ -91,7 +91,9 @@ describe('resolveSearchProviderKey (E2)', () => {
 
 describe('D2 — searchProviderSecretId canonical form', () => {
   it('D2: searchProviderSecretId(brave) matches canonical search_provider:brave', () => {
-    expect(searchProviderSecretId(BRAVE_PROFILE_ID)).toBe('search_provider:brave');
+    expect(searchProviderSecretId(BRAVE_PROFILE_ID)).toBe(
+      'search_provider:brave',
+    );
   });
 
   it('D2: saved key is found when resolveSearchProviderKey uses searchProviderSecretId', async () => {

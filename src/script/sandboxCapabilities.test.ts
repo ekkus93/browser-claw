@@ -366,7 +366,9 @@ describe('F3 — sandbox tool.call fail-closed args validation', () => {
       { host: buildSandboxHost(f3Ctx, { tools: ['Remember'] }) },
     );
     expect(result.ok).toBe(false);
-    const denied = f3Audits.some((a) => !a.allowed && a.capability === 'tool.call');
+    const denied = f3Audits.some(
+      (a) => !a.allowed && a.capability === 'tool.call',
+    );
     expect(denied).toBe(true);
   });
 
@@ -376,7 +378,9 @@ describe('F3 — sandbox tool.call fail-closed args validation', () => {
       { host: buildSandboxHost(f3Ctx, { tools: ['Remember'] }) },
     );
     expect(result.ok).toBe(false);
-    const denied = f3Audits.some((a) => !a.allowed && a.capability === 'tool.call');
+    const denied = f3Audits.some(
+      (a) => !a.allowed && a.capability === 'tool.call',
+    );
     expect(denied).toBe(true);
   });
 

@@ -26,9 +26,9 @@ export default tseslint.config(
       ],
     },
   },
-  // Test files also run in a Node/Vitest context.
+  // Test and spec files run in a Node/Vitest/Playwright context.
   {
-    files: ['**/*.test.{ts,tsx}', 'src/test/**/*.{ts,tsx}'],
+    files: ['**/*.test.{ts,tsx}', '**/*.spec.ts', 'src/test/**/*.{ts,tsx}'],
     languageOptions: {
       globals: { ...globals.browser, ...globals.node },
     },

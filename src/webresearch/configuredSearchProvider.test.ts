@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createConfiguredSearchProvider } from './configuredSearchProvider.ts';
 
-function makeTransport(
-  response: Record<string, unknown>,
-  throws = false,
-) {
+function makeTransport(response: Record<string, unknown>, throws = false) {
   return {
     async send(): Promise<unknown> {
       if (throws) throw new Error('extension not reachable');
@@ -48,9 +45,7 @@ describe('D1 — createConfiguredSearchProvider', () => {
   });
 
   it('D1: returned provider delegates search calls to the extension', async () => {
-    const results = [
-      { title: 'A', url: 'https://a.example.com/', rank: 1 },
-    ];
+    const results = [{ title: 'A', url: 'https://a.example.com/', rank: 1 }];
     let lastMessage: Record<string, unknown> | undefined;
     const transport = {
       async send(msg: unknown): Promise<unknown> {
@@ -68,6 +63,10 @@ describe('D1 — createConfiguredSearchProvider', () => {
     const found = await provider!.search('hello');
     expect(lastMessage?.type).toBe('web_search');
     expect(lastMessage?.query).toBe('hello');
-    expect(found).toEqual(expect.arrayContaining([expect.objectContaining({ url: 'https://a.example.com/' })]));
+    expect(found).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ url: 'https://a.example.com/' }),
+      ]),
+    );
   });
 });

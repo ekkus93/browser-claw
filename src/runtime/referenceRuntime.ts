@@ -243,7 +243,10 @@ export function createReferenceRuntime(
           }
           if (op === 'search') {
             // E2: missing query is a protocol error, not a silent fallback.
-            if (typeof webRequest.query !== 'string' || webRequest.query.trim() === '') {
+            if (
+              typeof webRequest.query !== 'string' ||
+              webRequest.query.trim() === ''
+            ) {
               return [
                 {
                   type: 'audit_append',
@@ -257,11 +260,16 @@ export function createReferenceRuntime(
             state.pending[proposalId] = 'web_search';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;
-            return [{ type: 'web_search', id: proposalId, query: webRequest.query }];
+            return [
+              { type: 'web_search', id: proposalId, query: webRequest.query },
+            ];
           }
           if (op === 'readPage') {
             // E2: missing url is a protocol error, not a silent fallback.
-            if (typeof webRequest.url !== 'string' || webRequest.url.trim() === '') {
+            if (
+              typeof webRequest.url !== 'string' ||
+              webRequest.url.trim() === ''
+            ) {
               return [
                 {
                   type: 'audit_append',
@@ -275,7 +283,9 @@ export function createReferenceRuntime(
             state.pending[proposalId] = 'web_page_read';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;
-            return [{ type: 'web_page_read', id: proposalId, url: webRequest.url }];
+            return [
+              { type: 'web_page_read', id: proposalId, url: webRequest.url },
+            ];
           }
           if (op === 'readCurrentTab') {
             state.pending[proposalId] = 'extension_request';
@@ -290,7 +300,8 @@ export function createReferenceRuntime(
             ];
           }
           if (op === 'readPages' || op === 'research') {
-            const query = typeof webRequest.query === 'string' ? webRequest.query : '';
+            const query =
+              typeof webRequest.query === 'string' ? webRequest.query : '';
             state.pending[proposalId] = 'web_research';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;

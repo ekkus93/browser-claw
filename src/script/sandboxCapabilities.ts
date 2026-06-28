@@ -467,7 +467,9 @@ export function buildSandboxHost(
           );
         }
         const toolArgs =
-          typeof rawArgs === 'object' && rawArgs !== null && !Array.isArray(rawArgs)
+          typeof rawArgs === 'object' &&
+          rawArgs !== null &&
+          !Array.isArray(rawArgs)
             ? (rawArgs as Record<string, unknown>)
             : {};
         // FIX1-D2: enforce cross-capability requirements declared in the descriptor.

@@ -20,17 +20,13 @@ describe('F1 — parseApprovalPayloadObject', () => {
   });
 
   it('F1: throws approval_payload_invalid_json for malformed JSON', () => {
-    expect(() =>
-      parseApprovalPayloadObject('{not json}', 'Test'),
-    ).toThrowError(
+    expect(() => parseApprovalPayloadObject('{not json}', 'Test')).toThrowError(
       expect.objectContaining({ kind: 'approval_payload_invalid_json' }),
     );
   });
 
   it('F1: throws approval_payload_not_object for JSON array', () => {
-    expect(() =>
-      parseApprovalPayloadObject('["a","b"]', 'Test'),
-    ).toThrowError(
+    expect(() => parseApprovalPayloadObject('["a","b"]', 'Test')).toThrowError(
       expect.objectContaining({ kind: 'approval_payload_not_object' }),
     );
   });
@@ -66,9 +62,7 @@ describe('F1 — requireStringField', () => {
   });
 
   it('F1: throws approval_payload_missing_field for missing field', () => {
-    expect(() =>
-      requireStringField({ query: '' }, 'url', 'Test'),
-    ).toThrowError(
+    expect(() => requireStringField({ query: '' }, 'url', 'Test')).toThrowError(
       expect.objectContaining({ kind: 'approval_payload_missing_field' }),
     );
   });
@@ -82,9 +76,9 @@ describe('F1 — requireStringField', () => {
   });
 
   it('F1: throws for non-string field type', () => {
-    expect(() =>
-      requireStringField({ url: 42 }, 'url', 'Test'),
-    ).toThrowError(ApprovalPayloadError);
+    expect(() => requireStringField({ url: 42 }, 'url', 'Test')).toThrowError(
+      ApprovalPayloadError,
+    );
   });
 });
 

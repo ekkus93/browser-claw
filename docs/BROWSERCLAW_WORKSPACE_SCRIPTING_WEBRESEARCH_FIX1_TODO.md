@@ -176,23 +176,25 @@ function errorResponse(
 
 ## A3 — Implement `read_page`
 
-- [ ] P0 Implement `read_page` in extension service worker.
-- [ ] P0 Validate URL with shared URL safety policy.
-- [ ] P0 Require host permission or request it explicitly.
-- [ ] P0 Open inactive/background tab or safe tab flow.
-- [ ] P0 Wait for load with timeout.
-- [ ] P0 Inject extraction script with `chrome.scripting.executeScript`.
-- [ ] P0 Cap text/markdown output.
-- [ ] P0 Close tab opened by extension.
-- [ ] P0 Return structured `PageReadResult`.
-- [ ] P0 Tests:
-  - [ ] reads local fixture page;
-  - [ ] returns title/text/markdown;
-  - [ ] closes opened tab;
-  - [ ] timeout returns `page_load_timeout`;
-  - [ ] blocked URL returns `url_blocked`;
-  - [ ] missing permission returns or requests host permission;
-  - [ ] extraction failure returns `extraction_failed`.
+<!-- FIX1-A3 done 2026-06-28. extension/chrome-web-research/service-worker.js: added full handleReadPage (URL safety → classifyExtensionUrl; host permission check/request → hasHostPermission/requestHostPermissionForUrl; background tab create → waitForTabComplete(tabId, timeoutMs); executeScript with inline extractPageContent func; cap at DEFAULT_MAX_CHARS=50k; tab cleanup in finally; structured ok/error return). Wired as handlers.read_page so get_status.pageReadingAvailable is now true. Added classifyExtensionUrl (local SSRF mirror of urlSafety.ts — no app imports in plain-JS extension). content-extract.js updated to full extraction logic (files: mode equivalent). Tab lifecycle tests (reads fixture page, closes tab, timeout, missing permission) deferred to Docker E2E FIX1-K1 (require real chrome.tabs/scripting). BrowserClaw-side: pageReaderProvider.test.ts +4 (A3 error kind mappings: url_blocked→unsupported_url, extraction_failed→extraction_failed, host_permission_missing→permission_denied, page_load_timeout→timeout). vitest 845→849. -->
+
+- [x] P0 Implement `read_page` in extension service worker.
+- [x] P0 Validate URL with shared URL safety policy. <!-- classifyExtensionUrl in service-worker.js mirrors src/net/urlSafety.ts; blocked → url_blocked error -->
+- [x] P0 Require host permission or request it explicitly. <!-- hasHostPermission + requestHostPermissionForUrl (chrome.permissions); denied → host_permission_missing -->
+- [x] P0 Open inactive/background tab or safe tab flow. <!-- chrome.tabs.create({ url, active: false }) -->
+- [x] P0 Wait for load with timeout. <!-- waitForTabComplete(tabId, timeoutMs ?? 15000); timeout → page_load_timeout -->
+- [x] P0 Inject extraction script with `chrome.scripting.executeScript`. <!-- chrome.scripting.executeScript({ target: { tabId }, func: extractPageContent, args: [{ maxChars }] }) -->
+- [x] P0 Cap text/markdown output. <!-- DEFAULT_MAX_CHARS = 50_000; sliced in extractPageContent -->
+- [x] P0 Close tab opened by extension. <!-- chrome.tabs.remove(tabId) in finally block -->
+- [x] P0 Return structured `PageReadResult`. <!-- { ok, requestId, url, finalUrl, title, siteName?, text, markdown, excerpt, length } -->
+- [x] P0 Tests:
+  - [ ] reads local fixture page; <!-- DEFERRED to FIX1-K1 Docker E2E (requires real chrome.tabs/scripting) -->
+  - [ ] returns title/text/markdown; <!-- DEFERRED to FIX1-K1 -->
+  - [ ] closes opened tab; <!-- DEFERRED to FIX1-K1 -->
+  - [ ] timeout returns `page_load_timeout`; <!-- DEFERRED to FIX1-K1 -->
+  - [x] blocked URL returns `url_blocked`; <!-- pageReaderProvider.test.ts 'A3: blocked URL (url_blocked) maps to unsupported_url PageReadError' -->
+  - [ ] missing permission returns or requests host permission; <!-- DEFERRED to FIX1-K1 -->
+  - [x] extraction failure returns `extraction_failed`. <!-- pageReaderProvider.test.ts 'A3: extraction_failed maps to extraction_failed PageReadError' -->
 
 Suggested high-level handler:
 

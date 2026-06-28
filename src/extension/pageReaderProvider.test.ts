@@ -95,6 +95,57 @@ describe('createExtensionPageReader (E9)', () => {
     expect(result).toMatchObject({ ok: false, error: { kind: 'internal_error' } });
   });
 
+  // FIX1-A3: BrowserClaw-side error kind mappings for read_page responses.
+  // Tab lifecycle tests (reads fixture page, closes tab, timeout) require real
+  // Chrome and are deferred to Docker E2E lane FIX1-K1.
+  it('A3: blocked URL (url_blocked) maps to unsupported_url PageReadError', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: false,
+        requestId: 'r',
+        error: { kind: 'url_blocked', message: 'Blocked host: localhost', retryable: false },
+      })),
+    });
+    const result = await reader.readPage({ url: 'http://localhost/' });
+    expect(result).toMatchObject({ ok: false, error: { kind: 'unsupported_url' } });
+  });
+
+  it('A3: extraction_failed maps to extraction_failed PageReadError', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: false,
+        requestId: 'r',
+        error: { kind: 'extraction_failed', message: 'Could not extract content', retryable: false },
+      })),
+    });
+    const result = await reader.readPage({ url: 'https://example.com/' });
+    expect(result).toMatchObject({ ok: false, error: { kind: 'extraction_failed' } });
+  });
+
+  it('A3: host_permission_missing maps to permission_denied PageReadError', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: false,
+        requestId: 'r',
+        error: { kind: 'host_permission_missing', message: 'Host permission not granted', retryable: false },
+      })),
+    });
+    const result = await reader.readPage({ url: 'https://example.com/' });
+    expect(result).toMatchObject({ ok: false, error: { kind: 'permission_denied' } });
+  });
+
+  it('A3: page_load_timeout maps to timeout PageReadError', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: false,
+        requestId: 'r',
+        error: { kind: 'page_load_timeout', message: 'timed out', retryable: true },
+      })),
+    });
+    const result = await reader.readPage({ url: 'https://example.com/' });
+    expect(result).toMatchObject({ ok: false, error: { kind: 'timeout' } });
+  });
+
   it('maps a successful read into a PageReadResult', async () => {
     const reader = createExtensionPageReader({
       transport: transport(() => ({

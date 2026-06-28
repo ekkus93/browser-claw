@@ -15,6 +15,16 @@ import { createSkillEffectHandler } from './runtime/skillRunner.ts';
 import { createStorageEffectHandler } from './runtime/storageRunner.ts';
 import { createToolEffectHandler } from './runtime/toolRunner.ts';
 import { createSkillManager } from './skills/skillManager.ts';
+import { createContentStore } from './workspace/contentStore.ts';
+import { WorkspaceFs } from './workspace/workspaceFs.ts';
+import { createWebResearchService } from './webresearch/service.ts';
+import { createExtensionPageReader } from './extension/pageReaderProvider.ts';
+import { createChromeExtensionTransport } from './extension/chromeTransport.ts';
+import { createPlanEffectHandler, runApprovedPlanEffect } from './runtime/planRunner.ts';
+import { createSandboxScriptEffectHandler, runApprovedSandboxScriptEffect } from './runtime/sandboxScriptRunner.ts';
+import { createWorkspaceEffectHandler, runApprovedWorkspaceEffect } from './runtime/workspaceRunner.ts';
+import { createWebEffectHandler, runApprovedWebPageRead, runApprovedBulkResearch } from './runtime/webRunner.ts';
+import { createExtensionEffectHandler, runApprovedExtensionPermission } from './runtime/extensionRunner.ts';
 import type { EffectContext } from './runtime/effectExecutor.ts';
 import {
   createReferenceRuntime,
@@ -203,6 +213,61 @@ async function bootRuntime(): Promise<void> {
   window.addEventListener('pagehide', () => {
     void host.flushSnapshot();
   });
+  // --- Effect port dependencies (FIX1-B1) ---
+  const contentStore = createContentStore();
+  const workspaceFs = new WorkspaceFs({ db, content: contentStore });
+  const extensionTransport = createChromeExtensionTransport(
+    (import.meta.env.VITE_CHROME_EXTENSION_ID as string | undefined) ?? '',
+  );
+  const webResearch = createWebResearchService({
+    reader: createExtensionPageReader({
+      transport: extensionTransport,
+      onAudit: (event, detail) => {
+        appendAudit(
+          event,
+          detail ?? event,
+          event === 'extension.missing' ? 'medium' : 'info',
+          event === 'extension.missing' ? 'failure' : 'success',
+        );
+      },
+    }),
+  });
+
+  const planDeps = {
+    ctx: {
+      fs: workspaceFs,
+      db,
+      dispatch: store.dispatch,
+      web: webResearch,
+    },
+    submit: (command: Parameters<typeof host.submit>[0]) => host.submit(command),
+  };
+  const sandboxDeps = {
+    ctx: {
+      fs: workspaceFs,
+      db,
+      dispatch: store.dispatch,
+      web: webResearch,
+    },
+    submit: (command: Parameters<typeof host.submit>[0]) => host.submit(command),
+  };
+  const workspaceDeps = {
+    ops: { fs: workspaceFs, db, dispatch: store.dispatch },
+    submit: (command: Parameters<typeof host.submit>[0]) => host.submit(command),
+  };
+  const webDeps = {
+    web: webResearch,
+    db,
+    dispatch: store.dispatch,
+    submit: (command: Parameters<typeof host.submit>[0]) => host.submit(command),
+  };
+  const extensionDeps = {
+    transport: extensionTransport,
+    db,
+    dispatch: store.dispatch,
+    submit: (command: Parameters<typeof host.submit>[0]) => host.submit(command),
+  };
+
   ctx.ports = {
     llmRequest: createLlmRequestHandler({
       db,
@@ -268,8 +333,29 @@ async function bootRuntime(): Promise<void> {
         createSkillManager({ db, dispatch: store.dispatch }).fsFor(skillId),
       submit: (command) => host.submit(command),
     }),
+    plan: createPlanEffectHandler(planDeps),
+    workspace: createWorkspaceEffectHandler(workspaceDeps),
+    sandboxScript: createSandboxScriptEffectHandler(sandboxDeps),
+    web: createWebEffectHandler(webDeps),
+    extension: createExtensionEffectHandler(extensionDeps),
   };
-  registerRuntimeListeners(startAppListening, host, { db });
+
+  // --- Approval resolvers (FIX1-B2) ---
+  registerRuntimeListeners(startAppListening, host, {
+    db,
+    resolvePlanApproval: (approval) =>
+      runApprovedPlanEffect(planDeps, approval),
+    resolveSandboxApproval: (approval) =>
+      runApprovedSandboxScriptEffect(sandboxDeps, approval),
+    resolveWorkspaceApproval: (approval) =>
+      runApprovedWorkspaceEffect(workspaceDeps, approval),
+    resolveWebPageReadApproval: (approval) =>
+      runApprovedWebPageRead(webDeps, approval),
+    resolveBulkResearchApproval: (approval) =>
+      runApprovedBulkResearch(webDeps, approval),
+    resolveExtensionPermissionApproval: (approval) =>
+      runApprovedExtensionPermission(extensionDeps, approval),
+  });
 }
 
 bootRuntime().catch((error: unknown) => {

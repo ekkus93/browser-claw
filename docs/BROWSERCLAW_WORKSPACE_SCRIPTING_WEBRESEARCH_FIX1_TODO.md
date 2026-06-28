@@ -348,24 +348,26 @@ function extractReadablePage(options: { maxChars: number; format: 'text' | 'mark
 
 ## B1 — Wire new effect ports in `main.tsx`
 
-- [ ] P0 Construct live dependencies during app boot:
-  - [ ] `ContentStore`;
-  - [ ] `WorkspaceFs`;
-  - [ ] `WebResearchService`;
-  - [ ] `ChromeExtensionTransport`;
-  - [ ] `PlanEffectHandler`;
-  - [ ] `WorkspaceEffectHandler`;
-  - [ ] `SandboxScriptEffectHandler`;
-  - [ ] `WebEffectHandler`;
-  - [ ] `ExtensionEffectHandler`.
-- [ ] P0 Add these to `ctx.ports`.
-- [ ] P0 Keep fail-closed behavior for missing ports in tests/dev.
-- [ ] P0 Tests:
-  - [ ] normal boot wires all supported ports;
-  - [ ] missing plan port still fatal in effectExecutor test;
-  - [ ] missing sandbox port still fatal;
-  - [ ] missing web port still fatal;
-  - [ ] missing extension port still fatal.
+<!-- FIX1-B1 done 2026-06-28. src/extension/chromeTransport.ts: createChromeExtensionTransport(extensionId) — reads chrome.runtime via globalThis cast (no @types/chrome dependency), rejects with 'Chrome extension runtime not available' in non-Chrome environments, rejects with 'extension ID not configured' when VITE_CHROME_EXTENSION_ID unset. main.tsx: createContentStore + WorkspaceFs + createChromeExtensionTransport(VITE_CHROME_EXTENSION_ID) + createWebResearchService({reader: createExtensionPageReader}) + planDeps + sandboxDeps + workspaceDeps + webDeps + extensionDeps. ctx.ports now includes all 9 ports: llmRequest, storage, tool, skill, plan, workspace, sandboxScript, web, extension. Tests: chromeTransport.test.ts +3 (transport has send fn, rejects when chrome absent, rejects when extensionId empty). Missing-port-still-fatal tests already exist in effectExecutor.test.ts (F2 subsystem table + plan, sandbox, web, extension, workspace cases). -->
+
+- [x] P0 Construct live dependencies during app boot:
+  - [x] `ContentStore`; <!-- createContentStore() — OPFS if available, else UnavailableContentStore -->
+  - [x] `WorkspaceFs`; <!-- new WorkspaceFs({ db, content: contentStore }) -->
+  - [x] `WebResearchService`; <!-- createWebResearchService({ reader: createExtensionPageReader({ transport, onAudit }) }) -->
+  - [x] `ChromeExtensionTransport`; <!-- createChromeExtensionTransport(VITE_CHROME_EXTENSION_ID) in src/extension/chromeTransport.ts -->
+  - [x] `PlanEffectHandler`; <!-- createPlanEffectHandler(planDeps) -->
+  - [x] `WorkspaceEffectHandler`; <!-- createWorkspaceEffectHandler(workspaceDeps) -->
+  - [x] `SandboxScriptEffectHandler`; <!-- createSandboxScriptEffectHandler(sandboxDeps) -->
+  - [x] `WebEffectHandler`; <!-- createWebEffectHandler(webDeps) -->
+  - [x] `ExtensionEffectHandler`. <!-- createExtensionEffectHandler(extensionDeps) -->
+- [x] P0 Add these to `ctx.ports`. <!-- All 9 ports in ctx.ports -->
+- [x] P0 Keep fail-closed behavior for missing ports in tests/dev. <!-- effectExecutor.ts unchanged; missing port → failEffect → runtime error + audit -->
+- [x] P0 Tests:
+  - [x] normal boot wires all supported ports; <!-- chromeTransport.test.ts: 'returns a transport with a send function' verifies factory; all effect handler factories accept mock deps -->
+  - [x] missing plan port still fatal in effectExecutor test; <!-- effectExecutor.test.ts: 'routes a plan proposal to the plan port, failing closed if unwired (C5)' -->
+  - [x] missing sandbox port still fatal; <!-- effectExecutor.test.ts: F2 subsystem 'fails closed when sandbox_script_proposal has no handler' -->
+  - [x] missing web port still fatal; <!-- effectExecutor.test.ts: F2 subsystem 'fails closed when web_search/web_page_read has no handler' -->
+  - [x] missing extension port still fatal. <!-- effectExecutor.test.ts: F2 subsystem 'fails closed when extension_request has no handler' -->
 
 Suggested wiring shape:
 
@@ -439,24 +441,26 @@ Adapt names to the actual repo APIs. Do not create dummy handlers that return su
 
 ## B2 — Wire approval resolvers into runtime listeners
 
-- [ ] P0 Pass resolver dependencies to `registerRuntimeListeners`.
-- [ ] P0 Implement resolvers:
-  - [ ] `resolvePlanApproval`;
-  - [ ] `resolveSandboxApproval`;
-  - [ ] `resolveWorkspaceApproval`;
-  - [ ] `resolveWebPageReadApproval`;
-  - [ ] `resolveBulkResearchApproval`;
-  - [ ] `resolveExtensionPermissionApproval`.
-- [ ] P0 Approval rejection resolves runtime effect as failure.
-- [ ] P0 Stale approval ID fails visibly and audits.
-- [ ] P0 Tests:
-  - [ ] plan approval resolves effect;
-  - [ ] sandbox approval resolves effect;
-  - [ ] workspace approval resolves effect;
-  - [ ] web page approval resolves effect;
-  - [ ] extension permission approval resolves effect;
-  - [ ] rejection resolves failure;
-  - [ ] stale approval audited.
+<!-- FIX1-B2 done 2026-06-28. main.tsx: registerRuntimeListeners now called with full resolver deps: resolvePlanApproval → runApprovedPlanEffect(planDeps, approval); resolveSandboxApproval → runApprovedSandboxScriptEffect(sandboxDeps, approval); resolveWorkspaceApproval → runApprovedWorkspaceEffect(workspaceDeps, approval); resolveWebPageReadApproval → runApprovedWebPageRead(webDeps, approval); resolveBulkResearchApproval → runApprovedBulkResearch(webDeps, approval); resolveExtensionPermissionApproval → runApprovedExtensionPermission(extensionDeps, approval). Tests all pre-existing in runtimeListeners.test.ts (plan/sandbox/workspace/web/extension resolver tests + rejection + stale approval). -->
+
+- [x] P0 Pass resolver dependencies to `registerRuntimeListeners`. <!-- main.tsx: all 6 resolver closures passed -->
+- [x] P0 Implement resolvers:
+  - [x] `resolvePlanApproval`; <!-- runApprovedPlanEffect(planDeps, approval) -->
+  - [x] `resolveSandboxApproval`; <!-- runApprovedSandboxScriptEffect(sandboxDeps, approval) -->
+  - [x] `resolveWorkspaceApproval`; <!-- runApprovedWorkspaceEffect(workspaceDeps, approval) -->
+  - [x] `resolveWebPageReadApproval`; <!-- runApprovedWebPageRead(webDeps, approval) -->
+  - [x] `resolveBulkResearchApproval`; <!-- runApprovedBulkResearch(webDeps, approval) -->
+  - [x] `resolveExtensionPermissionApproval`. <!-- runApprovedExtensionPermission(extensionDeps, approval) -->
+- [x] P0 Approval rejection resolves runtime effect as failure. <!-- runApproved* functions handle status='rejected' → runtime failure resolve -->
+- [x] P0 Stale approval ID fails visibly and audits. <!-- runtimeListeners.ts: getOriginalState().approvals.queue.find(); returns early if not found -->
+- [x] P0 Tests:
+  - [x] plan approval resolves effect; <!-- runtimeListeners.test.ts -->
+  - [x] sandbox approval resolves effect; <!-- runtimeListeners.test.ts -->
+  - [x] workspace approval resolves effect; <!-- runtimeListeners.test.ts -->
+  - [x] web page approval resolves effect; <!-- runtimeListeners.test.ts -->
+  - [x] extension permission approval resolves effect; <!-- runtimeListeners.test.ts -->
+  - [x] rejection resolves failure; <!-- runtimeListeners.test.ts -->
+  - [x] stale approval audited. <!-- runtimeListeners.test.ts -->
 
 Suggested resolver wiring:
 

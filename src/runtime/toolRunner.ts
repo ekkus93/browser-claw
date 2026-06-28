@@ -135,18 +135,33 @@ export interface ApprovedToolCall {
   skillId?: string;
 }
 
-function parseArgs(argsJson: string | undefined): Record<string, unknown> {
-  if (!argsJson) return {};
-  try {
-    const parsed: unknown = JSON.parse(argsJson);
-    return typeof parsed === 'object' &&
-      parsed !== null &&
-      !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : {};
-  } catch {
-    return {};
+/**
+ * FIX1-F1: Parse approved tool arguments, failing closed on bad input.
+ * Empty/absent args → `{}` (valid for no-arg tools). Any other invalid
+ * JSON or non-object value throws `ToolApprovalError` so the caller audits and
+ * resolves the effect as a failure without running the tool.
+ */
+class ToolApprovalError extends Error {
+  readonly kind: 'tool_args_parse_failed';
+  constructor(message: string) {
+    super(message);
+    this.name = 'ToolApprovalError';
+    this.kind = 'tool_args_parse_failed';
   }
+}
+
+function parseApprovedArgsOrThrow(argsJson: string | undefined): Record<string, unknown> {
+  if (!argsJson || argsJson.trim() === '') return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(argsJson);
+  } catch {
+    throw new ToolApprovalError('Approved tool arguments are not valid JSON.');
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new ToolApprovalError('Approved tool arguments must be a JSON object.');
+  }
+  return parsed as Record<string, unknown>;
 }
 
 export interface RunApprovedToolDeps {
@@ -212,7 +227,30 @@ export async function runApprovedToolCall(
     });
     return;
   }
-  const args = parseArgs(approval.argsJson);
+  let args: Record<string, unknown>;
+  try {
+    args = parseApprovedArgsOrThrow(approval.argsJson);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    void recordAudit(deps.db, deps.dispatch, {
+      type: 'tool.args_parse_failed',
+      summary: `Approved tool arguments for '${name}' were invalid and the tool was not run.`,
+      source: 'runtime',
+      risk: 'medium',
+      status: 'failure',
+      toolName: name,
+      details: { approvalId: approval.id, toolName: name, message },
+    });
+    await deps.submit({
+      type: 'resolve_effect',
+      id: approval.id,
+      result: {
+        ok: false,
+        error: { kind: 'tool_args_parse_failed', message },
+      },
+    });
+    return;
+  }
   // The tool gets db/dispatch + provenance so a persisting tool (Remember) can
   // write a correctly-attributed, audited record.
   const ctx: ToolContext = {

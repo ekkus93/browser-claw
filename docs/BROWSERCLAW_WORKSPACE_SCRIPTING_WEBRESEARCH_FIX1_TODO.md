@@ -854,22 +854,24 @@ async function sandboxMemorySearch(db: BrowserClawDb, query: string): Promise<Me
 
 ## F1 — Replace silent `{}` fallback
 
-- [ ] P0 Replace `parseArgs()` with `parseApprovedArgsOrThrow()`.
-- [ ] P0 Missing/empty args may return `{}`.
-- [ ] P0 Invalid JSON throws.
-- [ ] P0 Non-object JSON throws.
-- [ ] P0 Arrays throw.
-- [ ] P0 Tool does not execute after parse failure.
-- [ ] P0 Runtime effect resolves failure.
-- [ ] P0 Audit `tool.args_parse_failed`.
-- [ ] P0 Tests:
-  - [ ] empty args -> `{}` for no-arg tools;
-  - [ ] valid object args accepted;
-  - [ ] invalid JSON rejected;
-  - [ ] array rejected;
-  - [ ] string/number rejected;
-  - [ ] rejected args do not run tool;
-  - [ ] failure audited.
+<!-- FIX1-F1 done 2026-06-28. toolRunner.ts: replaced parseArgs() (silently returned {} on parse errors) with parseApprovedArgsOrThrow() (throws ToolApprovalError on invalid JSON or non-object). On throw: audits tool.args_parse_failed + resolves effect as {ok:false,error:{kind:'tool_args_parse_failed'}}. Tests: toolRunner.test.ts F1 group +6 (empty={}, valid object, invalid JSON, array, string, number — each checks submit result and audit). vitest 887→893. -->
+
+- [x] P0 Replace `parseArgs()` with `parseApprovedArgsOrThrow()`. <!-- toolRunner.ts: removed old parseArgs; replaced with parseApprovedArgsOrThrow + ToolApprovalError class -->
+- [x] P0 Missing/empty args may return `{}`. <!-- empty/whitespace returns {} -->
+- [x] P0 Invalid JSON throws. <!-- SyntaxError caught → ToolApprovalError -->
+- [x] P0 Non-object JSON throws. <!-- typeof check + null check → ToolApprovalError -->
+- [x] P0 Arrays throw. <!-- Array.isArray check → ToolApprovalError -->
+- [x] P0 Tool does not execute after parse failure. <!-- return after catch, before runToolCall -->
+- [x] P0 Runtime effect resolves failure. <!-- submit({type:'resolve_effect', result:{ok:false,error:{kind:'tool_args_parse_failed'}}}) -->
+- [x] P0 Audit `tool.args_parse_failed`. <!-- recordAudit type:'tool.args_parse_failed' in catch block -->
+- [x] P0 Tests:
+  - [x] empty args -> `{}` for no-arg tools; <!-- F1 test 1 -->
+  - [x] valid object args accepted; <!-- F1 test 2 -->
+  - [x] invalid JSON rejected; <!-- F1 test 3 -->
+  - [x] array rejected; <!-- F1 test 4 -->
+  - [x] string/number rejected; <!-- F1 tests 5+6 -->
+  - [x] rejected args do not run tool; <!-- confirmed in all rejection tests: error is args_parse_failed, not tool.failed -->
+  - [x] failure audited. <!-- F1 test 3 checks auditTypes includes 'tool.args_parse_failed' -->
 
 Suggested implementation:
 

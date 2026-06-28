@@ -457,3 +457,68 @@ describe('runApprovedToolCall — execution-time permission re-check (A1.1)', ()
     expectBlocked(submit);
   });
 });
+
+// ---------------------------------------------------------------------------
+// FIX1-F1 — parseApprovedArgsOrThrow
+// ---------------------------------------------------------------------------
+
+describe('F1 — parseApprovedArgsOrThrow', () => {
+  async function runWithArgs(argsJson: string | undefined) {
+    await db.open();
+    await db.skills.clear();
+    await db.audit_events.clear();
+    await installSkill({ id: 'web-search', enabled: true, tools: ['Page Reader'] });
+    const store = configureStore({ reducer: { audit: auditReducer, approvals: approvalsReducer } });
+    const submit = vi.fn<(command: unknown) => Promise<void>>().mockResolvedValue(undefined);
+    const fetchImpl = vi.fn(() => Promise.resolve(new Response('<p>ok</p>'))) as unknown as typeof fetch;
+    await runApprovedToolCall(
+      { db, dispatch: store.dispatch, submit, ctx: { fetchImpl } },
+      { id: 'eff-f1', status: 'approved', toolName: 'Page Reader', argsJson, skillId: 'web-search' },
+    );
+    const auditTypes = store.getState().audit.recent.map((e) => e.type);
+    return { submit, auditTypes };
+  }
+
+  it('F1: empty argsJson -> {} (valid for no-arg call)', async () => {
+    // Page Reader needs a url, but the key point is the args are parsed as {} without throwing
+    const { submit } = await runWithArgs('');
+    // The tool itself will fail (no url), but not from args parse failure
+    expect(submit.mock.calls[0]?.[0]).not.toMatchObject({ result: { ok: false, error: { kind: 'tool_args_parse_failed' } } });
+  });
+
+  it('F1: valid object args are accepted', async () => {
+    const { submit } = await runWithArgs(JSON.stringify({ url: 'https://example.com' }));
+    // Tool runs (may fail for other reasons like no-cors in jsdom) but not args parse failure
+    expect(submit.mock.calls[0]?.[0]).not.toMatchObject({ result: { ok: false, error: { kind: 'tool_args_parse_failed' } } });
+  });
+
+  it('F1: invalid JSON throws — tool not executed', async () => {
+    const { submit, auditTypes } = await runWithArgs('{ not json }');
+    expect(submit.mock.calls[0]?.[0]).toMatchObject({
+      result: { ok: false, error: { kind: 'tool_args_parse_failed' } },
+    });
+    expect(auditTypes).toContain('tool.args_parse_failed');
+  });
+
+  it('F1: array args rejected — tool not executed', async () => {
+    const { submit, auditTypes } = await runWithArgs('[1,2,3]');
+    expect(submit.mock.calls[0]?.[0]).toMatchObject({
+      result: { ok: false, error: { kind: 'tool_args_parse_failed' } },
+    });
+    expect(auditTypes).toContain('tool.args_parse_failed');
+  });
+
+  it('F1: string args rejected', async () => {
+    const { submit } = await runWithArgs('"hello"');
+    expect(submit.mock.calls[0]?.[0]).toMatchObject({
+      result: { ok: false, error: { kind: 'tool_args_parse_failed' } },
+    });
+  });
+
+  it('F1: number args rejected', async () => {
+    const { submit } = await runWithArgs('42');
+    expect(submit.mock.calls[0]?.[0]).toMatchObject({
+      result: { ok: false, error: { kind: 'tool_args_parse_failed' } },
+    });
+  });
+});

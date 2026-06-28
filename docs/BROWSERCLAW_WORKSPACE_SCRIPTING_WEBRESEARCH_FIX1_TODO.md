@@ -1034,15 +1034,17 @@ try {
 
 ## I1 — Add max file size guards for range/line reads
 
-- [ ] P1 Define max readable file size for non-streaming text operations.
-- [ ] P1 `readTextRange()` checks file size before full decode.
-- [ ] P1 `readLines()` checks file size before full decode.
-- [ ] P1 Return explicit error for oversized files.
-- [ ] P1 Tests:
-  - [ ] small range read works;
-  - [ ] large file range read rejected;
-  - [ ] large file line read rejected;
-  - [ ] unicode still safe.
+<!-- FIX1-I1 done 2026-06-28. workspaceFs.ts: MAX_FULL_TEXT_DECODE_BYTES=2MiB + WorkspaceFileTooLargeError class. readTextRange: calls #requireFile, checks meta.sizeBytes before decode. readLines: same guard before split. Tests: I1 group +5 (small range, small lines, large range rejected, large lines rejected, unicode ok). vitest 899→904. -->
+
+- [x] P1 Define max readable file size for non-streaming text operations. <!-- MAX_FULL_TEXT_DECODE_BYTES = 2*1024*1024 in workspaceFs.ts -->
+- [x] P1 `readTextRange()` checks file size before full decode. <!-- #requireFile → meta.sizeBytes > MAX → throw WorkspaceFileTooLargeError -->
+- [x] P1 `readLines()` checks file size before full decode. <!-- same guard -->
+- [x] P1 Return explicit error for oversized files. <!-- WorkspaceFileTooLargeError extends Error -->
+- [x] P1 Tests:
+  - [x] small range read works; <!-- I1 test 1 -->
+  - [x] large file range read rejected; <!-- I1 test 3 -->
+  - [x] large file line read rejected; <!-- I1 test 4 -->
+  - [x] unicode still safe. <!-- I1 test 5 -->
 
 Suggested guard:
 

@@ -260,3 +260,48 @@ describe('WorkspaceFs search + grep (B5)', () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// I1 — max file size guards for range/line reads
+// ---------------------------------------------------------------------------
+
+import {
+  MAX_FULL_TEXT_DECODE_BYTES,
+  WorkspaceFileTooLargeError,
+} from './workspaceFs.ts';
+
+describe('I1 — readTextRange and readLines large-file guards', () => {
+  it('I1: small file range read works', async () => {
+    await fs.createFile('/workspace/small.txt', 'hello world', { overwrite: true, actor: 'user' });
+    const result = await fs.readTextRange('/workspace/small.txt', 0, 5);
+    expect(result).toBe('hello');
+  });
+
+  it('I1: small file line read works', async () => {
+    await fs.createFile('/workspace/lines.txt', 'line1\nline2\nline3', { overwrite: true, actor: 'user' });
+    const snip = await fs.readLines('/workspace/lines.txt', 2, 1);
+    expect(snip.lines[0]).toBe('line2');
+  });
+
+  it('I1: oversized file rejects readTextRange with WorkspaceFileTooLargeError', async () => {
+    // Write exactly MAX_FULL_TEXT_DECODE_BYTES + 1 bytes.
+    const oversized = new Uint8Array(MAX_FULL_TEXT_DECODE_BYTES + 1).fill(65); // 'A'
+    await fs.createFile('/workspace/big.txt', oversized, { overwrite: true, actor: 'user' });
+    await expect(fs.readTextRange('/workspace/big.txt', 0, 10)).rejects.toThrow(
+      WorkspaceFileTooLargeError,
+    );
+  });
+
+  it('I1: oversized file rejects readLines with WorkspaceFileTooLargeError', async () => {
+    const oversized = new Uint8Array(MAX_FULL_TEXT_DECODE_BYTES + 1).fill(65);
+    await fs.createFile('/workspace/biglines.txt', oversized, { overwrite: true, actor: 'user' });
+    await expect(fs.readLines('/workspace/biglines.txt', 1, 1)).rejects.toThrow(
+      WorkspaceFileTooLargeError,
+    );
+  });
+
+  it('I1: unicode file within limit is read correctly', async () => {
+    await fs.createFile('/workspace/uni.txt', 'a😀b', { overwrite: true, actor: 'user' });
+    expect(await fs.readTextRange('/workspace/uni.txt', 0, 3)).toBe('a😀b');
+  });
+});

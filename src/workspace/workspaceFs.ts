@@ -35,6 +35,8 @@ export const MAX_SNIPPET_LINES = 5_000;
 export const MAX_SNIPPET_BYTES = 256_000;
 /** Files larger than this are skipped by content search/grep (B5). */
 export const MAX_SEARCH_FILE_BYTES = 2_000_000;
+/** FIX1-I1: files larger than this are rejected by readTextRange/readLines (non-streaming). */
+export const MAX_FULL_TEXT_DECODE_BYTES = 2 * 1_024 * 1_024;
 /** Default cap on search/grep results (B5). */
 export const DEFAULT_SEARCH_LIMIT = 100;
 
@@ -70,6 +72,15 @@ export class WorkspaceNotAFileError extends Error {
   constructor(path: string) {
     super(`Workspace path is not a file: ${path}`);
     this.name = 'WorkspaceNotAFileError';
+  }
+}
+
+export class WorkspaceFileTooLargeError extends Error {
+  constructor(path: string, sizeBytes: number) {
+    super(
+      `File is too large for non-streaming text range reads: ${path} (${sizeBytes} bytes; max ${MAX_FULL_TEXT_DECODE_BYTES})`,
+    );
+    this.name = 'WorkspaceFileTooLargeError';
   }
 }
 
@@ -209,6 +220,11 @@ export class WorkspaceFs {
         `readTextRange: length ${length} exceeds the ${MAX_RANGE_CHARS} limit`,
       );
     }
+    // FIX1-I1: reject oversized files before full decode.
+    const meta = await this.#requireFile(normalizeWorkspacePath(path));
+    if (meta.sizeBytes > MAX_FULL_TEXT_DECODE_BYTES) {
+      throw new WorkspaceFileTooLargeError(path, meta.sizeBytes);
+    }
     const codePoints = [...(await this.readText(path))];
     return codePoints.slice(start, start + length).join('');
   }
@@ -237,6 +253,11 @@ export class WorkspaceFs {
       );
     }
     const p = normalizeWorkspacePath(path);
+    // FIX1-I1: reject oversized files before full decode.
+    const meta = await this.#requireFile(p);
+    if (meta.sizeBytes > MAX_FULL_TEXT_DECODE_BYTES) {
+      throw new WorkspaceFileTooLargeError(path, meta.sizeBytes);
+    }
     const from = startLine - 1;
     const lines = (await this.readText(p))
       .split('\n')

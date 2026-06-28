@@ -119,6 +119,21 @@ describe('executePlanOp — tool.call + web (C2)', () => {
           length: 4,
         }),
       ),
+      readPages: vi.fn(() =>
+        Promise.resolve({
+          query: '',
+          results: [],
+          pages: [
+            {
+              url: 'https://x/a',
+              finalUrl: 'https://x/a',
+              text: 'body',
+              length: 4,
+            },
+          ],
+          failures: [],
+        }),
+      ),
       research: vi.fn(),
     };
     const withWeb = { ...ctx, web };

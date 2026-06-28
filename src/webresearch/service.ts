@@ -105,5 +105,37 @@ export function createWebResearchService(
     return { query, results, pages, failures };
   }
 
-  return { search, readPage, research };
+  async function readPages(
+    urls: string[],
+    options: ResearchOptions = {},
+  ): Promise<ResearchBundle> {
+    const pages: PageContent[] = [];
+    const failures: PageReadFailure[] = [];
+    for (const url of urls) {
+      try {
+        pages.push(
+          await readPage(url, {
+            url,
+            ...(options.format ? { format: options.format } : {}),
+            ...(options.maxChars ? { maxChars: options.maxChars } : {}),
+          }),
+        );
+      } catch (err) {
+        failures.push({
+          url,
+          kind: 'internal_error',
+          message: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
+    if (pages.length === 0 && failures.length > 0) {
+      throw new WebResearchError(
+        'all_page_reads_failed',
+        `All ${String(failures.length)} page(s) failed to read.`,
+      );
+    }
+    return { query: '', results: [], pages, failures };
+  }
+
+  return { search, readPage, readPages, research };
 }

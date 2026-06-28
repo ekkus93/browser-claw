@@ -132,22 +132,38 @@ export function createWebEffectHandler(deps: WebEffectDeps) {
     }
 
     if (effect.type === 'web_research') {
-      // A multi-page research run (search + read N pages) is bulk egress -> gate.
-      const query = typeof effect.query === 'string' ? effect.query : '';
+      // A multi-page research run is bulk egress → gate behind approval.
+      // C3 (FIX3): discriminate mode:'query' vs mode:'urls' so URL arrays
+      // are never collapsed to an empty query string.
       const options = sanitizeResearchOptions(effect.options);
       const maxPages = options.maxPages ?? 'default';
-      deps.dispatch(
-        approvalRequested({
-          id: effect.id,
-          kind: 'bulk_research',
-          title: `Research: ${query}`,
-          risk: 'high',
-          summary: `Web research "${query}" reading up to ${maxPages} pages${
-            options.site ? ` on ${options.site}` : ''
-          }`,
-          payloadPreview: JSON.stringify({ query, options }),
-        }),
-      );
+      if (effect.mode === 'urls') {
+        const urlList = effect.urls;
+        deps.dispatch(
+          approvalRequested({
+            id: effect.id,
+            kind: 'bulk_research',
+            title: `Read ${String(urlList.length)} page(s)`,
+            risk: 'high',
+            summary: `Read ${String(urlList.length)} page(s): ${urlList.slice(0, 3).join(', ')}${urlList.length > 3 ? '…' : ''}`,
+            payloadPreview: JSON.stringify({ urls: urlList, options }),
+          }),
+        );
+      } else {
+        const query = effect.query;
+        deps.dispatch(
+          approvalRequested({
+            id: effect.id,
+            kind: 'bulk_research',
+            title: `Research: ${query}`,
+            risk: 'high',
+            summary: `Web research "${query}" reading up to ${maxPages} pages${
+              options.site ? ` on ${options.site}` : ''
+            }`,
+            payloadPreview: JSON.stringify({ query, options }),
+          }),
+        );
+      }
       return;
     }
 
@@ -289,13 +305,11 @@ export async function runApprovedBulkResearch(
   approval: ApprovedBulkResearch,
 ): Promise<void> {
   let parsed: Record<string, unknown>;
-  let query: string;
   try {
     parsed = parseApprovalPayloadObject(
       approval.payloadPreview,
       'Bulk research',
     );
-    query = requireStringField(parsed, 'query', 'Bulk research');
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Invalid bulk research payload';
@@ -315,11 +329,42 @@ export async function runApprovedBulkResearch(
     return;
   }
 
+  // C3 (FIX3): discriminate mode='urls' (readPages) vs mode='query' (research).
+  const isUrlsMode = Array.isArray(parsed.urls) && parsed.urls.length > 0;
+
+  let query: string | undefined;
+  if (!isUrlsMode) {
+    try {
+      query = requireStringField(parsed, 'query', 'Bulk research');
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Invalid bulk research payload';
+      void recordAudit(
+        deps.db,
+        deps.dispatch,
+        webAuditEvent('web.bulk_research_payload_invalid', message, {
+          risk: 'medium',
+          status: 'failure',
+        }),
+      );
+      await deps.submit({
+        type: 'resolve_effect',
+        id: approval.id,
+        result: { ok: false, error: { kind: 'web_invalid_payload', message } },
+      });
+      return;
+    }
+  }
+
+  const label = isUrlsMode
+    ? `Read ${String((parsed.urls as string[]).length)} page(s)`
+    : `Research: ${query ?? ''}`;
+
   if (approval.status !== 'approved') {
     void recordAudit(
       deps.db,
       deps.dispatch,
-      webAuditEvent('web.research_rejected', `Research rejected: ${query}`, {
+      webAuditEvent('web.research_rejected', `${label} rejected`, {
         status: 'rejected',
       }),
     );
@@ -334,20 +379,23 @@ export async function runApprovedBulkResearch(
   void recordAudit(
     deps.db,
     deps.dispatch,
-    webAuditEvent('web.research_started', `Research started: ${query}`, {
+    webAuditEvent('web.research_started', `${label} started`, {
       status: 'pending',
     }),
   );
   try {
-    const bundle = await deps.web.research(
-      query,
-      sanitizeResearchOptions(parsed.options),
-    );
+    const options = sanitizeResearchOptions(parsed.options);
+    let bundle: Awaited<ReturnType<typeof deps.web.research>>;
+    if (isUrlsMode) {
+      bundle = await deps.web.readPages(parsed.urls as string[], options);
+    } else {
+      bundle = await deps.web.research(query!, options);
+    }
     const failCount = bundle.failures?.length ?? 0;
     const summary =
       failCount > 0
-        ? `Research completed: ${query} (${bundle.pages.length} pages, ${String(failCount)} failed)`
-        : `Research completed: ${query} (${bundle.pages.length} pages)`;
+        ? `${label} completed (${bundle.pages.length} pages, ${String(failCount)} failed)`
+        : `${label} completed (${bundle.pages.length} pages)`;
     void recordAudit(
       deps.db,
       deps.dispatch,
@@ -363,7 +411,7 @@ export async function runApprovedBulkResearch(
     void recordAudit(
       deps.db,
       deps.dispatch,
-      webAuditEvent('web.research_failed', `Research failed: ${message}`, {
+      webAuditEvent('web.research_failed', `${label} failed: ${message}`, {
         risk: 'medium',
         status: 'failure',
       }),

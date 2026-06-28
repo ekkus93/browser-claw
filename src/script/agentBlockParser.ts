@@ -27,7 +27,13 @@ import { classifyFetchUrl } from '../net/urlSafety.ts';
 
 const WEB_REQUEST_TYPE = 'browserclaw_web_request';
 const WEB_REQUEST_VERSION = 1;
-const KNOWN_WEB_OPS = ['readPage', 'search', 'readCurrentTab'] as const;
+const KNOWN_WEB_OPS = [
+  'readPage',
+  'search',
+  'readCurrentTab',
+  'readPages',
+  'research',
+] as const;
 type WebOp = (typeof KNOWN_WEB_OPS)[number];
 
 export interface BrowserClawWebRequest {
@@ -36,7 +42,9 @@ export interface BrowserClawWebRequest {
   op: WebOp;
   url?: string;
   query?: string;
+  urls?: string[];
   maxResults?: number;
+  maxPages?: number;
   maxChars?: number;
 }
 
@@ -66,21 +74,45 @@ function validateWebRequest(input: unknown): WebRequestValidation {
     );
   }
 
-  if (obj.op === 'readPage' || obj.op === 'readCurrentTab') {
-    if (obj.op === 'readPage') {
-      if (typeof obj.url !== 'string') {
-        errors.push('readPage requires a string url');
-      } else {
-        const safe = classifyFetchUrl(obj.url);
-        if (!safe.ok) {
-          errors.push(`url is blocked: ${safe.reason}`);
-        }
+  if (obj.op === 'readPage') {
+    if (typeof obj.url !== 'string' || obj.url.trim() === '') {
+      errors.push('readPage requires a non-empty string url');
+    } else {
+      const safe = classifyFetchUrl(obj.url);
+      if (!safe.ok) {
+        errors.push(`url is blocked: ${safe.reason}`);
       }
     }
   }
 
-  if (obj.op === 'search' && typeof obj.query !== 'string') {
-    errors.push('search requires a string query');
+  if (obj.op === 'search') {
+    if (typeof obj.query !== 'string' || obj.query.trim() === '') {
+      errors.push('search requires a non-empty string query');
+    }
+  }
+
+  if (obj.op === 'research') {
+    if (typeof obj.query !== 'string' || obj.query.trim() === '') {
+      errors.push('research requires a non-empty string query');
+    }
+  }
+
+  if (obj.op === 'readPages') {
+    if (!Array.isArray(obj.urls) || obj.urls.length === 0) {
+      errors.push('readPages requires a non-empty urls array');
+    } else {
+      for (let i = 0; i < obj.urls.length; i++) {
+        const u = obj.urls[i];
+        if (typeof u !== 'string' || u.trim() === '') {
+          errors.push(`readPages urls[${i}] must be a non-empty string`);
+        } else {
+          const safe = classifyFetchUrl(u);
+          if (!safe.ok) {
+            errors.push(`readPages urls[${i}] is blocked: ${safe.reason}`);
+          }
+        }
+      }
+    }
   }
 
   if (errors.length > 0) return { ok: false, errors };

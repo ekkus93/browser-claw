@@ -154,4 +154,82 @@ describe('parseAgentActionBlock (FIX1-C1/C2)', () => {
     expect(r.kind).toBe('malformed');
     if (r.kind === 'malformed') expect(r.message).toMatch(/blocked/);
   });
+
+  // C1 (FIX3): readPages and research op support
+  it('C1: valid research block parses', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'research',
+      query: 'AI safety',
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('web_request');
+    if (r.kind === 'web_request') {
+      expect(r.request.op).toBe('research');
+      expect(r.request.query).toBe('AI safety');
+    }
+  });
+
+  it('C1: valid readPages block parses', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPages',
+      urls: ['https://a.com/', 'https://b.com/'],
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('web_request');
+    if (r.kind === 'web_request') {
+      expect(r.request.op).toBe('readPages');
+      expect(r.request.urls).toEqual(['https://a.com/', 'https://b.com/']);
+    }
+  });
+
+  it('C1: empty research.query is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'research',
+      query: '',
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+    if (r.kind === 'malformed') expect(r.message).toMatch(/non-empty/);
+  });
+
+  it('C1: empty readPages.urls is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPages',
+      urls: [],
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+    if (r.kind === 'malformed') expect(r.message).toMatch(/non-empty/);
+  });
+
+  it('C1: non-string URL slot in readPages.urls is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPages',
+      urls: ['https://ok.com/', 42],
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+    if (r.kind === 'malformed') expect(r.message).toMatch(/urls\[1\]/);
+  });
+
+  it('C1: unknown op is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'scrapeAll',
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+    if (r.kind === 'malformed') expect(r.message).toMatch(/op must be one of/);
+  });
 });

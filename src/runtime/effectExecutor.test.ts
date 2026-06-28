@@ -250,7 +250,12 @@ describe('executeEffect', () => {
         match: /web/,
       },
       {
-        effect: { type: 'web_research', id: 'q3', query: 'x' },
+        effect: {
+          type: 'web_research',
+          id: 'q3',
+          mode: 'query' as const,
+          query: 'x',
+        },
         port: 'web',
         match: /web/,
       },

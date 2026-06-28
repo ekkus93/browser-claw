@@ -300,13 +300,61 @@ export function createReferenceRuntime(
               },
             ];
           }
-          if (op === 'readPages' || op === 'research') {
-            const query =
-              typeof webRequest.query === 'string' ? webRequest.query : '';
+          if (op === 'research') {
+            // C3 (FIX3): research needs a query — fail closed if absent.
+            if (
+              typeof webRequest.query !== 'string' ||
+              webRequest.query.trim() === ''
+            ) {
+              return [
+                {
+                  type: 'audit_append',
+                  id: proposalId,
+                  event_type: 'runtime.invalid_web_request',
+                  summary: 'web_request research missing required query field',
+                  risk: 'medium',
+                },
+              ];
+            }
             state.pending[proposalId] = 'web_research';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;
-            return [{ type: 'web_research', id: proposalId, query }];
+            return [
+              {
+                type: 'web_research',
+                id: proposalId,
+                mode: 'query',
+                query: webRequest.query,
+              },
+            ];
+          }
+          if (op === 'readPages') {
+            // C3 (FIX3): explicit URL arrays must not collapse into query:''.
+            if (
+              !Array.isArray(webRequest.urls) ||
+              webRequest.urls.length === 0
+            ) {
+              return [
+                {
+                  type: 'audit_append',
+                  id: proposalId,
+                  event_type: 'runtime.invalid_web_request',
+                  summary: 'web_request readPages missing required urls array',
+                  risk: 'medium',
+                },
+              ];
+            }
+            state.pending[proposalId] = 'web_research';
+            state.pending_conversation[proposalId] = conversationId;
+            state.pending_skill[proposalId] = skillId;
+            return [
+              {
+                type: 'web_research',
+                id: proposalId,
+                mode: 'urls',
+                urls: webRequest.urls as string[],
+              },
+            ];
           }
           // Unknown op: protocol error. proposalId was allocated but not tracked.
           return [

@@ -110,6 +110,14 @@ describe('sandbox capability proxy — web (D4)', () => {
         length: 4,
       }),
     ),
+    readPages: vi.fn(() =>
+      Promise.resolve({
+        query: '',
+        results: [],
+        pages: [],
+        failures: [],
+      }),
+    ),
     research: vi.fn(),
   };
 

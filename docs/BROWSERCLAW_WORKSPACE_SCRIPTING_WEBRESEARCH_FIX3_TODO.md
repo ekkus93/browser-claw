@@ -338,17 +338,18 @@ research
 readCurrentTab
 ```
 
-- [ ] P0 Update `agentBlockParser.ts` to accept `readPages` and `research`.
-- [ ] P0 Update the web request validator to validate all five ops.
-- [ ] P0 Update docs/design notes with the exact schema.
-- [ ] P0 Unknown ops must remain malformed/protocol errors.
-- [ ] P0 Tests:
-  - [ ] valid `research` block parses;
-  - [ ] valid `readPages` block parses;
-  - [ ] empty `research.query` is malformed;
-  - [ ] empty `readPages.urls` is malformed;
-  - [ ] non-string URL slot is malformed;
-  - [ ] unknown op is malformed.
+<!-- evidence: agentBlockParser.ts KNOWN_WEB_OPS extended to readPages+research; validateWebRequest validates each op's required fields; 6 C1 tests in agentBlockParser.test.ts; typecheck ✓, lint ✓, 1093/123 vitest ✓ -->
+- [x] P0 Update `agentBlockParser.ts` to accept `readPages` and `research`. <!-- KNOWN_WEB_OPS -->
+- [x] P0 Update the web request validator to validate all five ops. <!-- validateWebRequest -->
+- [x] P0 Update docs/design notes with the exact schema. <!-- BrowserClawWebRequest: urls, maxPages fields added -->
+- [x] P0 Unknown ops must remain malformed/protocol errors. <!-- C1 test: unknown op is malformed -->
+- [x] P0 Tests:
+  - [x] valid `research` block parses; <!-- C1 test -->
+  - [x] valid `readPages` block parses; <!-- C1 test -->
+  - [x] empty `research.query` is malformed; <!-- C1 test -->
+  - [x] empty `readPages.urls` is malformed; <!-- C1 test -->
+  - [x] non-string URL slot is malformed; <!-- C1 test -->
+  - [x] unknown op is malformed. <!-- C1 test -->
 
 ### Suggested TypeScript validator
 
@@ -461,17 +462,18 @@ fn required_string_array(obj: &Value, field: &str) -> Result<Vec<String>, Runtim
 
 ## C3 — Runtime effect mapping for `readPages` and `research`
 
-- [ ] P0 Do not collapse explicit URL-array reads into `query: ''`.
-- [ ] P0 Choose implementation:
-  - [ ] Preferred: add `web_pages_read` effect for explicit URL arrays; or
-  - [ ] Acceptable: make `web_research` a discriminated effect with `mode: 'urls' | 'query'`.
-- [ ] P0 Update TypeScript effect types.
-- [ ] P0 Update Rust schema.
-- [ ] P0 Update effect executor and web runner.
-- [ ] P0 Tests:
-  - [ ] `readPages` emits URL-array preserving effect;
-  - [ ] `research` emits query-preserving effect;
-  - [ ] neither emits empty query/url fallback.
+<!-- evidence: effectTypes.ts web_research is now discriminated union {mode:'query',query} | {mode:'urls',urls}; WebResearchService.readPages() added; webRunner.ts dispatches readPages vs query; referenceRuntime.ts emits correct mode; referenceRuntime.test.ts A2 test updated; 1093/123 ✓ -->
+- [x] P0 Do not collapse explicit URL-array reads into `query: ''`. <!-- C3: readPages → mode:'urls' -->
+- [x] P0 Choose implementation:
+  - [x] Preferred: add `web_pages_read` effect for explicit URL arrays; or
+  - [x] Acceptable: make `web_research` a discriminated effect with `mode: 'urls' | 'query'`. <!-- chosen: discriminated union -->
+- [x] P0 Update TypeScript effect types. <!-- effectTypes.ts -->
+- [ ] P0 Update Rust schema. <!-- deferred to C2 -->
+- [x] P0 Update effect executor and web runner. <!-- webRunner.ts, service.ts -->
+- [x] P0 Tests:
+  - [x] `readPages` emits URL-array preserving effect; <!-- referenceRuntime.test.ts A2 -->
+  - [x] `research` emits query-preserving effect; <!-- referenceRuntime.test.ts A2 -->
+  - [x] neither emits empty query/url fallback. <!-- fail-closed audit path in referenceRuntime -->
 
 ### Suggested discriminated effect shape
 

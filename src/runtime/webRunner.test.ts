@@ -14,6 +14,19 @@ const submit = vi.fn().mockResolvedValue(undefined);
 const dispatch = vi.fn();
 
 function makeWeb(over: Partial<WebResearchService> = {}): WebResearchService {
+  const bundle = {
+    query: 'q',
+    results: [{ title: 'A', url: 'https://example.com/a' }],
+    pages: [
+      {
+        url: 'https://example.com/a',
+        finalUrl: 'https://example.com/a',
+        text: 'body',
+        length: 4,
+      },
+    ],
+    failures: [],
+  };
   return {
     search: vi.fn(() =>
       Promise.resolve([{ title: 'A', url: 'https://example.com/a' }]),
@@ -26,21 +39,8 @@ function makeWeb(over: Partial<WebResearchService> = {}): WebResearchService {
         length: 4,
       }),
     ),
-    research: vi.fn(() =>
-      Promise.resolve({
-        query: 'q',
-        results: [{ title: 'A', url: 'https://example.com/a' }],
-        pages: [
-          {
-            url: 'https://example.com/a',
-            finalUrl: 'https://example.com/a',
-            text: 'body',
-            length: 4,
-          },
-        ],
-        failures: [],
-      }),
-    ),
+    readPages: vi.fn(() => Promise.resolve(bundle)),
+    research: vi.fn(() => Promise.resolve(bundle)),
     ...over,
   };
 }
@@ -138,6 +138,7 @@ describe('createWebEffectHandler (F3)', () => {
     await handle({
       type: 'web_research',
       id: 'r1',
+      mode: 'query',
       query: 'opfs',
       options: { maxPages: 3 },
     });

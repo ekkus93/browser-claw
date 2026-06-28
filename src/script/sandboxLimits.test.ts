@@ -119,6 +119,9 @@ describe('runSandboxWithLimits (D5)', () => {
           length: 1,
         }),
       ),
+      readPages: vi.fn(() =>
+        Promise.resolve({ query: '', results: [], pages: [], failures: [] }),
+      ),
       research: vi.fn(),
     };
     const result = await runSandboxWithLimits(

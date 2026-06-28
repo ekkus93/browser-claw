@@ -1984,6 +1984,16 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T22:48:46Z - Claude Sonnet 4.6 - FIX3 Part C1+C3 (readPages/research parser + discriminated web_research) DONE
+- agentBlockParser.ts: added readPages + research to KNOWN_WEB_OPS; validateWebRequest validates all 5 ops (non-empty url/query/urls); 6 C1 regression tests added.
+- effectTypes.ts: web_research → discriminated union {mode:'query', query} | {mode:'urls', urls}.
+- WebResearchService.readPages(urls, opts) added to interface and implemented in service.ts (reads each URL via readPage, returns ResearchBundle with query:'').
+- referenceRuntime.ts: readPages → mode:'urls' effect; research → mode:'query' effect; both fail-closed with audit if required fields absent.
+- webRunner.ts: createWebEffectHandler + runApprovedBulkResearch both dispatch on isUrlsMode (parsed.urls vs query).
+- All mocks in webRunner.test, planOps.test, sandboxCapabilities.test, sandboxLimits.test updated with readPages.
+- Gate: typecheck ✓, lint ✓, format ✓, 1093/123 vitest ✓.
+- NEXT: C2 (Rust fail-closed validation) or D1 (extension central dispatch).
+
 ## 2026-06-28T22:41:00Z - Claude Sonnet 4.6 - FIX3 Part B1+B3 (effect-result serializer + no-empty regression) DONE
 - Created src/runtime/effectResultSerialization.ts: toolContentFromEffectResult() handles { text }, { results }, { content }, { contents }, { bundle }, { response }, { outputs }, { value } — all produce non-empty JSON content.
 - referenceRuntime.ts: replaced readText() with toolContentFromEffectResult() for web/plan/sandbox/extension success paths; empty/unrecognized success emits runtime.empty_effect_result audit (no storage_put, no llm_request).

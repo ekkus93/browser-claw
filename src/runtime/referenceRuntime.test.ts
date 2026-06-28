@@ -224,10 +224,18 @@ describe('referenceRuntime', () => {
     const effects = runtime.dispatch({
       type: 'resolve_effect',
       id: 'eff-2',
-      result: { web_request: { op: 'readPages', query: 'climate change' } },
+      result: {
+        web_request: {
+          op: 'readPages',
+          urls: ['https://example.com/a', 'https://example.com/b'],
+        },
+      },
     });
     expect(effects).toHaveLength(1);
     expect(effects[0]?.type).toBe('web_research');
+    const eff = effects[0] as { type: string; mode: string; urls: string[] };
+    expect(eff.mode).toBe('urls');
+    expect(eff.urls).toHaveLength(2);
   });
 
   it('A2: emits web_research for research web_request', () => {

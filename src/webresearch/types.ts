@@ -128,5 +128,7 @@ export interface PageReaderProvider {
 export interface WebResearchService {
   search(query: string, options?: SearchOptions): Promise<SearchResult[]>;
   readPage(url: string, options?: PageReadRequest): Promise<PageContent>;
+  /** C3 (FIX3): explicit URL-array read path — never collapses to query:''. */
+  readPages(urls: string[], options?: ResearchOptions): Promise<ResearchBundle>;
   research(query: string, options?: ResearchOptions): Promise<ResearchBundle>;
 }

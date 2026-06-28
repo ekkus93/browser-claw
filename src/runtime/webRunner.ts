@@ -13,6 +13,7 @@ import { approvalRequested } from '../store/slices/approvalsSlice.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { webAuditEvent } from '../audit/auditEvents.ts';
 import { classifyFetchUrl } from '../net/urlSafety.ts';
+import { tryParseApprovalPayload } from './approvalPayload.ts';
 import type { AppDispatch } from '../store/store.ts';
 import type { BrowserClawDB } from '../db/db.ts';
 import type {
@@ -187,11 +188,7 @@ export async function runApprovedWebPageRead(
   deps: WebEffectDeps,
   approval: ApprovedWebPageRead,
 ): Promise<void> {
-  const parsed = approval.payloadPreview
-    ? (safeParse(approval.payloadPreview) as
-        | { url?: unknown; options?: unknown }
-        | undefined)
-    : undefined;
+  const parsed = tryParseApprovalPayload(approval.payloadPreview);
   const url = typeof parsed?.url === 'string' ? parsed.url : undefined;
 
   if (approval.status !== 'approved') {
@@ -287,11 +284,7 @@ export async function runApprovedBulkResearch(
   deps: WebEffectDeps,
   approval: ApprovedBulkResearch,
 ): Promise<void> {
-  const parsed = approval.payloadPreview
-    ? (safeParse(approval.payloadPreview) as
-        | { query?: unknown; options?: unknown }
-        | undefined)
-    : undefined;
+  const parsed = tryParseApprovalPayload(approval.payloadPreview);
   const query = typeof parsed?.query === 'string' ? parsed.query : '';
 
   if (approval.status !== 'approved') {
@@ -355,10 +348,3 @@ export async function runApprovedBulkResearch(
   }
 }
 
-function safeParse(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-}

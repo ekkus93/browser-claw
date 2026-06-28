@@ -17,6 +17,7 @@ import {
 import { validatePlan } from '../script/planSchema.ts';
 import type { PlanOpContext } from '../script/planOps.ts';
 import type { Command, Effect } from './effectTypes.ts';
+import { tryParseApprovalPayload } from './approvalPayload.ts';
 
 type PlanEffect = Extract<Effect, { type: 'script_plan_proposal' }>;
 
@@ -79,9 +80,7 @@ export async function runApprovedPlanEffect(
   deps: PlanEffectDeps,
   approval: ApprovedPlan,
 ): Promise<void> {
-  const plan: unknown = approval.payloadPreview
-    ? safeParse(approval.payloadPreview)
-    : undefined;
+  const plan: unknown = tryParseApprovalPayload(approval.payloadPreview);
 
   if (approval.status !== 'approved') {
     if (plan && typeof plan === 'object') {
@@ -112,10 +111,3 @@ export async function runApprovedPlanEffect(
   });
 }
 
-function safeParse(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-}

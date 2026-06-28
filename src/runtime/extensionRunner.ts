@@ -12,6 +12,7 @@
 import { approvalRequested } from '../store/slices/approvalsSlice.ts';
 import { recordAudit } from '../audit/auditSink.ts';
 import { extensionAuditEvent } from '../audit/auditEvents.ts';
+import { tryParseApprovalPayload } from './approvalPayload.ts';
 import {
   isExtensionResponse,
   newRequestId,
@@ -131,9 +132,7 @@ export async function runApprovedExtensionPermission(
   deps: ExtensionEffectDeps,
   approval: ApprovedExtensionPermission,
 ): Promise<void> {
-  const parsed = approval.payloadPreview
-    ? parseExtensionRequest(safeParse(approval.payloadPreview))
-    : { ok: false as const, reason: 'no payload' };
+  const parsed = parseExtensionRequest(tryParseApprovalPayload(approval.payloadPreview));
 
   if (approval.status !== 'approved') {
     const origin =
@@ -182,12 +181,4 @@ export async function runApprovedExtensionPermission(
     ),
   );
   await sendAndResolve(deps, approval.id, parsed.request);
-}
-
-function safeParse(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
 }

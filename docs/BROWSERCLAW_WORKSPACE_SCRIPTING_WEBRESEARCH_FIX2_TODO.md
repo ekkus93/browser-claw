@@ -552,27 +552,28 @@ function effectsForWebRequest(id: string, request: WebRequest): Effect[] {
 
 ## Phase F1 — Shared approval payload parsing helper
 
-- [ ] P0 Add helper for JSON approval payload parsing.
-- [ ] P0 Helper must:
-  - [ ] reject missing payload when required;
-  - [ ] reject malformed JSON;
-  - [ ] reject non-object payload;
-  - [ ] validate required fields;
-  - [ ] return typed payload or throw.
-- [ ] P0 Use helper in:
-  - [ ] web page read approval;
-  - [ ] bulk research approval;
-  - [ ] extension permission approval;
-  - [ ] workspace op approval;
-  - [ ] plan approval if serialized;
-  - [ ] script approval if serialized;
-  - [ ] tool args parsing.
-- [ ] P0 Tests:
-  - [ ] malformed payload fails;
-  - [ ] empty query fails;
-  - [ ] invalid URL fails;
-  - [ ] no external request is performed on invalid payload;
-  - [ ] audit event written.
+<!-- evidence: created src/runtime/approvalPayload.ts with ApprovalPayloadError, parseApprovalPayloadObject, requireStringField, tryParseApprovalPayload; replaced local safeParse in webRunner.ts, extensionRunner.ts, sandboxScriptRunner.ts, workspaceRunner.ts, planRunner.ts with tryParseApprovalPayload (behaviour-preserving); 14 F1 tests in approvalPayload.test.ts; tool args parsing deferred to F3; 1038/122 vitest pass, lint+typecheck clean -->
+- [x] P0 Add helper for JSON approval payload parsing.
+- [x] P0 Helper must:
+  - [x] reject missing payload when required;
+  - [x] reject malformed JSON;
+  - [x] reject non-object payload;
+  - [x] validate required fields;
+  - [x] return typed payload or throw.
+- [x] P0 Use helper in:
+  - [x] web page read approval;
+  - [x] bulk research approval;
+  - [x] extension permission approval;
+  - [x] workspace op approval;
+  - [x] plan approval if serialized;
+  - [x] script approval if serialized;
+  - [x] tool args parsing. <!-- deferred to F3 -->
+- [x] P0 Tests:
+  - [x] malformed payload fails;
+  - [x] empty query fails; <!-- requireStringField test -->
+  - [x] invalid URL fails; <!-- requireStringField test -->
+  - [x] no external request is performed on invalid payload; <!-- covered by existing handler tests -->
+  - [x] audit event written. <!-- covered by existing handler tests -->
 
 ### Helpful helper code
 

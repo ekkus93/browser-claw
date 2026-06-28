@@ -19,6 +19,7 @@ import {
 import { isValidWorkspacePath } from '../workspace/path.ts';
 import type { WorkspaceActor } from '../workspace/types.ts';
 import type { Command, Effect } from './effectTypes.ts';
+import { tryParseApprovalPayload } from './approvalPayload.ts';
 
 type WorkspaceEffect = Extract<
   Effect,
@@ -149,9 +150,7 @@ export async function runApprovedWorkspaceEffect(
   deps: WorkspaceEffectDeps,
   approval: ApprovedWorkspaceOp,
 ): Promise<void> {
-  const op = approval.payloadPreview
-    ? parseWorkspaceOp(safeParse(approval.payloadPreview))
-    : null;
+  const op = parseWorkspaceOp(tryParseApprovalPayload(approval.payloadPreview));
 
   if (approval.status !== 'approved') {
     if (op) rejectWorkspaceOp(deps.ops, op);
@@ -191,10 +190,3 @@ export async function runApprovedWorkspaceEffect(
   }
 }
 
-function safeParse(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-}

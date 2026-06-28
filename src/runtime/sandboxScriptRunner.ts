@@ -21,6 +21,7 @@ import {
   type ScriptExecutionPolicy,
 } from '../script/scriptPolicy.ts';
 import { recordAudit } from '../audit/auditSink.ts';
+import { tryParseApprovalPayload } from './approvalPayload.ts';
 import type { Command, Effect } from './effectTypes.ts';
 
 type SandboxScriptEffect = Extract<Effect, { type: 'sandbox_script_proposal' }>;
@@ -132,9 +133,7 @@ export async function runApprovedSandboxScriptEffect(
   deps: SandboxScriptEffectDeps,
   approval: ApprovedSandboxScript,
 ): Promise<void> {
-  const request: unknown = approval.payloadPreview
-    ? safeParse(approval.payloadPreview)
-    : undefined;
+  const request: unknown = tryParseApprovalPayload(approval.payloadPreview);
 
   if (approval.status !== 'approved') {
     const v = validateScriptRequest(request);
@@ -161,12 +160,4 @@ export async function runApprovedSandboxScriptEffect(
           },
         },
   });
-}
-
-function safeParse(text: string): unknown {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
 }

@@ -1949,6 +1949,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1024/121 ✓.
 - NEXT: Part F1 — shared approval payload parsing helper (P0).
 
+## 2026-06-28T20:49:21Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 15: Part F1 (shared approval payload parsing helper) DONE
+- Created src/runtime/approvalPayload.ts: ApprovalPayloadError, parseApprovalPayloadObject, requireStringField, tryParseApprovalPayload.
+- Replaced local safeParse in 5 runner files (webRunner, extensionRunner, sandboxScriptRunner, workspaceRunner, planRunner) with tryParseApprovalPayload (behaviour-preserving wrapper).
+- 14 F1 tests in approvalPayload.test.ts covering all error kinds and the try-variant.
+- Gate: typecheck ✓, lint ✓, vitest 1038/122 ✓.
+- NEXT: Part F2 — bulk research approval must not fallback to empty query (P1).
+
 ## 2026-06-28T20:26:54Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 10: Part D2 (canonicalize search secret key IDs) DONE
 - useWebResearchKey.ts: BRAVE_KEY_ID changed from 'brave_search_api_key' to searchProviderSecretId(BRAVE_PROFILE_ID) = 'search_provider:brave'. Now UI and runtime use the same key ID.
 - resolveSearchProviderKey already used searchProviderSecretId — already correct; no change needed.

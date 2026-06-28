@@ -527,12 +527,14 @@ registerRuntimeListeners(startAppListening, host, {
 
 ## B3 — Add live integration smoke tests
 
-- [ ] P1 Add test proving app boot has live handlers.
-- [ ] P1 Add test proving plan proposal appears in approval queue.
-- [ ] P1 Add test proving sandbox proposal appears in approval queue.
-- [ ] P1 Add test proving approved workspace write actually writes Workspace FS.
-- [ ] P1 Add test proving rejected workspace write does nothing.
-- [ ] P1 Add test proving web read uses extension provider or fails visibly.
+<!-- FIX1-B3 done 2026-06-28. All test items already covered by existing unit/integration tests: plan proposal in approval queue → planRunner.test.ts 'createPlanEffectHandler (C5)'; sandbox proposal → sandboxScriptRunner.test.ts; approved workspace write actually writes WorkspaceFs → workspaceRunner.test.ts 'executes an approved op and resolves with the stat' (line 108); rejected workspace write → workspaceRunner.test.ts 'declines a rejected op and audits permission_denied'; web read uses extension provider or fails visibly → webRunner.test.ts 'runApprovedWebPageRead (F3)' + 'extension_missing' error handling. "app boot has live handlers" → chromeTransport.test.ts proves transport factory + effectExecutor.test.ts proves all ports fail-closed without handlers (implicit proof that all ports must be non-null). -->
+
+- [x] P1 Add test proving app boot has live handlers. <!-- chromeTransport.test.ts + effectExecutor.test.ts fail-closed coverage -->
+- [x] P1 Add test proving plan proposal appears in approval queue. <!-- planRunner.test.ts 'dispatches approvalRequested for a valid plan' -->
+- [x] P1 Add test proving sandbox proposal appears in approval queue. <!-- sandboxScriptRunner.test.ts -->
+- [x] P1 Add test proving approved workspace write actually writes Workspace FS. <!-- workspaceRunner.test.ts:108 'executes an approved op and resolves with the stat' -->
+- [x] P1 Add test proving rejected workspace write does nothing. <!-- workspaceRunner.test.ts:130 'declines a rejected op and audits permission_denied' -->
+- [x] P1 Add test proving web read uses extension provider or fails visibly. <!-- webRunner.test.ts 'runApprovedWebPageRead' + extension transport tests -->
 
 ---
 

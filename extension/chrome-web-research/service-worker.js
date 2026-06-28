@@ -346,6 +346,7 @@ function handleGetStatus(message) {
   const readCurrentTab = typeof handlers.read_current_tab === 'function';
   const requestHostPermission =
     typeof handlers.request_host_permission === 'function';
+  const webSearch = typeof handlers.web_search === 'function';
   return {
     ok: true,
     requestId: message.requestId,
@@ -357,10 +358,99 @@ function handleGetStatus(message) {
       readPage,
       readCurrentTab,
       requestHostPermission,
+      webSearch,
     },
     pageReadingAvailable: readPage,
     currentTabReadingAvailable: readCurrentTab,
+    webSearchAvailable: webSearch,
   };
+}
+
+// ---------------------------------------------------------------------------
+// FIX1-G2 — web_search handler
+// The extension acts as a CORS-bypassing intermediary: the app forwards the
+// API key from SecretVault in-memory; the key is used for this request only
+// and is never logged, stored, or included in the response.
+// ---------------------------------------------------------------------------
+
+const BRAVE_SEARCH_URL_SW =
+  'https://api.search.brave.com/res/v1/web/search';
+const SEARCH_MAX_RESULTS = 20;
+
+async function handleWebSearch(message) {
+  const { requestId, query, apiKey, maxResults } = message;
+
+  if (typeof query !== 'string' || query.trim().length === 0) {
+    return errorResponse('invalid_request', 'web_search: query must be a non-empty string', requestId);
+  }
+
+  const count = Math.min(
+    typeof maxResults === 'number' && maxResults > 0 ? maxResults : 10,
+    SEARCH_MAX_RESULTS,
+  );
+
+  if (typeof apiKey !== 'string' || apiKey.trim().length === 0) {
+    return errorResponse('permission_denied', 'web_search: no API key provided', requestId);
+  }
+
+  const url =
+    `${BRAVE_SEARCH_URL_SW}?q=${encodeURIComponent(query)}&count=${String(count)}`;
+
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: {
+        Accept: 'application/json',
+        'X-Subscription-Token': apiKey,
+      },
+    });
+  } catch (e) {
+    return errorResponse(
+      'internal_error',
+      `web_search network error: ${e instanceof Error ? e.message : 'unknown'}`,
+      requestId,
+      true,
+    );
+  }
+
+  if (!response.ok) {
+    const kind =
+      response.status === 401 || response.status === 403
+        ? 'permission_denied'
+        : response.status === 429
+          ? 'internal_error'
+          : 'internal_error';
+    return errorResponse(
+      kind,
+      `web_search: provider returned ${response.status}`,
+      requestId,
+      response.status === 429 || response.status >= 500,
+    );
+  }
+
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    return errorResponse('internal_error', 'web_search: invalid JSON from provider', requestId);
+  }
+
+  const web = body && typeof body === 'object' ? body.web : null;
+  const items = Array.isArray(web?.results) ? web.results : [];
+  const results = items
+    .map((r, i) =>
+      typeof r?.url === 'string'
+        ? {
+            title: typeof r.title === 'string' ? r.title : r.url,
+            url: r.url,
+            ...(typeof r.description === 'string' ? { snippet: r.description } : {}),
+            rank: i + 1,
+          }
+        : null,
+    )
+    .filter(Boolean);
+
+  return { ok: true, requestId, results };
 }
 
 /**
@@ -373,6 +463,7 @@ const handlers = {
   read_page: handleReadPage,              // FIX1-A3
   read_current_tab: handleReadCurrentTab, // FIX1-A4
   request_host_permission: undefined,
+  web_search: handleWebSearch,            // FIX1-G2
 };
 
 // ---------------------------------------------------------------------------

@@ -1771,6 +1771,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Only genuinely deferred: H3 manual browser/extension QA (7 items need live Chrome), test:e2e:extended (1 Chromium flake in wllama blob cache, not a gate blocker), cargo tests (0 tests — Rust crates exist but logic not ported yet).
 - BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_TODO.md: all phases A–H + Final Acceptance Checklist complete. Ralph Loop for this TODO is DONE.
 
+## 2026-06-28T08:31:18Z - Claude Sonnet 4.6 - Ralph FIX1: completed G1, G2, G3
+- G1 (Brave CORS): BRAVE_DIRECT_CORS_VERIFIED=false in braveSearch.ts. Guard in search(): throws SearchError('unavailable') if !deps.fetch && !deps.corsVerified. Direct Brave provider blocked by default; must route through extension. Tests +4.
+- G2 (extension search): web_search added to protocol.ts + service-worker.js handleWebSearch (calls Brave API, forwards apiKey, normalizes results). searchProvider.ts: createExtensionSearchProvider with onAudit hook; key forwarded in-memory, never logged. Tests +8 (success/auth/rate-limit/missing/no-key-leakage/audits). protocol.test.ts +5.
+- G3 (status checker): searchStatusChecker.ts: checkSearchStatus() → discriminated union {no_provider|key_locked|extension_unavailable|provider_unavailable|connected}. Performs real probe search. Tests +9.
+- vitest: 908→934. Remaining: K1-K3 (Docker extension E2E), L1-L3 (final gate).
+
 ## 2026-06-28T08:16:41Z - Claude Sonnet 4.6 - Ralph FIX1: completed I1 and J1
 - I1 (large-file guards): workspaceFs.ts + MAX_FULL_TEXT_DECODE_BYTES=2MiB + WorkspaceFileTooLargeError. readTextRange and readLines both check meta.sizeBytes before full decode and throw. Tests +5. vitest 904.
 - J1 (transaction atomicity): install and uninstall each wrapped in db.transaction('rw', [5 tables], ...). Failure path audits skill_install_failed/skill_uninstall_failed before rethrowing. Success audit after tx commits. Tests +4 (rollback skill row, rollback files, failed install audit, failed uninstall audit). vitest 908.

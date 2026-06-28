@@ -213,3 +213,41 @@ describe('createBraveSearchProvider (E2)', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// G1 — CORS guard for direct browser Brave Search provider
+// ---------------------------------------------------------------------------
+
+import { BRAVE_DIRECT_CORS_VERIFIED } from './braveSearch.ts';
+
+describe('G1 — direct Brave Search CORS guard', () => {
+  it('G1: BRAVE_DIRECT_CORS_VERIFIED is false (unverified)', () => {
+    expect(BRAVE_DIRECT_CORS_VERIFIED).toBe(false);
+  });
+
+  it('G1: direct provider throws unavailable when CORS not verified and no injected fetch', async () => {
+    const provider = createBraveSearchProvider({ apiKey: 'k' });
+    await expect(provider.search('cats')).rejects.toSatisfy(
+      (e: unknown) => e instanceof SearchError && e.kind === 'unavailable',
+    );
+  });
+
+  it('G1: direct provider works normally when test fetch is injected (no browser CORS)', async () => {
+    const provider = createBraveSearchProvider({
+      apiKey: 'k',
+      fetch: mockFetch(200, VALID_RESPONSE),
+    });
+    const results = await provider.search('cats');
+    expect(results).toHaveLength(2);
+  });
+
+  it('G1: direct provider works when corsVerified is explicitly true', async () => {
+    const provider = createBraveSearchProvider({
+      apiKey: 'k',
+      corsVerified: true,
+      fetch: mockFetch(200, VALID_RESPONSE),
+    });
+    const results = await provider.search('cats');
+    expect(results.length).toBeGreaterThan(0);
+  });
+});

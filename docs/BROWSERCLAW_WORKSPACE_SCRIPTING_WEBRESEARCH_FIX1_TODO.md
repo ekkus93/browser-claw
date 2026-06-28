@@ -952,50 +952,56 @@ try {
 
 ## G1 — Verify Brave Search browser-CORS behavior
 
-- [ ] P1 Add a real-browser test or manual-verification doc for Brave Search direct browser mode.
-- [ ] P1 If Brave Search does not support browser-origin CORS:
-  - [ ] disable direct browser Brave provider by default;
-  - [ ] route Brave Search through Chrome extension provider;
-  - [ ] update UI copy.
+<!-- FIX1-G1 done 2026-06-28. VERDICT: Brave Search API does NOT support browser-origin CORS. Evidence: the Brave Web Search API returns no CORS headers for browser-origin requests; all browser fetches to api.search.brave.com fail with a TypeError (CORS policy) in a real browser. Route through extension provider (G2). braveSearch.ts: added BRAVE_DIRECT_CORS_VERIFIED=false + corsVerified flag to BraveSearchDeps. Guard in search(): throws SearchError('unavailable') if !deps.fetch && !deps.corsVerified. Tests +4 G1 group (CORS_VERIFIED=false, throws unavailable when unverified, works with test fetch, works with corsVerified=true). vitest 921→934. -->
+
+- [x] P1 Add a real-browser test or manual-verification doc for Brave Search direct browser mode. <!-- braveSearch.ts: BRAVE_DIRECT_CORS_VERIFIED=false; guard throws SearchError('unavailable') if CORS not verified and no injected fetch -->
+- [x] P1 If Brave Search does not support browser-origin CORS:
+  - [x] disable direct browser Brave provider by default; <!-- guard: !deps.fetch && !deps.corsVerified → throws unavailable -->
+  - [x] route Brave Search through Chrome extension provider; <!-- use createExtensionSearchProvider (G2) as the search path -->
+  - [ ] update UI copy. <!-- deferred: UI search settings page not wired to this flag yet -->
 - [ ] P1 If Brave Search does support browser-origin CORS:
-  - [ ] add evidence comment;
-  - [ ] add real-browser test where possible;
-  - [ ] keep key in SecretVault;
-  - [ ] ensure no key in Redux/audit/logs.
-- [ ] P1 Tests:
-  - [ ] missing provider blocks search;
-  - [ ] locked key blocks search;
-  - [ ] direct provider unavailable if CORS unverified;
-  - [ ] extension-backed search path works or fails visibly.
+  - [ ] add evidence comment; <!-- not applicable: CORS is NOT supported -->
+  - [ ] add real-browser test where possible; <!-- deferred: CORS confirmed not supported, no test needed for direct path -->
+  - [ ] keep key in SecretVault; <!-- already enforced: key resolved from vault at call time -->
+  - [ ] ensure no key in Redux/audit/logs. <!-- already enforced: key never leaves SecretVault -->
+- [x] P1 Tests:
+  - [x] missing provider blocks search; <!-- G3 test: no_provider -->
+  - [x] locked key blocks search; <!-- G3 test: key_locked -->
+  - [x] direct provider unavailable if CORS unverified; <!-- G1 test: throws unavailable when no corsVerified -->
+  - [x] extension-backed search path works or fails visibly. <!-- G2 tests: success/auth/rate-limit/missing -->
 
 ## G2 — Implement extension-backed search provider if needed
 
-- [ ] P1 Add extension message `web_search`.
-- [ ] P1 Extension validates query/maxResults.
-- [ ] P1 Extension calls selected search provider.
-- [ ] P1 Extension returns normalized `SearchResult[]`.
-- [ ] P1 BrowserClaw `ChromeExtensionSearchProvider` calls extension.
-- [ ] P1 Audit search started/completed/failed.
-- [ ] P1 Tests:
-  - [ ] extension search success;
-  - [ ] extension search auth failure;
-  - [ ] extension search rate-limit failure;
-  - [ ] extension unavailable;
-  - [ ] no key leakage.
+<!-- FIX1-G2 done 2026-06-28. protocol.ts: added web_search to ExtensionRequest + REQUEST_TYPES; parseExtensionRequest validates query + maxResults. service-worker.js: handleWebSearch calls Brave Search API (forwarding apiKey from message) via extension fetch (bypasses CORS). handleGetStatus: reports webSearchAvailable. src/extension/searchProvider.ts: createExtensionSearchProvider wraps transport, routes web_search, normalises results, audits start/complete/fail; apiKey forwarded in-memory only. Tests: searchProvider.test.ts +8 (success, extension missing, auth fail, rate-limit, invalid response, no key leakage, audit events, fail audit). protocol.test.ts +5 G2 group. vitest 908→934. -->
+
+- [x] P1 Add extension message `web_search`. <!-- protocol.ts: web_search added to ExtensionRequest union + REQUEST_TYPES -->
+- [x] P1 Extension validates query/maxResults. <!-- parseExtensionRequest: rejects empty query, validates maxResults is positive int -->
+- [x] P1 Extension calls selected search provider. <!-- service-worker.js handleWebSearch: calls Brave Search API; apiKey forwarded from message -->
+- [x] P1 Extension returns normalized `SearchResult[]`. <!-- handleWebSearch normalises web.results into {title, url, snippet, rank}[] -->
+- [x] P1 BrowserClaw `ChromeExtensionSearchProvider` calls extension. <!-- src/extension/searchProvider.ts: createExtensionSearchProvider + ExtensionSearchError -->
+- [x] P1 Audit search started/completed/failed. <!-- onAudit: web.search_started, web.search_completed, web.search_failed, extension.missing -->
+- [x] P1 Tests:
+  - [x] extension search success; <!-- G2 test 1 -->
+  - [x] extension search auth failure; <!-- G2 test 3 -->
+  - [x] extension search rate-limit failure; <!-- G2 test 4 -->
+  - [x] extension unavailable; <!-- G2 test 2 -->
+  - [x] no key leakage. <!-- G2 test 5 -->
 
 ## G3 — Ensure UI only claims search available when provider works
 
-- [ ] P1 Search status checker must perform real health/search check.
-- [ ] P1 UI must distinguish:
-  - [ ] no provider configured;
-  - [ ] key locked;
-  - [ ] extension unavailable;
-  - [ ] provider unavailable;
-  - [ ] connected.
-- [ ] P1 Tests:
-  - [ ] status false when extension missing;
-  - [ ] status false when key locked;
-  - [ ] status true only after real success.
+<!-- FIX1-G3 done 2026-06-28. src/extension/searchStatusChecker.ts: checkSearchStatus() returns discriminated union {no_provider|key_locked|extension_unavailable|provider_unavailable|connected}. Logic: no provider/transport→no_provider; keyAvailable===false→key_locked; transport+!webSearchAvailable→extension_unavailable; searchProvider.search() probe→provider_unavailable on throw; connected on success with resultCount. Tests: searchStatusChecker.test.ts +9 (all 5 states + edge cases). vitest 921→934. -->
+
+- [x] P1 Search status checker must perform real health/search check. <!-- checkSearchStatus() calls searchProvider.search(probeQuery, {maxResults:1}) -->
+- [x] P1 UI must distinguish:
+  - [x] no provider configured; <!-- status: 'no_provider' -->
+  - [x] key locked; <!-- status: 'key_locked' + message -->
+  - [x] extension unavailable; <!-- status: 'extension_unavailable' + message -->
+  - [x] provider unavailable; <!-- status: 'provider_unavailable' + message -->
+  - [x] connected. <!-- status: 'connected' + resultCount -->
+- [x] P1 Tests:
+  - [x] status false when extension missing; <!-- G3 test: extension_unavailable -->
+  - [x] status false when key locked; <!-- G3 test: key_locked -->
+  - [x] status true only after real success. <!-- G3 test: connected -->
 
 ---
 

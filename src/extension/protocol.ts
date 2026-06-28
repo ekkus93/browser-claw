@@ -36,7 +36,15 @@ export type ExtensionRequest =
       format?: ReadFormat;
       maxChars?: number;
     }
-  | { type: 'request_host_permission'; requestId: string; origin: string };
+  | { type: 'request_host_permission'; requestId: string; origin: string }
+  | {
+      type: 'web_search';
+      requestId: string;
+      query: string;
+      /** Optional API key forwarded from SecretVault; never stored or logged. */
+      apiKey?: string;
+      maxResults?: number;
+    };
 
 export type ExtensionRequestType = ExtensionRequest['type'];
 
@@ -47,6 +55,7 @@ const REQUEST_TYPES: readonly ExtensionRequestType[] = [
   'read_pages',
   'read_current_tab',
   'request_host_permission',
+  'web_search',
 ];
 
 export type ExtensionErrorKind =
@@ -116,6 +125,17 @@ export function parseExtensionRequest(message: unknown): RequestParse {
         ok: false,
         reason: 'read_pages requires a non-empty string[] urls',
       };
+    }
+  }
+  if (type === 'web_search') {
+    if (typeof message.query !== 'string' || message.query.trim().length === 0) {
+      return { ok: false, reason: 'web_search requires a non-empty string query' };
+    }
+    if (
+      message.maxResults !== undefined &&
+      (typeof message.maxResults !== 'number' || !Number.isInteger(message.maxResults) || message.maxResults < 1)
+    ) {
+      return { ok: false, reason: 'web_search maxResults must be a positive integer' };
     }
   }
   return { ok: true, request: message as unknown as ExtensionRequest };

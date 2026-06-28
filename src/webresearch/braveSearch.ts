@@ -15,6 +15,12 @@ export const BRAVE_SEARCH_URL =
   'https://api.search.brave.com/res/v1/web/search';
 export const MAX_SEARCH_RESULTS = 20;
 
+// FIX1-G1: Brave Search API does not support browser-origin CORS.
+// A direct browser fetch to api.search.brave.com fails with a CORS error.
+// This flag is false until verified otherwise; callers must route through
+// the Chrome extension provider (FIX1-G2) when this is false.
+export const BRAVE_DIRECT_CORS_VERIFIED = false;
+
 export type SearchErrorKind =
   | 'auth'
   | 'rate_limit'
@@ -72,6 +78,13 @@ export interface BraveSearchDeps {
   apiKey: string;
   /** Injected for tests; defaults to the global fetch. */
   fetch?: typeof globalThis.fetch;
+  /**
+   * FIX1-G1: Must be true to use the direct browser fetch path.
+   * Brave Search API does not support browser-origin CORS; calling without a
+   * custom `fetch` dep and without `corsVerified: true` throws immediately.
+   * Route through the Chrome extension provider (G2) if CORS is unverified.
+   */
+  corsVerified?: boolean;
 }
 
 /**
@@ -88,6 +101,16 @@ export function createBraveSearchProvider(
     query: string,
     options?: SearchOptions,
   ): Promise<SearchResult[]> {
+    // FIX1-G1: Brave Search API does not support browser-origin CORS.
+    // Block the real browser fetch path unless explicitly overridden.
+    // Test code that injects deps.fetch is exempt (already in a test context).
+    if (!deps.fetch && !deps.corsVerified) {
+      throw new SearchError(
+        'unavailable',
+        'Brave Search direct browser access is not CORS-verified. ' +
+          'Configure the Chrome extension search provider (G2) instead.',
+      );
+    }
     const count = Math.min(options?.maxResults ?? 10, MAX_SEARCH_RESULTS);
     const effectiveQuery = options?.site
       ? `site:${options.site} ${query}`

@@ -671,4 +671,124 @@ describe('createLlmRequestHandler', () => {
       ).toBe(false);
     });
   });
+
+  // FIX1-C3: plan / script / web block parsing in the LLM runner.
+  describe('C3 — agent action block parsing', () => {
+    const PLAN_BLOCK = `\`\`\`browserclaw-plan
+${JSON.stringify({ type: 'browserclaw_plan', version: 1, title: 'T', reason: 'R', steps: [{ id: 's1', op: 'fs.readText', path: '/workspace/a.md' }] })}
+\`\`\``;
+
+    const SCRIPT_BLOCK = `\`\`\`browserclaw-script
+${JSON.stringify({ type: 'browserclaw_script_request', version: 1, runtime: 'sandboxed_script', title: 'T', reason: 'R', code: 'return 1;', capabilities: {}, limits: { timeoutMs: 5000, maxOutputBytes: 1024, maxFileReads: 1, maxFileWrites: 1 } })}
+\`\`\``;
+
+    const WEB_BLOCK = `\`\`\`browserclaw-web
+${JSON.stringify({ type: 'browserclaw_web_request', version: 1, op: 'readPage', url: 'https://example.com/page' })}
+\`\`\``;
+
+    const MALFORMED_PLAN_BLOCK = '```browserclaw-plan\n{ not json }\n```';
+
+    async function setupConversation(id: string, userId: string) {
+      await db.open();
+      await db.messages.put({
+        id: userId,
+        conversationId: id,
+        role: 'user',
+        content: 'do it',
+        createdAt: 1,
+      });
+    }
+
+    function providerWith(text: string): LlmProvider {
+      return {
+        id: 'mock',
+        complete: () => Promise.resolve({ text }),
+        checkHealth: () => Promise.resolve('connected'),
+      };
+    }
+
+    it('C3: valid plan block resolves effect with plan payload', async () => {
+      await setupConversation('c-c3-plan', 'u-c3-plan');
+      const store = configureStore({ reducer: { chat: chatReducer, audit: auditReducer } });
+      const submit = vi.fn<(command: unknown) => Promise<void>>().mockResolvedValue(undefined);
+      const handler = createLlmRequestHandler({
+        db,
+        dispatch: store.dispatch,
+        getProvider: () => providerWith(PLAN_BLOCK),
+        submit,
+      });
+      await handler({ type: 'llm_request', id: 'eff-c3-plan', conversation_id: 'c-c3-plan', prompt: '' });
+      expect(submit.mock.calls[0]?.[0]).toMatchObject({
+        type: 'resolve_effect',
+        id: 'eff-c3-plan',
+        result: {
+          ok: true,
+          plan: expect.objectContaining({ type: 'browserclaw_plan' }),
+        },
+      });
+    });
+
+    it('C3: valid script block resolves effect with script_request payload', async () => {
+      await setupConversation('c-c3-script', 'u-c3-script');
+      const store = configureStore({ reducer: { chat: chatReducer, audit: auditReducer } });
+      const submit = vi.fn<(command: unknown) => Promise<void>>().mockResolvedValue(undefined);
+      const handler = createLlmRequestHandler({
+        db,
+        dispatch: store.dispatch,
+        getProvider: () => providerWith(SCRIPT_BLOCK),
+        submit,
+      });
+      await handler({ type: 'llm_request', id: 'eff-c3-script', conversation_id: 'c-c3-script', prompt: '' });
+      expect(submit.mock.calls[0]?.[0]).toMatchObject({
+        type: 'resolve_effect',
+        id: 'eff-c3-script',
+        result: {
+          ok: true,
+          script_request: expect.objectContaining({ type: 'browserclaw_script_request' }),
+        },
+      });
+    });
+
+    it('C3: valid web readPage block resolves effect with web_request payload', async () => {
+      await setupConversation('c-c3-web', 'u-c3-web');
+      const store = configureStore({ reducer: { chat: chatReducer, audit: auditReducer } });
+      const submit = vi.fn<(command: unknown) => Promise<void>>().mockResolvedValue(undefined);
+      const handler = createLlmRequestHandler({
+        db,
+        dispatch: store.dispatch,
+        getProvider: () => providerWith(WEB_BLOCK),
+        submit,
+      });
+      await handler({ type: 'llm_request', id: 'eff-c3-web', conversation_id: 'c-c3-web', prompt: '' });
+      expect(submit.mock.calls[0]?.[0]).toMatchObject({
+        type: 'resolve_effect',
+        id: 'eff-c3-web',
+        result: {
+          ok: true,
+          web_request: expect.objectContaining({ op: 'readPage', url: 'https://example.com/page' }),
+        },
+      });
+    });
+
+    it('C3: malformed plan block fails and audits — never stored as text', async () => {
+      await setupConversation('c-c3-malf', 'u-c3-malf');
+      const store = configureStore({ reducer: { chat: chatReducer, audit: auditReducer } });
+      const submit = vi.fn<(command: unknown) => Promise<void>>().mockResolvedValue(undefined);
+      const handler = createLlmRequestHandler({
+        db,
+        dispatch: store.dispatch,
+        getProvider: () => providerWith(MALFORMED_PLAN_BLOCK),
+        submit,
+      });
+      await handler({ type: 'llm_request', id: 'eff-c3-malf', conversation_id: 'c-c3-malf', prompt: '' });
+      expect(submit.mock.calls[0]?.[0]).toMatchObject({
+        type: 'resolve_effect',
+        id: 'eff-c3-malf',
+        result: { ok: false },
+      });
+      expect(
+        store.getState().audit.recent.some((e) => e.type === 'tool.parse_failed'),
+      ).toBe(true);
+    });
+  });
 });

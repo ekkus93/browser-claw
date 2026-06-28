@@ -130,4 +130,51 @@ describe('referenceRuntime', () => {
     const b = createReferenceRuntime(a.snapshot());
     expect(b.dispatch(submit('two'))).toEqual(a.dispatch(submit('two')));
   });
+
+  // FIX1-C3: reference runtime routes plan/script/web payloads to correct effects.
+  it('C3: emits script_plan_proposal when llm_request resolves with plan payload', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('make a plan'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { ok: true, plan: { type: 'browserclaw_plan', version: 1, title: 'T', reason: 'R', steps: [] } },
+    });
+    expect(effects.some((e) => e.type === 'script_plan_proposal')).toBe(true);
+    expect(effects.some((e) => e.type === 'storage_put')).toBe(false);
+  });
+
+  it('C3: emits sandbox_script_proposal when llm_request resolves with script_request payload', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('run a script'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { ok: true, script_request: { type: 'browserclaw_script_request', version: 1, runtime: 'sandboxed_script', code: 'return 1;' } },
+    });
+    expect(effects.some((e) => e.type === 'sandbox_script_proposal')).toBe(true);
+    expect(effects.some((e) => e.type === 'storage_put')).toBe(false);
+  });
+
+  it('C3: emits web_search when llm_request resolves with search web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('search'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { ok: true, web_request: { op: 'search', query: 'AI news' } },
+    });
+    expect(effects.some((e) => e.type === 'web_search')).toBe(true);
+  });
+
+  it('C3: emits web_page_read when llm_request resolves with readPage web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('read page'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { ok: true, web_request: { op: 'readPage', url: 'https://example.com/' } },
+    });
+    expect(effects.some((e) => e.type === 'web_page_read')).toBe(true);
+  });
 });

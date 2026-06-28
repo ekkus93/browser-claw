@@ -66,6 +66,31 @@ function readToolCall(result: unknown): { name: string; args: unknown } | null {
   return { name, args: (call as Record<string, unknown>).args ?? null };
 }
 
+/** A `{ plan: ... }` resolution means the model proposed a structured plan. */
+function readPlan(result: unknown): unknown | null {
+  if (typeof result !== 'object' || result === null) return null;
+  const r = result as Record<string, unknown>;
+  return 'plan' in r && r.plan !== undefined ? r.plan : null;
+}
+
+/** A `{ script_request: ... }` resolution means the model proposed a script. */
+function readScriptRequest(result: unknown): unknown | null {
+  if (typeof result !== 'object' || result === null) return null;
+  const r = result as Record<string, unknown>;
+  return 'script_request' in r && r.script_request !== undefined
+    ? r.script_request
+    : null;
+}
+
+/** A `{ web_request: { op, ... } }` resolution means the model wants a web op. */
+function readWebRequest(result: unknown): Record<string, unknown> | null {
+  if (typeof result !== 'object' || result === null) return null;
+  const r = result as Record<string, unknown>;
+  const wr = r.web_request;
+  if (typeof wr !== 'object' || wr === null) return null;
+  return wr as Record<string, unknown>;
+}
+
 export function createReferenceRuntime(
   initial?: RuntimeSnapshot,
 ): ClawRuntimePort {
@@ -161,6 +186,46 @@ export function createReferenceRuntime(
             },
           ];
         }
+
+        // FIX1-C3: the model proposed a structured plan block.
+        const plan = readPlan(command.result);
+        if (plan !== null) {
+          const proposalId = nextId();
+          state.pending[proposalId] = 'script_plan_proposal';
+          state.pending_conversation[proposalId] = conversationId;
+          return [{ type: 'script_plan_proposal', id: proposalId, plan }];
+        }
+
+        // FIX1-C3: the model proposed a sandboxed script.
+        const scriptRequest = readScriptRequest(command.result);
+        if (scriptRequest !== null) {
+          const proposalId = nextId();
+          state.pending[proposalId] = 'sandbox_script_proposal';
+          state.pending_conversation[proposalId] = conversationId;
+          return [{ type: 'sandbox_script_proposal', id: proposalId, request: scriptRequest }];
+        }
+
+        // FIX1-C3: the model proposed a web op (search / readPage / readCurrentTab).
+        const webRequest = readWebRequest(command.result);
+        if (webRequest !== null) {
+          const proposalId = nextId();
+          const op = webRequest.op;
+          state.pending_conversation[proposalId] = conversationId;
+          const query = typeof webRequest.query === 'string' ? webRequest.query : '';
+          const url = typeof webRequest.url === 'string' ? webRequest.url : '';
+          if (op === 'search') {
+            state.pending[proposalId] = 'web_search';
+            return [{ type: 'web_search', id: proposalId, query }];
+          }
+          if (op === 'readPage') {
+            state.pending[proposalId] = 'web_page_read';
+            return [{ type: 'web_page_read', id: proposalId, url }];
+          }
+          // readCurrentTab and future ops: emit as web_page_read.
+          state.pending[proposalId] = 'web_page_read';
+          return [{ type: 'web_page_read', id: proposalId, url }];
+        }
+
         state.message_count += 1;
         const putId = nextId();
         const auditId = nextId();

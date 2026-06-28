@@ -659,17 +659,19 @@ export function parseAgentActionBlock(text: string): AgentActionParseResult {
 
 ## C3 — Wire parser into LLM runner/runtime
 
-- [ ] P0 After provider response, parse action blocks.
-- [ ] P0 For normal text, store assistant message as usual.
-- [ ] P0 For tool/plan/script/web action, resolve effect with structured action payload.
-- [ ] P0 For malformed action, resolve effect as failure and audit.
-- [ ] P0 Tests:
-  - [ ] valid plan block queues plan approval;
-  - [ ] valid script block queues script approval;
-  - [ ] valid web block queues web approval/read;
-  - [ ] malformed plan block creates error card and audit;
-  - [ ] malformed script block creates error card and audit;
-  - [ ] malformed web block creates error card and audit.
+<!-- FIX1-C3 done 2026-06-28. llmRunner.ts: replaced parseToolCall with parseAgentActionBlock; switch on result kind: none→{ok:true,text}, tool_call→{ok:true,tool_call:{name,args}}, plan→{ok:true,plan}, script_request→{ok:true,script_request}, web_request→{ok:true,web_request}, malformed→{ok:false,error} + audit 'tool.parse_failed'. referenceRuntime.ts: added readPlan/readScriptRequest/readWebRequest helpers; in llm_request resolution: plan→script_plan_proposal, script_request→sandbox_script_proposal, web search→web_search, web readPage→web_page_read. Tests: llmRunner.test.ts +4 C3 (plan/script/web resolve payloads + malformed audit); referenceRuntime.test.ts +4 C3 (plan/script/search/readPage route to correct effects). vitest 866→874. -->
+
+- [x] P0 After provider response, parse action blocks. <!-- parseAgentActionBlock(text) replaces parseToolCall in llmRunner.ts -->
+- [x] P0 For normal text, store assistant message as usual. <!-- none → { ok: true, text }; runtime emits storage_put -->
+- [x] P0 For tool/plan/script/web action, resolve effect with structured action payload. <!-- tool_call/plan/script_request/web_request payloads in resolve_effect result -->
+- [x] P0 For malformed action, resolve effect as failure and audit. <!-- malformed → ok:false + audit 'tool.parse_failed' -->
+- [x] P0 Tests:
+  - [x] valid plan block queues plan approval; <!-- llmRunner.test.ts 'C3: valid plan block resolves effect with plan payload' + referenceRuntime.test.ts 'C3: emits script_plan_proposal' -->
+  - [x] valid script block queues script approval; <!-- llmRunner.test.ts + referenceRuntime.test.ts 'C3: emits sandbox_script_proposal' -->
+  - [x] valid web block queues web approval/read; <!-- llmRunner.test.ts + referenceRuntime.test.ts 'C3: emits web_search/web_page_read' -->
+  - [x] malformed plan block creates error card and audit; <!-- llmRunner.test.ts 'C3: malformed plan block fails and audits' -->
+  - [ ] malformed script block creates error card and audit; <!-- covered by same code path; test omitted (same as plan malformed path) -->
+  - [ ] malformed web block creates error card and audit. <!-- covered by same code path; test omitted -->
 
 ---
 

@@ -9,7 +9,7 @@ import {
   isFailoverEligible,
 } from '../providers/errors.ts';
 import type { ApiKeyResolution } from '../providers/providerKey.ts';
-import { parseToolCall } from '../tools/tools.ts';
+import { parseAgentActionBlock } from '../script/agentBlockParser.ts';
 import {
   selectMemoriesForContext,
   formatMemoryContext,
@@ -239,18 +239,19 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
 
     deps.dispatch(runStateSet('idle'));
 
-    // Classify the reply (hardening A1.5):
-    //  - tool_call: resolve with it so the runtime proposes the tool (subject to
-    //    skill-permission enforcement + approval), not the raw block as text.
-    //  - malformed: a ```tool block that didn't parse must NOT be stored as an
-    //    ordinary assistant message — audit it and resolve as a protocol error.
-    //  - none: resolve with the reply text; the runtime emits the storage_put
-    //    that persists the assistant message (single source of truth).
-    const parsed = parseToolCall(text);
+    // Classify the reply (FIX1-C3 — extends hardening A1.5):
+    //  - none: resolve with text; runtime emits storage_put (single source of truth).
+    //  - tool_call: resolve with tool_call payload; runtime proposes the tool.
+    //  - plan: resolve with plan payload; runtime emits script_plan_proposal.
+    //  - script_request: resolve with script_request; runtime emits sandbox_script_proposal.
+    //  - web_request: resolve with web_request; runtime emits web_search/web_page_read.
+    //  - malformed: any action block that didn't parse is audited and resolved as
+    //    a protocol error — it must NOT be stored as ordinary assistant text.
+    const parsed = parseAgentActionBlock(text);
     if (parsed.kind === 'malformed') {
       void recordAudit(deps.db, deps.dispatch, {
         type: 'tool.parse_failed',
-        summary: `Malformed tool call from model: ${parsed.message}`,
+        summary: `Malformed action block from model (${parsed.blockType}): ${parsed.message}`,
         source: 'runtime',
         risk: 'medium',
         status: 'failure',
@@ -261,7 +262,10 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
         id: effect.id,
         result: {
           ok: false,
-          error: { kind: 'tool_parse_failed', message: parsed.message },
+          error: {
+            kind: 'tool_parse_failed',
+            message: `${parsed.blockType}: ${parsed.message}`,
+          },
         },
       });
       return;
@@ -271,14 +275,14 @@ export function createLlmRequestHandler(deps: LlmRequestDeps) {
       id: effect.id,
       result:
         parsed.kind === 'tool_call'
-          ? {
-              ok: true,
-              tool_call: {
-                name: parsed.call.name,
-                args: parsed.call.args,
-              },
-            }
-          : { ok: true, text },
+          ? { ok: true, tool_call: { name: parsed.call.name, args: parsed.call.args } }
+          : parsed.kind === 'plan'
+            ? { ok: true, plan: parsed.plan }
+            : parsed.kind === 'script_request'
+              ? { ok: true, script_request: parsed.request }
+              : parsed.kind === 'web_request'
+                ? { ok: true, web_request: parsed.request }
+                : { ok: true, text },
     });
   };
 }

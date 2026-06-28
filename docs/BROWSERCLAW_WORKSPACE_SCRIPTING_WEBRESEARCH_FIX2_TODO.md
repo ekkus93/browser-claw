@@ -10,20 +10,21 @@ P2 = polish, robustness, or future-facing hardening
 
 ## Phase 0 — Scope and Status Reconciliation
 
-- [ ] P0 Add `BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX2_SPEC.md` to `docs/`.
-- [ ] P0 Add this TODO as `BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX2_TODO.md` to `docs/`.
-- [ ] P0 Add a short section to `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` summarizing this fix pass.
-- [ ] P0 Reconcile current TODO status so checked boxes do not imply live app completion when code is only library-level.
-- [ ] P0 Confirm product decisions:
-  - [ ] QuickJS sandbox remains in scope for v0.1.
-  - [ ] Plan Runtime remains default for simple tasks.
-  - [ ] Sandboxed JS Runtime is escalation path and always approval-gated.
-  - [ ] Chrome extension page reader is v0.1.
-  - [ ] Firefox extension remains deferred.
-  - [ ] No hosted proxy.
-  - [ ] No local daemon.
-  - [ ] No browser eval/new Function/importScripts/raw Worker-eval.
-  - [ ] No generic unrestricted curl/proxy tool.
+<!-- evidence: files added via git pull 2026-06-28; design notes FIX2 section added in WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md; product decisions confirmed against FIX2_SPEC.md scope table; reconciliation note added to design notes -->
+- [x] P0 Add `BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX2_SPEC.md` to `docs/`.
+- [x] P0 Add this TODO as `BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX2_TODO.md` to `docs/`.
+- [x] P0 Add a short section to `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` summarizing this fix pass.
+- [x] P0 Reconcile current TODO status so checked boxes do not imply live app completion when code is only library-level.
+- [x] P0 Confirm product decisions:
+  - [x] QuickJS sandbox remains in scope for v0.1.
+  - [x] Plan Runtime remains default for simple tasks.
+  - [x] Sandboxed JS Runtime is escalation path and always approval-gated.
+  - [x] Chrome extension page reader is v0.1.
+  - [x] Firefox extension remains deferred.
+  - [x] No hosted proxy.
+  - [x] No local daemon.
+  - [x] No browser eval/new Function/importScripts/raw Worker-eval.
+  - [x] No generic unrestricted curl/proxy tool.
 
 ---
 

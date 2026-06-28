@@ -1837,3 +1837,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - E3: memory.md updated at each iteration; TODO evidence comments ticked; FIX1 TODO cross-references updated (Web Research settings/status UI + approval card items).
 - FIX2 COMPLETE. All parts A-E done. 4 committed iterations: A1+A2 (8e476e7), B1 (1e9077b), C1 (aad41ec), D1 (64716ca). 972 vitest / 30 e2e.
 - Deferred items (documented in TODO): A1 "Test connection" inline button, A2 researchPaths from audit events, C1 ChatScreen integration test for web approval routing, E3 extension read items in FIX1 TODO. None block acceptance.
+
+## 2026-06-28T19:28:10Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 1: Phase 0 (documentation setup) DONE
+- New Ralph Loop: BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX2_TODO.md (pulled from GitHub, 11 parts A-K).
+- Phase 0 ticked: spec + TODO already in docs/ (via git pull). Added FIX2 locked decisions section to WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md. Confirmed all product decisions match spec. Reconciliation note added (prior checkboxes = library-level, not app-level wiring).
+- Key FIX2 scope: Rust/WASM runtime must handle plan/script/web result shapes (Part A); script policy enforcement (Part B); extension permission flow cleanup (Part C); WebResearch wiring + failure reporting (Part D); current-tab routing (Part E); approval payload fail-closed (Part F); memory privacy (Part G); sandbox tool safety (Part H); extension E2E (Part J).
+- Gate green: typecheck ✓, lint ✓, format:check ✓, vitest 972/119 ✓.
+- NEXT: Part A1 — update claw-schema + claw-core to detect plan/script_request/web_request shapes and emit corresponding effects; add Rust tests; rebuild WASM.

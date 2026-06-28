@@ -752,3 +752,42 @@ These decisions apply to the FIX1 correction and integration pass. See
   not been tested from a real browser origin (CORS may block it). FIX1-G1/G2
   verify behavior; if CORS is a problem, the extension-backed search path
   becomes the required default.
+
+## FIX2 Locked decisions (2026-06-28)
+
+These decisions apply to the FIX2 safety hardening and integration pass. See
+`docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX2_SPEC.md` and
+`...FIX2_TODO.md` for the full scope.
+
+- **QuickJS sandbox remains in scope for v0.1.** `sandboxedScriptingEnabled`
+  defaults to `false` in `DEFAULT_SCRIPT_POLICY` but must be updated to `true`
+  per the spec's recommended v0.1 policy. `alwaysRequiresApproval: true`;
+  `network: deny`; `secrets: deny` remain hard constraints.
+- **Plan Runtime remains default for simple tasks.** `defaultRuntime: 'plan_dsl'`
+  unchanged.
+- **Sandboxed JS Runtime is always approval-gated.** `alwaysRequiresApproval: true`
+  enforced at `createSandboxScriptEffectHandler()` before any queueing (B1).
+- **Chrome extension page reader is v0.1.** Firefox extension remains deferred.
+- **No hosted proxy, no local daemon, no browser eval/new Function/importScripts,
+  no generic unrestricted curl/proxy tool.** All remain out of scope.
+- **TODO/doc status reconciliation.** Checked boxes in previous TODO files may
+  represent library-level or isolated unit-tested implementation only. Full app
+  wiring (live effect ports, host assembly, `main.tsx` integration, E2E
+  verification) may still be incomplete. FIX2 parts must explicitly distinguish
+  library-level from app-level and wired-in-live-app completion.
+- **WASM runtime must handle plan/script/web result shapes.** The TypeScript
+  reference runtime handles `plan`, `script_request`, `web_request.*`. `claw-core`
+  must be updated to match before any of these can be called feature-complete
+  (Part A1). WASM must be rebuilt and verified after each Rust change.
+- **Approval payloads are fail-closed.** All approval payload parsing must use
+  explicit helpers that throw on invalid/missing data (Part F1). No silent
+  empty-string or `{}` fallbacks anywhere in the approval chain.
+- **Search provider must be wired or explicitly unavailable in the live app.**
+  A missing provider must surface `search_unavailable`; no silent no-op (Part D1).
+- **Sensitive memories excluded from all automated retrieval paths** by default:
+  sandbox `memory.search`, Plan Runtime `memory.search`, LLM context retrieval.
+  A `memorySensitiveRead` capability is P2 and must not be added without explicit
+  user request and high-risk approval gate (Part G1).
+- **Sandbox tool descriptors deny by default.** A tool missing a capability
+  descriptor cannot be called from sandbox (Part H1). The deny-by-default pattern
+  ensures new tools are safe until explicitly declared.

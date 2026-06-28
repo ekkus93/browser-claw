@@ -418,8 +418,17 @@ export interface ToolCapabilityDescriptor {
 }
 
 /**
- * Capability descriptor for every tool in TOOL_REGISTRY. A missing entry means
- * "pure" — only tool permission is required (enforced by runToolCall).
+ * Capability descriptor for every tool in TOOL_REGISTRY.
+ *
+ * H1 — DENY BY DEFAULT: every sandbox-callable tool MUST have an entry here.
+ * A missing descriptor causes `assertSandboxToolAllowed` to deny the call.
+ * When adding a new tool, declare its categories and capability requirements:
+ *   - network effects → mediatedNetwork: true  (also webRead or webSearch as needed)
+ *   - filesystem reads → fsRead: true
+ *   - filesystem writes → fsWrite: true
+ *   - memory reads → memoryRead: true
+ *   - memory writes → (omit; pure memory writes need no extra capability)
+ *   - pure (no effects) → requires: {} with categories: ['pure']
  */
 export const TOOL_CAPABILITY_DESCRIPTORS: Record<
   string,

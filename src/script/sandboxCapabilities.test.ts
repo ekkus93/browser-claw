@@ -526,3 +526,31 @@ describe('H1 — grep policy in sandbox fs.grep', () => {
     expect(result.ok).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// H1 (descriptor deny-by-default) — tool without descriptor cannot be called
+// ---------------------------------------------------------------------------
+
+describe('H1 — tool without descriptor is denied from sandbox', () => {
+  it('H1: tool listed in allowedTools but missing descriptor is denied', async () => {
+    const h1Audits: CapabilityAudit[] = [];
+    const h1Ctx: SandboxCapabilityContext = {
+      ...ctx,
+      onAudit: (e) => h1Audits.push(e),
+    };
+    const result = await runSandboxedScript(
+      'return await tool.call("UnregisteredTool", {});',
+      {
+        host: buildSandboxHost(h1Ctx, { tools: ['UnregisteredTool'] }),
+      },
+    );
+    expect(result.ok).toBe(false);
+    const denied = h1Audits.some(
+      (a) =>
+        !a.allowed &&
+        a.capability === 'tool.call' &&
+        a.target === 'UnregisteredTool',
+    );
+    expect(denied).toBe(true);
+  });
+});

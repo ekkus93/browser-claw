@@ -178,7 +178,16 @@ function assertSandboxToolAllowed(
   deny: (capability: string, target: string, reason: string) => never,
 ): void {
   const descriptor = TOOL_CAPABILITY_DESCRIPTORS[name];
-  if (!descriptor) return; // Unknown tool → pure; runToolCall will reject if truly unknown.
+  // H1: every sandbox-callable tool must have a descriptor. Missing descriptor
+  // is a deny, not a silent pass-through — it prevents unreviewed tools from
+  // becoming callable without declaring their effect categories.
+  if (!descriptor) {
+    deny(
+      'tool.call',
+      name,
+      `${name} is not callable from sandbox: no capability descriptor registered`,
+    );
+  }
 
   if (
     descriptor.requires.mediatedNetwork &&

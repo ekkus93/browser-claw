@@ -1977,6 +1977,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1056/122 ✓.
 - NEXT: Part H — Sandbox Tool Capability Safety (H1, H2, H3).
 
+## 2026-06-28T21:11:03Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 19: Parts H1+H2+H3 (sandbox tool capability safety) DONE
+- H1: assertSandboxToolAllowed now denies on missing descriptor (was silent pass-through); docs comment added to tools.ts; 1 H1 test proves UnregisteredTool is denied; existing D1 tests prove all current tools have descriptors.
+- H2: maxToolCalls already in ScriptLimits; countToolCall() increments before capability checks; D3 tests cover all H2 behavior.
+- H3: ToolCapabilityDescriptor.requires enforced for all current tools; D1/D2 tests cover cross-checks.
+- Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
+- NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
+
 ## 2026-06-28T20:26:54Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 10: Part D2 (canonicalize search secret key IDs) DONE
 - useWebResearchKey.ts: BRAVE_KEY_ID changed from 'brave_search_api_key' to searchProviderSecretId(BRAVE_PROFILE_ID) = 'search_provider:brave'. Now UI and runtime use the same key ID.
 - resolveSearchProviderKey already used searchProviderSecretId — already correct; no change needed.

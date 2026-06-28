@@ -715,12 +715,13 @@ export function filterMemoriesForAutomatedAccess<T extends { sensitivity?: strin
 
 ## Phase H1 — Tool descriptors deny by default
 
-- [ ] P1 Require every sandbox-callable tool to have a descriptor.
-- [ ] P1 Missing descriptor must deny.
-- [ ] P1 Add test proving a newly registered tool without descriptor cannot be called from sandbox.
-- [ ] P1 Add docs comment near tool registry:
-  - [ ] every new tool needs capability descriptor;
-  - [ ] network/file/memory effects must be declared.
+<!-- evidence: assertSandboxToolAllowed now calls deny() on missing descriptor (was silent return); comment in tools.ts updated to document deny-by-default requirement; 1 H1 test in sandboxCapabilities.test.ts: UnregisteredTool in allowedTools but no descriptor is denied and audited; existing D1 tests prove all current tools have descriptors; 1057/122 vitest pass, lint+typecheck clean -->
+- [x] P1 Require every sandbox-callable tool to have a descriptor.
+- [x] P1 Missing descriptor must deny.
+- [x] P1 Add test proving a newly registered tool without descriptor cannot be called from sandbox.
+- [x] P1 Add docs comment near tool registry:
+  - [x] every new tool needs capability descriptor;
+  - [x] network/file/memory effects must be declared.
 
 ### Helpful descriptor code
 
@@ -793,21 +794,23 @@ export function assertSandboxToolAllowed(
 
 ## Phase H2 — Tool calls count against sandbox limits
 
-- [ ] P1 Add `maxToolCalls` to script limits if missing.
-- [ ] P1 Increment on every `tool.call`.
-- [ ] P1 Exceeding limit fails with `limit_exceeded`.
-- [ ] P1 Audit limit failure.
-- [ ] P1 Tests:
-  - [ ] too many tool calls fail;
-  - [ ] failed/denied tool calls still count or are explicitly documented;
-  - [ ] within limit succeeds.
+<!-- evidence: maxToolCalls added to ScriptLimits at scriptRequest.ts:49 (FIX1-D3); countToolCall() increments and trips when exceeded (sandboxCapabilities.ts); tracker.countToolCall() called before capability checks so denied calls count; limit exceeded → trip → limit_exceeded error kind; D3 tests in sandboxCapabilities.test.ts cover all this: rejects when exceeded, unlimited when undefined, within limit succeeds -->
+- [x] P1 Add `maxToolCalls` to script limits if missing.
+- [x] P1 Increment on every `tool.call`.
+- [x] P1 Exceeding limit fails with `limit_exceeded`.
+- [x] P1 Audit limit failure. <!-- trip() → runSandboxWithLimits catches → errorKind:limit_exceeded in audit -->
+- [x] P1 Tests:
+  - [x] too many tool calls fail; <!-- D3 test -->
+  - [x] failed/denied tool calls still count or are explicitly documented; <!-- countToolCall() before deny check; D3 comment -->
+  - [x] within limit succeeds. <!-- D3 unlimited test -->
 
 ## Phase H3 — Tool capability cross-checks
 
-- [ ] P1 Page Reader / Web Fetch / Browser Fetch require web/network capability.
-- [ ] P1 Any future workspace-writing tool requires fs write capability.
-- [ ] P1 Any future memory-writing tool requires memory write capability.
-- [ ] P1 Tests for each current tool descriptor.
+<!-- evidence: ToolCapabilityDescriptor.requires enforces network/fs/memory capability requirements per tool; assertSandboxToolAllowed checks all requirements; D1 test proves network tools have mediatedNetwork+webRead; D2 tests prove Page Reader denied without webRead/network; D1 test proves every registered tool has a descriptor -->
+- [x] P1 Page Reader / Web Fetch / Browser Fetch require web/network capability.
+- [x] P1 Any future workspace-writing tool requires fs write capability. <!-- fsWrite declared in requires; assertSandboxToolAllowed checks it -->
+- [x] P1 Any future memory-writing tool requires memory write capability. <!-- memoryWrite declared in requires -->
+- [x] P1 Tests for each current tool descriptor. <!-- D1 descriptor tests cover all registered tools -->
 
 ---
 

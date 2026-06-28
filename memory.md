@@ -1984,6 +1984,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-28T23:03:44Z - Claude Sonnet 4.6 - FIX3 Part F1 (pageReaderProvider.readPages → single read_pages message) DONE
+- pageReaderProvider.ts readPages() now sends ONE read_pages message to extension (no loop).
+- Per-slot failure preserved from response.results[].
+- 4 F1 tests: single message, slot failure, maxPages passthrough, legacy maxPages.
+- serviceWorkerReadPages.test.ts D1 handler-throw test: saved = cast to fn type (avoid eslint warning).
+- Gate: typecheck ✓, lint ✓, format ✓, 1101/123 vitest ✓.
+- Remaining P1: D2, E1, E2, G1, G2, H1, I1, J1, K1/K2/K3.
+
 ## 2026-06-28T22:59:40Z - Claude Sonnet 4.6 - FIX3 Part B2+C2+C3-Rust (Rust serializer + fail-closed validation + discriminated schema) DONE
 - claw-schema: WebResearch now { id, mode: String, query: Option<String>, urls: Option<Vec<String>>, options } — discriminated by mode.
 - claw-core: Runtime::tool_content_from_effect_result() handles {text},{results},{content},{contents},{bundle},{response},{outputs},{value}; None → runtime.empty_effect_result audit, no storage_put.

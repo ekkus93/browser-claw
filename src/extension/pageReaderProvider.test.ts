@@ -287,14 +287,131 @@ describe('createExtensionPageReader (E9)', () => {
     });
   });
 
-  it('readPages respects the max page limit', async () => {
+  // F1 (FIX3): readPages sends ONE read_pages message, not sequential readPage calls.
+  it('F1: readPages sends a single read_pages message to the extension', async () => {
+    const send = vi.fn((msg: Record<string, unknown>) => {
+      if (msg['type'] === 'read_pages') {
+        return Promise.resolve({
+          ok: true,
+          requestId: 'r',
+          results: [
+            {
+              ok: true,
+              url: 'https://x/1',
+              finalUrl: 'https://x/1',
+              text: 'a',
+              length: 1,
+            },
+            {
+              ok: true,
+              url: 'https://x/2',
+              finalUrl: 'https://x/2',
+              text: 'b',
+              length: 1,
+            },
+          ],
+        });
+      }
+      return Promise.resolve({
+        ok: false,
+        requestId: 'r',
+        error: { kind: 'invalid_request', message: 'unexpected' },
+      });
+    });
+    const reader = createExtensionPageReader({
+      transport: { send: send as ExtensionTransport['send'] },
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/1', 'https://x/2'],
+    });
+    expect(send).toHaveBeenCalledOnce();
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'read_pages' }),
+    );
+    expect(results).toHaveLength(2);
+    expect(results[0]?.ok).toBe(true);
+    expect(results[1]?.ok).toBe(true);
+  });
+
+  it('F1: readPages passes maxPages through in the extension message', async () => {
+    const send = vi.fn((msg: Record<string, unknown>) =>
+      Promise.resolve({
+        ok: true,
+        requestId: 'r',
+        results: (msg['urls'] as string[])
+          .slice(0, (msg['maxPages'] as number) ?? 10)
+          .map((url) => ({
+            ok: true,
+            url,
+            finalUrl: url,
+            text: 'x',
+            length: 1,
+          })),
+      }),
+    );
+    const reader = createExtensionPageReader({
+      transport: { send: send as ExtensionTransport['send'] },
+    });
+    await reader.readPages({
+      urls: ['https://x/1', 'https://x/2', 'https://x/3'],
+      maxPages: 2,
+    });
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ maxPages: 2 }));
+  });
+
+  it('F1: readPages preserves per-slot failures from the extension response', async () => {
     const reader = createExtensionPageReader({
       transport: transport(() => ({
         ok: true,
         requestId: 'r',
-        text: 't',
-        length: 1,
+        results: [
+          {
+            ok: true,
+            url: 'https://x/1',
+            finalUrl: 'https://x/1',
+            text: 'ok',
+            length: 2,
+          },
+          {
+            ok: false,
+            url: 'https://x/2',
+            error: {
+              kind: 'url_blocked',
+              message: 'blocked',
+              retryable: false,
+            },
+          },
+        ],
       })),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/1', 'https://x/2'],
+    });
+    expect(results[0]?.ok).toBe(true);
+    expect(results[1]?.ok).toBe(false);
+    if (!results[1]?.ok) {
+      expect(results[1].error.kind).toBe('unsupported_url');
+    }
+  });
+
+  it('readPages respects the max page limit (legacy — now sends maxPages in message)', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport((msg) => {
+        const m = msg as Record<string, unknown>;
+        const urls = m['urls'] as string[];
+        const maxPages = (m['maxPages'] as number | undefined) ?? urls.length;
+        return {
+          ok: true,
+          requestId: 'r',
+          results: urls.slice(0, maxPages).map((url) => ({
+            ok: true,
+            url,
+            finalUrl: url,
+            text: 't',
+            length: 1,
+          })),
+        };
+      }),
     });
     const results = await reader.readPages({
       urls: ['https://x/1', 'https://x/2', 'https://x/3'],

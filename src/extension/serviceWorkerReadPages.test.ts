@@ -440,7 +440,7 @@ describe('D1 (FIX3) — central handle() validates all requests including async'
   });
 
   it('D1: handler throw returns structured internal_error', async () => {
-    const saved = handlers['ping'];
+    const saved = handlers['ping'] as (msg: Record<string, unknown>) => unknown;
     handlers['ping'] = () => {
       throw new Error('boom from test');
     };

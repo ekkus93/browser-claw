@@ -662,14 +662,15 @@ export function normalizeExtensionStatus(args: {
 
 FIX3 decision: use the extension batch handler from the app provider.
 
-- [ ] P1 Update `pageReaderProvider.readPages()` to send one `read_pages` message.
-- [ ] P1 Preserve per-slot failures from the extension response.
-- [ ] P1 Do not loop over `readPage()` unless the extension lacks `read_pages` capability and the fallback is explicitly audited.
-- [ ] P1 Tests:
-  - [ ] provider sends `read_pages` for multiple URLs;
-  - [ ] partial slot failure is preserved;
-  - [ ] maxPages is passed through;
-  - [ ] no silent fallback to sequential reads unless explicitly configured/audited.
+<!-- evidence: pageReaderProvider.ts readPages() now sends one read_pages message; per-slot failures preserved; 4 F1 tests; 1101/123 TS vitest ✓ -->
+- [x] P1 Update `pageReaderProvider.readPages()` to send one `read_pages` message. <!-- F1 — single message send -->
+- [x] P1 Preserve per-slot failures from the extension response. <!-- F1 test: partial slot failure preserved -->
+- [x] P1 Do not loop over `readPage()` unless the extension lacks `read_pages` capability and the fallback is explicitly audited. <!-- no loop -->
+- [x] P1 Tests:
+  - [x] provider sends `read_pages` for multiple URLs; <!-- F1 test: single message -->
+  - [x] partial slot failure is preserved; <!-- F1 test -->
+  - [x] maxPages is passed through; <!-- F1 test -->
+  - [x] no silent fallback to sequential reads unless explicitly configured/audited. <!-- no loop in impl -->
 
 ### Suggested TypeScript code
 

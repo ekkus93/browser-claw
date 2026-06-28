@@ -173,19 +173,89 @@ export function createExtensionPageReader(
     },
 
     async readPages(request: PageReadPagesRequest): Promise<PageReadResult[]> {
-      const max = request.maxPages ?? request.urls.length;
-      const results: PageReadResult[] = [];
-      for (const url of request.urls.slice(0, max)) {
-        results.push(
-          await this.readPage({
-            url,
-            ...(request.format ? { format: request.format } : {}),
-            ...(request.maxChars ? { maxChars: request.maxChars } : {}),
-            ...(request.timeoutMs ? { timeoutMs: request.timeoutMs } : {}),
-          }),
-        );
+      // F1 (FIX3): send one read_pages message to the extension — no looping.
+      const requestId = newRequestId();
+      let raw: unknown;
+      try {
+        raw = await deps.transport.send({
+          type: 'read_pages',
+          requestId,
+          urls: request.urls,
+          ...(request.maxPages !== undefined
+            ? { maxPages: request.maxPages }
+            : {}),
+          ...(request.format !== undefined ? { format: request.format } : {}),
+          ...(request.maxChars !== undefined
+            ? { maxChars: request.maxChars }
+            : {}),
+          ...(request.timeoutMs !== undefined
+            ? { timeoutMs: request.timeoutMs }
+            : {}),
+        });
+      } catch (error) {
+        return request.urls.map((url) => ({
+          ok: false as const,
+          url,
+          error: {
+            kind: 'extension_missing' as const,
+            message:
+              error instanceof Error ? error.message : 'extension unreachable',
+          },
+        }));
       }
-      return results;
+
+      // Top-level error — extension rejected the batch itself.
+      if (
+        !isExtensionResponse(raw) ||
+        !raw.ok ||
+        !Array.isArray(raw['results'])
+      ) {
+        const errorMsg =
+          isExtensionResponse(raw) && !raw.ok
+            ? raw.error.message
+            : 'invalid extension response';
+        return request.urls.map((url) => ({
+          ok: false as const,
+          url,
+          error: { kind: 'internal_error' as const, message: errorMsg },
+        }));
+      }
+
+      // Map per-slot results, preserving failures.
+      return (raw['results'] as unknown[]).map((slot, i) => {
+        const url = request.urls[i] ?? '';
+        const s = slot as Record<string, unknown>;
+        if (s['ok'] === true) {
+          const text = typeof s['text'] === 'string' ? s['text'] : '';
+          return {
+            ok: true as const,
+            url,
+            finalUrl: typeof s['finalUrl'] === 'string' ? s['finalUrl'] : url,
+            text,
+            length: typeof s['length'] === 'number' ? s['length'] : text.length,
+            ...(typeof s['title'] === 'string' ? { title: s['title'] } : {}),
+            ...(typeof s['markdown'] === 'string'
+              ? { markdown: s['markdown'] }
+              : {}),
+            ...(typeof s['excerpt'] === 'string'
+              ? { excerpt: s['excerpt'] }
+              : {}),
+          };
+        }
+        const err = (s['error'] ?? {}) as Record<string, unknown>;
+        return {
+          ok: false as const,
+          url,
+          error: {
+            kind: (ERROR_KIND_MAP[err['kind'] as ExtensionErrorKind] ??
+              'internal_error') as PageReadErrorKind,
+            message:
+              typeof err['message'] === 'string'
+                ? err['message']
+                : 'Page read failed.',
+          },
+        };
+      });
     },
 
     readCurrentTab(request: CurrentTabReadRequest): Promise<PageReadResult> {

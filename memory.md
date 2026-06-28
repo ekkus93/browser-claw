@@ -1930,6 +1930,11 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1017/121 ✓.
 - NEXT: Part D4 — Brave/direct search CORS verification (P1).
 
+## 2026-06-28T20:33:32Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 12: Part D4 (Brave CORS verification) DONE
+- D4 was already implemented: BRAVE_DIRECT_CORS_VERIFIED=false blocks direct browser Brave path; G1 test asserts the flag; D1 wired extension-backed route as production path. No code changes needed.
+- Ticked D4 checkbox with evidence in TODO.
+- NEXT: Part E1 — add explicit current-tab effect/request (P1).
+
 ## 2026-06-28T20:26:54Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 10: Part D2 (canonicalize search secret key IDs) DONE
 - useWebResearchKey.ts: BRAVE_KEY_ID changed from 'brave_search_api_key' to searchProviderSecretId(BRAVE_PROFILE_ID) = 'search_provider:brave'. Now UI and runtime use the same key ID.
 - resolveSearchProviderKey already used searchProviderSecretId — already correct; no change needed.

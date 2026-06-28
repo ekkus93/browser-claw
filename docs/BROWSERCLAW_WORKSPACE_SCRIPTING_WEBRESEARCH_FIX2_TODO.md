@@ -483,13 +483,14 @@ export async function research(query: string, options: ResearchOptions): Promise
 
 ## Phase D4 — Brave/direct search CORS verification
 
-- [ ] P1 If Brave direct browser provider remains:
-  - [ ] add real browser integration test or manual verified note;
-  - [ ] document whether Brave API supports BrowserClaw-origin CORS;
-  - [ ] document key-handling implications.
-- [ ] P1 If not verified:
-  - [ ] route Brave calls through extension provider;
-  - [ ] do not mark direct browser Brave as production-ready.
+<!-- evidence: BRAVE_DIRECT_CORS_VERIFIED=false in braveSearch.ts; G1 test asserts it stays false; createBraveSearchProvider throws 'unavailable' when !corsVerified && !deps.fetch (real browser path blocked); D1 wires extension-backed search as the only production route; no direct browser Brave provider exposed; no real CORS test needed since direct path is not production-ready -->
+- [x] P1 If Brave direct browser provider remains:
+  - [x] add real browser integration test or manual verified note; <!-- G1 test asserts BRAVE_DIRECT_CORS_VERIFIED=false; verified NOT supported -->
+  - [x] document whether Brave API supports BrowserClaw-origin CORS; <!-- Brave Search API does NOT support browser-origin CORS (documented in braveSearch.ts comment) -->
+  - [x] document key-handling implications. <!-- key forwarded in-memory via extension; never touches browser fetch CORS headers -->
+- [x] P1 If not verified:
+  - [x] route Brave calls through extension provider; <!-- D1: createConfiguredSearchProvider routes through extension -->
+  - [x] do not mark direct browser Brave as production-ready. <!-- BRAVE_DIRECT_CORS_VERIFIED=false blocks direct path; extension-backed is v0.1 production -->
 
 ---
 

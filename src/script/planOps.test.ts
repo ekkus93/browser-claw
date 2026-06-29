@@ -143,11 +143,139 @@ describe('executePlanOp — tool.call + web (C2)', () => {
     expect(
       await executePlanOp(withWeb, 'web.readPage', { url: 'https://x/a' }),
     ).toMatchObject({ text: 'body' });
-    const pages = (await executePlanOp(withWeb, 'web.readPages', {
+    // A2 (FIX5): web.readPages calls ctx.web.readPages() once, returns ResearchBundle.
+    web.readPage.mockClear();
+    const bundle = await executePlanOp(withWeb, 'web.readPages', {
       urls: ['https://x/a', 'https://x/b'],
-      maxPages: 1,
-    })) as unknown[];
-    expect(pages).toHaveLength(1);
+    });
+    expect(web.readPages).toHaveBeenCalledTimes(1);
+    expect(web.readPage).not.toHaveBeenCalled(); // batch op must not fall back to single-page loop
+    expect((bundle as { pages: unknown[] }).pages).toHaveLength(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A1+A2+A3 (FIX5) — Plan Runtime web.readPages strict validation + batch call
+// ---------------------------------------------------------------------------
+
+describe('A1+A2+A3 (FIX5) — web.readPages strict validation', () => {
+  function makeWeb() {
+    return {
+      search: vi.fn(),
+      readPage: vi.fn(),
+      readPages: vi.fn(() =>
+        Promise.resolve({
+          query: '',
+          results: [],
+          pages: [
+            {
+              url: 'https://a.example/',
+              finalUrl: 'https://a.example/',
+              text: 'body',
+              length: 4,
+            },
+          ],
+          failures: [],
+        }),
+      ),
+      research: vi.fn(),
+    };
+  }
+
+  it('A1: empty urls array throws PlanOpError', async () => {
+    await expect(
+      executePlanOp({ ...ctx, web: makeWeb() }, 'web.readPages', { urls: [] }),
+    ).rejects.toBeInstanceOf(PlanOpError);
+  });
+
+  it('A1: missing urls throws PlanOpError', async () => {
+    await expect(
+      executePlanOp({ ...ctx, web: makeWeb() }, 'web.readPages', {}),
+    ).rejects.toBeInstanceOf(PlanOpError);
+  });
+
+  it('A1: mixed valid/invalid slot (number) throws PlanOpError', async () => {
+    await expect(
+      executePlanOp({ ...ctx, web: makeWeb() }, 'web.readPages', {
+        urls: ['https://a.example/', 42],
+      }),
+    ).rejects.toBeInstanceOf(PlanOpError);
+  });
+
+  it('A1: empty string slot throws PlanOpError', async () => {
+    await expect(
+      executePlanOp({ ...ctx, web: makeWeb() }, 'web.readPages', {
+        urls: [''],
+      }),
+    ).rejects.toBeInstanceOf(PlanOpError);
+  });
+
+  it('A1: null slot throws PlanOpError', async () => {
+    await expect(
+      executePlanOp({ ...ctx, web: makeWeb() }, 'web.readPages', {
+        urls: ['https://a.example/', null],
+      }),
+    ).rejects.toBeInstanceOf(PlanOpError);
+  });
+
+  it('A2: valid urls calls ctx.web.readPages() once, not readPage()', async () => {
+    const web = makeWeb();
+    await executePlanOp({ ...ctx, web }, 'web.readPages', {
+      urls: ['https://a.example/', 'https://b.example/'],
+    });
+    expect(web.readPages).toHaveBeenCalledTimes(1);
+    expect(web.readPage).not.toHaveBeenCalled();
+  });
+
+  it('A2: per-slot failure preserved in returned ResearchBundle', async () => {
+    const web = makeWeb();
+    web.readPages = vi.fn(() =>
+      Promise.resolve({
+        query: '',
+        results: [],
+        pages: [],
+        failures: [
+          {
+            url: 'https://b.example/',
+            error: { kind: 'page_load_timeout', message: 'timeout' },
+          },
+        ],
+      }),
+    );
+    const bundle = (await executePlanOp({ ...ctx, web }, 'web.readPages', {
+      urls: ['https://a.example/', 'https://b.example/'],
+    })) as { failures: unknown[] };
+    expect(bundle.failures).toHaveLength(1);
+  });
+
+  it('A3: localhost URL throws PlanOpError before calling provider', async () => {
+    const web = makeWeb();
+    await expect(
+      executePlanOp({ ...ctx, web }, 'web.readPages', {
+        urls: ['http://localhost/page'],
+      }),
+    ).rejects.toBeInstanceOf(PlanOpError);
+    expect(web.readPages).not.toHaveBeenCalled();
+  });
+
+  it('A3: private IP URL throws PlanOpError', async () => {
+    const web = makeWeb();
+    await expect(
+      executePlanOp({ ...ctx, web }, 'web.readPages', {
+        urls: ['http://127.0.0.1/page'],
+      }),
+    ).rejects.toBeInstanceOf(PlanOpError);
+    expect(web.readPages).not.toHaveBeenCalled();
+  });
+
+  it('A3: safe public HTTPS URL passes', async () => {
+    const web = makeWeb();
+    await expect(
+      executePlanOp({ ...ctx, web }, 'web.readPages', {
+        urls: ['https://example.com/page'],
+      }),
+    ).resolves.toBeDefined();
+    expect(web.readPages).toHaveBeenCalledTimes(1);
   });
 });
 

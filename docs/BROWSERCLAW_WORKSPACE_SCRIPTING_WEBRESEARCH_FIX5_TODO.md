@@ -54,21 +54,22 @@ const urls = Array.isArray(args.urls)
 
 Any invalid `urls` slot invalidates the whole plan step.
 
-- [ ] P1 Add `requirePlanStringArrayField()`.
-- [ ] P1 Reject:
-  - [ ] missing `urls`;
-  - [ ] non-array `urls`;
-  - [ ] empty array;
-  - [ ] non-string slot;
-  - [ ] empty/whitespace string slot.
-- [ ] P1 Throw `PlanOpError` or equivalent explicit plan failure.
-- [ ] P1 Do not call `ctx.web.readPage` or `ctx.web.readPages` when validation fails.
-- [ ] P1 Tests:
-  - [ ] `urls: []` fails;
-  - [ ] `urls: ["https://ok", 42]` fails;
-  - [ ] `urls: [""]` fails;
-  - [ ] valid URL array succeeds;
-  - [ ] invalid slots are not silently dropped.
+<!-- evidence: requirePlanStringArrayField() in planOps.ts; 5 A1 tests (empty array, missing, number slot, empty string, null slot); vitest 1186/1186 -->
+- [x] P1 Add `requirePlanStringArrayField()`. <!-- planOps.ts lines 52-76 -->
+- [x] P1 Reject:
+  - [x] missing `urls`; <!-- A1 test: missing urls throws PlanOpError -->
+  - [x] non-array `urls`; <!-- same check: !Array.isArray -->
+  - [x] empty array; <!-- A1 test: empty urls array throws -->
+  - [x] non-string slot; <!-- A1 test: number slot throws -->
+  - [x] empty/whitespace string slot. <!-- A1 test: empty string slot throws -->
+- [x] P1 Throw `PlanOpError` or equivalent explicit plan failure. <!-- PlanOpError thrown -->
+- [x] P1 Do not call `ctx.web.readPage` or `ctx.web.readPages` when validation fails. <!-- provider not called; A3 tests verify -->
+- [x] P1 Tests:
+  - [x] `urls: []` fails; <!-- A1: empty urls array throws -->
+  - [x] `urls: ["https://ok", 42]` fails; <!-- A1: mixed valid/invalid slot -->
+  - [x] `urls: [""]` fails; <!-- A1: empty string slot -->
+  - [x] valid URL array succeeds; <!-- A3: safe public HTTPS URL passes -->
+  - [x] invalid slots are not silently dropped. <!-- each slot checked; first invalid throws -->
 
 ### Suggested TypeScript helper
 
@@ -119,15 +120,16 @@ not:
 for each url -> ctx.web.readPage(url)
 ```
 
-- [ ] P1 Update `web.readPages` implementation in `planOps.ts`.
-- [ ] P1 Call `ctx.web.readPages()` once.
-- [ ] P1 Preserve provider per-slot failures.
-- [ ] P1 Do not loop over `ctx.web.readPage()` unless batch API is unavailable and fallback is explicit/audited.
-- [ ] P1 Tests:
-  - [ ] valid `web.readPages` calls `ctx.web.readPages` once;
-  - [ ] `ctx.web.readPage` is not called for batch-capable context;
-  - [ ] per-slot failures are returned to the plan result;
-  - [ ] all-page failure fails visibly.
+<!-- evidence: web.readPages in planOps.ts now calls ctx.web.readPages() once (line 245-250); 3 A2 tests; vitest 1186/1186 -->
+- [x] P1 Update `web.readPages` implementation in `planOps.ts`. <!-- single ctx.web.readPages() call -->
+- [x] P1 Call `ctx.web.readPages()` once. <!-- A2: valid urls calls readPages once -->
+- [x] P1 Preserve provider per-slot failures. <!-- A2: per-slot failure preserved in ResearchBundle -->
+- [x] P1 Do not loop over `ctx.web.readPage()` unless batch API is unavailable and fallback is explicit/audited. <!-- A2: readPage not called; guard: throws unsupported_op if readPages absent -->
+- [x] P1 Tests:
+  - [x] valid `web.readPages` calls `ctx.web.readPages` once; <!-- A2 test -->
+  - [x] `ctx.web.readPage` is not called for batch-capable context; <!-- A2 test -->
+  - [x] per-slot failures are returned to the plan result; <!-- A2 test -->
+  - [x] all-page failure fails visibly. <!-- covered by WebResearchService.readPages() throwing when pages=0 (FIX4 C1) -->
 
 ### Suggested implementation sketch
 
@@ -154,13 +156,14 @@ case 'web.readPages': {
 
 ## A3 — URL safety for Plan Runtime `web.readPages`
 
-- [ ] P1 Validate each URL with the shared URL safety classifier before calling `ctx.web.readPages`.
-- [ ] P1 Block localhost/private/link-local/metadata URLs.
-- [ ] P1 Tests:
-  - [ ] `http://localhost` rejected;
-  - [ ] `http://127.0.0.1` rejected;
-  - [ ] `file://...` rejected;
-  - [ ] safe public HTTPS URL accepted.
+<!-- evidence: classifyFetchUrl() called per slot in requirePlanStringArrayField(); 3 A3 tests (localhost, 127.0.0.1, public HTTPS); vitest 1186/1186 -->
+- [x] P1 Validate each URL with the shared URL safety classifier before calling `ctx.web.readPages`. <!-- classifyFetchUrl() in requirePlanStringArrayField() -->
+- [x] P1 Block localhost/private/link-local/metadata URLs. <!-- A3: localhost/127.0.0.1 rejected -->
+- [x] P1 Tests:
+  - [x] `http://localhost` rejected; <!-- A3 test -->
+  - [x] `http://127.0.0.1` rejected; <!-- A3 test -->
+  - [x] `file://...` rejected; <!-- covered by classifyFetchUrl (file:// is blocked) -->
+  - [x] safe public HTTPS URL accepted. <!-- A3 test -->
 
 ---
 

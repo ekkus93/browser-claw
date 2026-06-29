@@ -23,6 +23,7 @@ import {
   validateGrepRequest,
 } from '../workspace/types.ts';
 import type { WebResearchService } from '../webresearch/types.ts';
+import { classifyFetchUrl } from '../net/urlSafety.ts';
 
 export interface PlanOpContext {
   fs: WorkspaceFs;
@@ -45,6 +46,34 @@ export class PlanOpError extends Error {
 }
 
 type Args = Record<string, unknown>;
+
+// A1 (FIX5): reject any invalid slot rather than silently filtering.
+// A3 (FIX5): validate each URL with the shared safety classifier.
+function requirePlanStringArrayField(
+  args: Args,
+  field: string,
+  op: string,
+): string[] {
+  const value = args[field];
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new PlanOpError(`${op}.${field} must be a non-empty string array`);
+  }
+  return value.map((item, index) => {
+    if (typeof item !== 'string' || item.trim() === '') {
+      throw new PlanOpError(
+        `${op}.${field}[${index}] must be a non-empty string`,
+      );
+    }
+    const trimmed = item.trim();
+    const safety = classifyFetchUrl(trimmed);
+    if (!safety.ok) {
+      throw new PlanOpError(
+        `${op}.${field}[${index}] is blocked: ${safety.reason}`,
+      );
+    }
+    return trimmed;
+  });
+}
 
 function str(args: Args, key: string): string {
   const value = args[key];
@@ -214,17 +243,17 @@ async function webOp(
       ...(typeof args.maxChars === 'number' ? { maxChars: args.maxChars } : {}),
     });
   }
-  // web.readPages
-  const urls = Array.isArray(args.urls)
-    ? args.urls.filter((u): u is string => typeof u === 'string')
-    : [];
-  const maxPages =
-    typeof args.maxPages === 'number' ? args.maxPages : urls.length;
-  const pages = [];
-  for (const url of urls.slice(0, maxPages)) {
-    pages.push(await ctx.web.readPage(url, { url }));
+  // A1+A2+A3 (FIX5): strict URL array validation + batch call.
+  const urls = requirePlanStringArrayField(args, 'urls', 'web.readPages');
+  if (typeof ctx.web.readPages !== 'function') {
+    throw new PlanOpError(
+      'web.readPages requires a batch-capable web research provider',
+    );
   }
-  return pages;
+  return ctx.web.readPages(urls, {
+    ...(typeof args.maxPages === 'number' ? { maxPages: args.maxPages } : {}),
+    ...(typeof args.maxChars === 'number' ? { maxChars: args.maxChars } : {}),
+  });
 }
 
 function callTool(ctx: PlanOpContext, args: Args): Promise<string> {

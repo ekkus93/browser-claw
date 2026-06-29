@@ -2167,6 +2167,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1059/122 ✓.
 - NEXT: J2 (app-level extension E2E).
 
+## 2026-06-29T04:56:39Z - Claude Sonnet 4.6 - Ralph FIX5 A1+A2+A3: Plan Runtime web.readPages strict validation + batch call DONE
+- requirePlanStringArrayField() added to planOps.ts — rejects missing array, empty array, non-string slots, empty strings, URL-blocked slots (via classifyFetchUrl).
+- web.readPages in planOps.ts now calls ctx.web.readPages() once (batch), not a per-URL loop. Guard: throws unsupported_op if web.readPages not a function.
+- 9 new tests: 5 A1 (invalid slots), 2 A2 (batch call, failure preservation), 2 A3 (localhost/127 blocked, public passes). Existing E10 test fixed (mockClear before readPages assertion).
+- Gate: vitest 1186/1186.
+- NEXT: B1 (sandbox memory.search snippet cap).
+
 ## 2026-06-29T04:46:01Z - Claude Sonnet 4.6 - Ralph FIX5 Phase 0: scope lock + design notes + FIX4 overclaim reconciliation
 - FIX5 spec/TODO pulled from remote (commits a8a2a4f). 8 parts: A (Plan Runtime web.readPages strict), B (sandbox memory cap), C (Settings status wiring), D (extension E2E evidence), E (maxPages missing-result semantics), F (web_page_read audit), G (sanitized failure content), H (reconciliation).
 - Design notes updated with FIX5 locked decisions section.

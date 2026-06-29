@@ -14,6 +14,7 @@ import {
 } from './protocol.ts';
 import {
   MAX_BATCH_PAGE_READS,
+  MAX_WEB_PAGE_CHARS,
   normalizeOptionalPositiveIntegerLimit,
   LimitValidationError,
 } from '../webresearch/limits.ts';
@@ -129,6 +130,13 @@ function toResult(
   };
 }
 
+// D1/D2 (FIX10): shared maxChars validator used by both readPage() and readPages().
+function normalizeOptionalMaxChars(value: unknown): number | undefined {
+  return normalizeOptionalPositiveIntegerLimit(value, 'maxChars', {
+    max: MAX_WEB_PAGE_CHARS,
+  });
+}
+
 export function createExtensionPageReader(
   deps: ExtensionPageReaderDeps,
 ): PageReaderProvider {
@@ -191,8 +199,28 @@ export function createExtensionPageReader(
     },
 
     readPage(request: PageReadRequest): Promise<PageReadResult> {
+      // D1 (FIX10): validate maxChars before forwarding to the extension.
+      let maxChars: number | undefined;
+      try {
+        maxChars = normalizeOptionalMaxChars(request.maxChars);
+      } catch (err) {
+        const message =
+          err instanceof LimitValidationError
+            ? err.message
+            : 'Invalid maxChars.';
+        return Promise.resolve({
+          ok: false,
+          url: request.url,
+          error: { kind: 'internal_error', message, retryable: false },
+        });
+      }
       return exchange(
-        { type: 'read_page', requestId: newRequestId(), ...request },
+        {
+          type: 'read_page',
+          requestId: newRequestId(),
+          ...request,
+          ...(maxChars !== undefined ? { maxChars } : {}),
+        },
         request.url,
       );
     },
@@ -229,6 +257,23 @@ export function createExtensionPageReader(
             )
           : request.urls;
 
+      // D2 (FIX10): validate maxChars independently after effectiveMaxPages and
+      // expectedUrls are established — mirrors the maxPages try/catch above.
+      let effectiveMaxChars: number | undefined;
+      try {
+        effectiveMaxChars = normalizeOptionalMaxChars(request.maxChars);
+      } catch (err) {
+        const message =
+          err instanceof LimitValidationError
+            ? err.message
+            : 'Invalid maxChars.';
+        return expectedUrls.map((url) => ({
+          ok: false as const,
+          url,
+          error: { kind: 'internal_error' as const, message },
+        }));
+      }
+
       // F1 (FIX3): send one read_pages message to the extension — no looping.
       const requestId = newRequestId();
       let raw: unknown;
@@ -241,8 +286,8 @@ export function createExtensionPageReader(
             ? { maxPages: effectiveMaxPages }
             : {}),
           ...(request.format !== undefined ? { format: request.format } : {}),
-          ...(request.maxChars !== undefined
-            ? { maxChars: request.maxChars }
+          ...(effectiveMaxChars !== undefined
+            ? { maxChars: effectiveMaxChars }
             : {}),
           ...(request.timeoutMs !== undefined
             ? { timeoutMs: request.timeoutMs }

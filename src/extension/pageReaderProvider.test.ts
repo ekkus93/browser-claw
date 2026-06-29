@@ -764,3 +764,117 @@ describe('B3 (FIX7) — maxPages validation in readPages', () => {
     expect(send).toHaveBeenCalledWith(expect.objectContaining({ maxPages: 2 }));
   });
 });
+
+describe('D1 (FIX10) — maxChars validation in readPage', () => {
+  it('D1: maxChars 0 returns internal_error without calling extension', async () => {
+    const send = vi.fn();
+    const reader = createExtensionPageReader({ transport: { send } });
+    const result = await reader.readPage({
+      url: 'https://x/a',
+      maxChars: 0,
+    });
+    expect(send).not.toHaveBeenCalled();
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe('internal_error');
+    }
+  });
+
+  it('D1: maxChars -1 returns internal_error without calling extension', async () => {
+    const send = vi.fn();
+    const reader = createExtensionPageReader({ transport: { send } });
+    const result = await reader.readPage({
+      url: 'https://x/a',
+      maxChars: -1,
+    });
+    expect(send).not.toHaveBeenCalled();
+    expect(result.ok).toBe(false);
+  });
+
+  it('D1: maxChars 1.5 returns internal_error without calling extension', async () => {
+    const send = vi.fn();
+    const reader = createExtensionPageReader({ transport: { send } });
+    const result = await reader.readPage({
+      url: 'https://x/a',
+      maxChars: 1.5,
+    });
+    expect(send).not.toHaveBeenCalled();
+    expect(result.ok).toBe(false);
+  });
+
+  it('D1: valid maxChars 1000 is forwarded in the extension message', async () => {
+    const send = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        requestId: 'r',
+        url: 'https://x/a',
+        finalUrl: 'https://x/a',
+        text: 'hello',
+        length: 5,
+      }),
+    );
+    const reader = createExtensionPageReader({ transport: { send } });
+    await reader.readPage({ url: 'https://x/a', maxChars: 1000 });
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({ maxChars: 1000 }),
+    );
+  });
+});
+
+describe('D2 (FIX10) — maxChars validation in readPages', () => {
+  it('D2: maxChars 0 returns failure for every expected URL without calling extension', async () => {
+    const send = vi.fn();
+    const reader = createExtensionPageReader({ transport: { send } });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b'],
+      maxChars: 0,
+    });
+    expect(send).not.toHaveBeenCalled();
+    expect(results.every((r) => !r.ok)).toBe(true);
+  });
+
+  it('D2: maxChars -1 returns failure for every URL', async () => {
+    const send = vi.fn();
+    const reader = createExtensionPageReader({ transport: { send } });
+    const results = await reader.readPages({
+      urls: ['https://x/a'],
+      maxChars: -1,
+    });
+    expect(send).not.toHaveBeenCalled();
+    expect(results.every((r) => !r.ok)).toBe(true);
+  });
+
+  it('D2: maxChars 1.5 returns failure for every URL', async () => {
+    const send = vi.fn();
+    const reader = createExtensionPageReader({ transport: { send } });
+    const results = await reader.readPages({
+      urls: ['https://x/a'],
+      maxChars: 1.5,
+    });
+    expect(send).not.toHaveBeenCalled();
+    expect(results.every((r) => !r.ok)).toBe(true);
+  });
+
+  it('D2: valid maxChars 2000 is sent in extension message', async () => {
+    const send = vi.fn(() =>
+      Promise.resolve({ ok: true, requestId: 'r', results: [] }),
+    );
+    const reader = createExtensionPageReader({ transport: { send } });
+    await reader.readPages({ urls: ['https://x/a'], maxChars: 2000 });
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({ maxChars: 2000 }),
+    );
+  });
+
+  it('D2: maxPages invalid and maxChars valid — maxPages error takes precedence', async () => {
+    const send = vi.fn();
+    const reader = createExtensionPageReader({ transport: { send } });
+    const results = await reader.readPages({
+      urls: ['https://x/a'],
+      maxPages: 0,
+      maxChars: 1000,
+    });
+    expect(send).not.toHaveBeenCalled();
+    expect(results.every((r) => !r.ok)).toBe(true);
+  });
+});

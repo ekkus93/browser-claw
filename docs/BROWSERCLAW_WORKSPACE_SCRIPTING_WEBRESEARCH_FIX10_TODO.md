@@ -336,19 +336,19 @@ If there is no `failInvalidPageReadPayload()` helper, create one analogous to th
 
 ### Required behavior
 
-- [ ] P1 Validate `request.maxChars` before sending to extension.
-- [ ] P1 Reject:
-  - [ ] string if type permits runtime input;
-  - [ ] zero;
-  - [ ] negative;
-  - [ ] non-integer;
-  - [ ] above cap.
-- [ ] P1 Invalid `maxChars` should return a structured page-read failure and not send to extension.
-- [ ] P1 Tests:
-  - [ ] `readPage({ maxChars: -1 })` returns invalid failure;
-  - [ ] `readPage({ maxChars: 0 })` returns invalid failure;
-  - [ ] `readPage({ maxChars: 1.5 })` returns invalid failure;
-  - [ ] valid `maxChars: 1000` is sent to extension.
+- [x] P1 Validate `request.maxChars` before sending to extension. <!-- normalizeOptionalMaxChars() in pageReaderProvider.ts readPage() -->
+- [x] P1 Reject: <!-- all rejected by normalizeOptionalPositiveIntegerLimit via normalizeOptionalMaxChars -->
+  - [x] string if type permits runtime input; <!-- throws LimitValidationError for non-number -->
+  - [x] zero; <!-- throws on value < 1 -->
+  - [x] negative; <!-- throws on negative value -->
+  - [x] non-integer; <!-- throws on non-integer -->
+  - [x] above cap. <!-- throws when > MAX_WEB_PAGE_CHARS -->
+- [x] P1 Invalid `maxChars` should return a structured page-read failure and not send to extension. <!-- returns ok:false with internal_error; send not called -->
+- [x] P1 Tests:
+  - [x] `readPage({ maxChars: -1 })` returns invalid failure; <!-- test D1: maxChars -1 -->
+  - [x] `readPage({ maxChars: 0 })` returns invalid failure; <!-- test D1: maxChars 0 -->
+  - [x] `readPage({ maxChars: 1.5 })` returns invalid failure; <!-- test D1: maxChars 1.5 -->
+  - [x] valid `maxChars: 1000` is sent to extension. <!-- test D1: valid maxChars 1000 -->
 
 ### Suggested helper
 
@@ -388,13 +388,13 @@ Adapt return shape to the existing `PageReadResult` type.
 
 ## D2 — Validate `maxChars` in `readPages()`
 
-- [ ] P1 Validate `request.maxChars` before sending to extension.
-- [ ] P1 Invalid `maxChars` should return one structured failure for each expected URL.
-- [ ] P1 Do not send invalid `maxChars` to extension.
-- [ ] P1 Tests:
-  - [ ] `readPages({ urls: [...], maxChars: -1 })` returns failures for expected URLs;
-  - [ ] invalid `maxChars` does not call transport;
-  - [ ] valid `maxChars` is sent to extension.
+- [x] P1 Validate `request.maxChars` before sending to extension. <!-- second independent try/catch after effectiveMaxPages+expectedUrls in readPages() -->
+- [x] P1 Invalid `maxChars` should return one structured failure for each expected URL. <!-- expectedUrls.map to ok:false internal_error -->
+- [x] P1 Do not send invalid `maxChars` to extension. <!-- return before transport.send; transport mock not.toHaveBeenCalled -->
+- [x] P1 Tests:
+  - [x] `readPages({ urls: [...], maxChars: -1 })` returns failures for expected URLs; <!-- test D2: maxChars -1 -->
+  - [x] invalid `maxChars` does not call transport; <!-- send not.toHaveBeenCalled in D2 tests -->
+  - [x] valid `maxChars` is sent to extension. <!-- test D2: valid maxChars 2000 -->
 
 ### Suggested readPages shape
 

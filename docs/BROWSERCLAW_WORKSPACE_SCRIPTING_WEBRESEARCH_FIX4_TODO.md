@@ -219,23 +219,24 @@ const query = typeof effect.query === 'string' ? effect.query : '';
 
 `webRunner` validates effects before calling providers.
 
-- [ ] P1 Add helper `requireEffectStringField`.
-- [ ] P1 Add helper `requireEffectStringArrayField`.
-- [ ] P1 Apply to:
-  - [ ] `web_search.query`;
-  - [ ] `web_page_read.url`;
-  - [ ] `web_research.mode === 'query'` query;
-  - [ ] `web_research.mode === 'urls'` urls.
-- [ ] P1 Invalid payload:
-  - [ ] does not call provider;
-  - [ ] audits `web.effect_payload_invalid`;
-  - [ ] resolves effect as failure.
-- [ ] P1 Tests:
-  - [ ] missing query does not call search;
-  - [ ] empty query does not call search;
-  - [ ] missing URL does not call reader;
-  - [ ] invalid URL array does not call `readPages`;
-  - [ ] audit contains error kind.
+<!-- evidence: webRunner.ts — WebEffectPayloadError + requireEffectString + requireEffectStringArray + failInvalidWebEffect + 5 B1 tests; vitest 1148/1148 -->
+- [x] P1 Add helper `requireEffectStringField`. <!-- requireEffectString() in webRunner.ts -->
+- [x] P1 Add helper `requireEffectStringArrayField`. <!-- requireEffectStringArray() in webRunner.ts -->
+- [x] P1 Apply to:
+  - [x] `web_search.query`; <!-- B1 test: empty/whitespace query does not call search -->
+  - [x] `web_page_read.url`; <!-- existing classifyFetchUrl check already rejects empty/invalid URLs -->
+  - [x] `web_research.mode === 'query'` query; <!-- B1 test: empty query does not dispatch approval -->
+  - [x] `web_research.mode === 'urls'` urls. <!-- B1 test: empty array + empty slot both rejected -->
+- [x] P1 Invalid payload:
+  - [x] does not call provider; <!-- B1: web.search not called; B1: approvalRequested not dispatched -->
+  - [x] audits `web.effect_payload_invalid`; <!-- all B1 tests check auditTypes() -->
+  - [x] resolves effect as failure. <!-- submit called with ok: false -->
+- [x] P1 Tests:
+  - [x] missing query does not call search; <!-- B1: empty query test -->
+  - [x] empty query does not call search; <!-- B1: whitespace query test -->
+  - [x] missing URL does not call reader; <!-- G1 tests (FIX3) + classifyFetchUrl gate -->
+  - [x] invalid URL array does not call `readPages`; <!-- B1: empty urls + empty slot tests -->
+  - [x] audit contains error kind. <!-- auditTypes() contains web.effect_payload_invalid -->
 
 ### Suggested TypeScript helper
 

@@ -39,6 +39,74 @@ export interface WebEffectDeps {
   submit: (command: Command) => Promise<void>;
 }
 
+// B1 (FIX4): fail-closed effect payload validators. Even if Rust/WASM runtime
+// validation improves, the host must not call providers with empty/malformed values.
+
+class WebEffectPayloadError extends Error {
+  readonly kind: string;
+  constructor(kind: string, message: string) {
+    super(message);
+    this.name = 'WebEffectPayloadError';
+    this.kind = kind;
+  }
+}
+
+function requireEffectString(value: string, label: string): string {
+  if (value.trim() === '') {
+    throw new WebEffectPayloadError(
+      'web_effect_missing_field',
+      `${label} must be a non-empty string.`,
+    );
+  }
+  return value.trim();
+}
+
+function requireEffectStringArray(values: string[], label: string): string[] {
+  if (values.length === 0) {
+    throw new WebEffectPayloadError(
+      'web_effect_missing_field',
+      `${label} must be a non-empty array.`,
+    );
+  }
+  return values.map((item, index) => {
+    if (item.trim() === '') {
+      throw new WebEffectPayloadError(
+        'web_effect_invalid_field',
+        `${label}[${index}] must be a non-empty string.`,
+      );
+    }
+    return item.trim();
+  });
+}
+
+async function failInvalidWebEffect(
+  deps: WebEffectDeps,
+  effectId: string,
+  error: unknown,
+): Promise<void> {
+  const message = error instanceof Error ? error.message : String(error);
+  void recordAudit(
+    deps.db,
+    deps.dispatch,
+    webAuditEvent(
+      'web.effect_payload_invalid',
+      'Web effect payload was invalid.',
+      {
+        status: 'failure',
+        risk: 'medium',
+      },
+    ),
+  );
+  await deps.submit({
+    type: 'resolve_effect',
+    id: effectId,
+    result: {
+      ok: false,
+      error: { kind: 'web_effect_payload_invalid', message, retryable: false },
+    },
+  });
+}
+
 function sanitizeSearchOptions(input: unknown): SearchOptions {
   const o = (
     typeof input === 'object' && input !== null ? input : {}
@@ -81,7 +149,14 @@ function sanitizeReadOptions(input: unknown, url: string): PageReadRequest {
 export function createWebEffectHandler(deps: WebEffectDeps) {
   return async (effect: WebEffect): Promise<void> => {
     if (effect.type === 'web_search') {
-      const query = typeof effect.query === 'string' ? effect.query : '';
+      // B1 (FIX4): reject empty query before calling provider.
+      let query: string;
+      try {
+        query = requireEffectString(effect.query, 'web_search.query');
+      } catch (error) {
+        await failInvalidWebEffect(deps, effect.id, error);
+        return;
+      }
       void recordAudit(
         deps.db,
         deps.dispatch,
@@ -134,10 +209,17 @@ export function createWebEffectHandler(deps: WebEffectDeps) {
       // A multi-page research run is bulk egress → gate behind approval.
       // C3 (FIX3): discriminate mode:'query' vs mode:'urls' so URL arrays
       // are never collapsed to an empty query string.
+      // B1 (FIX4): validate fields before approval dispatch.
       const options = sanitizeResearchOptions(effect.options);
       const maxPages = options.maxPages ?? 'default';
       if (effect.mode === 'urls') {
-        const urlList = effect.urls;
+        let urlList: string[];
+        try {
+          urlList = requireEffectStringArray(effect.urls, 'web_research.urls');
+        } catch (error) {
+          await failInvalidWebEffect(deps, effect.id, error);
+          return;
+        }
         deps.dispatch(
           approvalRequested({
             id: effect.id,
@@ -149,7 +231,13 @@ export function createWebEffectHandler(deps: WebEffectDeps) {
           }),
         );
       } else {
-        const query = effect.query;
+        let query: string;
+        try {
+          query = requireEffectString(effect.query, 'web_research.query');
+        } catch (error) {
+          await failInvalidWebEffect(deps, effect.id, error);
+          return;
+        }
         deps.dispatch(
           approvalRequested({
             id: effect.id,

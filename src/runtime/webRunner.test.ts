@@ -348,3 +348,112 @@ describe('runApprovedBulkResearch (F3)', () => {
     expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
   });
 });
+
+// ---------------------------------------------------------------------------
+// B1 (FIX4): host webRunner fail-closed effect payload validation
+// ---------------------------------------------------------------------------
+
+describe('B1 — web_search effect payload validation', () => {
+  it('B1: empty query does not call search and audits web.effect_payload_invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({ type: 'web_search', id: 'b1-empty', query: '' });
+    expect(web.search).not.toHaveBeenCalled();
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('B1: whitespace-only query does not call search', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({ type: 'web_search', id: 'b1-ws', query: '   ' });
+    expect(web.search).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+});
+
+describe('B1 — web_research effect payload validation', () => {
+  it('B1: empty query mode does not dispatch bulk_research approval and audits invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'b1-rq',
+      mode: 'query',
+      query: '',
+      urls: undefined,
+    } as unknown as Parameters<typeof handle>[0]);
+    // dispatch may be called by recordAudit internally; check no approvalRequested
+    const approvalCalls = (
+      dispatch as ReturnType<typeof vi.fn>
+    ).mock.calls.filter(
+      (c: unknown[]) =>
+        typeof c[0] === 'object' &&
+        c[0] !== null &&
+        (c[0] as Record<string, unknown>).type ===
+          'approvals/approvalRequested',
+    );
+    expect(approvalCalls).toHaveLength(0);
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('B1: empty urls array does not dispatch bulk_research approval and audits invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'b1-ru-empty',
+      mode: 'urls',
+      urls: [],
+      query: undefined,
+    } as unknown as Parameters<typeof handle>[0]);
+    const approvalCalls = (
+      dispatch as ReturnType<typeof vi.fn>
+    ).mock.calls.filter(
+      (c: unknown[]) =>
+        typeof c[0] === 'object' &&
+        c[0] !== null &&
+        (c[0] as Record<string, unknown>).type ===
+          'approvals/approvalRequested',
+    );
+    expect(approvalCalls).toHaveLength(0);
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('B1: urls array with empty-string slot does not dispatch approval', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'b1-ru-slot',
+      mode: 'urls',
+      urls: ['https://ok.example', ''],
+      query: undefined,
+    } as unknown as Parameters<typeof handle>[0]);
+    const approvalCalls = (
+      dispatch as ReturnType<typeof vi.fn>
+    ).mock.calls.filter(
+      (c: unknown[]) =>
+        typeof c[0] === 'object' &&
+        c[0] !== null &&
+        (c[0] as Record<string, unknown>).type ===
+          'approvals/approvalRequested',
+    );
+    expect(approvalCalls).toHaveLength(0);
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+});

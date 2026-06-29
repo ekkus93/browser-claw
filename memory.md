@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-29T01:09:55Z - Claude Sonnet 4.6 - FIX4 B1 (webRunner fail-closed helpers) DONE
+- Added WebEffectPayloadError + requireEffectString + requireEffectStringArray + failInvalidWebEffect to webRunner.ts.
+- Applied to web_search.query, web_research.query, web_research.urls (effect-level validation before provider/approval).
+- web_page_read.url already handled by classifyFetchUrl gate + G1 strict payload parsing.
+- 5 B1 tests; vitest 1148/1148; typecheck+lint clean.
+- Next: B2 — strict per-slot URL validation in runApprovedBulkResearch.
+
 ## 2026-06-29T01:03:32Z - Claude Sonnet 4.6 - FIX4 A3 (Rust fallback audit) DONE
 - Searched all crates for unwrap_or_default/filter_map patterns; 3 remaining hits all safe.
 - Added "intentionally safe default" comments to pending_conversation/pending_skill and tool_call.args.

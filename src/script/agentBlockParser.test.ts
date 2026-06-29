@@ -232,4 +232,128 @@ describe('parseAgentActionBlock (FIX1-C1/C2)', () => {
     expect(r.kind).toBe('malformed');
     if (r.kind === 'malformed') expect(r.message).toMatch(/op must be one of/);
   });
+
+  // A1/A2 (FIX8): canonical web options normalization and maxPages validation.
+
+  it('A1 FIX8: top-level maxPages normalized into options.maxPages', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPages',
+      urls: ['https://a.com/'],
+      maxPages: 3,
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('web_request');
+    if (r.kind === 'web_request') {
+      expect(r.request.options?.maxPages).toBe(3);
+    }
+  });
+
+  it('A1 FIX8: top-level maxChars normalized into options.maxChars', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPages',
+      urls: ['https://a.com/'],
+      maxChars: 20000,
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('web_request');
+    if (r.kind === 'web_request') {
+      expect(r.request.options?.maxChars).toBe(20000);
+    }
+  });
+
+  it('A1 FIX8: nested options.maxPages preserved', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPages',
+      urls: ['https://a.com/'],
+      options: { maxPages: 2 },
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('web_request');
+    if (r.kind === 'web_request') {
+      expect(r.request.options?.maxPages).toBe(2);
+    }
+  });
+
+  it('A2 FIX8: top-level maxPages 0 is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPages',
+      urls: ['https://a.com/'],
+      maxPages: 0,
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+  });
+
+  it('A2 FIX8: top-level maxPages -1 is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPages',
+      urls: ['https://a.com/'],
+      maxPages: -1,
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+  });
+
+  it('A2 FIX8: top-level maxPages 1.5 is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPages',
+      urls: ['https://a.com/'],
+      maxPages: 1.5,
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+  });
+
+  it('A2 FIX8: nested options.maxPages 0 is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPages',
+      urls: ['https://a.com/'],
+      options: { maxPages: 0 },
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+  });
+
+  it('A1 FIX8: conflicting top-level and nested maxPages is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPages',
+      urls: ['https://a.com/'],
+      maxPages: 2,
+      options: { maxPages: 3 },
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+    if (r.kind === 'malformed') expect(r.message).toMatch(/Conflict/i);
+  });
+
+  it('A2 FIX8: valid top-level maxPages 1 accepted and propagated', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPages',
+      urls: ['https://a.com/', 'https://b.com/'],
+      maxPages: 1,
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('web_request');
+    if (r.kind === 'web_request') {
+      expect(r.request.options?.maxPages).toBe(1);
+    }
+  });
 });

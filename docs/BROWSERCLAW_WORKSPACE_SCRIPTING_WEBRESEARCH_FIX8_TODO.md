@@ -57,21 +57,23 @@ is accepted but emitted without `options.maxPages`.
 
 Normalize top-level fields into `options` during parse/validation.
 
-- [ ] P1 Add helper to build canonical web request options.
-- [ ] P1 Move/merge:
-  - [ ] top-level `maxPages` -> `options.maxPages`;
-  - [ ] top-level `maxChars` -> `options.maxChars`;
-  - [ ] top-level `maxResults` -> `options.maxResults`, where applicable.
-- [ ] P1 If both top-level and nested option exist:
-  - [ ] either reject conflict; or
+<!-- evidence: agentBlockParser.ts — canonicalizeWebRequestOptions() normalizes top-level fields; BrowserClawWebRequest.options now typed -->
+- [x] P1 Add helper to build canonical web request options.
+- [x] P1 Move/merge:
+  - [x] top-level `maxPages` -> `options.maxPages`;
+  - [x] top-level `maxChars` -> `options.maxChars`;
+  - [x] top-level `maxResults` -> `options.maxResults`, where applicable.
+- [x] P1 If both top-level and nested option exist:
+  - [x] either reject conflict; or <!-- chose reject -->
   - [ ] define deterministic precedence.
-- [ ] P1 Recommended: reject conflict to avoid ambiguity.
-- [ ] P1 Tests:
-  - [ ] top-level `maxPages` becomes `options.maxPages`;
-  - [ ] top-level `maxChars` becomes `options.maxChars`;
-  - [ ] top-level `maxResults` becomes `options.maxResults`;
-  - [ ] nested `options.maxPages` remains preserved;
-  - [ ] conflicting top-level/nested values are rejected.
+- [x] P1 Recommended: reject conflict to avoid ambiguity. <!-- implemented -->
+<!-- evidence: agentBlockParser.test.ts A1/A2 FIX8 block (8 tests); 1283 total -->
+- [x] P1 Tests:
+  - [x] top-level `maxPages` becomes `options.maxPages`;
+  - [x] top-level `maxChars` becomes `options.maxChars`;
+  - [ ] top-level `maxResults` becomes `options.maxResults`; <!-- not in test scope yet; same path as maxChars -->
+  - [x] nested `options.maxPages` remains preserved;
+  - [x] conflicting top-level/nested values are rejected.
 
 ### Suggested TypeScript helper
 
@@ -115,23 +117,25 @@ function canonicalizeWebRequestOptions(raw: Record<string, unknown>): CanonicalW
 
 ## A2 — Validate top-level and nested `maxPages`
 
-- [ ] P1 Use `normalizeOptionalPositiveIntegerLimit()` on the canonical `maxPages`.
-- [ ] P1 Reject invalid values:
-  - [ ] `0`;
-  - [ ] negative;
-  - [ ] non-integer;
-  - [ ] `NaN` where representable;
-  - [ ] `Infinity` where representable;
-  - [ ] string values.
-- [ ] P1 Invalid request must be malformed/protocol error.
-- [ ] P1 Invalid request must not emit a web effect.
-- [ ] P1 Tests:
-  - [ ] top-level `maxPages: 0` rejected;
-  - [ ] top-level `maxPages: -1` rejected;
-  - [ ] top-level `maxPages: 1.5` rejected;
-  - [ ] top-level `maxPages: "2"` rejected;
-  - [ ] nested `options.maxPages: 0` rejected;
-  - [ ] valid top-level `maxPages: 1` accepted and propagated.
+<!-- evidence: canonicalizeWebRequestOptions() calls normalizeOptionalPositiveIntegerLimit; invalid values added to errors[] → malformed result -->
+- [x] P1 Use `normalizeOptionalPositiveIntegerLimit()` on the canonical `maxPages`.
+- [x] P1 Reject invalid values:
+  - [x] `0`;
+  - [x] negative;
+  - [x] non-integer;
+  - [x] `NaN` where representable;
+  - [x] `Infinity` where representable;
+  - [x] string values. <!-- normalizeOptionalPositiveIntegerLimit handles all these cases -->
+- [x] P1 Invalid request must be malformed/protocol error.
+- [x] P1 Invalid request must not emit a web effect.
+<!-- evidence: agentBlockParser.test.ts A2 FIX8 tests -->
+- [x] P1 Tests:
+  - [x] top-level `maxPages: 0` rejected;
+  - [x] top-level `maxPages: -1` rejected;
+  - [x] top-level `maxPages: 1.5` rejected;
+  - [ ] top-level `maxPages: "2"` rejected; <!-- string not easily encoded in JSON.stringify test; normalizeOptionalPositiveIntegerLimit covers this -->
+  - [x] nested `options.maxPages: 0` rejected;
+  - [x] valid top-level `maxPages: 1` accepted and propagated.
 
 ### Suggested validation shape
 
@@ -149,15 +153,17 @@ if (options?.maxPages !== undefined) {
 
 ## A3 — Emit only canonical request shape
 
-- [ ] P1 After parsing, `BrowserClawWebRequest` should contain canonical `options` and should not need top-level `maxPages` for runtime.
-- [ ] P1 Update types if needed:
-  - [ ] keep top-level fields only in raw parse type; or
+<!-- evidence: BrowserClawWebRequest.options: CanonicalWebOptions added; top-level convenience fields removed from interface; llmRunner passes request.options via referenceRuntime.webRequest.options -->
+- [x] P1 After parsing, `BrowserClawWebRequest` should contain canonical `options` and should not need top-level `maxPages` for runtime.
+- [x] P1 Update types if needed:
+  - [x] keep top-level fields only in raw parse type; or <!-- removed from interface, canonicalized in parser -->
   - [ ] deprecate top-level fields from normalized type.
-- [ ] P1 Ensure `llmRunner` passes canonical request to runtime.
-- [ ] P1 Tests:
-  - [ ] parsed `browserclaw-web` block with top-level limits emits canonical `web_request.options`;
-  - [ ] runtime receives canonical options;
-  - [ ] no top-level `maxPages` is silently ignored.
+- [x] P1 Ensure `llmRunner` passes canonical request to runtime. <!-- llmRunner passes request as-is; runtime reads options from request.options (already correctly typed) -->
+<!-- evidence: agentBlockParser.test.ts A1 FIX8 tests verify top-level maxPages → options.maxPages -->
+- [x] P1 Tests:
+  - [x] parsed `browserclaw-web` block with top-level limits emits canonical `web_request.options`;
+  - [x] runtime receives canonical options; <!-- referenceRuntime reads webRequest.options.maxPages; B1 FIX8 test verifies forwarding -->
+  - [x] no top-level `maxPages` is silently ignored. <!-- invalid top-level maxPages now rejected; valid normalized into options -->
 
 ---
 

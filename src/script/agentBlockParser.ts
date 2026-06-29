@@ -20,6 +20,11 @@ import {
 } from './scriptRequest.ts';
 import { parseToolCall, type ToolCall } from '../tools/tools.ts';
 import { classifyFetchUrl } from '../net/urlSafety.ts';
+import {
+  MAX_BATCH_PAGE_READS,
+  normalizeOptionalPositiveIntegerLimit,
+  LimitValidationError,
+} from '../webresearch/limits.ts';
 
 // ---------------------------------------------------------------------------
 // BrowserClawWebRequest (inline — no separate schema file yet)
@@ -36,6 +41,13 @@ const KNOWN_WEB_OPS = [
 ] as const;
 type WebOp = (typeof KNOWN_WEB_OPS)[number];
 
+/** Canonical nested options object on a parsed web request. */
+export interface CanonicalWebOptions {
+  maxPages?: number;
+  maxChars?: number;
+  maxResults?: number;
+}
+
 export interface BrowserClawWebRequest {
   type: typeof WEB_REQUEST_TYPE;
   version: typeof WEB_REQUEST_VERSION;
@@ -43,9 +55,64 @@ export interface BrowserClawWebRequest {
   url?: string;
   query?: string;
   urls?: string[];
-  maxResults?: number;
-  maxPages?: number;
-  maxChars?: number;
+  /** Canonical normalized options (top-level maxPages/maxChars/maxResults merged here). */
+  options?: CanonicalWebOptions;
+}
+
+/**
+ * Merge top-level convenience fields into a canonical options object.
+ * Rejects conflicting top-level/nested values and invalid maxPages.
+ */
+function canonicalizeWebRequestOptions(
+  obj: Record<string, unknown>,
+  errors: string[],
+): CanonicalWebOptions | undefined {
+  const rawOptions =
+    obj.options !== null &&
+    typeof obj.options === 'object' &&
+    !Array.isArray(obj.options)
+      ? (obj.options as Record<string, unknown>)
+      : undefined;
+
+  function mergeField(field: 'maxPages' | 'maxChars' | 'maxResults'): unknown {
+    const top = obj[field];
+    const nested = rawOptions?.[field];
+    if (top !== undefined && nested !== undefined && top !== nested) {
+      errors.push(
+        `Conflicting web request option: ${field} set both top-level and in options`,
+      );
+      return undefined;
+    }
+    return nested !== undefined ? nested : top;
+  }
+
+  const maxPages = mergeField('maxPages');
+  const maxChars = mergeField('maxChars');
+  const maxResults = mergeField('maxResults');
+
+  if (maxPages !== undefined) {
+    try {
+      normalizeOptionalPositiveIntegerLimit(maxPages, 'maxPages', {
+        max: MAX_BATCH_PAGE_READS,
+      });
+    } catch (err) {
+      errors.push(
+        err instanceof LimitValidationError
+          ? err.message
+          : `maxPages is invalid: ${String(maxPages)}`,
+      );
+    }
+  }
+
+  const result: CanonicalWebOptions = {};
+  if (maxPages !== undefined && typeof maxPages === 'number')
+    result.maxPages = maxPages as number;
+  if (maxChars !== undefined && typeof maxChars === 'number')
+    result.maxChars = maxChars as number;
+  if (maxResults !== undefined && typeof maxResults === 'number')
+    result.maxResults = maxResults as number;
+
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 type WebRequestValidation =
@@ -115,8 +182,22 @@ function validateWebRequest(input: unknown): WebRequestValidation {
     }
   }
 
+  // A1/A2 (FIX8): normalize top-level limit fields into canonical options and
+  // validate maxPages. Must happen after op-specific checks so errors accumulate.
+  const canonicalOptions = canonicalizeWebRequestOptions(obj, errors);
+
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, request: obj as unknown as BrowserClawWebRequest };
+
+  const request: BrowserClawWebRequest = {
+    type: obj.type as typeof WEB_REQUEST_TYPE,
+    version: obj.version as typeof WEB_REQUEST_VERSION,
+    op: obj.op as WebOp,
+    ...(typeof obj.url === 'string' ? { url: obj.url } : {}),
+    ...(typeof obj.query === 'string' ? { query: obj.query } : {}),
+    ...(Array.isArray(obj.urls) ? { urls: obj.urls as string[] } : {}),
+    ...(canonicalOptions ? { options: canonicalOptions } : {}),
+  };
+  return { ok: true, request };
 }
 
 // ---------------------------------------------------------------------------

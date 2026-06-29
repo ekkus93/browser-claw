@@ -380,6 +380,8 @@ export function createReferenceRuntime(
             }
             // B3 (FIX7) + B1 (FIX8): validate optional maxPages in web_request
             // options and forward validated options into the emitted effect.
+            // A1/A2 (FIX8): parser normalizes top-level maxPages into options;
+            // only options.maxPages needs checking here.
             const rawOptions = webRequest.options as
               | Record<string, unknown>
               | undefined;

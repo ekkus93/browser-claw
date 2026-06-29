@@ -951,3 +951,55 @@ These decisions apply to the FIX5 follow-up hardening pass. See
   `toolContentFromEffectFailure()` JSON output containing `type`, `kind`,
   `message`, and `retryable` fields; token-like strings in messages are
   redacted.
+
+## FIX6 Locked decisions (2026-06-29)
+
+These decisions apply to the FIX6 parity and validation hardening pass. See
+`docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX6_SPEC.md` and
+`...FIX6_TODO.md` for the full scope.
+
+- **Rust/WASM failure content must match TypeScript structured failure content.**
+  FIX5 added `toolContentFromEffectFailure()` in TypeScript (`referenceRuntime.ts`)
+  but left the Rust/WASM runtime producing generic strings ("Operation was not
+  completed.", "Tool call was not completed."). FIX6 Part A adds the Rust equivalent
+  (`tool_content_from_effect_failure`) so that the WASM path — which is the default
+  production runtime when available — produces the same structured, sanitized JSON
+  output as the TS reference runtime. Parity tests must cover the same canonical
+  input shapes in both languages.
+- **TypeScript reference runtime must validate raw `readPages` requests at the
+  effect-handling layer.** `referenceRuntime.ts` currently casts
+  `web_request.readPages.urls` as `string[]` without validation. The agent block
+  parser and Plan Runtime validate `readPages` upstream, but the raw effect path
+  in `referenceRuntime.ts` is a second entry point that can receive unvalidated
+  data. FIX6 Part B adds strict slot-by-slot validation (non-empty string array,
+  URL safety via `classifyFetchUrl`) before a `web_research` effect is emitted.
+  Invalid requests emit `runtime.invalid_web_request`, not a blank web-research
+  effect.
+- **Settings WebResearch capability status must derive from current key/vault state,
+  not the stale probe-time snapshot.** FIX5 C1 stored a normalized `capabilityStatus`
+  at probe time. If the user clears the Brave key or the vault locks after a
+  successful probe, the status badge remains "ready" until the next probe — this is
+  misleading. FIX6 Part C changes the shape: `rawExtensionStatus` is stored from
+  the probe, and `capabilityStatus` is derived via `useMemo` from the raw status
+  plus current `webKey.keyConfigured` and `webKey.vaultLocked`. The badge then
+  updates reactively on every relevant state change without needing a new probe.
+- **Rejected approvals must not parse malformed payloads before returning.**
+  `runApprovedBulkResearch()` (and similar approval handlers) parse the
+  `payloadPreview` before checking `approval.status`. A rejected approval with a
+  malformed JSON payload would audit `web.bulk_research_payload_invalid` instead
+  of `web.research_rejected` — misleading and incorrect. FIX6 Part D moves the
+  `approval.status !== 'approved'` check before any payload parsing, so a rejection
+  resolves cleanly without ever inspecting the payload.
+- **`readPages(maxPages)` must use `expectedUrls` for all failure paths.** FIX5 E1
+  fixed the success mapping but some top-level error paths (extension unavailable,
+  invalid response, transport throws) may still use `request.urls` instead of
+  `request.urls.slice(0, maxPages)`. FIX6 Part E computes `expectedUrls` once at
+  the top of `readPages()` and uses it consistently across all result and failure
+  paths.
+- **Docker extension E2E evidence must remain reproducible.** The Docker E2E lane
+  (`pnpm run test:extension:e2e:docker`) was proven in FIX5 and must be re-verified
+  or cited in FIX6 acceptance. If it cannot run in the current environment, a prior
+  recorded result may be cited only if the extension code has not changed since that
+  run; otherwise a new run is required.
+- **No new broad features in FIX6.** All changes in FIX6 are correctness,
+  validation, and parity fixes. Feature additions belong in a separate pass.

@@ -10,22 +10,29 @@ P2 = polish, robustness, or future hardening
 
 ## Phase 0 — Scope Lock and Evidence Hygiene
 
-- [ ] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX6_SPEC.md`.
-- [ ] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX6_TODO.md`.
-- [ ] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX6 section:
-  - [ ] Rust/WASM failure content must match TypeScript structured failure content.
-  - [ ] TypeScript reference runtime must validate raw `readPages` requests, not rely only on upstream parser validation.
-  - [ ] Settings WebResearch capability status must derive from current key/vault state, not stale probe-time snapshot.
-  - [ ] Rejected approvals should not parse malformed payloads before handling rejection.
-  - [ ] `readPages(maxPages)` should use expected URL subset for all result/failure mappings.
-  - [ ] Docker extension E2E evidence must remain reproducible.
-- [ ] P0 Update `memory.md` with:
-  - [ ] real `date -u` timestamp;
-  - [ ] model name;
-  - [ ] concise summary of FIX6 scope.
-- [ ] P0 Do not add broad new features in this pass.
-- [ ] P0 Do not check TODO boxes without evidence comments pointing to source/tests.
-- [ ] P0 Correct any previous FIX5 evidence comments that imply Rust/WASM structured failure serialization was complete.
+<!-- evidence: docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX6_SPEC.md pulled from remote -->
+- [x] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX6_SPEC.md`.
+<!-- evidence: this file pulled from remote -->
+- [x] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX6_TODO.md`.
+<!-- evidence: docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md — FIX6 Locked decisions section added -->
+- [x] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX6 section:
+  - [x] Rust/WASM failure content must match TypeScript structured failure content.
+  - [x] TypeScript reference runtime must validate raw `readPages` requests, not rely only on upstream parser validation.
+  - [x] Settings WebResearch capability status must derive from current key/vault state, not stale probe-time snapshot.
+  - [x] Rejected approvals should not parse malformed payloads before handling rejection.
+  - [x] `readPages(maxPages)` should use expected URL subset for all result/failure mappings.
+  - [x] Docker extension E2E evidence must remain reproducible.
+<!-- evidence: memory.md updated with 2026-06-29T08:38:13Z timestamp, Claude Sonnet 4.6, FIX6 scope -->
+- [x] P0 Update `memory.md` with:
+  - [x] real `date -u` timestamp;
+  - [x] model name;
+  - [x] concise summary of FIX6 scope.
+<!-- meta constraint — no new features added -->
+- [x] P0 Do not add broad new features in this pass.
+<!-- meta constraint — enforced throughout -->
+- [x] P0 Do not check TODO boxes without evidence comments pointing to source/tests.
+<!-- evidence: FIX5 TODO lines 580/640 already say "deferred: TS runtime is the active path; Rust/WASM not yet wired" — no false completion claims present -->
+- [x] P0 Correct any previous FIX5 evidence comments that imply Rust/WASM structured failure serialization was complete.
 
 ---
 

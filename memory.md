@@ -2222,6 +2222,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T08:38:13Z - Claude Sonnet 4.6 - Ralph FIX6 Phase 0: scope lock complete; FIX6 started
+- FIX6 spec and TODO pulled from remote (docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX6_SPEC.md + _TODO.md).
+- design notes updated with FIX6 Locked decisions section (6 decisions: Rust/WASM failure parity, TS readPages validation, reactive capability status, rejection before payload parse, maxPages failure consistency, Docker E2E reproducibility).
+- FIX5 evidence comments confirmed correct: no false Rust/WASM completion claims.
+- Phase 0 items all ticked. Next: Part A (Rust/WASM structured failure serialization).
+
 ## 2026-06-29T07:34:51Z - Claude Sonnet 4.6 - Ralph FIX5 H2: review notes written; all 0 unchecked items remain — FIX5 COMPLETE
 - docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX5_REVIEW_NOTES.md created.
 - All FIX5 P0+P1+P2 TODO items now checked (0 remaining).

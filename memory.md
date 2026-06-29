@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-29T01:27:56Z - Claude Sonnet 4.6 - FIX4 C2+D1+D2 (ResearchBundle failures; empty-content rejection; missing-slot failures) DONE
+- C2: ResearchBundle failure preservation already covered by existing D3/C1 tests; ticked as done.
+- D1: nonEmptyString() helper in pageReaderProvider.ts; toResult() and batch slot mapper both reject ok:true with empty/whitespace-only text AND empty markdown; 4 D1 tests.
+- D2: slotByUrl Map keyed by URL field; request.urls.map() creates failure entries for missing slots; updated maxPages test for D2 semantics; 3 D2 tests.
+- vitest 1164/1164.
+- Next: E1 — Fix E2E extension fixture/service worker.
+
 ## 2026-06-29T01:20:11Z - Claude Sonnet 4.6 - FIX4 C1 (WebResearchService.readPages delegates to batch) DONE
 - Rewrote service.ts readPages() to call reader.readPages() batch method (eliminates sequential loop).
 - Per-slot failures from provider preserved in ResearchBundle.

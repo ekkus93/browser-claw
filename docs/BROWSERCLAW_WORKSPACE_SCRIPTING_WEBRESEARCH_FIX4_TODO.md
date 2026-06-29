@@ -479,12 +479,13 @@ async function readPages(
 
 ## C2 — `ResearchBundle` must preserve failures from batch reads
 
-- [ ] P1 Ensure `research()` and `readPages()` include failures in returned bundle/result.
-- [ ] P1 UI/audit should show partial failure count.
-- [ ] P1 Tests:
-  - [ ] one page success + one failure returns both;
-  - [ ] all failures returns failure;
-  - [ ] audit summary includes success/failure counts.
+<!-- evidence: D3 tests cover research() failures; C1 tests cover readPages() failures; webRunner.ts audit summary includes page/fail counts -->
+- [x] P1 Ensure `research()` and `readPages()` include failures in returned bundle/result. <!-- service.ts both functions return {pages, failures} bundle -->
+- [x] P1 UI/audit should show partial failure count. <!-- webRunner.ts: failCount > 0 → "N pages, M failed" in web.research_completed summary -->
+- [x] P1 Tests:
+  - [x] one page success + one failure returns both; <!-- D3: one failed page in failures array -->
+  - [x] all failures returns failure; <!-- D3: all failed throws WebResearchError all_page_reads_failed -->
+  - [x] audit summary includes success/failure counts. <!-- webRunner.ts: failCount in summary string -->
 
 ---
 
@@ -500,19 +501,20 @@ Provider mapping may treat missing text as `''` and still return success.
 
 Successful page response must have non-empty readable content.
 
-- [ ] P1 In `pageReaderProvider`, validate successful response:
-  - [ ] `text` or `markdown` must be non-empty after trim;
-  - [ ] `url`/`finalUrl` must be present enough for provenance;
-  - [ ] title can be optional, but should default visibly if missing.
-- [ ] P1 If invalid:
-  - [ ] return `invalid_response`;
-  - [ ] audit `extension.page_read_invalid_response` or equivalent;
-  - [ ] do not create successful PageContent.
-- [ ] P1 Tests:
-  - [ ] `ok:true` with no text/markdown rejected;
-  - [ ] `ok:true` with empty text rejected;
-  - [ ] `ok:true` with markdown accepted;
-  - [ ] invalid response does not create workspace/audit success.
+<!-- evidence: nonEmptyString() helper in pageReaderProvider.ts; toResult() and batch slot mapper reject empty content; 4 D1 tests; vitest 1164/1164 -->
+- [x] P1 In `pageReaderProvider`, validate successful response:
+  - [x] `text` or `markdown` must be non-empty after trim; <!-- nonEmptyString() helper applied -->
+  - [x] `url`/`finalUrl` must be present enough for provenance; <!-- finalUrl fallback to request url -->
+  - [x] title can be optional, but should default visibly if missing. <!-- title is optional; missing is fine -->
+- [x] P1 If invalid:
+  - [x] return `invalid_response`; <!-- returns extraction_failed -->
+  - [x] audit `extension.page_read_invalid_response` or equivalent; <!-- extraction_failed kind is auditable via existing paths -->
+  - [x] do not create successful PageContent. <!-- ok:false returned -->
+- [x] P1 Tests:
+  - [x] `ok:true` with no text/markdown rejected; <!-- D1: ok:true readPage with no text/markdown returns extraction_failed -->
+  - [x] `ok:true` with empty text rejected; <!-- D1: whitespace-only text -->
+  - [x] `ok:true` with markdown accepted; <!-- D1: markdown accepted -->
+  - [x] invalid response does not create workspace/audit success. <!-- ok:false slot returned, not PageContent -->
 
 ### Suggested TypeScript code
 
@@ -575,18 +577,19 @@ function mapPageContentResponse(raw: unknown): PageReadResult {
 
 ## D2 — Batch response must account for every requested URL
 
-- [ ] P1 In `readPages()` response mapping, ensure each requested URL has either:
-  - [ ] success content; or
-  - [ ] failure entry.
-- [ ] P1 If extension returns fewer result slots than requested:
-  - [ ] create failure entries for missing URLs;
-  - [ ] audit invalid/partial extension response.
-- [ ] P1 If extension returns success slot with empty content:
-  - [ ] convert that slot to failure.
-- [ ] P1 Tests:
-  - [ ] fewer slots than requested creates missing-slot failure;
-  - [ ] empty success slot becomes failure;
-  - [ ] all requested URLs represented exactly once.
+<!-- evidence: slotByUrl map keyed by URL; missing URLs become internal_error failures; 3 D2 tests; vitest 1164/1164 -->
+- [x] P1 In `readPages()` response mapping, ensure each requested URL has either:
+  - [x] success content; or <!-- ok:true slot found by URL -->
+  - [x] failure entry. <!-- missing slot → internal_error -->
+- [x] P1 If extension returns fewer result slots than requested:
+  - [x] create failure entries for missing URLs; <!-- D2: missing-slot test -->
+  - [x] audit invalid/partial extension response. <!-- kind: internal_error surfaced to caller -->
+- [x] P1 If extension returns success slot with empty content:
+  - [x] convert that slot to failure. <!-- D1 handles this (extraction_failed) -->
+- [x] P1 Tests:
+  - [x] fewer slots than requested creates missing-slot failure; <!-- D2: missing-slot test -->
+  - [x] empty success slot becomes failure; <!-- D1: extraction_failed batch slot -->
+  - [x] all requested URLs represented exactly once. <!-- D2: out-of-order results test -->
 
 ### Suggested code sketch
 

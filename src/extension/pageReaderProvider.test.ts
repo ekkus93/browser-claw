@@ -395,7 +395,9 @@ describe('createExtensionPageReader (E9)', () => {
     }
   });
 
-  it('readPages respects the max page limit (legacy — now sends maxPages in message)', async () => {
+  it('D2: maxPages sent in message — unreturned URLs become failure entries', async () => {
+    // Extension honours maxPages=2 and returns only 2 of 3 slots.
+    // D2 requires the provider to create failure entries for the missing URL.
     const reader = createExtensionPageReader({
       transport: transport((msg) => {
         const m = msg as Record<string, unknown>;
@@ -418,6 +420,164 @@ describe('createExtensionPageReader (E9)', () => {
       urls: ['https://x/1', 'https://x/2', 'https://x/3'],
       maxPages: 2,
     });
+    // All 3 requested URLs must be represented.
+    expect(results).toHaveLength(3);
+    const ok = results.filter((r) => r.ok);
+    const fail = results.filter((r) => !r.ok);
+    expect(ok).toHaveLength(2);
+    expect(fail).toHaveLength(1);
+    expect(fail[0]?.url).toBe('https://x/3');
+  });
+
+  // D1 (FIX4): reject ok:true responses with no readable content.
+
+  it('D1: ok:true readPage with no text and no markdown returns extraction_failed', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: true,
+        requestId: 'r',
+        finalUrl: 'https://x/a',
+        text: '',
+        length: 0,
+      })),
+    });
+    const result = await reader.readPage({ url: 'https://x/a' });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe('extraction_failed');
+    }
+  });
+
+  it('D1: ok:true readPage with whitespace-only text returns extraction_failed', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: true,
+        requestId: 'r',
+        finalUrl: 'https://x/a',
+        text: '   ',
+        length: 3,
+      })),
+    });
+    const result = await reader.readPage({ url: 'https://x/a' });
+    expect(result.ok).toBe(false);
+  });
+
+  it('D1: ok:true readPage with markdown (no text) is accepted', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: true,
+        requestId: 'r',
+        finalUrl: 'https://x/a',
+        markdown: '# Hello',
+        length: 7,
+      })),
+    });
+    const result = await reader.readPage({ url: 'https://x/a' });
+    expect(result.ok).toBe(true);
+  });
+
+  it('D1: ok:true batch slot with empty text returns extraction_failed', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: true,
+        requestId: 'r',
+        results: [
+          {
+            ok: true,
+            url: 'https://x/a',
+            finalUrl: 'https://x/a',
+            text: '',
+            length: 0,
+          },
+        ],
+      })),
+    });
+    const results = await reader.readPages({ urls: ['https://x/a'] });
+    expect(results[0]?.ok).toBe(false);
+    if (results[0] && !results[0].ok) {
+      expect(results[0].error.kind).toBe('extraction_failed');
+    }
+  });
+
+  // D2 (FIX4): batch response must account for every requested URL.
+
+  it('D2: fewer result slots than requested URLs creates missing-slot failure', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: true,
+        requestId: 'r',
+        results: [
+          {
+            ok: true,
+            url: 'https://x/a',
+            finalUrl: 'https://x/a',
+            text: 'hello',
+            length: 5,
+          },
+        ],
+      })),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b'],
+    });
     expect(results).toHaveLength(2);
+    expect(results[0]?.ok).toBe(true);
+    expect(results[1]?.ok).toBe(false);
+    if (results[1] && !results[1].ok) {
+      expect(results[1].url).toBe('https://x/b');
+      expect(results[1].error.kind).toBe('internal_error');
+    }
+  });
+
+  it('D2: all requested URLs are represented even when results are out-of-order', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport((m) => {
+        if ((m as Record<string, unknown>)['type'] === 'read_pages') {
+          return {
+            ok: true,
+            requestId: 'r',
+            results: [
+              {
+                ok: true,
+                url: 'https://x/b',
+                finalUrl: 'https://x/b',
+                text: 'b',
+                length: 1,
+              },
+              {
+                ok: true,
+                url: 'https://x/a',
+                finalUrl: 'https://x/a',
+                text: 'a',
+                length: 1,
+              },
+            ],
+          };
+        }
+        return {};
+      }),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b'],
+    });
+    expect(results).toHaveLength(2);
+    const byUrl = new Map(results.map((r) => [r.url, r]));
+    expect(byUrl.get('https://x/a')?.ok).toBe(true);
+    expect(byUrl.get('https://x/b')?.ok).toBe(true);
+  });
+
+  it('D2: extension returns empty results array — all URLs become failures', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: true,
+        requestId: 'r',
+        results: [],
+      })),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b'],
+    });
+    expect(results).toHaveLength(2);
+    expect(results.every((r) => !r.ok)).toBe(true);
   });
 });

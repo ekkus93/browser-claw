@@ -79,25 +79,45 @@ function toError(
   };
 }
 
+// D1 (FIX4): require non-empty readable content in successful page responses.
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+}
+
 function toResult(
   url: string,
   response: Extract<ExtensionResponse, { ok: true }>,
 ): PageReadResult {
-  const text = typeof response.text === 'string' ? response.text : '';
+  // D1 (FIX4): reject ok:true with no readable content.
+  const text = nonEmptyString(response.text);
+  const markdown = nonEmptyString(response.markdown);
+  if (!text && !markdown) {
+    return {
+      ok: false,
+      url,
+      error: {
+        kind: 'extraction_failed',
+        message:
+          'Extension reported success but returned no readable page content.',
+      },
+    };
+  }
+  const finalUrl = nonEmptyString(response.finalUrl) ?? url;
+  const body = text ?? markdown ?? '';
   return {
     ok: true,
     url,
-    finalUrl: typeof response.finalUrl === 'string' ? response.finalUrl : url,
-    text,
-    length: typeof response.length === 'number' ? response.length : text.length,
+    finalUrl,
+    text: body,
+    length: typeof response.length === 'number' ? response.length : body.length,
     ...(typeof response.title === 'string' ? { title: response.title } : {}),
     ...(typeof response.byline === 'string' ? { byline: response.byline } : {}),
     ...(typeof response.siteName === 'string'
       ? { siteName: response.siteName }
       : {}),
-    ...(typeof response.markdown === 'string'
-      ? { markdown: response.markdown }
-      : {}),
+    ...(markdown ? { markdown } : {}),
     ...(typeof response.excerpt === 'string'
       ? { excerpt: response.excerpt }
       : {}),
@@ -221,22 +241,53 @@ export function createExtensionPageReader(
         }));
       }
 
-      // Map per-slot results, preserving failures.
-      return (raw['results'] as unknown[]).map((slot, i) => {
-        const url = request.urls[i] ?? '';
+      // D2 (FIX4): map results by URL so missing slots become failure entries.
+      // Build a lookup keyed by the URL field each slot reports.
+      const slotByUrl = new Map<string, Record<string, unknown>>();
+      for (const slot of raw['results'] as unknown[]) {
         const s = slot as Record<string, unknown>;
+        const slotUrl = typeof s['url'] === 'string' ? s['url'] : undefined;
+        if (slotUrl) slotByUrl.set(slotUrl, s);
+      }
+
+      return request.urls.map((url) => {
+        const s = slotByUrl.get(url);
+        if (!s) {
+          // D2: extension did not return a result for this URL.
+          return {
+            ok: false as const,
+            url,
+            error: {
+              kind: 'internal_error' as const,
+              message: 'Extension did not return a result for this URL.',
+            },
+          };
+        }
         if (s['ok'] === true) {
-          const text = typeof s['text'] === 'string' ? s['text'] : '';
+          // D1 (FIX4): reject ok:true batch slots with no readable content.
+          const text = nonEmptyString(s['text']);
+          const markdown = nonEmptyString(s['markdown']);
+          if (!text && !markdown) {
+            return {
+              ok: false as const,
+              url,
+              error: {
+                kind: 'extraction_failed' as const,
+                message:
+                  'Extension reported success but returned no readable page content.',
+              },
+            };
+          }
+          const finalUrl = nonEmptyString(s['finalUrl']) ?? url;
+          const body = text ?? markdown ?? '';
           return {
             ok: true as const,
             url,
-            finalUrl: typeof s['finalUrl'] === 'string' ? s['finalUrl'] : url,
-            text,
-            length: typeof s['length'] === 'number' ? s['length'] : text.length,
+            finalUrl,
+            text: body,
+            length: typeof s['length'] === 'number' ? s['length'] : body.length,
             ...(typeof s['title'] === 'string' ? { title: s['title'] } : {}),
-            ...(typeof s['markdown'] === 'string'
-              ? { markdown: s['markdown'] }
-              : {}),
+            ...(markdown ? { markdown } : {}),
             ...(typeof s['excerpt'] === 'string'
               ? { excerpt: s['excerpt'] }
               : {}),

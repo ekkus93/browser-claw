@@ -12,6 +12,11 @@ import {
   type ExtensionRequest,
   type ExtensionResponse,
 } from './protocol.ts';
+import {
+  MAX_BATCH_PAGE_READS,
+  normalizeOptionalPositiveIntegerLimit,
+  LimitValidationError,
+} from '../webresearch/limits.ts';
 import type {
   CurrentTabReadRequest,
   PageReaderProvider,
@@ -193,13 +198,34 @@ export function createExtensionPageReader(
     },
 
     async readPages(request: PageReadPagesRequest): Promise<PageReadResult[]> {
+      // B3 (FIX7): validate maxPages before computing expectedUrls so invalid
+      // values cannot expand the effective URL subset.
+      let effectiveMaxPages: number | undefined;
+      try {
+        effectiveMaxPages = normalizeOptionalPositiveIntegerLimit(
+          request.maxPages,
+          'maxPages',
+          { max: MAX_BATCH_PAGE_READS },
+        );
+      } catch (err) {
+        const message =
+          err instanceof LimitValidationError
+            ? err.message
+            : 'invalid maxPages';
+        return request.urls.map((url) => ({
+          ok: false as const,
+          url,
+          error: { kind: 'internal_error' as const, message },
+        }));
+      }
+
       // E1 (FIX6): compute expectedUrls once at the top — used for ALL failure
       // and success mappings so top-level errors don't map over skipped URLs.
       const expectedUrls =
-        typeof request.maxPages === 'number'
+        effectiveMaxPages !== undefined
           ? request.urls.slice(
               0,
-              Math.min(request.maxPages, request.urls.length),
+              Math.min(effectiveMaxPages, request.urls.length),
             )
           : request.urls;
 
@@ -211,8 +237,8 @@ export function createExtensionPageReader(
           type: 'read_pages',
           requestId,
           urls: request.urls,
-          ...(request.maxPages !== undefined
-            ? { maxPages: request.maxPages }
+          ...(effectiveMaxPages !== undefined
+            ? { maxPages: effectiveMaxPages }
             : {}),
           ...(request.format !== undefined ? { format: request.format } : {}),
           ...(request.maxChars !== undefined

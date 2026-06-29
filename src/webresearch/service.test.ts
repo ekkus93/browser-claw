@@ -238,3 +238,74 @@ describe('C1 — readPages uses provider batch readPages()', () => {
     });
   });
 });
+
+// B3 (FIX7) — maxPages validation in service layer
+
+describe('B3 (FIX7) — maxPages validation', () => {
+  const reader = readerWith(okPage);
+
+  it('research: maxPages 0 throws LimitValidationError', async () => {
+    const search = searchProvider([{ title: 'A', url: 'https://x/a' }]);
+    const svc = createWebResearchService({ search, reader });
+    await expect(svc.research('q', { maxPages: 0 })).rejects.toThrow();
+  });
+
+  it('research: maxPages -1 throws', async () => {
+    const search = searchProvider([{ title: 'A', url: 'https://x/a' }]);
+    const svc = createWebResearchService({ search, reader });
+    await expect(svc.research('q', { maxPages: -1 })).rejects.toThrow();
+  });
+
+  it('research: maxPages 1.5 throws', async () => {
+    const search = searchProvider([{ title: 'A', url: 'https://x/a' }]);
+    const svc = createWebResearchService({ search, reader });
+    await expect(svc.research('q', { maxPages: 1.5 })).rejects.toThrow();
+  });
+
+  it('research: valid maxPages 2 is accepted', async () => {
+    const search = searchProvider([
+      { title: 'A', url: 'https://x/a' },
+      { title: 'B', url: 'https://x/b' },
+    ]);
+    const multiReader: PageReaderProvider = {
+      isAvailable: () => Promise.resolve(true),
+      readPage: vi.fn(() => Promise.resolve(okPage)),
+      readPages: vi.fn(() =>
+        Promise.resolve([okPage, { ...okPage, url: 'https://x/b' }]),
+      ),
+      readCurrentTab: vi.fn(),
+    };
+    const svc = createWebResearchService({ search, reader: multiReader });
+    const bundle = await svc.research('q', { maxPages: 2 });
+    expect(bundle.pages.length).toBeGreaterThan(0);
+  });
+
+  it('readPages: maxPages 0 throws', async () => {
+    const svc = createWebResearchService({ reader });
+    await expect(
+      svc.readPages(['https://x/a'], { maxPages: 0 }),
+    ).rejects.toThrow();
+  });
+
+  it('readPages: maxPages -1 throws', async () => {
+    const svc = createWebResearchService({ reader });
+    await expect(
+      svc.readPages(['https://x/a'], { maxPages: -1 }),
+    ).rejects.toThrow();
+  });
+
+  it('readPages: maxPages NaN throws', async () => {
+    const svc = createWebResearchService({ reader });
+    await expect(
+      svc.readPages(['https://x/a'], { maxPages: NaN }),
+    ).rejects.toThrow();
+  });
+
+  it('readPages: valid maxPages 2 is accepted', async () => {
+    const svc = createWebResearchService({ reader });
+    const bundle = await svc.readPages(['https://x/a', 'https://x/b'], {
+      maxPages: 2,
+    });
+    expect(bundle).toBeDefined();
+  });
+});

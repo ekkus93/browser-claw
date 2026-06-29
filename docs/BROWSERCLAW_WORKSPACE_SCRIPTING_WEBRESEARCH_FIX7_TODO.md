@@ -195,18 +195,20 @@ maxPages = 1.5     -> ambiguous / inconsistent
 
 Create one helper for optional positive integer limits.
 
-- [ ] P1 Add helper, for example `normalizeOptionalPositiveIntegerLimit`.
-- [ ] P1 Behavior:
-  - [ ] `undefined` => `undefined`;
-  - [ ] positive integer => allowed;
-  - [ ] greater than configured cap => clamp or reject, but document which;
-  - [ ] `0` rejected;
-  - [ ] negative rejected;
-  - [ ] `NaN` rejected;
-  - [ ] `Infinity` rejected;
-  - [ ] non-integer rejected;
-  - [ ] string values rejected.
-- [ ] P1 Tests for all cases above.
+<!-- evidence: src/webresearch/limits.ts — normalizeOptionalPositiveIntegerLimit + LimitValidationError -->
+- [x] P1 Add helper, for example `normalizeOptionalPositiveIntegerLimit`.
+- [x] P1 Behavior:
+  - [x] `undefined` => `undefined`;
+  - [x] positive integer => allowed;
+  - [x] greater than configured cap => clamp or reject, but document which; <!-- rejects above max -->
+  - [x] `0` rejected;
+  - [x] negative rejected;
+  - [x] `NaN` rejected;
+  - [x] `Infinity` rejected;
+  - [x] non-integer rejected;
+  - [x] string values rejected.
+<!-- evidence: src/webresearch/limits.test.ts — 10 unit tests; all pass -->
+- [x] P1 Tests for all cases above.
 
 ### Suggested TypeScript helper
 
@@ -265,13 +267,14 @@ Otherwise reject above max too.
 
 ## B2 — Define hard max constants
 
-- [ ] P1 Define a hard maximum for batch page reads, e.g. `MAX_BATCH_PAGE_READS`.
-- [ ] P1 Use the same constant or documented equivalent in:
-  - [ ] web research service;
-  - [ ] page reader provider;
-  - [ ] extension service worker;
-  - [ ] plan/runtime option validation.
-- [ ] P1 Tests prove values above max are clamped or rejected consistently.
+<!-- evidence: src/webresearch/limits.ts — MAX_BATCH_PAGE_READS = 10, DEFAULT_MAX_PAGE_CHARS = 50_000 -->
+- [x] P1 Define a hard maximum for batch page reads, e.g. `MAX_BATCH_PAGE_READS`.
+- [x] P1 Use the same constant or documented equivalent in:
+  - [x] web research service; <!-- service.ts uses MAX_BATCH_PAGE_READS via normalizeOptionalPositiveIntegerLimit -->
+  - [x] page reader provider; <!-- pageReaderProvider.ts uses MAX_BATCH_PAGE_READS -->
+  - [ ] extension service worker; <!-- C1/C2 below — to be added in Part C -->
+  - [x] plan/runtime option validation. <!-- planOps.ts + referenceRuntime.ts use MAX_BATCH_PAGE_READS -->
+- [x] P1 Tests prove values above max are clamped or rejected consistently. <!-- limits.test.ts: value above max throws LimitValidationError -->
 
 Suggested constant location:
 
@@ -287,37 +290,41 @@ For extension JavaScript, either duplicate the constant with a comment or genera
 
 Apply `normalizeOptionalPositiveIntegerLimit` to:
 
-- [ ] P1 `src/extension/pageReaderProvider.ts`:
-  - [ ] normalize `request.maxPages` before computing `expectedUrls`;
-  - [ ] send normalized `maxPages` to extension;
-  - [ ] invalid `maxPages` returns explicit failure, not fallback.
-- [ ] P1 `src/webresearch/service.ts`:
-  - [ ] normalize research/readPages options;
-  - [ ] do not let invalid `maxPages` reach provider.
-- [ ] P1 `src/runtime/webRunner.ts`:
-  - [ ] sanitize approved/query options;
-  - [ ] invalid `maxPages` audits invalid effect/payload and resolves failure.
-- [ ] P1 `src/script/planOps.ts`:
-  - [ ] validate `maxPages` in `web.readPages`;
-  - [ ] invalid `maxPages` throws `PlanOpError`.
-- [ ] P1 `src/runtime/referenceRuntime.ts`:
-  - [ ] validate raw web_request options if forwarding `maxPages`.
-- [ ] P1 Tests:
-  - [ ] each path rejects `maxPages: 0`;
-  - [ ] each path rejects `maxPages: -1`;
-  - [ ] each path rejects `maxPages: NaN` where representable;
-  - [ ] each path rejects `maxPages: 1.5`;
-  - [ ] valid `maxPages: 2` works.
+<!-- evidence: all files updated to use normalizeOptionalPositiveIntegerLimit from limits.ts -->
+- [x] P1 `src/extension/pageReaderProvider.ts`:
+  - [x] normalize `request.maxPages` before computing `expectedUrls`;
+  - [x] send normalized `maxPages` to extension;
+  - [x] invalid `maxPages` returns explicit failure, not fallback.
+- [x] P1 `src/webresearch/service.ts`:
+  - [x] normalize research/readPages options;
+  - [x] do not let invalid `maxPages` reach provider.
+- [x] P1 `src/runtime/webRunner.ts`:
+  - [x] sanitize approved/query options;
+  - [x] invalid `maxPages` audits invalid effect/payload and resolves failure. <!-- sanitizeResearchOptions() throws LimitValidationError; caught by runApprovedBulkResearch catch block → web_research_failed audit -->
+- [x] P1 `src/script/planOps.ts`:
+  - [x] validate `maxPages` in `web.readPages`;
+  - [x] invalid `maxPages` throws `PlanOpError`.
+- [x] P1 `src/runtime/referenceRuntime.ts`:
+  - [x] validate raw web_request options if forwarding `maxPages`.
+<!-- evidence: B3 tests in service.test.ts, pageReaderProvider.test.ts, referenceRuntime.test.ts, planOps.test.ts; 1254 tests pass -->
+- [x] P1 Tests:
+  - [x] each path rejects `maxPages: 0`;
+  - [x] each path rejects `maxPages: -1`;
+  - [x] each path rejects `maxPages: NaN` where representable;
+  - [x] each path rejects `maxPages: 1.5`;
+  - [x] valid `maxPages: 2` works.
 
 ## B4 — Keep provider and extension expected URL subsets aligned
 
-- [ ] P1 Provider must send normalized `maxPages` to extension.
-- [ ] P1 Provider must compute `expectedUrls` using the same normalized `maxPages`.
-- [ ] P1 Extension must compute its effective URLs using the same semantics.
-- [ ] P1 Tests:
-  - [ ] request 4 URLs with `maxPages: 2`; provider expects 2 and extension reads 2;
-  - [ ] invalid `maxPages: 0` does not result in extension reading all URLs;
-  - [ ] invalid `maxPages: -1` does not result in divergent expected/read sets.
+<!-- evidence: pageReaderProvider.ts — effectiveMaxPages from normalizeOptionalPositiveIntegerLimit used in both expectedUrls slice and message maxPages -->
+- [x] P1 Provider must send normalized `maxPages` to extension.
+- [x] P1 Provider must compute `expectedUrls` using the same normalized `maxPages`.
+- [ ] P1 Extension must compute its effective URLs using the same semantics. <!-- extension service worker C1/C2 — see Part C -->
+<!-- evidence: B3 tests in pageReaderProvider.test.ts; B3: valid maxPages 2 sends normalized value test -->
+- [x] P1 Tests:
+  - [x] request 4 URLs with `maxPages: 2`; provider expects 2 and extension reads 2; <!-- E1 FIX6 + B3 tests -->
+  - [x] invalid `maxPages: 0` does not result in extension reading all URLs; <!-- B3 test: maxPages 0 returns failure -->
+  - [x] invalid `maxPages: -1` does not result in divergent expected/read sets. <!-- B3 test: maxPages -1 returns failure -->
 
 ### Suggested provider shape
 

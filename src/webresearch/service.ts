@@ -18,6 +18,10 @@ import {
   type SearchResult,
   type WebResearchService,
 } from './types.ts';
+import {
+  MAX_BATCH_PAGE_READS,
+  normalizeOptionalPositiveIntegerLimit,
+} from './limits.ts';
 
 export interface WebResearchDeps {
   search?: SearchProvider;
@@ -75,8 +79,14 @@ export function createWebResearchService(
     query: string,
     options: ResearchOptions = {},
   ): Promise<ResearchBundle> {
+    // B3 (FIX7): validate maxPages before using it to slice results.
+    const effectiveMaxPages = normalizeOptionalPositiveIntegerLimit(
+      options.maxPages,
+      'maxPages',
+      { max: MAX_BATCH_PAGE_READS },
+    );
     const results = await search(query, options);
-    const maxPages = options.maxPages ?? 3;
+    const maxPages = effectiveMaxPages ?? 3;
     const pages: PageContent[] = [];
     const failures: PageReadFailure[] = [];
     for (const result of results.slice(0, maxPages)) {
@@ -124,12 +134,21 @@ export function createWebResearchService(
       );
     }
 
+    // B3 (FIX7): validate maxPages before forwarding to provider.
+    const effectiveMaxPages = normalizeOptionalPositiveIntegerLimit(
+      options.maxPages,
+      'maxPages',
+      { max: MAX_BATCH_PAGE_READS },
+    );
+
     // C1 (FIX4): delegate to provider batch readPages() when available so the
     // extension's single read_pages message is used rather than N sequential
     // read_page calls. Sequential fallback is explicit and noted.
     const batchResults = await reader.readPages({
       urls,
-      ...(options.maxPages !== undefined ? { maxPages: options.maxPages } : {}),
+      ...(effectiveMaxPages !== undefined
+        ? { maxPages: effectiveMaxPages }
+        : {}),
       ...(options.maxChars !== undefined ? { maxChars: options.maxChars } : {}),
       ...(options.format !== undefined ? { format: options.format } : {}),
     });

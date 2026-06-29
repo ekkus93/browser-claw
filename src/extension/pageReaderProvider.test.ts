@@ -696,3 +696,71 @@ describe('E1 (FIX5) — readPages maxPages semantics', () => {
     expect(results).toHaveLength(2);
   });
 });
+
+// B3 (FIX7) — maxPages validation in pageReaderProvider.
+
+describe('B3 (FIX7) — maxPages validation in readPages', () => {
+  it('B3: maxPages 0 returns failure for every URL', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({ ok: true, requestId: 'r', results: [] })),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b'],
+      maxPages: 0,
+    });
+    expect(results.every((r) => !r.ok)).toBe(true);
+  });
+
+  it('B3: maxPages -1 returns failure', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({ ok: true, requestId: 'r', results: [] })),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a'],
+      maxPages: -1,
+    });
+    expect(results.every((r) => !r.ok)).toBe(true);
+  });
+
+  it('B3: maxPages 1.5 returns failure', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({ ok: true, requestId: 'r', results: [] })),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a'],
+      maxPages: 1.5,
+    });
+    expect(results.every((r) => !r.ok)).toBe(true);
+  });
+
+  it('B3: valid maxPages 2 sends normalized value in extension message', async () => {
+    const send = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        requestId: 'r',
+        results: [
+          {
+            url: 'https://x/a',
+            ok: true,
+            finalUrl: 'https://x/a',
+            text: 'body a',
+            length: 6,
+          },
+          {
+            url: 'https://x/b',
+            ok: true,
+            finalUrl: 'https://x/b',
+            text: 'body b',
+            length: 6,
+          },
+        ],
+      }),
+    );
+    const reader = createExtensionPageReader({ transport: { send } });
+    await reader.readPages({
+      urls: ['https://x/a', 'https://x/b', 'https://x/c'],
+      maxPages: 2,
+    });
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ maxPages: 2 }));
+  });
+});

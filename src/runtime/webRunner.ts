@@ -14,6 +14,10 @@ import { recordAudit } from '../audit/auditSink.ts';
 import { webAuditEvent } from '../audit/auditEvents.ts';
 import { classifyFetchUrl } from '../net/urlSafety.ts';
 import {
+  MAX_BATCH_PAGE_READS,
+  normalizeOptionalPositiveIntegerLimit,
+} from '../webresearch/limits.ts';
+import {
   parseApprovalPayloadObject,
   requireStringArrayField,
   requireStringField,
@@ -122,10 +126,18 @@ function sanitizeResearchOptions(input: unknown): ResearchOptions {
   const o = (
     typeof input === 'object' && input !== null ? input : {}
   ) as Record<string, unknown>;
+  // B3 (FIX7): validate maxPages before including it so invalid values don't
+  // expand reads. Throws WebEffectPayloadError on invalid values.
+  const maxPages =
+    o.maxPages !== undefined
+      ? normalizeOptionalPositiveIntegerLimit(o.maxPages, 'maxPages', {
+          max: MAX_BATCH_PAGE_READS,
+        })
+      : undefined;
   return {
     ...(typeof o.maxResults === 'number' ? { maxResults: o.maxResults } : {}),
     ...(typeof o.site === 'string' ? { site: o.site } : {}),
-    ...(typeof o.maxPages === 'number' ? { maxPages: o.maxPages } : {}),
+    ...(maxPages !== undefined ? { maxPages } : {}),
     ...(o.format === 'text' || o.format === 'markdown'
       ? { format: o.format }
       : {}),

@@ -574,4 +574,63 @@ describe('referenceRuntime', () => {
       expect(e.urls).toHaveLength(2);
     }
   });
+
+  // B3 (FIX7): invalid maxPages in web_request options.
+
+  it('B3: readPages with maxPages 0 emits invalid_web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPages maxPages 0'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'readPages',
+          urls: ['https://a.example/'],
+          options: { maxPages: 0 },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('audit_append');
+    if (effects[0]?.type === 'audit_append') {
+      expect(effects[0].event_type).toBe('runtime.invalid_web_request');
+    }
+  });
+
+  it('B3: readPages with maxPages -1 emits invalid_web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPages maxPages -1'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'readPages',
+          urls: ['https://a.example/'],
+          options: { maxPages: -1 },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('audit_append');
+    if (effects[0]?.type === 'audit_append') {
+      expect(effects[0].event_type).toBe('runtime.invalid_web_request');
+    }
+  });
+
+  it('B3: readPages with valid maxPages 2 emits web_research', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPages maxPages 2'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'readPages',
+          urls: ['https://a.example/', 'https://b.example/'],
+          options: { maxPages: 2 },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('web_research');
+  });
 });

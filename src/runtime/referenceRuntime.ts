@@ -2,6 +2,10 @@ import type { Command, Effect } from './effectTypes.ts';
 import { toolContentFromEffectResult } from './effectResultSerialization.ts';
 import { toolContentFromEffectFailure } from './effectFailure.ts';
 import { classifyFetchUrl } from '../net/urlSafety.ts';
+import {
+  MAX_BATCH_PAGE_READS,
+  normalizeOptionalPositiveIntegerLimit,
+} from '../webresearch/limits.ts';
 
 /**
  * A faithful TypeScript port of the deterministic `claw-core` runtime
@@ -373,6 +377,27 @@ export function createReferenceRuntime(
                 ];
               }
               validatedUrls.push(slot.trim());
+            }
+            // B3 (FIX7): validate optional maxPages in web_request options.
+            const rawMaxPages = (
+              webRequest.options as Record<string, unknown> | undefined
+            )?.maxPages;
+            if (rawMaxPages !== undefined) {
+              try {
+                normalizeOptionalPositiveIntegerLimit(rawMaxPages, 'maxPages', {
+                  max: MAX_BATCH_PAGE_READS,
+                });
+              } catch {
+                return [
+                  {
+                    type: 'audit_append',
+                    id: proposalId,
+                    event_type: 'runtime.invalid_web_request',
+                    summary: `web_request readPages options.maxPages is invalid: ${String(rawMaxPages)}`,
+                    risk: 'medium',
+                  },
+                ];
+              }
             }
             state.pending[proposalId] = 'web_research';
             state.pending_conversation[proposalId] = conversationId;

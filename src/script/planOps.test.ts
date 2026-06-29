@@ -184,6 +184,50 @@ describe('A1+A2+A3 (FIX5) — web.readPages strict validation', () => {
     };
   }
 
+  // B3 (FIX7): invalid maxPages in planOps.
+
+  it('B3: maxPages 0 throws PlanOpError', async () => {
+    const web = makeWeb();
+    await expect(
+      executePlanOp({ ...ctx, web }, 'web.readPages', {
+        urls: ['https://a.example/'],
+        maxPages: 0,
+      }),
+    ).rejects.toThrow(/maxPages/);
+  });
+
+  it('B3: maxPages -1 throws PlanOpError', async () => {
+    const web = makeWeb();
+    await expect(
+      executePlanOp({ ...ctx, web }, 'web.readPages', {
+        urls: ['https://a.example/'],
+        maxPages: -1,
+      }),
+    ).rejects.toThrow(/maxPages/);
+  });
+
+  it('B3: maxPages 1.5 throws PlanOpError', async () => {
+    const web = makeWeb();
+    await expect(
+      executePlanOp({ ...ctx, web }, 'web.readPages', {
+        urls: ['https://a.example/'],
+        maxPages: 1.5,
+      }),
+    ).rejects.toThrow(/maxPages/);
+  });
+
+  it('B3: valid maxPages 2 calls ctx.web.readPages with maxPages 2', async () => {
+    const web = makeWeb();
+    await executePlanOp({ ...ctx, web }, 'web.readPages', {
+      urls: ['https://a.example/', 'https://b.example/'],
+      maxPages: 2,
+    });
+    expect(web.readPages).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ maxPages: 2 }),
+    );
+  });
+
   it('A1: empty urls array throws PlanOpError', async () => {
     await expect(
       executePlanOp({ ...ctx, web: makeWeb() }, 'web.readPages', { urls: [] }),

@@ -24,6 +24,10 @@ import {
 } from '../workspace/types.ts';
 import type { WebResearchService } from '../webresearch/types.ts';
 import { classifyFetchUrl } from '../net/urlSafety.ts';
+import {
+  MAX_BATCH_PAGE_READS,
+  normalizeOptionalPositiveIntegerLimit,
+} from '../webresearch/limits.ts';
 
 export interface PlanOpContext {
   fs: WorkspaceFs;
@@ -250,8 +254,20 @@ async function webOp(
       'web.readPages requires a batch-capable web research provider',
     );
   }
+  // B3 (FIX7): validate maxPages before forwarding; invalid value throws PlanOpError.
+  const maxPagesRaw = args.maxPages !== undefined ? args.maxPages : undefined;
+  let maxPages: number | undefined;
+  try {
+    maxPages = normalizeOptionalPositiveIntegerLimit(maxPagesRaw, 'maxPages', {
+      max: MAX_BATCH_PAGE_READS,
+    });
+  } catch (err) {
+    throw new PlanOpError(
+      `web.readPages: ${err instanceof Error ? err.message : 'invalid maxPages'}`,
+    );
+  }
   return ctx.web.readPages(urls, {
-    ...(typeof args.maxPages === 'number' ? { maxPages: args.maxPages } : {}),
+    ...(maxPages !== undefined ? { maxPages } : {}),
     ...(typeof args.maxChars === 'number' ? { maxChars: args.maxChars } : {}),
   });
 }

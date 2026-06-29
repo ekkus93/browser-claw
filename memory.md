@@ -2222,6 +2222,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T09:32:48Z - Claude Haiku 4.5 - Ralph FIX7 B1-B4: maxPages validation helper + apply everywhere
+- src/webresearch/limits.ts: normalizeOptionalPositiveIntegerLimit + LimitValidationError + MAX_BATCH_PAGE_READS=10.
+- Applied in: pageReaderProvider.ts, service.ts, webRunner.ts, planOps.ts, referenceRuntime.ts.
+- 19 new B3 tests: pageReaderProvider (4), service (8), referenceRuntime (3), planOps (4); 1254 total.
+- NEXT: Part C (extension service worker central validation for read_pages urls + maxPages).
+
 ## 2026-06-29T09:24:14Z - Claude Haiku 4.5 - Ralph FIX7 Phase0+A: scope lock + Rust multi-occurrence redaction
 - FIX7 scope: Rust redaction multi-occurrence, maxPages validation, extension central validation.
 - Phase 0: design notes updated (FIX7 Locked Decisions section), TODO Phase 0 ticked.

@@ -1,5 +1,6 @@
 import type { Command, Effect } from './effectTypes.ts';
 import { toolContentFromEffectResult } from './effectResultSerialization.ts';
+import { toolContentFromEffectFailure } from './effectFailure.ts';
 
 /**
  * A faithful TypeScript port of the deterministic `claw-core` runtime
@@ -433,7 +434,14 @@ export function createReferenceRuntime(
               conversation_id: conversationId,
               store: 'messages',
               key: `m${state.message_count}`,
-              value: { role: 'tool', content: 'Operation was not completed.' },
+              // G2 (FIX5): structured failure content replaces opaque generic string.
+              value: {
+                role: 'tool',
+                content: toolContentFromEffectFailure(
+                  (command.result as Record<string, unknown>).error ??
+                    command.result,
+                ),
+              },
             },
             {
               type: 'audit_append',
@@ -500,7 +508,14 @@ export function createReferenceRuntime(
               conversation_id: conversationId,
               store: 'messages',
               key: `m${state.message_count}`,
-              value: { role: 'tool', content: 'Tool call was not completed.' },
+              // G2 (FIX5): structured failure content replaces opaque generic string.
+              value: {
+                role: 'tool',
+                content: toolContentFromEffectFailure(
+                  (command.result as Record<string, unknown>).error ??
+                    command.result,
+                ),
+              },
             },
             {
               type: 'audit_append',

@@ -2222,6 +2222,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T06:09:32Z - Claude Sonnet 4.6 - Ralph FIX5 G1+G2: toolContentFromEffectFailure helper + wired into referenceRuntime DONE
+- G1: src/runtime/effectFailure.ts exports toolContentFromEffectFailure(). Redacts sk-/sk-ant-/Bearer/Authorization from messages. Returns { type:"effect_failure", kind, message, retryable }. 8 tests.
+- G2: referenceRuntime.ts replaces 'Operation was not completed.' and 'Tool call was not completed.' with toolContentFromEffectFailure(). 3 G2 tests verify structured JSON in storage_put.
+- Gate: typecheck ✓, lint ✓, format ✓, vitest 1211/125 ✓.
+- NEXT: D3/D4 (Docker extension E2E evidence), C3 (sandbox policy in Settings), or H/I acceptance items.
+
 ## 2026-06-29T06:04:17Z - Claude Sonnet 4.6 - Ralph FIX5 F1: web_page_read invalid URL now audits web.effect_payload_invalid DONE
 - webRunner.ts: effect handler split invalid URL into missing/empty (failInvalidWebEffect) + blocked classifyFetchUrl (failInvalidWebEffect); both cases now use shared helper (consistent with web_search/web_research).
 - webRunner.ts: approval handler replaced web.page_read_payload_invalid with failInvalidWebEffect; blocked URL after approval also uses failInvalidWebEffect.

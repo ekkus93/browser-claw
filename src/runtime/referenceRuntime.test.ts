@@ -401,4 +401,92 @@ describe('referenceRuntime', () => {
     }
     expect(effects.some((e) => e.type === 'llm_request')).toBe(false);
   });
+
+  // G2 (FIX5): structured failure content in runtime follow-up path.
+  it('G2: web_page_read host permission failure stores structured JSON content', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('read a page'));
+    // LLM resolves with a web_page_read web_request
+    runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'readPage', url: 'https://example.com' } },
+    });
+    // Effect resolves as a host_permission failure
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-3',
+      result: {
+        ok: false,
+        error: {
+          kind: 'host_permission_missing',
+          message:
+            'Page read could not run because host permission is missing.',
+        },
+      },
+    });
+    const put = effects.find((e) => e.type === 'storage_put');
+    expect(put?.type).toBe('storage_put');
+    if (put?.type === 'storage_put') {
+      const val = put.value as { role: string; content: string };
+      const parsed = JSON.parse(val.content) as Record<string, unknown>;
+      expect(parsed.type).toBe('effect_failure');
+      expect(parsed.kind).toBe('host_permission_missing');
+      expect(typeof parsed.message).toBe('string');
+    }
+  });
+
+  it('G2: web search missing key failure stores structured JSON content', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('search the web'));
+    runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'search', query: 'test' } },
+    });
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-3',
+      result: {
+        ok: false,
+        error: { kind: 'search_unavailable', message: 'No search key set.' },
+      },
+    });
+    const put = effects.find((e) => e.type === 'storage_put');
+    expect(put?.type).toBe('storage_put');
+    if (put?.type === 'storage_put') {
+      const val = put.value as { role: string; content: string };
+      const parsed = JSON.parse(val.content) as Record<string, unknown>;
+      expect(parsed.type).toBe('effect_failure');
+      expect(parsed.kind).toBe('search_unavailable');
+    }
+  });
+
+  it('G2: failure content does not contain raw API key or stack trace', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('do something'));
+    runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'search', query: 'q' } },
+    });
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-3',
+      result: {
+        ok: false,
+        error: {
+          kind: 'auth_failed',
+          message: 'Failed with key sk-abc123DEFghijklmno at line 42',
+        },
+      },
+    });
+    const put = effects.find((e) => e.type === 'storage_put');
+    expect(put?.type).toBe('storage_put');
+    if (put?.type === 'storage_put') {
+      const val = put.value as { role: string; content: string };
+      expect(val.content).not.toContain('sk-abc123DEFghijklmno');
+      expect(val.content).not.toContain('at Object.');
+    }
+  });
 });

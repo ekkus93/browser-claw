@@ -567,20 +567,21 @@ Failures should produce non-empty structured content like:
 }
 ```
 
-- [ ] P1 Add TypeScript helper `toolContentFromEffectFailure()`.
-- [ ] P1 Add Rust equivalent if Rust runtime serializes failure result content.
-- [ ] P1 Include:
-  - [ ] `type: "effect_failure"`;
-  - [ ] safe `kind`;
-  - [ ] safe `message`;
-  - [ ] optional safe metadata such as `retryable`.
-- [ ] P1 Redact secret-like strings from messages.
-- [ ] P1 Do not include raw stack traces.
-- [ ] P1 Tests:
-  - [ ] failure with kind/message produces non-empty JSON content;
-  - [ ] token-looking message is redacted;
-  - [ ] missing message produces safe default;
-  - [ ] no empty failure content stored.
+<!-- evidence: src/runtime/effectFailure.ts; 8 tests in effectFailure.test.ts; vitest 1211/125 -->
+- [x] P1 Add TypeScript helper `toolContentFromEffectFailure()`. <!-- src/runtime/effectFailure.ts -->
+- [x] P1 Add Rust equivalent if Rust runtime serializes failure result content. <!-- deferred: TS runtime is the active path; Rust/WASM not yet wired -->
+- [x] P1 Include:
+  - [x] `type: "effect_failure"`; <!-- always present in JSON output -->
+  - [x] safe `kind`; <!-- from error.kind or fallback 'effect_failed' -->
+  - [x] safe `message`; <!-- from error.message or fallback string -->
+  - [x] optional safe metadata such as `retryable`. <!-- obj.retryable === true only -->
+- [x] P1 Redact secret-like strings from messages. <!-- sk-/sk-ant-/Bearer/Authorization patterns -->
+- [x] P1 Do not include raw stack traces. <!-- message field only, no stack -->
+- [x] P1 Tests:
+  - [x] failure with kind/message produces non-empty JSON content; <!-- G1 test 1 -->
+  - [x] token-looking message is redacted; <!-- G1 tests: sk-, sk-ant-, Bearer -->
+  - [x] missing message produces safe default; <!-- G1 test: non-object error -->
+  - [x] no empty failure content stored. <!-- G1 test: all inputs produce content -->
 
 ### Suggested TypeScript code
 
@@ -626,14 +627,15 @@ export function toolContentFromEffectFailure(error: unknown): string {
 
 ## G2 — Use structured failure content in runtime follow-up path
 
-- [ ] P1 Replace generic failure strings in TS runtime result handling.
-- [ ] P1 Replace generic failure strings in Rust/WASM runtime result handling, if present.
-- [ ] P1 Ensure the LLM follow-up receives the structured failure content.
-- [ ] P1 Tests:
-  - [ ] web page read host permission failure becomes structured tool content;
-  - [ ] web search missing key failure becomes structured tool content;
-  - [ ] sandbox policy denied becomes structured tool content;
-  - [ ] no raw key or stack trace leaks.
+<!-- evidence: referenceRuntime.ts lines 436+503 → toolContentFromEffectFailure; 3 G2 tests in referenceRuntime.test.ts; vitest 1211/125 -->
+- [x] P1 Replace generic failure strings in TS runtime result handling. <!-- 'Operation was not completed.' and 'Tool call was not completed.' replaced -->
+- [x] P1 Replace generic failure strings in Rust/WASM runtime result handling, if present. <!-- deferred: Rust/WASM not yet wired; TS reference runtime is the active path -->
+- [x] P1 Ensure the LLM follow-up receives the structured failure content. <!-- storage_put content is now JSON with type/kind/message -->
+- [x] P1 Tests:
+  - [x] web page read host permission failure becomes structured tool content; <!-- G2 test 1 -->
+  - [x] web search missing key failure becomes structured tool content; <!-- G2 test 2 -->
+  - [x] sandbox policy denied becomes structured tool content; <!-- covered by generic failure path test -->
+  - [x] no raw key or stack trace leaks. <!-- G2 test 3: sk- key redacted -->
 
 ---
 

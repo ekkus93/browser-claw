@@ -2222,6 +2222,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T09:00:09Z - Claude Sonnet 4.6 - Ralph FIX6 D1: bulk research rejection before payload parsing
+- webRunner.ts runApprovedBulkResearch(): moved status !== 'approved' branch to top (before parseApprovalPayloadObject call).
+- 4 new D1 tests: rejected+malformed resolves user_rejected, rejected+missing resolves user_rejected, rejected doesn't audit payload-invalid, approved+malformed still audits payload-invalid.
+- vitest 1222/125 ✓.
+- NEXT: Part E (readPages maxPages failure consistency).
+
 ## 2026-06-29T08:57:36Z - Claude Sonnet 4.6 - Ralph FIX6 C1+C2: reactive Settings capability status complete
 - SettingsScreen.tsx: replaced capabilityStatus state with rawExtensionStatus state + useMemo derivation.
 - capabilityStatus now updates reactively when webKey.keyConfigured or webKey.vaultLocked changes, without requiring a new extension probe.

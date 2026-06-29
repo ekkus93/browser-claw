@@ -352,17 +352,19 @@ const checkExtension = useCallback(async () => {
 
 Rejection handling comes first.
 
-- [ ] P1 Move `approval.status !== 'approved'` branch before payload parsing.
-- [ ] P1 Rejected approval:
-  - [ ] does not parse payload;
-  - [ ] does not call research/readPages;
-  - [ ] audits `web.research_rejected` or equivalent;
-  - [ ] resolves effect as `user_rejected`.
-- [ ] P1 Tests:
-  - [ ] rejected approval with malformed JSON resolves user_rejected;
-  - [ ] rejected approval with missing payload resolves user_rejected;
-  - [ ] rejected approval does not audit payload-invalid;
-  - [ ] approved malformed payload still audits payload-invalid.
+<!-- evidence: src/runtime/webRunner.ts runApprovedBulkResearch() — rejection branch moved to top -->
+- [x] P1 Move `approval.status !== 'approved'` branch before payload parsing.
+- [x] P1 Rejected approval:
+  - [x] does not parse payload;
+  - [x] does not call research/readPages;
+  - [x] audits `web.research_rejected` or equivalent;
+  - [x] resolves effect as `user_rejected`.
+<!-- evidence: webRunner.test.ts D1 tests (4) in runApprovedBulkResearch (F3) describe block -->
+- [x] P1 Tests:
+  - [x] rejected approval with malformed JSON resolves user_rejected; <!-- D1: rejected approval with malformed JSON resolves user_rejected, not payload-invalid -->
+  - [x] rejected approval with missing payload resolves user_rejected; <!-- D1: rejected approval with missing payload resolves user_rejected -->
+  - [x] rejected approval does not audit payload-invalid; <!-- D1 test asserts .not.toContain('web.bulk_research_payload_invalid') -->
+  - [x] approved malformed payload still audits payload-invalid. <!-- D1: approved malformed payload still audits payload-invalid -->
 
 ### Suggested code order
 

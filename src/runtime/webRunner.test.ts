@@ -393,6 +393,62 @@ describe('runApprovedBulkResearch (F3)', () => {
     expect(web.research).not.toHaveBeenCalled();
     expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
   });
+
+  // D1 (FIX6): rejection check must happen BEFORE payload parsing.
+
+  it('D1: rejected approval with malformed JSON resolves user_rejected, not payload-invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'd1-a',
+      status: 'rejected',
+      payloadPreview: '{not json}',
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    const types = await auditTypes();
+    expect(types).toContain('web.research_rejected');
+    expect(types).not.toContain('web.bulk_research_payload_invalid');
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'd1-a',
+        result: expect.objectContaining({
+          ok: false,
+          error: expect.objectContaining({ kind: 'user_rejected' }),
+        }),
+      }),
+    );
+  });
+
+  it('D1: rejected approval with missing payload resolves user_rejected', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'd1-b',
+      status: 'rejected',
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    const types = await auditTypes();
+    expect(types).toContain('web.research_rejected');
+    expect(types).not.toContain('web.bulk_research_payload_invalid');
+  });
+
+  it('D1: rejected approval does not call research', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'd1-c',
+      status: 'rejected',
+      payloadPreview: JSON.stringify({ query: 'some query' }),
+    });
+    expect(web.research).not.toHaveBeenCalled();
+  });
+
+  it('D1: approved malformed payload still audits payload-invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'd1-d',
+      status: 'approved',
+      payloadPreview: '{bad json}',
+    });
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+  });
 });
 
 // ---------------------------------------------------------------------------

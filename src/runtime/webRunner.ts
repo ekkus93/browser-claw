@@ -407,6 +407,24 @@ export async function runApprovedBulkResearch(
   deps: WebEffectDeps,
   approval: ApprovedBulkResearch,
 ): Promise<void> {
+  // D1 (FIX6): check rejection BEFORE parsing payload — a rejected malformed
+  // approval must audit research_rejected, not bulk_research_payload_invalid.
+  if (approval.status !== 'approved') {
+    void recordAudit(
+      deps.db,
+      deps.dispatch,
+      webAuditEvent('web.research_rejected', 'Bulk research request rejected', {
+        status: 'rejected',
+      }),
+    );
+    await deps.submit({
+      type: 'resolve_effect',
+      id: approval.id,
+      result: { ok: false, error: { kind: 'user_rejected' } },
+    });
+    return;
+  }
+
   // B2 (FIX4): strict payload parsing — validate every URL slot and check
   // URL safety policy before calling provider.
   let parsed: Record<string, unknown>;
@@ -459,22 +477,6 @@ export async function runApprovedBulkResearch(
   const label = isUrlsMode
     ? `Read ${String(urls!.length)} page(s)`
     : `Research: ${query ?? ''}`;
-
-  if (approval.status !== 'approved') {
-    void recordAudit(
-      deps.db,
-      deps.dispatch,
-      webAuditEvent('web.research_rejected', `${label} rejected`, {
-        status: 'rejected',
-      }),
-    );
-    await deps.submit({
-      type: 'resolve_effect',
-      id: approval.id,
-      result: { ok: false, error: { kind: 'user_rejected' } },
-    });
-    return;
-  }
 
   void recordAudit(
     deps.db,

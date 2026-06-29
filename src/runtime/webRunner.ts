@@ -15,6 +15,8 @@ import { webAuditEvent } from '../audit/auditEvents.ts';
 import { classifyFetchUrl } from '../net/urlSafety.ts';
 import {
   MAX_BATCH_PAGE_READS,
+  MAX_SEARCH_RESULTS,
+  MAX_WEB_PAGE_CHARS,
   normalizeOptionalPositiveIntegerLimit,
 } from '../webresearch/limits.ts';
 import {
@@ -126,22 +128,34 @@ function sanitizeResearchOptions(input: unknown): ResearchOptions {
   const o = (
     typeof input === 'object' && input !== null ? input : {}
   ) as Record<string, unknown>;
-  // B3 (FIX7): validate maxPages before including it so invalid values don't
-  // expand reads. Throws WebEffectPayloadError on invalid values.
   const maxPages =
     o.maxPages !== undefined
       ? normalizeOptionalPositiveIntegerLimit(o.maxPages, 'maxPages', {
           max: MAX_BATCH_PAGE_READS,
         })
       : undefined;
+  // D1 (FIX9): validate maxResults and maxChars so invalid values throw here
+  // rather than silently passing through to the provider.
+  const maxResults =
+    o.maxResults !== undefined
+      ? normalizeOptionalPositiveIntegerLimit(o.maxResults, 'maxResults', {
+          max: MAX_SEARCH_RESULTS,
+        })
+      : undefined;
+  const maxChars =
+    o.maxChars !== undefined
+      ? normalizeOptionalPositiveIntegerLimit(o.maxChars, 'maxChars', {
+          max: MAX_WEB_PAGE_CHARS,
+        })
+      : undefined;
   return {
-    ...(typeof o.maxResults === 'number' ? { maxResults: o.maxResults } : {}),
+    ...(maxResults !== undefined ? { maxResults } : {}),
     ...(typeof o.site === 'string' ? { site: o.site } : {}),
     ...(maxPages !== undefined ? { maxPages } : {}),
     ...(o.format === 'text' || o.format === 'markdown'
       ? { format: o.format }
       : {}),
-    ...(typeof o.maxChars === 'number' ? { maxChars: o.maxChars } : {}),
+    ...(maxChars !== undefined ? { maxChars } : {}),
   };
 }
 
@@ -447,15 +461,19 @@ export async function runApprovedBulkResearch(
 
   // B2 (FIX4): strict payload parsing — validate every URL slot and check
   // URL safety policy before calling provider.
-  let parsed: Record<string, unknown>;
+  // D1 (FIX9): options validation also runs here so invalid options classify
+  // as bulk_research_payload_invalid, not research_failed.
   let urls: string[] | undefined;
   let query: string | undefined;
+  let options: ResearchOptions;
 
   try {
-    parsed = parseApprovalPayloadObject(
+    const parsed = parseApprovalPayloadObject(
       approval.payloadPreview,
       'web_bulk_research',
     );
+
+    options = sanitizeResearchOptions(parsed.options);
 
     if ('urls' in parsed) {
       // URLs mode: validate every slot and check URL safety policy.
@@ -506,7 +524,6 @@ export async function runApprovedBulkResearch(
     }),
   );
   try {
-    const options = sanitizeResearchOptions(parsed.options);
     let bundle: Awaited<ReturnType<typeof deps.web.research>>;
     if (isUrlsMode) {
       bundle = await deps.web.readPages(urls!, options);

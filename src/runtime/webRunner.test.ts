@@ -701,3 +701,69 @@ describe('C1 (FIX8) — invalid effect.options audits and resolves, not throws',
     expect(noApproval()).toHaveLength(0);
   });
 });
+
+describe('runApprovedBulkResearch — D1 (FIX9) invalid options → payload_invalid', () => {
+  it('D1 FIX9: maxPages:0 in approved payload audits bulk_research_payload_invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'd1-maxpages-0',
+      status: 'approved',
+      payloadPreview: JSON.stringify({
+        query: 'test',
+        options: { maxPages: 0 },
+      }),
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+    expect(await auditTypes()).not.toContain('web.research_started');
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+  });
+
+  it('D1 FIX9: maxPages:-1 in approved payload audits bulk_research_payload_invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'd1-maxpages-neg',
+      status: 'approved',
+      payloadPreview: JSON.stringify({
+        query: 'test',
+        options: { maxPages: -1 },
+      }),
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+    expect(await auditTypes()).not.toContain('web.research_started');
+  });
+
+  it('D1 FIX9: maxResults:0 in approved payload audits bulk_research_payload_invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'd1-maxresults-0',
+      status: 'approved',
+      payloadPreview: JSON.stringify({
+        query: 'test',
+        options: { maxResults: 0 },
+      }),
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+    expect(await auditTypes()).not.toContain('web.research_failed');
+  });
+
+  it('D1 FIX9: invalid options do not call provider', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'd1-no-provider',
+      status: 'approved',
+      payloadPreview: JSON.stringify({
+        query: 'test',
+        options: { maxChars: -5 },
+      }),
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(web.readPages).not.toHaveBeenCalled();
+  });
+});

@@ -293,21 +293,21 @@ Approved bulk-research payloads with invalid `options` can be classified as `web
 
 Invalid options in approval payload are payload-invalid, not provider failure.
 
-- [ ] P1 In `runApprovedBulkResearch()`:
-  - [ ] handle rejection before parsing payload, as already fixed;
-  - [ ] parse payload;
-  - [ ] sanitize/validate `parsed.options`;
-  - [ ] validate query/urls;
-  - [ ] on any payload/options validation error, audit `web.bulk_research_payload_invalid`;
-  - [ ] resolve effect `ok:false`;
-  - [ ] do not audit `web.research_started`;
-  - [ ] do not call provider.
-- [ ] P1 Tests:
-  - [ ] approved payload with `options.maxPages: 0` audits payload-invalid;
-  - [ ] approved payload with `options.maxPages: -1` audits payload-invalid;
-  - [ ] approved payload with `options.maxResults: 0` audits payload-invalid;
-  - [ ] invalid options do not audit `web.research_failed`;
-  - [ ] invalid options do not call provider.
+- [x] P1 In `runApprovedBulkResearch()`: <!-- src/runtime/webRunner.ts — options validated in payload try/catch -->
+  - [x] handle rejection before parsing payload, as already fixed;
+  - [x] parse payload;
+  - [x] sanitize/validate `parsed.options`; <!-- sanitizeResearchOptions moved before url/query validation -->
+  - [x] validate query/urls;
+  - [x] on any payload/options validation error, audit `web.bulk_research_payload_invalid`;
+  - [x] resolve effect `ok:false`;
+  - [x] do not audit `web.research_started`;
+  - [x] do not call provider.
+- [x] P1 Tests: <!-- webRunner.test.ts D1 FIX9 block -->
+  - [x] approved payload with `options.maxPages: 0` audits payload-invalid;
+  - [x] approved payload with `options.maxPages: -1` audits payload-invalid;
+  - [x] approved payload with `options.maxResults: 0` audits payload-invalid;
+  - [x] invalid options do not audit `web.research_failed`;
+  - [x] invalid options do not call provider.
 
 ### Suggested code order
 

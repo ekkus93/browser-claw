@@ -2222,6 +2222,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T21:56:27Z - Claude Sonnet 4.6 - FIX9 Phase 0: scope lock and design notes
+- FIX9 scope: options-forwarding parity (search/readPage/research), maxResults/maxChars validation, single validateRuntimeWebOptions() helper, approved bulk-research payload-invalid classification, Rust sk-ant/sk- precise ownership.
+- Key decisions (from replies3.md): MAX_WEB_PAGE_CHARS=50k in limits.ts; MAX_SEARCH_RESULTS moved to limits.ts; site/format rejected as unsupported; RuntimeWebOptionsValidationError local class; Option A Rust redaction.
+- FIX8 overclaim corrected: B1 only forwarded readPages options; search/readPage/research were deferred; FIX9 closes the gap.
+- Phase 0 ticked: design notes updated, FIX8 TODO corrected, memory.md updated.
+
 ## 2026-06-29T11:57:20Z - Claude Sonnet 4.6 - FIX2 A1: vault unlock listener implemented
 - Added `startAppListening` listener in `main.tsx` for `vaultLockedSet(false)` → `secretVault.getSecret(BRAVE_KEY_ID)` to eagerly cache the Brave key on vault unlock.
 - 2 new tests in `useWebResearchKey.test.ts`: lock/unlock cycle recovers key; key NOT in Redux JSON after unlock.

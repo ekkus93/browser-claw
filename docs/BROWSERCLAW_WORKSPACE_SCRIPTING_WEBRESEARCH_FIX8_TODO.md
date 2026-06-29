@@ -492,7 +492,7 @@ FIX8 is complete only when:
 
 - [x] `browserclaw-web` top-level `maxPages` is validated and propagated into canonical `options`. <!-- A1/A2: canonicalizeWebRequestOptions() in parser -->
 - [x] Invalid top-level `maxPages` cannot silently expand or remove limits. <!-- A2: invalid → malformed; valid → forwarded via options -->
-- [x] `referenceRuntime` forwards validated options for all web ops that accept options. <!-- B1: readPages now includes options in web_research effect; other ops deferred (B2 partial) -->
+- [x] `referenceRuntime` forwards validated options for all web ops that accept options. <!-- B1: readPages forwards options in web_research effect; search/readPage/research deferred — FIX8 did NOT achieve full parity; FIX9 completes this -->
 - [x] `createWebEffectHandler()` catches invalid option errors and resolves/audits them. <!-- C1: sanitizeResearchOptions wrapped in try/catch -->
 - [x] Direct `handleReadPages()` calls reject invalid `maxPages`. <!-- D1: validateOptionalPositiveIntegerLimit at start of handler -->
 - [x] Rust redaction avoids obvious safe-word false positives while preserving multi-secret redaction. <!-- E1: boundary + min-length guards -->

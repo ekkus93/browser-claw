@@ -1073,3 +1073,44 @@ These decisions apply to the FIX7 targeted hardening pass. See
   redact `sk-` tokens that start at a non-alphanumeric boundary AND have at
   least 12 secret-like characters following the prefix. `Bearer ` requires a
   word boundary before it.
+
+## FIX9 Locked decisions (2026-06-29, from `docs/replies3.md`)
+
+- **Runtime web options must be validated by one shared helper.**
+  `referenceRuntime.ts` must not validate options ad-hoc in each branch.
+  A single `validateRuntimeWebOptions(raw: unknown)` validates model-authored
+  `web_request.options`; each web-op branch calls this and forwards the result.
+  Supported fields for FIX9: `maxPages`, `maxResults`, `maxChars` only.
+  `site` and `format` are rejected as unsupported (not used downstream).
+- **No web op may validate options and then drop them.** After validation,
+  the normalized options object must be spread into the emitted effect. Validate
+  and silently omit is not acceptable. Applies to `search`, `readPage`,
+  `research`, and `readPages`.
+- **`maxResults` and `maxChars` must be validated like `maxPages`.** Invalid
+  values (zero, negative, non-integer, string, above cap) must produce an
+  explicit `runtime.invalid_web_request` audit, not best-effort omission.
+  `agentBlockParser` must apply the same validation at parse time.
+- **`MAX_WEB_PAGE_CHARS = 50_000` is the cap for `maxChars` in web research.**
+  Do not use `planSchema.ts`'s `MAX_PAGE_CHARS = 200_000` (workspace file reads).
+  Add `MAX_WEB_PAGE_CHARS` and `MAX_SEARCH_RESULTS` to `src/webresearch/limits.ts`;
+  update `braveSearch.ts` to import `MAX_SEARCH_RESULTS` from there.
+- **`RuntimeWebOptionsValidationError` replaces the nonexistent
+  `RuntimeProtocolError`.** `validateRuntimeWebOptions()` throws this class for
+  schema violations; `normalizeOptionalPositiveIntegerLimit` throws
+  `LimitValidationError` for limit violations. `validateRuntimeWebOptions` wraps
+  limit errors into `RuntimeWebOptionsValidationError` so the runtime has one
+  error type to handle. Runtime branches catch it and emit
+  `event_type: 'runtime.invalid_web_request'`.
+- **Approved bulk-research invalid options are payload-invalid, not provider
+  failures.** `sanitizeResearchOptions(parsed.options)` must be called inside
+  the payload-validation try/catch, before `web.research_started`. Invalid
+  options reach `failInvalidBulkResearchPayload`, not `web.research_failed`.
+- **Rust `sk-ant-` / `sk-` redaction uses precise ownership (Option A).**
+  The generic `sk-` rule must skip tokens starting with `sk-ant-`. This
+  prevents double-handling: `sk-ant-*` tokens are exclusively owned by the
+  `sk-ant-` rule. Tests prove short `sk-ant-` tokens are not redacted and long
+  `sk-ant-` tokens are redacted only by the `sk-ant-` rule, not the `sk-` rule.
+- **FIX8 evidence note corrected.** The FIX8 acceptance checklist item
+  "`referenceRuntime` forwards validated options for all web ops" was imprecise:
+  FIX8 only implemented readPages forwarding; search/readPage/research forwarding
+  was deferred. FIX9 completes the parity.

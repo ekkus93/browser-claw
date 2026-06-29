@@ -10,21 +10,21 @@ P2 = polish, robustness, or future hardening
 
 ## Phase 0 — Scope Lock and Evidence Hygiene
 
-- [ ] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX9_SPEC.md`.
-- [ ] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX9_TODO.md`.
-- [ ] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX9 section:
-  - [ ] runtime web options must be validated by one helper;
-  - [ ] no web op may validate options and then drop them;
-  - [ ] `maxResults` and `maxChars` must be validated like `maxPages`;
-  - [ ] approved bulk-research invalid options must be payload-invalid;
-  - [ ] Rust `sk-ant` / `sk` redaction overlap must be resolved or documented.
-- [ ] P0 Update `memory.md` with:
-  - [ ] real `date -u` timestamp;
-  - [ ] model name;
-  - [ ] concise summary of FIX9 scope.
-- [ ] P0 Do not add broad new features in this pass.
-- [ ] P0 Do not check TODO boxes without evidence comments pointing to source/tests.
-- [ ] P0 Correct any FIX8 evidence comments that overclaim full options-forwarding parity.
+- [x] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX9_SPEC.md`. <!-- already present from commit b1b6c50 -->
+- [x] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX9_TODO.md`. <!-- already present from commit b1b6c50 -->
+- [x] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX9 section: <!-- FIX9 Locked decisions section appended -->
+  - [x] runtime web options must be validated by one helper;
+  - [x] no web op may validate options and then drop them;
+  - [x] `maxResults` and `maxChars` must be validated like `maxPages`;
+  - [x] approved bulk-research invalid options must be payload-invalid;
+  - [x] Rust `sk-ant` / `sk` redaction overlap must be resolved or documented.
+- [x] P0 Update `memory.md` with: <!-- 2026-06-29T21:56:27Z entry added -->
+  - [x] real `date -u` timestamp;
+  - [x] model name;
+  - [x] concise summary of FIX9 scope.
+- [x] P0 Do not add broad new features in this pass.
+- [x] P0 Do not check TODO boxes without evidence comments pointing to source/tests.
+- [x] P0 Correct any FIX8 evidence comments that overclaim full options-forwarding parity. <!-- FIX8 TODO line 495 corrected: B1 only covered readPages; FIX9 completes parity -->
 
 ---
 

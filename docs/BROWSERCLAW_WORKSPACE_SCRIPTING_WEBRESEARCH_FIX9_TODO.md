@@ -359,20 +359,16 @@ The generic `sk-` redaction pass can redact `sk-ant-*` tokens that the `sk-ant-`
 
 Choose one:
 
-### Option A — precise ownership
+### Option A — precise ownership ← CHOSEN
 
-- [ ] P2 `sk-ant-` tokens are handled only by the `sk-ant-` rule.
-- [ ] P2 generic `sk-` rule skips tokens starting with `sk-ant-`.
-- [ ] P2 Tests:
-  - [ ] short `sk-ant-short` is not redacted if below min length;
-  - [ ] long `sk-ant-123456789012` is redacted;
-  - [ ] normal `sk-123456789012` is redacted.
+- [x] P2 `sk-ant-` tokens are handled only by the `sk-ant-` rule. <!-- redact_sk_tokens skips sk-ant- when prefix == "sk-" -->
+- [x] P2 generic `sk-` rule skips tokens starting with `sk-ant-`.
+- [x] P2 Tests: <!-- claw-core/src/lib.rs e1_fix9_* tests (3 new) -->
+  - [x] short `sk-ant-short` is not redacted if below min length;
+  - [x] long `sk-ant-123456789012` is redacted;
+  - [x] normal `sk-123456789012` is redacted.
 
-### Option B — conservative overlap
-
-- [ ] P2 Document that generic `sk-` intentionally redacts `sk-ant-*` tokens if they look long enough.
-- [ ] P2 Tests prove and document this behavior.
-- [ ] P2 Safe-word tests remain passing.
+### Option B — conservative overlap ← NOT CHOSEN
 
 Recommended: **Option A** for policy clarity.
 

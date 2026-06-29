@@ -715,6 +715,13 @@ impl Runtime {
             while let Some(rel) = input[search_from..].find(prefix) {
                 let start = search_from + rel;
                 let after_prefix = start + prefix.len();
+                // E1 (FIX9) Option A: generic sk- rule skips tokens that start
+                // with sk-ant- so the sk-ant- rule has precise ownership of
+                // Anthropic tokens (avoids double-counting the prefix length).
+                if prefix == "sk-" && input[start..].starts_with("sk-ant-") {
+                    search_from = after_prefix;
+                    continue;
+                }
                 let suffix_len = secret_suffix_len(&input, after_prefix);
                 if is_sk_boundary_before(&input, start) && suffix_len >= min_suffix {
                     let end = after_prefix + suffix_len;
@@ -1752,12 +1759,14 @@ mod tests {
 
     #[test]
     fn a1_fix7_sk_ant_and_sk_both_redacted() {
+        // Use tokens with >= 12 chars after their respective prefixes so both
+        // are long enough to trigger redaction under the min-suffix rule.
         let content = Runtime::tool_content_from_effect_failure(&json!({
             "kind": "auth_failed",
-            "message": "sk-ant-firstSECRET sk-secondSECRET",
+            "message": "sk-ant-apiKey12345678 sk-secondSECRET",
             "retryable": false
         }));
-        assert!(!content.contains("sk-ant-firstSECRET"), "sk-ant- token must be redacted");
+        assert!(!content.contains("sk-ant-apiKey12345678"), "sk-ant- token must be redacted");
         assert!(!content.contains("sk-secondSECRET"), "sk- token must be redacted");
         assert!(content.contains("[REDACTED]"));
     }
@@ -1896,6 +1905,47 @@ mod tests {
         // Short sk- tokens must not be redacted (they are not API keys).
         assert!(!content.contains("[REDACTED]") || content.contains("sk-abc"),
             "short sk- token below min-length must not be redacted: {content}");
+    }
+
+    // E1 (FIX9) Option A: generic sk- rule skips sk-ant- tokens.
+    #[test]
+    fn e1_fix9_short_sk_ant_not_redacted_by_sk_rule() {
+        // "sk-ant-short" has suffix "short" (5 chars after "sk-ant-"), which is below the
+        // sk-ant- min-suffix. The generic sk- rule must not pick it up either (Option A).
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "test_error",
+            "message": "error token sk-ant-short is not a real key"
+        }));
+        assert!(
+            !content.contains("[REDACTED]") || content.contains("sk-ant-short"),
+            "short sk-ant- token must not be redacted by the generic sk- rule: {content}"
+        );
+    }
+
+    #[test]
+    fn e1_fix9_long_sk_ant_redacted_by_sk_ant_rule() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "test_error",
+            "message": "key sk-ant-123456789012 is invalid"
+        }));
+        assert!(
+            !content.contains("sk-ant-123456789012"),
+            "long sk-ant- token must be redacted: {content}"
+        );
+        assert!(content.contains("[REDACTED]"));
+    }
+
+    #[test]
+    fn e1_fix9_normal_sk_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "test_error",
+            "message": "key sk-123456789012 is invalid"
+        }));
+        assert!(
+            !content.contains("sk-123456789012"),
+            "normal sk- token must be redacted: {content}"
+        );
+        assert!(content.contains("[REDACTED]"));
     }
 
     #[test]

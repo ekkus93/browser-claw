@@ -410,7 +410,7 @@ Run and record actual results:
 - [x] P0 `pnpm test -- --no-file-parallelism` — PASS: 127 files, 1338 tests <!-- 2026-06-29 -->
 - [x] P0 `pnpm run test:e2e` — 30 passed (chromium + firefox); exit 1 = platform init error on extension worker project (headless, no X display) <!-- pre-existing; not a FIX9 regression -->
 - [x] P0 `pnpm run test:extension:e2e` — CANNOT RUN: `ui/aura/env.cc: The platform failed to initialize` (headless env, no Xvfb/Docker). Blocks extension E2E acceptance only; core logic fully covered by unit tests. Follow-up: Docker extension E2E (same as prior fixes). <!-- pre-existing; not a FIX9 regression -->
-- [x] P0 `pnpm run test:extension:e2e:docker` — NOT ATTEMPTED (same Docker/display constraint). <!-- deferred as in prior fixes -->
+- [ ] P0 `pnpm run test:extension:e2e:docker` — NOT ATTEMPTED: Docker unavailable in this environment. Extension Docker E2E not independently verified for FIX9. <!-- deferred: requires Docker+Xvfb; pre-existing constraint -->
 - [x] P0 `pnpm run build` — PASS (built in ~580ms, chunk size warning is pre-existing). <!-- 2026-06-29 -->
 - [x] P0 `pnpm run build:wasm` — PASS (wasm-pack build succeeded, wasm-pack version notice is advisory). <!-- 2026-06-29 -->
 - [x] P0 `cargo test --workspace` — PASS: 61 tests, 0 failed. <!-- 2026-06-29 -->

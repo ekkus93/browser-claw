@@ -2395,3 +2395,10 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, format ✓, vitest 1338/127 ✓, build ✓, build:wasm ✓, test:e2e 30/30 ✓ (chromium+firefox; extension E2E still blocked by headless env, unchanged from prior fixes).
 - Commits: a3638b0 (A), c5b155f (B), 24e28cd (C), 078f1d1 (D), 54d5f27 (E), final F commit pending.
 - NEXT: FIX10 or next item from main spec TODO.
+
+## 2026-06-29T23:17:36Z - Claude Sonnet 4.6 - FIX10 Phase 0: scope lock, design notes, FIX9 evidence correction
+- FIX10 scope: narrow hardening pass — strict webRunner search/page-read sanitizers; approved single-page-read invalid options classified as payload-invalid (new web.page_read_payload_invalid event + failInvalidPageReadPayload helper); pageReaderProvider validates maxChars for readPage + readPages; extension validateOptionalMaxChars() added centrally and directly for read_page + read_pages; gate evidence hygiene.
+- FIX10 decisions (from BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX10_REPLIES.md): (1) keep two-arg readPage(url, request) — no interface refactor; (2) new web.page_read_payload_invalid event + failInvalidPageReadPayload helper; (3) Option C for extension — keep DEFAULT_MAX_CHARS, use in validateOptionalMaxChars(); (4) second independent try/catch for maxChars after maxPages in pageReaderProvider.readPages(); (5) add tests to serviceWorkerReadPages.test.ts.
+- FIX9 gate evidence corrected: test:extension:e2e:docker [x] → [ ] with explicit NOT ATTEMPTED language.
+- Design notes: FIX10 Locked decisions section appended.
+- NEXT: Part A — strict webRunner search option validation (A1 + A2).

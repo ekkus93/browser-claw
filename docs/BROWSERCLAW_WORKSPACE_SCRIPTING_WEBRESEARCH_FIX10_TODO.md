@@ -10,22 +10,22 @@ P2 = polish, robustness, or future hardening
 
 ## Phase 0 — Scope Lock and Evidence Hygiene
 
-- [ ] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX10_SPEC.md`.
-- [ ] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX10_TODO.md`.
-- [ ] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX10 section:
-  - [ ] `webRunner` search/page-read option sanitizers must be strict.
-  - [ ] invalid `maxResults` / `maxChars` must not be silently dropped.
-  - [ ] approved single page-read invalid options must be payload-invalid.
-  - [ ] `pageReaderProvider` must validate `maxChars`.
-  - [ ] extension `read_page` / `read_pages` must validate `maxChars`.
-  - [ ] gate evidence must distinguish pass/fail/cannot-run/not-attempted.
-- [ ] P0 Update `memory.md` with:
-  - [ ] real `date -u` timestamp;
-  - [ ] model name;
-  - [ ] concise summary of FIX10 scope.
-- [ ] P0 Do not add broad new features in this pass.
-- [ ] P0 Do not check TODO boxes without evidence comments pointing to source/tests.
-- [ ] P0 Correct any FIX9 gate evidence that implies Docker extension E2E passed or completed if it was not actually attempted.
+- [x] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX10_SPEC.md`. <!-- added by user in deeb922 -->
+- [x] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX10_TODO.md`. <!-- added by user in deeb922 -->
+- [x] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX10 section: <!-- FIX10 Locked decisions section added -->
+  - [x] `webRunner` search/page-read option sanitizers must be strict. <!-- documented: assertPlainOptionsObject, rejectUnknownOptionFields, SEARCH/PAGE_READ_OPTION_FIELDS -->
+  - [x] invalid `maxResults` / `maxChars` must not be silently dropped. <!-- documented: throw on zero/negative/string/non-integer/above-cap -->
+  - [x] approved single page-read invalid options must be payload-invalid. <!-- documented: sanitizeReadOptions before page_read_started; failInvalidPageReadPayload -->
+  - [x] `pageReaderProvider` must validate `maxChars`. <!-- documented: readPage returns invalid_request; readPages uses separate try/catch -->
+  - [x] extension `read_page` / `read_pages` must validate `maxChars`. <!-- documented: validateOptionalMaxChars via DEFAULT_MAX_CHARS; central + direct -->
+  - [x] gate evidence must distinguish pass/fail/cannot-run/not-attempted. <!-- documented: NOT ATTEMPTED stays unchecked -->
+- [x] P0 Update `memory.md` with: <!-- memory.md updated with 2026-06-29T23:17:36Z entry -->
+  - [x] real `date -u` timestamp; <!-- 2026-06-29T23:17:36Z -->
+  - [x] model name; <!-- Claude Sonnet 4.6 -->
+  - [x] concise summary of FIX10 scope. <!-- FIX10 scope: strict sanitizers, payload-invalid classification, provider/extension maxChars -->
+- [x] P0 Do not add broad new features in this pass. <!-- meta-constraint; no new features added -->
+- [x] P0 Do not check TODO boxes without evidence comments pointing to source/tests. <!-- all evidence comments added inline -->
+- [x] P0 Correct any FIX9 gate evidence that implies Docker extension E2E passed or completed if it was not actually attempted. <!-- FIX9 TODO line 413: [x] → [ ]; added explicit NOT ATTEMPTED language -->
 
 ---
 

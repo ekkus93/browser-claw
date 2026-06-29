@@ -1114,3 +1114,36 @@ These decisions apply to the FIX7 targeted hardening pass. See
   "`referenceRuntime` forwards validated options for all web ops" was imprecise:
   FIX8 only implemented readPages forwarding; search/readPage/research forwarding
   was deferred. FIX9 completes the parity.
+
+## FIX10 Locked decisions (2026-06-29, from `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX10_REPLIES.md`)
+
+- **`webRunner` search and page-read sanitizers must be strict.** `sanitizeSearchOptions()`
+  and `sanitizeReadOptions()` must throw `WebEffectPayloadError` on non-object input,
+  unknown fields, and invalid limit values. Silent dropping of malformed values is not
+  acceptable. New helpers `assertPlainOptionsObject()` and `rejectUnknownOptionFields()`
+  shared between both sanitizers.
+- **Invalid `maxResults` and `maxChars` must not be silently dropped.** Any invalid
+  value (string, zero, negative, non-integer, above cap) must throw, not be omitted.
+  `SEARCH_OPTION_FIELDS = {'maxResults'}` (site rejected for FIX10).
+  `PAGE_READ_OPTION_FIELDS = {'maxChars'}` (format and timeoutMs rejected for FIX10).
+- **Approved single page-read invalid options are payload-invalid, not provider failures.**
+  `sanitizeReadOptions()` must be called before `web.page_read_started` inside a
+  payload-validation try/catch. Invalid options emit `web.page_read_payload_invalid`
+  via a new `failInvalidPageReadPayload()` helper (mirroring the bulk-research helper).
+  The `WebResearchService.readPage(url, options)` two-arg call form is kept; no interface
+  refactor in FIX10.
+- **`pageReaderProvider` must validate `maxChars` at the provider boundary.**
+  `readPage()` validates `request.maxChars` and returns a structured `invalid_request`
+  failure before calling the extension. `readPages()` validates `maxChars` in a second
+  independent try/catch after the existing `maxPages` try/catch (not combined), so
+  `expectedUrls` is always computed from a valid `effectiveMaxPages`. Invalid `maxChars`
+  returns one failure per expected URL; transport is not called.
+- **Extension `read_page` and `read_pages` must validate `maxChars` centrally and
+  directly.** `validateOptionalMaxChars()` calls the existing
+  `validateOptionalPositiveIntegerLimit(value, 'maxChars', DEFAULT_MAX_CHARS)`. It is
+  called in `validateMessageSchema()` for both message types and in `handleReadPage()` /
+  `handleReadPages()` for direct-call defense-in-depth. No new constant introduced;
+  the existing `DEFAULT_MAX_CHARS = 50_000` is reused (mirrors `MAX_WEB_PAGE_CHARS`).
+- **Gate evidence must distinguish pass / fail / cannot-run / not-attempted.** A
+  NOT ATTEMPTED task must remain `[ ]` unchecked, not `[x]`. This corrects the FIX9
+  `test:extension:e2e:docker` checkbox which was ticked while noting NOT ATTEMPTED.

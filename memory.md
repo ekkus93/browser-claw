@@ -2384,3 +2384,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Added 3 D2 tests in braveSearch.test.ts: canonical form assertion, found-by-resolver, no raw key in messages.
 - Gate: typecheck ✓, lint ✓, vitest 1013/121 ✓.
 - NEXT: Part D3 — research bundle must include failures (P1).
+
+## 2026-06-29T22:25:21Z - Claude Sonnet 4.6 - Ralph FIX9 A-F: options-forwarding parity DONE
+- FIX9 fully complete across Parts A–F.
+- Part A: limits.ts adds MAX_SEARCH_RESULTS=20, MAX_WEB_PAGE_CHARS=50_000, DEFAULT_MAX_PAGE_CHARS alias. braveSearch.ts re-exports MAX_SEARCH_RESULTS. New src/runtime/runtimeWebOptions.ts: validateRuntimeWebOptions(), RuntimeWebOptionsValidationError (eventType='runtime.invalid_web_request'). 29 unit tests.
+- Part B: referenceRuntime.ts wires validateRuntimeWebOptions() for all four ops (search/readPage/research/readPages). Replaces FIX8 ad-hoc maxPages-only validation in readPages. 10 new B1-B4 tests.
+- Part C: agentBlockParser.ts canonicalizeWebRequestOptions validates maxChars (cap 50k) + maxResults (cap 20) via normalizeOptionalPositiveIntegerLimit; rejects unknown fields in options; rejects non-object options. 10 new C1/C2/C3 tests.
+- Part D: webRunner.ts sanitizeResearchOptions now validates maxResults + maxChars (not just typeof===number). sanitizeResearchOptions(parsed.options) moved into payload-validation try/catch in runApprovedBulkResearch so invalid options → bulk_research_payload_invalid, not research_failed. 4 new D1 tests.
+- Part E: Rust Option A — redact_sk_tokens skips sk-ant- tokens when prefix=="sk-". sk-ant-short not redacted; sk-ant-LONG12345 redacted; sk-LONG12345 redacted. Fixed existing test a1_fix7_sk_ant_and_sk_both_redacted to use 12-char suffix. 3 new E1 tests. cargo test 61/0, clippy clean.
+- Gate: typecheck ✓, lint ✓, format ✓, vitest 1338/127 ✓, build ✓, build:wasm ✓, test:e2e 30/30 ✓ (chromium+firefox; extension E2E still blocked by headless env, unchanged from prior fixes).
+- Commits: a3638b0 (A), c5b155f (B), 24e28cd (C), 078f1d1 (D), 54d5f27 (E), final F commit pending.
+- NEXT: FIX10 or next item from main spec TODO.

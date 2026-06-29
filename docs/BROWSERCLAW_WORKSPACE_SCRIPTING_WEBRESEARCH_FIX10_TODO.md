@@ -267,21 +267,21 @@ Approved page-read payloads can validate URL first, record `web.page_read_starte
 
 ### Required behavior
 
-- [ ] P1 In `runApprovedWebPageRead()`:
-  - [ ] handle rejection before parsing payload;
-  - [ ] parse payload;
-  - [ ] validate URL;
-  - [ ] sanitize/validate options;
-  - [ ] on URL/options validation error, audit payload-invalid;
-  - [ ] resolve effect `ok:false`;
-  - [ ] do not audit `web.page_read_started`;
-  - [ ] do not call provider.
-- [ ] P1 Tests:
-  - [ ] approved page-read payload with `options.maxChars: 0` audits payload-invalid;
-  - [ ] approved page-read payload with `options.maxChars: -1` audits payload-invalid;
-  - [ ] approved page-read payload with `options.maxChars: "2000"` audits payload-invalid;
-  - [ ] invalid options do not audit `web.page_read_failed`;
-  - [ ] invalid options do not call provider.
+- [x] P1 In `runApprovedWebPageRead()`: <!-- src/runtime/webRunner.ts: C1 restructure -->
+  - [x] handle rejection before parsing payload; <!-- existing; unchanged -->
+  - [x] parse payload; <!-- parseApprovalPayloadObject in unified try/catch -->
+  - [x] validate URL; <!-- requireStringField + classifyFetchUrl in unified try/catch -->
+  - [x] sanitize/validate options; <!-- sanitizeReadOptions moved before web.page_read_started -->
+  - [x] on URL/options validation error, audit payload-invalid; <!-- failInvalidPageReadPayload → web.page_read_payload_invalid -->
+  - [x] resolve effect `ok:false`; <!-- failInvalidPageReadPayload submits ok:false -->
+  - [x] do not audit `web.page_read_started`; <!-- return before audit in catch path -->
+  - [x] do not call provider. <!-- return before deps.web.readPage -->
+- [x] P1 Tests:
+  - [x] approved page-read payload with `options.maxChars: 0` audits payload-invalid; <!-- test c1-zero -->
+  - [x] approved page-read payload with `options.maxChars: -1` audits payload-invalid; <!-- test c1-neg -->
+  - [x] approved page-read payload with `options.maxChars: "2000"` audits payload-invalid; <!-- test c1-str -->
+  - [x] invalid options do not audit `web.page_read_failed`; <!-- c1-zero checks not.toContain('web.page_read_failed') -->
+  - [x] invalid options do not call provider. <!-- web.readPage not.toHaveBeenCalled in C1 tests -->
 
 ### Suggested code order
 

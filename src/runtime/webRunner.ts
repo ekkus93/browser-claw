@@ -385,6 +385,36 @@ export interface ApprovedWebPageRead {
   payloadPreview?: string;
 }
 
+// C1 (FIX10): dedicated helper for approved page-read payload failures, mirroring
+// the bulk-research path. Emits web.page_read_payload_invalid so audit logs clearly
+// distinguish approved-payload failures from direct-effect failures.
+async function failInvalidPageReadPayload(
+  deps: WebEffectDeps,
+  approval: ApprovedWebPageRead,
+  error: unknown,
+): Promise<void> {
+  const message =
+    error instanceof Error
+      ? error.message
+      : 'Approved page-read payload was invalid.';
+  void recordAudit(
+    deps.db,
+    deps.dispatch,
+    webAuditEvent('web.page_read_payload_invalid', message, {
+      status: 'failure',
+      risk: 'medium',
+    }),
+  );
+  await deps.submit({
+    type: 'resolve_effect',
+    id: approval.id,
+    result: {
+      ok: false,
+      error: { kind: 'web_invalid_payload', message, retryable: false },
+    },
+  });
+}
+
 /**
  * Read (or decline) a web page the user resolved on the approval card, then
  * resolve the runtime effect. Called by the approval-resolution listener.
@@ -409,28 +439,23 @@ export async function runApprovedWebPageRead(
     return;
   }
 
+  // C1 (FIX10): parse, validate URL, and sanitize options in one block so all
+  // payload errors emit web.page_read_payload_invalid before web.page_read_started.
   // G1 (FIX3): strict payload parsing — fail closed on missing/invalid url.
-  let parsed: Record<string, unknown>;
   let url: string;
+  let request: PageReadRequest;
   try {
-    parsed = parseApprovalPayloadObject(
+    const parsed = parseApprovalPayloadObject(
       approval.payloadPreview,
       'web_page_read',
     );
     url = requireStringField(parsed, 'url', 'web_page_read');
+    if (!classifyFetchUrl(url).ok) {
+      throw new Error(`web_page_read.url is not an allowed URL: ${url}`);
+    }
+    request = sanitizeReadOptions(parsed.options, url);
   } catch (error) {
-    // F1 (FIX5): use shared failInvalidWebEffect to audit web.effect_payload_invalid.
-    await failInvalidWebEffect(deps, approval.id, error);
-    return;
-  }
-
-  if (!classifyFetchUrl(url).ok) {
-    // F1 (FIX5): blocked URL after approval must also audit web.effect_payload_invalid.
-    await failInvalidWebEffect(
-      deps,
-      approval.id,
-      new Error(`web_page_read.url is not an allowed URL: ${url}`),
-    );
+    await failInvalidPageReadPayload(deps, approval, error);
     return;
   }
 
@@ -442,10 +467,7 @@ export async function runApprovedWebPageRead(
     }),
   );
   try {
-    const content = await deps.web.readPage(
-      url,
-      sanitizeReadOptions(parsed.options, url),
-    );
+    const content = await deps.web.readPage(url, request);
     void recordAudit(
       deps.db,
       deps.dispatch,

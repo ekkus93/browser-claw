@@ -493,8 +493,8 @@ describe('runApprovedWebPageRead (F3)', () => {
   });
 
   // G1 (FIX3): strict payload parsing — fail-closed on malformed/missing URL.
-  // F1 (FIX5): now audits web.effect_payload_invalid (consistent with web_search/web_research).
-  it('G1+F1: malformed JSON payload does not call readPage', async () => {
+  // C1 (FIX10): all approved payload errors now emit web.page_read_payload_invalid.
+  it('G1+C1: malformed JSON payload audits web.page_read_payload_invalid', async () => {
     const web = makeWeb();
     await runApprovedWebPageRead(deps(web), {
       id: 'g1-bad-json',
@@ -507,15 +507,15 @@ describe('runApprovedWebPageRead (F3)', () => {
         result: expect.objectContaining({
           ok: false,
           error: expect.objectContaining({
-            kind: 'web_effect_payload_invalid',
+            kind: 'web_invalid_payload',
           }),
         }),
       }),
     );
-    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+    expect(await auditTypes()).toContain('web.page_read_payload_invalid');
   });
 
-  it('G1+F1: missing url field does not call readPage', async () => {
+  it('G1+C1: missing url field audits web.page_read_payload_invalid', async () => {
     const web = makeWeb();
     await runApprovedWebPageRead(deps(web), {
       id: 'g1-no-url',
@@ -528,10 +528,10 @@ describe('runApprovedWebPageRead (F3)', () => {
         result: expect.objectContaining({ ok: false }),
       }),
     );
-    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+    expect(await auditTypes()).toContain('web.page_read_payload_invalid');
   });
 
-  it('G1+F1: empty url string does not call readPage', async () => {
+  it('G1+C1: empty url string audits web.page_read_payload_invalid', async () => {
     const web = makeWeb();
     await runApprovedWebPageRead(deps(web), {
       id: 'g1-empty-url',
@@ -539,10 +539,10 @@ describe('runApprovedWebPageRead (F3)', () => {
       payloadPreview: JSON.stringify({ url: '' }),
     });
     expect(web.readPage).not.toHaveBeenCalled();
-    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+    expect(await auditTypes()).toContain('web.page_read_payload_invalid');
   });
 
-  it('G1+F1: audit on payload invalid does not include url value in summary', async () => {
+  it('G1+C1: audit on payload invalid does not include url value in summary', async () => {
     const web = makeWeb();
     await runApprovedWebPageRead(deps(web), {
       id: 'g1-no-secret',
@@ -552,10 +552,73 @@ describe('runApprovedWebPageRead (F3)', () => {
     });
     const rows = await db.audit_events.toArray();
     const invalidAudit = rows.find(
-      (a) => a.type === 'web.effect_payload_invalid',
+      (a) => a.type === 'web.page_read_payload_invalid',
     );
     expect(invalidAudit).toBeDefined();
     expect(invalidAudit?.summary).not.toContain('SECRET_VALUE');
+  });
+
+  it('C1 (FIX10): approved page-read with maxChars: 0 audits web.page_read_payload_invalid', async () => {
+    const web = makeWeb();
+    await runApprovedWebPageRead(deps(web), {
+      id: 'c1-zero',
+      status: 'approved',
+      payloadPreview: JSON.stringify({
+        url: 'https://example.com/a',
+        options: { maxChars: 0 },
+      }),
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    const types = await auditTypes();
+    expect(types).toContain('web.page_read_payload_invalid');
+    expect(types).not.toContain('web.page_read_started');
+    expect(types).not.toContain('web.page_read_failed');
+  });
+
+  it('C1 (FIX10): approved page-read with maxChars: -1 audits web.page_read_payload_invalid', async () => {
+    const web = makeWeb();
+    await runApprovedWebPageRead(deps(web), {
+      id: 'c1-neg',
+      status: 'approved',
+      payloadPreview: JSON.stringify({
+        url: 'https://example.com/a',
+        options: { maxChars: -1 },
+      }),
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.page_read_payload_invalid');
+  });
+
+  it('C1 (FIX10): approved page-read with maxChars: "2000" audits web.page_read_payload_invalid', async () => {
+    const web = makeWeb();
+    await runApprovedWebPageRead(deps(web), {
+      id: 'c1-str',
+      status: 'approved',
+      payloadPreview: JSON.stringify({
+        url: 'https://example.com/a',
+        options: { maxChars: '2000' },
+      }),
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.page_read_payload_invalid');
+  });
+
+  it('C1 (FIX10): valid approved page-read with maxChars: 1000 succeeds', async () => {
+    const web = makeWeb();
+    await runApprovedWebPageRead(deps(web), {
+      id: 'c1-ok',
+      status: 'approved',
+      payloadPreview: JSON.stringify({
+        url: 'https://example.com/a',
+        options: { maxChars: 1000 },
+      }),
+    });
+    expect(web.readPage).toHaveBeenCalledWith(
+      'https://example.com/a',
+      expect.objectContaining({ maxChars: 1000 }),
+    );
+    expect(await auditTypes()).toContain('web.page_read_completed');
+    expect(await auditTypes()).not.toContain('web.page_read_payload_invalid');
   });
 });
 

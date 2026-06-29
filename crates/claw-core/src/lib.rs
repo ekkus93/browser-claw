@@ -299,6 +299,9 @@ impl Runtime {
             Command::ResolveEffect { id, result } => {
                 // The conversation this effect belongs to (recorded when it was
                 // emitted); cleaned up here regardless of success/failure.
+                // Safe defaults: pending_conversation/pending_skill are internal
+                // bookkeeping maps, not protocol data. An unknown effect ID yields
+                // "" which is benign — it only affects attribution metadata.
                 let conversation_id = self
                     .state
                     .pending_conversation
@@ -335,6 +338,8 @@ impl Runtime {
                                 Ok(n) => n,
                                 Err(msg) => return self.audit_invalid_tool_call(msg),
                             };
+                            // Safe default: args is optional by design; many tools
+                            // take no arguments. Null is the correct missing-args value.
                             let args = tool_call
                                 .get("args")
                                 .cloned()

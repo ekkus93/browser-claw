@@ -1984,6 +1984,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-29T01:03:32Z - Claude Sonnet 4.6 - FIX4 A3 (Rust fallback audit) DONE
+- Searched all crates for unwrap_or_default/filter_map patterns; 3 remaining hits all safe.
+- Added "intentionally safe default" comments to pending_conversation/pending_skill and tool_call.args.
+- No protocol-boundary fallbacks remain; no new tests needed.
+- Next: B1 — host webRunner fail-closed helpers (requireEffectStringField etc).
+
 ## 2026-06-29T01:01:43Z - Claude Sonnet 4.6 - FIX4 A2 (Rust required_tool_name) DONE
 - Added required_tool_name() helper + audit_invalid_tool_call() to ClawRuntime.
 - Replaced unwrap_or_default() at tool_call.name extraction with fail-closed check.

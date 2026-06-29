@@ -183,12 +183,15 @@ fn effects_for_tool_call(&mut self, id: String, tool_call: serde_json::Value) ->
 
 ## A3 — Check for other Rust `unwrap_or_default()` protocol fallbacks
 
-- [ ] P1 Search Rust runtime/schema code for `unwrap_or_default()`, `unwrap_or("")`, `filter_map`, and similar fallback patterns.
-- [ ] P1 For each protocol-boundary fallback:
-  - [ ] decide whether it is safe;
-  - [ ] replace with validation if it affects tool/web/script/plan/result protocol;
-  - [ ] add regression test if changed.
-- [ ] P1 Document any intentionally safe defaults in comments.
+<!-- evidence: rg "unwrap_or_default|unwrap_or\(|filter_map" crates/ — 3 hits, all safe -->
+- [x] P1 Search Rust runtime/schema code for `unwrap_or_default()`, `unwrap_or("")`, `filter_map`, and similar fallback patterns.
+- [x] P1 For each protocol-boundary fallback:
+  - [x] decide whether it is safe; <!-- all 3 remaining are internal bookkeeping or optional args -->
+  - [x] replace with validation if it affects tool/web/script/plan/result protocol; <!-- none needed — no protocol-boundary fallbacks remain -->
+  - [x] add regression test if changed. <!-- no changes needed -->
+- [x] P1 Document any intentionally safe defaults in comments.
+  <!-- pending_conversation/pending_skill .unwrap_or_default() = internal HashMap cleanup, not protocol data -->
+  <!-- tool_call args .unwrap_or(Value::Null) = args is optional by design -->
 
 Useful command:
 

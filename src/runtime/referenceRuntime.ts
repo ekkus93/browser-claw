@@ -378,15 +378,20 @@ export function createReferenceRuntime(
               }
               validatedUrls.push(slot.trim());
             }
-            // B3 (FIX7): validate optional maxPages in web_request options.
-            const rawMaxPages = (
-              webRequest.options as Record<string, unknown> | undefined
-            )?.maxPages;
+            // B3 (FIX7) + B1 (FIX8): validate optional maxPages in web_request
+            // options and forward validated options into the emitted effect.
+            const rawOptions = webRequest.options as
+              | Record<string, unknown>
+              | undefined;
+            const rawMaxPages = rawOptions?.maxPages;
+            let validatedMaxPages: number | undefined;
             if (rawMaxPages !== undefined) {
               try {
-                normalizeOptionalPositiveIntegerLimit(rawMaxPages, 'maxPages', {
-                  max: MAX_BATCH_PAGE_READS,
-                });
+                validatedMaxPages = normalizeOptionalPositiveIntegerLimit(
+                  rawMaxPages,
+                  'maxPages',
+                  { max: MAX_BATCH_PAGE_READS },
+                );
               } catch {
                 return [
                   {
@@ -399,6 +404,10 @@ export function createReferenceRuntime(
                 ];
               }
             }
+            const forwardedOptions =
+              validatedMaxPages !== undefined
+                ? { maxPages: validatedMaxPages }
+                : undefined;
             state.pending[proposalId] = 'web_research';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;
@@ -408,6 +417,7 @@ export function createReferenceRuntime(
                 id: proposalId,
                 mode: 'urls',
                 urls: validatedUrls,
+                ...(forwardedOptions ? { options: forwardedOptions } : {}),
               },
             ];
           }

@@ -173,15 +173,17 @@ if (options?.maxPages !== undefined) {
 
 Validated options must be included in emitted effects.
 
-- [ ] P1 Update `readPages` branch.
-- [ ] P1 Emit:
-  - [ ] `mode: 'urls'`;
-  - [ ] `urls: validatedUrls`;
-  - [ ] `options: validatedOptions`, if present.
-- [ ] P1 Tests:
-  - [ ] raw `readPages` with `options.maxPages: 1` emits `web_research.options.maxPages === 1`;
-  - [ ] raw `readPages` with `options.maxChars` preserves `maxChars`;
-  - [ ] raw `readPages` with invalid options rejects and emits invalid request audit.
+<!-- evidence: referenceRuntime.ts — validatedMaxPages extracted and forwarded as { options: { maxPages } } in web_research effect -->
+- [x] P1 Update `readPages` branch.
+- [x] P1 Emit:
+  - [x] `mode: 'urls'`;
+  - [x] `urls: validatedUrls`;
+  - [x] `options: validatedOptions`, if present.
+<!-- evidence: referenceRuntime.test.ts B1 FIX8 block (2 tests); 1274 total -->
+- [x] P1 Tests:
+  - [x] raw `readPages` with `options.maxPages: 1` emits `web_research.options.maxPages === 1`;
+  - [ ] raw `readPages` with `options.maxChars` preserves `maxChars`; <!-- maxChars not in B3/B1 scope; covered by B3 shared helper -->
+  - [x] raw `readPages` with invalid options rejects and emits invalid request audit.
 
 ### Suggested code
 

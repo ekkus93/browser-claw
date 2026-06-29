@@ -633,4 +633,46 @@ describe('referenceRuntime', () => {
     });
     expect(effects[0]?.type).toBe('web_research');
   });
+
+  // B1 (FIX8): referenceRuntime must forward validated options into emitted effects.
+
+  it('B1 FIX8: readPages with options.maxPages 1 emits web_research.options.maxPages === 1', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPages opts-fwd'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'readPages',
+          urls: ['https://a.example/', 'https://b.example/'],
+          options: { maxPages: 1 },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('web_research');
+    if (effects[0]?.type === 'web_research') {
+      expect((effects[0] as Record<string, unknown>)['options']).toMatchObject({
+        maxPages: 1,
+      });
+    }
+  });
+
+  it('B1 FIX8: readPages without options emits web_research without options field', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPages no-opts'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: { op: 'readPages', urls: ['https://a.example/'] },
+      },
+    });
+    expect(effects[0]?.type).toBe('web_research');
+    if (effects[0]?.type === 'web_research') {
+      expect(
+        (effects[0] as Record<string, unknown>)['options'],
+      ).toBeUndefined();
+    }
+  });
 });

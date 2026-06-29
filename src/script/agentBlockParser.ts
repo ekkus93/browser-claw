@@ -22,6 +22,8 @@ import { parseToolCall, type ToolCall } from '../tools/tools.ts';
 import { classifyFetchUrl } from '../net/urlSafety.ts';
 import {
   MAX_BATCH_PAGE_READS,
+  MAX_SEARCH_RESULTS,
+  MAX_WEB_PAGE_CHARS,
   normalizeOptionalPositiveIntegerLimit,
   LimitValidationError,
 } from '../webresearch/limits.ts';
@@ -63,16 +65,35 @@ export interface BrowserClawWebRequest {
  * Merge top-level convenience fields into a canonical options object.
  * Rejects conflicting top-level/nested values and invalid maxPages.
  */
+const KNOWN_WEB_OPTION_FIELDS = new Set(['maxPages', 'maxChars', 'maxResults']);
+
 function canonicalizeWebRequestOptions(
   obj: Record<string, unknown>,
   errors: string[],
 ): CanonicalWebOptions | undefined {
+  if (
+    obj.options !== undefined &&
+    (obj.options === null ||
+      typeof obj.options !== 'object' ||
+      Array.isArray(obj.options))
+  ) {
+    errors.push('options must be a plain object');
+    return undefined;
+  }
+
   const rawOptions =
-    obj.options !== null &&
-    typeof obj.options === 'object' &&
-    !Array.isArray(obj.options)
+    obj.options !== undefined
       ? (obj.options as Record<string, unknown>)
       : undefined;
+
+  // C3 (FIX9): reject unknown fields in options object.
+  if (rawOptions) {
+    for (const key of Object.keys(rawOptions)) {
+      if (!KNOWN_WEB_OPTION_FIELDS.has(key)) {
+        errors.push(`Unknown web request option: options.${key}`);
+      }
+    }
+  }
 
   function mergeField(field: 'maxPages' | 'maxChars' | 'maxResults'): unknown {
     const top = obj[field];
@@ -86,31 +107,44 @@ function canonicalizeWebRequestOptions(
     return nested !== undefined ? nested : top;
   }
 
-  const maxPages = mergeField('maxPages');
-  const maxChars = mergeField('maxChars');
-  const maxResults = mergeField('maxResults');
-
-  if (maxPages !== undefined) {
+  function validateField(
+    value: unknown,
+    field: string,
+    max: number,
+  ): number | undefined {
+    if (value === undefined) return undefined;
     try {
-      normalizeOptionalPositiveIntegerLimit(maxPages, 'maxPages', {
-        max: MAX_BATCH_PAGE_READS,
-      });
+      return normalizeOptionalPositiveIntegerLimit(value, field, { max });
     } catch (err) {
       errors.push(
         err instanceof LimitValidationError
           ? err.message
-          : `maxPages is invalid: ${String(maxPages)}`,
+          : `${field} is invalid: ${String(value)}`,
       );
+      return undefined;
     }
   }
 
+  const maxPages = validateField(
+    mergeField('maxPages'),
+    'maxPages',
+    MAX_BATCH_PAGE_READS,
+  );
+  const maxChars = validateField(
+    mergeField('maxChars'),
+    'maxChars',
+    MAX_WEB_PAGE_CHARS,
+  );
+  const maxResults = validateField(
+    mergeField('maxResults'),
+    'maxResults',
+    MAX_SEARCH_RESULTS,
+  );
+
   const result: CanonicalWebOptions = {};
-  if (maxPages !== undefined && typeof maxPages === 'number')
-    result.maxPages = maxPages as number;
-  if (maxChars !== undefined && typeof maxChars === 'number')
-    result.maxChars = maxChars as number;
-  if (maxResults !== undefined && typeof maxResults === 'number')
-    result.maxResults = maxResults as number;
+  if (maxPages !== undefined) result.maxPages = maxPages;
+  if (maxChars !== undefined) result.maxChars = maxChars;
+  if (maxResults !== undefined) result.maxResults = maxResults;
 
   return Object.keys(result).length > 0 ? result : undefined;
 }

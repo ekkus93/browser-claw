@@ -356,4 +356,134 @@ describe('parseAgentActionBlock (FIX1-C1/C2)', () => {
       expect(r.request.options?.maxPages).toBe(1);
     }
   });
+
+  // C1 (FIX9): validate maxResults in agentBlockParser canonical options.
+  it('C1 FIX9: top-level maxResults 5 accepted', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'search',
+      query: 'hello',
+      maxResults: 5,
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('web_request');
+    if (r.kind === 'web_request') {
+      expect(r.request.options?.maxResults).toBe(5);
+    }
+  });
+
+  it('C1 FIX9: maxResults 0 is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'search',
+      query: 'hello',
+      maxResults: 0,
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+  });
+
+  it('C1 FIX9: maxResults string is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'search',
+      query: 'hello',
+      maxResults: '5',
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+  });
+
+  it('C1 FIX9: maxResults above cap (20) is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'search',
+      query: 'hello',
+      maxResults: 21,
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+  });
+
+  // C2 (FIX9): validate maxChars in agentBlockParser canonical options.
+  it('C2 FIX9: top-level maxChars 1000 accepted', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPage',
+      url: 'https://example.com',
+      maxChars: 1000,
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('web_request');
+    if (r.kind === 'web_request') {
+      expect(r.request.options?.maxChars).toBe(1000);
+    }
+  });
+
+  it('C2 FIX9: maxChars -1 is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPage',
+      url: 'https://example.com',
+      maxChars: -1,
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+  });
+
+  it('C2 FIX9: maxChars above cap (50000) is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPage',
+      url: 'https://example.com',
+      maxChars: 50_001,
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+  });
+
+  // C3 (FIX9): reject unknown fields in options object.
+  it('C3 FIX9: options.site rejected as unknown', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'search',
+      query: 'hello',
+      options: { site: 'example.com' },
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+    if (r.kind === 'malformed') expect(r.message).toMatch(/unknown/i);
+  });
+
+  it('C3 FIX9: options.format rejected as unknown', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'readPage',
+      url: 'https://example.com',
+      options: { format: 'markdown' },
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+  });
+
+  it('C3 FIX9: non-object options is malformed', () => {
+    const json = JSON.stringify({
+      type: 'browserclaw_web_request',
+      version: 1,
+      op: 'search',
+      query: 'hello',
+      options: ['a', 'b'],
+    });
+    const r = parseAgentActionBlock(block('browserclaw-web', json));
+    expect(r.kind).toBe('malformed');
+  });
 });

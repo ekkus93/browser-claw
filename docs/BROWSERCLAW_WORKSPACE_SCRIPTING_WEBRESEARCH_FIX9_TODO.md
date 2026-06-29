@@ -245,39 +245,39 @@ If `site` or `format` is not actually used downstream, remove it from the suppor
 
 `maxResults` may be copied only if it is a number, meaning malformed strings can be silently dropped and invalid numeric values can slip through.
 
-- [ ] P1 In `agentBlockParser`, validate canonical `maxResults`.
-- [ ] P1 Reject:
-  - [ ] string;
-  - [ ] zero;
-  - [ ] negative;
-  - [ ] non-integer;
-  - [ ] above cap.
-- [ ] P1 Valid top-level `maxResults` becomes `options.maxResults`.
-- [ ] P1 Valid nested `options.maxResults` remains `options.maxResults`.
-- [ ] P1 Conflicting top-level/nested values rejected.
-- [ ] P1 Tests for all cases.
+- [x] P1 In `agentBlockParser`, validate canonical `maxResults`. <!-- validateField() in canonicalizeWebRequestOptions -->
+- [x] P1 Reject:
+  - [x] string;
+  - [x] zero;
+  - [x] negative;
+  - [x] non-integer;
+  - [x] above cap.
+- [x] P1 Valid top-level `maxResults` becomes `options.maxResults`.
+- [x] P1 Valid nested `options.maxResults` remains `options.maxResults`.
+- [x] P1 Conflicting top-level/nested values rejected.
+- [x] P1 Tests for all cases. <!-- agentBlockParser.test.ts C1 FIX9 tests -->
 
 ## C2 — Validate top-level and nested `maxChars`
 
-- [ ] P1 In `agentBlockParser`, validate canonical `maxChars`.
-- [ ] P1 Reject:
-  - [ ] string;
-  - [ ] zero unless explicitly allowed;
-  - [ ] negative;
-  - [ ] non-integer;
-  - [ ] above cap.
-- [ ] P1 Valid top-level `maxChars` becomes `options.maxChars`.
-- [ ] P1 Valid nested `options.maxChars` remains `options.maxChars`.
-- [ ] P1 Conflicting top-level/nested values rejected.
-- [ ] P1 Tests for all cases.
+- [x] P1 In `agentBlockParser`, validate canonical `maxChars`. <!-- validateField() in canonicalizeWebRequestOptions -->
+- [x] P1 Reject:
+  - [x] string;
+  - [x] zero unless explicitly allowed;
+  - [x] negative;
+  - [x] non-integer;
+  - [x] above cap.
+- [x] P1 Valid top-level `maxChars` becomes `options.maxChars`.
+- [x] P1 Valid nested `options.maxChars` remains `options.maxChars`.
+- [x] P1 Conflicting top-level/nested values rejected.
+- [x] P1 Tests for all cases. <!-- agentBlockParser.test.ts C2 FIX9 tests -->
 
 ## C3 — Do not silently drop unsupported option fields
 
-- [ ] P1 If raw `options` contains unknown field, reject the request.
-- [ ] P1 If top-level unsupported limit-like field appears, reject or ignore only with explicit documented reason.
-- [ ] P1 Tests:
-  - [ ] `options: { unknown: true }` rejected;
-  - [ ] top-level unknown option-like field rejected or documented.
+- [x] P1 If raw `options` contains unknown field, reject the request. <!-- KNOWN_WEB_OPTION_FIELDS check in canonicalizeWebRequestOptions -->
+- [x] P1 If top-level unsupported limit-like field appears, reject or ignore only with explicit documented reason. <!-- top-level fields not in maxPages/maxChars/maxResults are not merged; only named fields are read -->
+- [x] P1 Tests: <!-- agentBlockParser.test.ts C3 FIX9 tests -->
+  - [x] `options: { unknown: true }` rejected;
+  - [x] top-level unknown option-like field rejected or documented.
 
 ---
 

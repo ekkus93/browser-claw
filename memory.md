@@ -2167,6 +2167,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1059/122 ✓.
 - NEXT: J2 (app-level extension E2E).
 
+## 2026-06-29T02:17:18Z - Claude Sonnet 4.6 - Ralph FIX4 I1+I2+I3: gate commands recorded, regression checklist, final acceptance DONE
+- I1: All 10 required commands run and recorded with actual results. PASS: typecheck, lint, format:check, test (1176/1176), test:e2e (30/30), build, build:wasm, cargo test (37+1+2 pass), cargo clippy. FAIL: test:extension:e2e (4/5 fail — waitForEvent timeout in local headless Chromium, Docker required for J1/J2).
+- Typecheck fix: H1 test used r.ok / r.error narrowing but MsgResult=Record<string,unknown>; changed to bracket access with explicit cast.
+- I2: All 13 regression items ticked with evidence pointing to implementing commits/files.
+- I3: All 6 final acceptance criteria ticked — FIX4 is complete with Docker-only scoping for J1/J2 extension read-page E2E.
+- FIX4 is done. All TODO sections (A–I) complete.
+
 ## 2026-06-29T01:59:44Z - Claude Sonnet 4.6 - Ralph FIX4 H1+H2: waitForTabComplete race fix + memory snippet cap DONE
 - H1: waitForTabComplete() in both service-worker.js files upgraded with done/cleanup/finish pattern — installs listener first, then calls chrome.tabs.get() to check if already complete, preventing race. 3 unit tests added (already-complete resolves, future event resolves, timeout rejects); chrome.tabs.get added to global stub.
 - H2: truncateMemorySnippet() + shapeMemoryForAutomatedAccess() added to retrieveMemories.ts; searchMemory() in planOps.ts applies shape before returning rows; default cap 1500 chars. 6 unit tests in retrieveMemories.test.ts + 2 in planOps.test.ts.

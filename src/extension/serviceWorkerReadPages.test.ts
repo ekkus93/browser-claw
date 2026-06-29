@@ -676,10 +676,10 @@ describe('H1 — waitForTabComplete race fix', () => {
       url: 'https://example.com/',
       timeoutMs: 30,
     });
-    expect(r.ok).toBe(false);
-    if (!r.ok) {
-      expect(r.error.kind).toBe('page_load_timeout');
-    }
+    expect(r['ok']).toBe(false);
+    expect((r['error'] as Record<string, unknown>)['kind']).toBe(
+      'page_load_timeout',
+    );
     // Restore
     g.chrome.tabs.onUpdated.addListener = (cb: AnyFn) => {
       setTimeout(() => cb(42, { status: 'complete' }), 0);

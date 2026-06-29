@@ -24,6 +24,9 @@ export default defineConfig({
   testDir: '.',
   testMatch: '**/*.extension.spec.ts',
   fullyParallel: false,
+  // E3 (FIX4): both fixture-read and app-extension specs bind port 7779;
+  // run with 1 worker to avoid EADDRINUSE when specs run in parallel.
+  workers: 1,
   timeout: 60_000,
   reporter: 'list',
   projects: [

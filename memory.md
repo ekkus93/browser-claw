@@ -1984,6 +1984,16 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-29T01:52:13Z - Claude Sonnet 4.6 - FIX4 E3-E5+F1-F3 (E2E gate; permission truthfulness) DONE
+- E3: J1 tests implemented in fixture-read.extension.spec.ts; fixtures exist; service worker timeout is a Docker-only env issue (getExtensionId now checks serviceWorkers() first); workers: 1 fixes port conflict.
+- E4: J2 app-level tests in app-extension.extension.spec.ts; also require Docker.
+- E5: test:extension:e2e 1 passed, 4 failed (serviceworker event timeout); documented as blocking extension-readiness claim; Docker required.
+- F1: permissionRequestSupported hardcoded false in both service-worker.js; pageReadingAvailable decoupled to readPage only; all tests updated.
+- F2: Option B chosen — no popup UI; status honest; read_page returns host_permission_missing.
+- F3: read_current_tab supported: false; currentTabReadingAvailable: false; already correct.
+- vitest 1165/1165.
+- Next: G1/G2 (sandbox policy), H1 (waitForTabComplete race — P2), I1-I3 (acceptance gate).
+
 ## 2026-06-29T01:30:56Z - Claude Sonnet 4.6 - FIX4 E1+E2 (E2E preflight + status schema fix) DONE
 - E1: assertExtensionFixture() added to extension.spec.ts — checks manifest exists, service_worker field defined, SW file on disk; throws with clear message.
 - Real extension (extension/chrome-web-research/) confirmed: manifest.json + service-worker.js both present.

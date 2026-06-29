@@ -11,7 +11,8 @@ function statusOk(overrides: Record<string, unknown> = {}) {
       readPage: {
         supported: true,
         requiresHostPermission: true,
-        permissionRequestSupported: true,
+        // F1 (FIX4): real extension returns false — permission flow requires popup.
+        permissionRequestSupported: false,
       },
       readCurrentTab: { supported: false, requiresActiveTab: true },
       webSearch: { supported: true, providerConfigured: true },
@@ -127,9 +128,30 @@ describe('E1 — normalizeExtensionStatus', () => {
     expect(s.liveSearchReady).toBe(true);
   });
 
-  it('E1: hostPermissionFlowSupported reflects permissionRequestSupported', () => {
+  it('F1 (FIX4): hostPermissionFlowSupported is false when permissionRequestSupported is false', () => {
+    // Real extension returns permissionRequestSupported: false (popup required).
     const s = normalizeExtensionStatus({
       rawStatus: statusOk(),
+      braveKeyConfigured: false,
+      vaultLocked: false,
+    });
+    expect(s.hostPermissionFlowSupported).toBe(false);
+  });
+
+  it('E1: hostPermissionFlowSupported is true when permissionRequestSupported is true', () => {
+    // Normalization correctly maps true → true (for future extension versions with popup).
+    const s = normalizeExtensionStatus({
+      rawStatus: statusOk({
+        capabilities: {
+          readPage: {
+            supported: true,
+            requiresHostPermission: true,
+            permissionRequestSupported: true,
+          },
+          readCurrentTab: { supported: false },
+          webSearch: { supported: true },
+        },
+      }),
       braveKeyConfigured: false,
       vaultLocked: false,
     });

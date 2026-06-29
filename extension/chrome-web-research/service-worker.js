@@ -430,11 +430,15 @@ function handleGetStatus(message) {
         supported: readPage,
         // MV3 tab reads always require host permission for the target origin.
         requiresHostPermission: true,
-        // Permission can only be requested if that flow is wired (C2).
-        permissionRequestSupported: requestHostPermission,
+        // F1 (FIX4): permissionRequestSupported is false — the handler exists
+        // but chrome.permissions.request() requires a direct user gesture
+        // (extension popup click); it always throws permission_flow_required
+        // when called via the externally_connectable message path. No popup
+        // UI exists in v0.1, so the programmatic permission flow is unavailable.
+        permissionRequestSupported: false,
       },
       readCurrentTab: {
-        // C3: not supported in v0.1 — activeTab is not granted via
+        // C3/F3 (FIX4): not supported in v0.1 — activeTab is not granted via
         // externally_connectable; scripting needs host_permissions for the
         // target URL (same requirement as read_page). Use read_page instead.
         supported: false,
@@ -445,10 +449,10 @@ function handleGetStatus(message) {
         providerConfigured: webSearch,
       },
     },
-    // C1: pageReadingAvailable is true only when BOTH the handler is present AND
-    // the permission request flow is wired — otherwise read_page would fail for
-    // any URL the user has not already pre-granted host permission to.
-    pageReadingAvailable: readPage && requestHostPermission,
+    // F1 (FIX4): pageReadingAvailable is true if the read_page handler exists;
+    // permission flow is separate — pre-granted permissions allow page reads even
+    // without a working permission request path. Decoupled from permissionRequestSupported.
+    pageReadingAvailable: readPage,
     currentTabReadingAvailable: false,
     webSearchAvailable: webSearch,
   };

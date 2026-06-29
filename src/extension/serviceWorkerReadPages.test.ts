@@ -170,22 +170,20 @@ describe('C1 — handleGetStatus structured capabilities', () => {
     expect(caps['readPage']?.['requiresHostPermission']).toBe(true);
   });
 
-  it('C1/C2: capabilities.readPage.permissionRequestSupported matches request_host_permission handler', () => {
+  it('F1 (FIX4): capabilities.readPage.permissionRequestSupported is always false', () => {
+    // F1: the request_host_permission handler exists but chrome.permissions.request()
+    // throws permission_flow_required when called via externally_connectable message
+    // (requires extension popup + user gesture). No popup UI exists in v0.1.
     const s = status();
     const caps = s['capabilities'] as Caps;
-    expect(caps['readPage']?.['permissionRequestSupported']).toBe(
-      typeof (handlers as Record<string, unknown>)[
-        'request_host_permission'
-      ] === 'function',
-    );
+    expect(caps['readPage']?.['permissionRequestSupported']).toBe(false);
   });
 
-  it('C1/C2: pageReadingAvailable reflects both readPage handler and permissionRequestSupported', () => {
+  it('F1 (FIX4): pageReadingAvailable reflects only readPage handler, not permissionRequestSupported', () => {
+    // F1: decoupled from permission flow — pre-granted permissions allow page reads.
     const s = status();
     const caps = s['capabilities'] as Caps;
-    const expected =
-      caps['readPage']?.['supported'] === true &&
-      caps['readPage']?.['permissionRequestSupported'] === true;
+    const expected = caps['readPage']?.['supported'] === true;
     expect(s['pageReadingAvailable']).toBe(expected);
   });
 

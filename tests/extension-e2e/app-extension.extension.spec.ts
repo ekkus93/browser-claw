@@ -82,6 +82,12 @@ async function launchTestCtx(): Promise<BrowserContext> {
 }
 
 async function getExtensionId(ctx: BrowserContext): Promise<string> {
+  // E3 (FIX4): check already-registered service workers first; the extension
+  // may have registered before waitForEvent listener was attached.
+  const existing = ctx.serviceWorkers();
+  if (existing.length > 0) {
+    return existing[0]!.url().split('/')[2]!;
+  }
   const sw = await ctx.waitForEvent('serviceworker', { timeout: 20_000 });
   return sw.url().split('/')[2]!;
 }

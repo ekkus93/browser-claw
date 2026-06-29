@@ -45,6 +45,12 @@ async function launchCtx(): Promise<BrowserContext> {
 }
 
 async function getExtensionId(ctx: BrowserContext): Promise<string> {
+  // E3 (FIX4): check already-registered service workers first; the extension
+  // may have registered before waitForEvent listener was attached.
+  const existing = ctx.serviceWorkers();
+  if (existing.length > 0) {
+    return existing[0]!.url().split('/')[2]!;
+  }
   const sw = await ctx.waitForEvent('serviceworker', { timeout: 20_000 });
   return sw.url().split('/')[2]!;
 }
@@ -115,7 +121,9 @@ test('K1: get_status reports truthful capability flags', async () => {
         readPage: {
           supported: true,
           requiresHostPermission: true,
-          permissionRequestSupported: true,
+          // F1 (FIX4): always false — chrome.permissions.request() requires
+          // extension popup; message-based flow throws permission_flow_required.
+          permissionRequestSupported: false,
         },
         readCurrentTab: {
           supported: false,

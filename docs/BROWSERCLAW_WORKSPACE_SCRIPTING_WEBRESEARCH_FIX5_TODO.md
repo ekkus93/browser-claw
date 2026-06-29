@@ -661,11 +661,12 @@ export function toolContentFromEffectFailure(error: unknown): string {
 
 ## H2 — Add reviewer-facing summary
 
-- [ ] P2 Add `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX5_REVIEW_NOTES.md` or a section in design notes with:
-  - [ ] what was fixed;
-  - [ ] what remains blocked;
-  - [ ] exact commands run;
-  - [ ] extension readiness status.
+<!-- evidence: docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX5_REVIEW_NOTES.md created -->
+- [x] P2 Add `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX5_REVIEW_NOTES.md` or a section in design notes with:
+  - [x] what was fixed; <!-- all A1-G2 items summarized -->
+  - [x] what remains blocked; <!-- deferred table: Rust/WASM equivalent -->
+  - [x] exact commands run; <!-- full I1 command table -->
+  - [x] extension readiness status. <!-- J1/J2 pass in Docker, local blocked -->
 
 ---
 

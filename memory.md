@@ -2222,6 +2222,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T07:34:51Z - Claude Sonnet 4.6 - Ralph FIX5 H2: review notes written; all 0 unchecked items remain — FIX5 COMPLETE
+- docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX5_REVIEW_NOTES.md created.
+- All FIX5 P0+P1+P2 TODO items now checked (0 remaining).
+- Gate: typecheck ✓, vitest 1211/125 ✓.
+- FIX5 is complete. Next work: FIX6 or other TODO files.
+
 ## 2026-06-29T07:32:31Z - Claude Sonnet 4.6 - Ralph FIX5 D3+D4+I1-I3: Docker E2E passes (5/5), all acceptance items complete
 - Root causes fixed for Docker: .dockerignore (host node_modules was overwriting Docker), stageExtensionDir uses realpathSync (cpSync dereference:true broken in Node 24), headless:false + Xvfb in Dockerfile (MV3 SW don't register in headless Chrome).
 - Docker E2E: 5/5 pass (J1 x2 read_page fixture/hostile-script, J2 x3 connected/read_page/not-detected).

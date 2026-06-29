@@ -114,13 +114,51 @@ async function failInvalidWebEffect(
   });
 }
 
+// A1 (FIX10): shared helpers for strict options validation.
+function assertPlainOptionsObject(
+  input: unknown,
+  label: string,
+): Record<string, unknown> {
+  if (input === undefined) return {};
+  if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+    throw new WebEffectPayloadError(
+      'web_effect_invalid_field',
+      `${label} must be an object.`,
+    );
+  }
+  return input as Record<string, unknown>;
+}
+
+function rejectUnknownOptionFields(
+  input: Record<string, unknown>,
+  allowed: ReadonlySet<string>,
+  label: string,
+): void {
+  for (const key of Object.keys(input)) {
+    if (!allowed.has(key)) {
+      throw new WebEffectPayloadError(
+        'web_effect_invalid_field',
+        `Unsupported ${label} field: ${key}.`,
+      );
+    }
+  }
+}
+
+// A1 (FIX10): only maxResults is supported for web_search effects.
+// site is not supported end-to-end; format/timeoutMs are not search fields.
+const SEARCH_OPTION_FIELDS: ReadonlySet<string> = new Set(['maxResults']);
+
 function sanitizeSearchOptions(input: unknown): SearchOptions {
-  const o = (
-    typeof input === 'object' && input !== null ? input : {}
-  ) as Record<string, unknown>;
+  const o = assertPlainOptionsObject(input, 'web_search.options');
+  rejectUnknownOptionFields(o, SEARCH_OPTION_FIELDS, 'web_search.options');
+  const maxResults =
+    o.maxResults !== undefined
+      ? normalizeOptionalPositiveIntegerLimit(o.maxResults, 'maxResults', {
+          max: MAX_SEARCH_RESULTS,
+        })
+      : undefined;
   return {
-    ...(typeof o.maxResults === 'number' ? { maxResults: o.maxResults } : {}),
-    ...(typeof o.site === 'string' ? { site: o.site } : {}),
+    ...(maxResults !== undefined ? { maxResults } : {}),
   };
 }
 
@@ -177,9 +215,13 @@ export function createWebEffectHandler(deps: WebEffectDeps) {
   return async (effect: WebEffect): Promise<void> => {
     if (effect.type === 'web_search') {
       // B1 (FIX4): reject empty query before calling provider.
+      // A2 (FIX10): validate options in same try/catch — invalid options audit
+      // web.effect_payload_invalid and do not reach web.search_started.
       let query: string;
+      let searchOptions: SearchOptions;
       try {
         query = requireEffectString(effect.query, 'web_search.query');
+        searchOptions = sanitizeSearchOptions(effect.options);
       } catch (error) {
         await failInvalidWebEffect(deps, effect.id, error);
         return;
@@ -192,10 +234,7 @@ export function createWebEffectHandler(deps: WebEffectDeps) {
         }),
       );
       try {
-        const results = await deps.web.search(
-          query,
-          sanitizeSearchOptions(effect.options),
-        );
+        const results = await deps.web.search(query, searchOptions);
         void recordAudit(
           deps.db,
           deps.dispatch,

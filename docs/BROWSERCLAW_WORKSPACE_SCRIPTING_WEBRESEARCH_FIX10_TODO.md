@@ -53,27 +53,27 @@ This silently drops malformed values and accepts invalid numeric values.
 
 ### Required behavior
 
-- [ ] P1 `undefined` options should return `{}`.
-- [ ] P1 non-object options should throw invalid effect payload.
-- [ ] P1 array options should throw invalid effect payload.
-- [ ] P1 unknown fields should throw invalid effect payload.
-- [ ] P1 `site` should be rejected unless fully supported end-to-end. For FIX10, reject it.
-- [ ] P1 `maxResults` should be validated with `normalizeOptionalPositiveIntegerLimit`.
-- [ ] P1 Reject:
-  - [ ] string;
-  - [ ] zero;
-  - [ ] negative;
-  - [ ] non-integer;
-  - [ ] above cap.
-- [ ] P1 Tests:
-  - [ ] `maxResults: "1"` rejected, not silently dropped;
-  - [ ] `maxResults: 0` rejected;
-  - [ ] `maxResults: -1` rejected;
-  - [ ] `maxResults: 1.5` rejected;
-  - [ ] `maxResults` above cap rejected;
-  - [ ] `site` rejected;
-  - [ ] unknown option rejected;
-  - [ ] valid `maxResults: 1` accepted.
+- [x] P1 `undefined` options should return `{}`. <!-- assertPlainOptionsObject returns {} for undefined -->
+- [x] P1 non-object options should throw invalid effect payload. <!-- assertPlainOptionsObject throws WebEffectPayloadError -->
+- [x] P1 array options should throw invalid effect payload. <!-- assertPlainOptionsObject checks Array.isArray -->
+- [x] P1 unknown fields should throw invalid effect payload. <!-- rejectUnknownOptionFields throws for fields not in SEARCH_OPTION_FIELDS -->
+- [x] P1 `site` should be rejected unless fully supported end-to-end. For FIX10, reject it. <!-- SEARCH_OPTION_FIELDS = new Set(['maxResults']); site not present -->
+- [x] P1 `maxResults` should be validated with `normalizeOptionalPositiveIntegerLimit`. <!-- src/runtime/webRunner.ts: sanitizeSearchOptions -->
+- [x] P1 Reject:
+  - [x] string; <!-- normalizeOptionalPositiveIntegerLimit throws on non-number -->
+  - [x] zero; <!-- normalizeOptionalPositiveIntegerLimit throws on value < 1 -->
+  - [x] negative; <!-- normalizeOptionalPositiveIntegerLimit throws on value < 1 -->
+  - [x] non-integer; <!-- normalizeOptionalPositiveIntegerLimit throws on !Number.isInteger -->
+  - [x] above cap. <!-- max: MAX_SEARCH_RESULTS (20) -->
+- [x] P1 Tests:
+  - [x] `maxResults: "1"` rejected, not silently dropped; <!-- A2 test a2-str -->
+  - [x] `maxResults: 0` rejected; <!-- A2 test a2-zero -->
+  - [x] `maxResults: -1` rejected; <!-- A2 test a2-neg -->
+  - [x] `maxResults: 1.5` rejected; <!-- A2 test a2-float -->
+  - [x] `maxResults` above cap rejected; <!-- A2 test a2-cap -->
+  - [x] `site` rejected; <!-- A2 test a2-site -->
+  - [x] unknown option rejected; <!-- A2 test a2-unk -->
+  - [x] valid `maxResults: 1` accepted. <!-- A1 test a1-ok -->
 
 ### Suggested code
 
@@ -130,17 +130,17 @@ function sanitizeSearchOptions(input: unknown): SearchOptions {
 
 ## A2 — Invalid search options must resolve/audit as invalid effect payload
 
-- [ ] P1 Ensure `createWebEffectHandler()` catches `sanitizeSearchOptions()` errors as invalid effect payload.
-- [ ] P1 Invalid search options must:
-  - [ ] audit `web.effect_payload_invalid` or the existing equivalent;
-  - [ ] resolve effect `ok:false`;
-  - [ ] not audit `web.search_started`;
-  - [ ] not call search provider.
-- [ ] P1 Tests:
-  - [ ] direct `web_search` effect with `options.maxResults: 0` resolves invalid payload;
-  - [ ] direct `web_search` effect with `options.maxResults: "1"` resolves invalid payload;
-  - [ ] invalid search options do not call provider;
-  - [ ] invalid search options do not audit `web.search_failed`.
+- [x] P1 Ensure `createWebEffectHandler()` catches `sanitizeSearchOptions()` errors as invalid effect payload. <!-- sanitizeSearchOptions added to query try/catch in web_search branch -->
+- [x] P1 Invalid search options must:
+  - [x] audit `web.effect_payload_invalid` or the existing equivalent; <!-- failInvalidWebEffect audits web.effect_payload_invalid -->
+  - [x] resolve effect `ok:false`; <!-- failInvalidWebEffect resolves ok:false -->
+  - [x] not audit `web.search_started`; <!-- validated before web.search_started audit -->
+  - [x] not call search provider. <!-- return before deps.web.search() call -->
+- [x] P1 Tests:
+  - [x] direct `web_search` effect with `options.maxResults: 0` resolves invalid payload; <!-- test a2-zero -->
+  - [x] direct `web_search` effect with `options.maxResults: "1"` resolves invalid payload; <!-- test a2-str -->
+  - [x] invalid search options do not call provider; <!-- web.search not.toHaveBeenCalled in all A2 tests -->
+  - [x] invalid search options do not audit `web.search_failed`. <!-- a2-str checks not.toContain('web.search_failed') -->
 
 ### Suggested handler shape
 

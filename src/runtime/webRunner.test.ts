@@ -99,6 +99,124 @@ describe('createWebEffectHandler (F3)', () => {
     expect(await auditTypes()).toContain('web.search_failed');
   });
 
+  it('A1 (FIX10): valid maxResults accepted and forwarded to provider', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_search',
+      id: 'a1-ok',
+      query: 'test',
+      options: { maxResults: 5 },
+    });
+    expect(web.search).toHaveBeenCalledWith('test', { maxResults: 5 });
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: true }),
+      }),
+    );
+  });
+
+  it('A2 (FIX10): maxResults string is invalid effect payload, not search_failed', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_search',
+      id: 'a2-str',
+      query: 'test',
+      options: { maxResults: '1' as unknown as number },
+    });
+    expect(web.search).not.toHaveBeenCalled();
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    const types = await auditTypes();
+    expect(types).toContain('web.effect_payload_invalid');
+    expect(types).not.toContain('web.search_started');
+    expect(types).not.toContain('web.search_failed');
+  });
+
+  it('A2 (FIX10): maxResults zero is invalid effect payload', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_search',
+      id: 'a2-zero',
+      query: 'test',
+      options: { maxResults: 0 },
+    });
+    expect(web.search).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+    expect(await auditTypes()).not.toContain('web.search_started');
+  });
+
+  it('A2 (FIX10): maxResults negative is invalid effect payload', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_search',
+      id: 'a2-neg',
+      query: 'test',
+      options: { maxResults: -1 },
+    });
+    expect(web.search).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('A2 (FIX10): maxResults non-integer is invalid effect payload', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_search',
+      id: 'a2-float',
+      query: 'test',
+      options: { maxResults: 1.5 },
+    });
+    expect(web.search).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('A2 (FIX10): maxResults above cap is invalid effect payload', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_search',
+      id: 'a2-cap',
+      query: 'test',
+      options: { maxResults: 999999 },
+    });
+    expect(web.search).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('A2 (FIX10): site field is rejected as unsupported', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_search',
+      id: 'a2-site',
+      query: 'test',
+      options: { site: 'example.com' } as unknown as { maxResults: number },
+    });
+    expect(web.search).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+    expect(await auditTypes()).not.toContain('web.search_started');
+  });
+
+  it('A2 (FIX10): unknown option field is rejected', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_search',
+      id: 'a2-unk',
+      query: 'test',
+      options: { unknown: true } as unknown as { maxResults: number },
+    });
+    expect(web.search).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
   it('queues a page read for approval, fetching nothing yet', async () => {
     const web = makeWeb();
     const handle = createWebEffectHandler(deps(web));

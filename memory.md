@@ -2167,6 +2167,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1059/122 ✓.
 - NEXT: J2 (app-level extension E2E).
 
+## 2026-06-29T05:18:49Z - Claude Sonnet 4.6 - Ralph FIX5 B1+B2: sandbox memory.search snippet cap DONE
+- sandboxCapabilities.ts: imported shapeMemoryForAutomatedAccess, applied to memory.search return map — same 1500-char cap as Plan Runtime.
+- 3 B1 tests added to sandboxCapabilities.test.ts (long memory truncated, short unchanged, sensitive excluded).
+- SkillsScreen.test.tsx: pre-existing db pollution failure fixed with beforeEach(clear skills/state/permissions/files).
+- Gate: vitest 1189/1189 (all passing — SkillsScreen fix included).
+- NEXT: C1 (Settings UI wire normalizeExtensionStatus).
+
 ## 2026-06-29T04:56:39Z - Claude Sonnet 4.6 - Ralph FIX5 A1+A2+A3: Plan Runtime web.readPages strict validation + batch call DONE
 - requirePlanStringArrayField() added to planOps.ts — rejects missing array, empty array, non-string slots, empty strings, URL-blocked slots (via classifyFetchUrl).
 - web.readPages in planOps.ts now calls ctx.web.readPages() once (batch), not a per-URL loop. Guard: throws unsupported_op if web.readPages not a function.

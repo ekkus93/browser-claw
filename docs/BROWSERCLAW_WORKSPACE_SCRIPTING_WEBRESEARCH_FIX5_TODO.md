@@ -179,18 +179,19 @@ Plan Runtime memory search caps snippets, but sandbox `memory.search` still retu
 
 Sandbox `memory.search` must use the same automated memory result shaping as Plan Runtime.
 
-- [ ] P1 Import/reuse shared helper:
-  - [ ] `filterMemoriesForAutomatedAccess`;
-  - [ ] `shapeMemoryForAutomatedAccess`;
-  - [ ] or equivalent existing memory helper.
-- [ ] P1 Exclude sensitive memories by default.
-- [ ] P1 Cap text snippets to default 1500 chars or the shared policy default.
-- [ ] P1 Do not include full memory text in audit.
-- [ ] P1 Tests:
-  - [ ] long non-sensitive memory is truncated;
-  - [ ] short non-sensitive memory unchanged;
-  - [ ] sensitive memory excluded;
-  - [ ] sandbox receives shaped memory, not raw DB row.
+<!-- evidence: shapeMemoryForAutomatedAccess() applied in sandboxCapabilities.ts memory.search; 3 B1 tests; SkillsScreen beforeEach fix; vitest 1189/1189 -->
+- [x] P1 Import/reuse shared helper:
+  - [x] `filterMemoriesForAutomatedAccess`; <!-- already present, unchanged -->
+  - [x] `shapeMemoryForAutomatedAccess`; <!-- added import + applied to map result -->
+  - [x] or equivalent existing memory helper. <!-- using canonical helper from retrieveMemories.ts -->
+- [x] P1 Exclude sensitive memories by default. <!-- filterMemoriesForAutomatedAccess applied first; B1 test: sensitive excluded -->
+- [x] P1 Cap text snippets to default 1500 chars or the shared policy default. <!-- shapeMemoryForAutomatedAccess with default 1500; B1 test: long memory truncated -->
+- [x] P1 Do not include full memory text in audit. <!-- audit target is ids only (E1); shaping prevents full text in result -->
+- [x] P1 Tests:
+  - [x] long non-sensitive memory is truncated; <!-- B1: long memory truncated to 1501 chars -->
+  - [x] short non-sensitive memory unchanged; <!-- B1: short memory returned unchanged -->
+  - [x] sensitive memory excluded; <!-- B1: sensitive memory excluded test -->
+  - [x] sandbox receives shaped memory, not raw DB row. <!-- shapeMemoryForAutomatedAccess called on each result -->
 
 ### Suggested TypeScript patch shape
 
@@ -221,15 +222,16 @@ If the actual search is not Dexie `startsWithIgnoreCase`, keep the existing sear
 
 ## B2 — Shared helper should be the only automated memory output path
 
-- [ ] P1 Search for automated memory paths returning raw `memory.text`.
-- [ ] P1 Update:
-  - [ ] Plan Runtime memory search, if not already;
-  - [ ] Sandbox memory search;
-  - [ ] any future script/web memory capability.
-- [ ] P1 Add comments explaining:
-  - [ ] sensitive memories excluded by default;
-  - [ ] snippets capped for automated access;
-  - [ ] full memory text requires explicit future high-risk capability.
+<!-- evidence: rg confirms only sandboxCapabilities.ts returned raw m.text; now uses shapeMemoryForAutomatedAccess; Plan Runtime already done (FIX4 H2); vitest 1189/1189 -->
+- [x] P1 Search for automated memory paths returning raw `memory.text`. <!-- rg found only sandboxCapabilities.ts; planOps.ts already uses shapeMemoryForAutomatedAccess -->
+- [x] P1 Update:
+  - [x] Plan Runtime memory search, if not already; <!-- done in FIX4 H2 -->
+  - [x] Sandbox memory search; <!-- done in B1 above -->
+  - [x] any future script/web memory capability. <!-- no other automated memory paths found -->
+- [x] P1 Add comments explaining:
+  - [x] sensitive memories excluded by default; <!-- B1 comment: "G1: exclude sensitive memories via shared policy" -->
+  - [x] snippets capped for automated access; <!-- B1 comment: "B1 (FIX5): cap text snippets via shared helper" -->
+  - [x] full memory text requires explicit future high-risk capability. <!-- comment in sandboxCapabilities.ts -->
 
 Useful command:
 

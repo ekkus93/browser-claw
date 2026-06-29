@@ -503,6 +503,87 @@ describe('E1 — sensitive memory filtering', () => {
 });
 
 // ---------------------------------------------------------------------------
+// B1 (FIX5) — sandbox memory.search caps text snippets via shared helper
+// ---------------------------------------------------------------------------
+
+describe('B1 (FIX5) — sandbox memory.search snippet cap', () => {
+  async function sandboxSearch(query: string) {
+    const results = await runSandboxedScript(
+      `const r = await memory.search({ query: ${JSON.stringify(query)} }); return r;`,
+      {
+        host: buildSandboxHost({ ...ctx }, { memoryRead: true }),
+      },
+    );
+    return results;
+  }
+
+  beforeEach(async () => {
+    await db.memories.clear();
+  });
+
+  it('B1: long non-sensitive memory is truncated to 1500 chars', async () => {
+    await db.memories.put({
+      id: 'b1-long',
+      title: 'Big',
+      text: 'z'.repeat(3000),
+      tags: [],
+      source: 'user',
+      createdBy: 'user',
+      createdAt: 1,
+      pinned: false,
+      sensitivity: 'normal',
+    });
+    const result = await sandboxSearch('z');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const rows = result.value as Array<{ text: string }>;
+      expect(rows).toHaveLength(1);
+      expect(rows[0]!.text.length).toBe(1501); // 1500 + ellipsis char
+      expect(rows[0]!.text.endsWith('…')).toBe(true);
+    }
+  });
+
+  it('B1: short non-sensitive memory is returned unchanged', async () => {
+    await db.memories.put({
+      id: 'b1-short',
+      title: 'Short',
+      text: 'hello world',
+      tags: [],
+      source: 'user',
+      createdBy: 'user',
+      createdAt: 1,
+      pinned: false,
+      sensitivity: 'normal',
+    });
+    const result = await sandboxSearch('hello');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const rows = result.value as Array<{ text: string }>;
+      expect(rows[0]!.text).toBe('hello world');
+    }
+  });
+
+  it('B1: sensitive memory is excluded even when text is long', async () => {
+    await db.memories.put({
+      id: 'b1-secret',
+      title: 'Secret',
+      text: 'secret'.repeat(500),
+      tags: [],
+      source: 'user',
+      createdBy: 'user',
+      createdAt: 1,
+      pinned: false,
+      sensitivity: 'sensitive',
+    });
+    const result = await sandboxSearch('secret');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect((result.value as unknown[]).length).toBe(0);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
 // H1 — Grep policy enforcement in sandbox fs.grep
 // ---------------------------------------------------------------------------
 

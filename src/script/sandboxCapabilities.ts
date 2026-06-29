@@ -17,7 +17,10 @@
 import type { BrowserClawDB } from '../db/db.ts';
 import type { AppDispatch } from '../store/store.ts';
 import type { MemoryRow } from '../db/types.ts';
-import { filterMemoriesForAutomatedAccess } from '../memories/retrieveMemories.ts';
+import {
+  filterMemoriesForAutomatedAccess,
+  shapeMemoryForAutomatedAccess,
+} from '../memories/retrieveMemories.ts';
 import {
   runToolCall,
   TOOL_CAPABILITY_DESCRIPTORS,
@@ -438,12 +441,17 @@ export function buildSandboxHost(
           allowed: true,
           target: matched.map((m: MemoryRow) => m.id).join(','),
         });
-        return matched.map((m) => ({
-          id: m.id,
-          title: m.title,
-          text: m.text,
-          tags: m.tags,
-        }));
+        // B1 (FIX5): cap text snippets via shared helper — same policy as
+        // Plan Runtime memory.search. Sensitive memories already excluded above.
+        return matched.map((m) => {
+          const shaped = shapeMemoryForAutomatedAccess(m);
+          return {
+            id: shaped.id,
+            title: shaped.title,
+            text: shaped.text,
+            tags: shaped.tags,
+          };
+        });
       },
     };
   }

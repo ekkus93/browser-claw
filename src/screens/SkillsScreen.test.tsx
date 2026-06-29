@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import skillsReducer from '../store/slices/skillsSlice.ts';
 import auditReducer from '../store/slices/auditSlice.ts';
 import { ToastProvider } from '../components/ui/Toast.tsx';
@@ -25,6 +25,13 @@ function renderSkills() {
 }
 
 describe('SkillsScreen', () => {
+  beforeEach(async () => {
+    await db.skills.clear();
+    await db.skill_state.clear();
+    await db.skill_permissions.clear();
+    await db.skill_files.clear();
+  });
+
   it('seeds bundled skills', async () => {
     renderSkills();
     expect(

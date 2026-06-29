@@ -667,37 +667,91 @@ impl Runtime {
                 .filter(|s| !s.is_empty())
         }
 
-        // A1 (FIX7): redact all occurrences of each marker, not just the first.
-        // Semantically aligned with TypeScript toolContentFromEffectFailure() which
-        // uses global regex replacement. Order: longer/more-specific prefixes first.
-        fn is_secret_delimiter(ch: char) -> bool {
-            ch.is_whitespace()
-                || matches!(
-                    ch,
-                    ',' | ';' | '"' | '\'' | ')' | '(' | ']' | '[' | '}' | '{' | '<' | '>'
-                )
+        // A1 (FIX7) + E1 (FIX8): redact all occurrences of secret markers with
+        // boundary/min-length checks to avoid false positives on ordinary words
+        // containing "sk-" (e.g. risk-level, task-id, disk-cache, ask-for-help).
+        //
+        // Policy:
+        //   - sk-/sk-ant-: only redact if at a non-alphanumeric/non-hyphen/non-underscore
+        //     boundary AND followed by >= 12 secret-like chars (alphanumeric + _ + -)
+        //   - Bearer: only redact if at a word boundary (preceded by whitespace or start)
+        //   - Authorization: redact entire line (no false-positive risk)
+        //
+        // Order: Authorization → Bearer → sk-ant- → sk- (longer/more-specific first).
+
+        fn is_word_boundary_before(input: &str, start: usize) -> bool {
+            if start == 0 {
+                return true;
+            }
+            input[..start]
+                .chars()
+                .next_back()
+                .map(|ch| ch.is_whitespace() || matches!(ch, ',' | ';' | '"' | '\'' | '(' | '[' | '{' | '<'))
+                .unwrap_or(true)
         }
 
-        fn redact_marker_all(mut input: String, marker: &str) -> String {
-            loop {
-                let Some(start) = input.find(marker) else {
-                    break;
-                };
-                let after_marker = start + marker.len();
-                let end = input[after_marker..]
-                    .find(is_secret_delimiter)
-                    .map(|offset| after_marker + offset)
-                    .unwrap_or(input.len());
-                input = format!("{}[REDACTED]{}", &input[..start], &input[end..]);
+        fn is_sk_boundary_before(input: &str, start: usize) -> bool {
+            if start == 0 {
+                return true;
+            }
+            input[..start]
+                .chars()
+                .next_back()
+                .map(|ch| !ch.is_ascii_alphanumeric() && ch != '_' && ch != '-')
+                .unwrap_or(true)
+        }
+
+        fn secret_suffix_len(input: &str, from: usize) -> usize {
+            input[from..]
+                .chars()
+                .take_while(|ch| ch.is_ascii_alphanumeric() || *ch == '_' || *ch == '-')
+                .map(|ch| ch.len_utf8())
+                .sum()
+        }
+
+        fn redact_sk_tokens(mut input: String, prefix: &str) -> String {
+            let min_suffix = 12usize;
+            let mut search_from = 0usize;
+            while let Some(rel) = input[search_from..].find(prefix) {
+                let start = search_from + rel;
+                let after_prefix = start + prefix.len();
+                let suffix_len = secret_suffix_len(&input, after_prefix);
+                if is_sk_boundary_before(&input, start) && suffix_len >= min_suffix {
+                    let end = after_prefix + suffix_len;
+                    input = format!("{}[REDACTED]{}", &input[..start], &input[end..]);
+                    // search_from stays at start: next iteration picks up after [REDACTED]
+                } else {
+                    // advance past this occurrence to avoid infinite loop
+                    search_from = after_prefix;
+                }
+            }
+            input
+        }
+
+        fn redact_bearer_tokens(mut input: String) -> String {
+            let marker = "Bearer ";
+            let mut search_from = 0usize;
+            while let Some(rel) = input[search_from..].find(marker) {
+                let start = search_from + rel;
+                if is_word_boundary_before(&input, start) {
+                    let after_marker = start + marker.len();
+                    let end = input[after_marker..]
+                        .find(|ch: char| {
+                            ch.is_whitespace()
+                                || matches!(ch, ',' | ';' | '"' | '\'' | ')' | ']' | '}')
+                        })
+                        .map(|offset| after_marker + offset)
+                        .unwrap_or(input.len());
+                    input = format!("{}[REDACTED]{}", &input[..start], &input[end..]);
+                } else {
+                    search_from = start + marker.len();
+                }
             }
             input
         }
 
         fn redact_authorization_headers(mut input: String) -> String {
-            loop {
-                let Some(start) = input.find("Authorization:") else {
-                    break;
-                };
+            while let Some(start) = input.find("Authorization:") {
                 let end = input[start..]
                     .find(['\n', '\r', ',', ';'])
                     .map(|offset| start + offset)
@@ -710,9 +764,9 @@ impl Runtime {
         fn redact(input: &str) -> String {
             let mut out = input.to_owned();
             out = redact_authorization_headers(out);
-            for marker in &["Bearer ", "sk-ant-", "sk-"] {
-                out = redact_marker_all(out, marker);
-            }
+            out = redact_bearer_tokens(out);
+            out = redact_sk_tokens(out, "sk-ant-");
+            out = redact_sk_tokens(out, "sk-");
             out
         }
 
@@ -1760,6 +1814,88 @@ mod tests {
         let msg = parsed["message"].as_str().unwrap();
         assert!(msg.contains("connection timed out"), "safe message must not be mangled");
         assert!(!content.contains("[REDACTED]"), "no redaction on safe message");
+    }
+
+    // E1 (FIX8): redaction precision — avoid false positives on safe words containing "sk-".
+
+    #[test]
+    fn e1_fix8_risk_level_not_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "classification_error",
+            "message": "risk-level is high for this operation"
+        }));
+        assert!(!content.contains("[REDACTED]"), "risk-level must not be redacted: {content}");
+        assert!(content.contains("risk-level"), "risk-level text must be preserved: {content}");
+    }
+
+    #[test]
+    fn e1_fix8_task_id_not_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "routing_error",
+            "message": "task-id lookup failed"
+        }));
+        assert!(!content.contains("[REDACTED]"), "task-id must not be redacted: {content}");
+        assert!(content.contains("task-id"), "task-id text must be preserved: {content}");
+    }
+
+    #[test]
+    fn e1_fix8_ask_for_help_not_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "user_action",
+            "message": "ask-for-help request received"
+        }));
+        assert!(!content.contains("[REDACTED]"), "ask-for-help must not be redacted: {content}");
+    }
+
+    #[test]
+    fn e1_fix8_disk_cache_not_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "cache_error",
+            "message": "disk-cache eviction failed"
+        }));
+        assert!(!content.contains("[REDACTED]"), "disk-cache must not be redacted: {content}");
+    }
+
+    #[test]
+    fn e1_fix8_real_sk_token_still_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "auth",
+            "message": "sk-123456789012 is invalid"
+        }));
+        assert!(!content.contains("sk-123456789012"), "real sk- token must be redacted: {content}");
+        assert!(content.contains("[REDACTED]"), "redaction marker must appear: {content}");
+    }
+
+    #[test]
+    fn e1_fix8_real_sk_ant_token_still_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "auth",
+            "message": "sk-ant-123456789012 is invalid"
+        }));
+        assert!(!content.contains("sk-ant-123456789012"), "real sk-ant- token must be redacted: {content}");
+        assert!(content.contains("[REDACTED]"), "redaction marker must appear: {content}");
+    }
+
+    #[test]
+    fn e1_fix8_two_secrets_both_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "auth",
+            "message": "sk-111111111111 and sk-222222222222"
+        }));
+        assert!(!content.contains("sk-111111111111"), "first token must be redacted: {content}");
+        assert!(!content.contains("sk-222222222222"), "second token must be redacted: {content}");
+    }
+
+    #[test]
+    fn e1_fix8_short_sk_token_not_redacted() {
+        // "sk-abc" has only 3 chars after the prefix, below the 12-char minimum.
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "test_error",
+            "message": "error code sk-abc is not an API key"
+        }));
+        // Short sk- tokens must not be redacted (they are not API keys).
+        assert!(!content.contains("[REDACTED]") || content.contains("sk-abc"),
+            "short sk- token below min-length must not be redacted: {content}");
     }
 
     #[test]

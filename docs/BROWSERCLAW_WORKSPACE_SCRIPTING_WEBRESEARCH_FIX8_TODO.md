@@ -383,22 +383,24 @@ Choose one:
 
 ### Option B — boundary/min-length no-dependency logic
 
-- [ ] P2 Keep no-dependency implementation.
-- [ ] P2 Only redact `sk-` / `sk-ant-` if:
-  - [ ] marker is at token boundary;
-  - [ ] token after prefix has at least 12 secret-like chars.
-- [ ] P2 Only redact `Bearer` when it starts at token boundary.
-- [ ] P2 Tests for multiple secrets and safe words.
+<!-- evidence: claw-core/src/lib.rs E1 FIX8 — is_sk_boundary_before() + secret_suffix_len() min 12 + is_word_boundary_before() for Bearer; redact_sk_tokens() + redact_bearer_tokens() with while-let loops -->
+- [x] P2 Keep no-dependency implementation.
+- [x] P2 Only redact `sk-` / `sk-ant-` if:
+  - [x] marker is at token boundary;
+  - [x] token after prefix has at least 12 secret-like chars.
+- [x] P2 Only redact `Bearer` when it starts at token boundary.
+- [x] P2 Tests for multiple secrets and safe words.
 
 ### Required tests regardless of option
 
-- [ ] P2 `risk-level` is not redacted.
-- [ ] P2 `task-id` is not redacted.
-- [ ] P2 `ask-for-help` is not redacted.
-- [ ] P2 `disk-cache` is not redacted.
-- [ ] P2 `sk-123456789012` is redacted.
-- [ ] P2 `sk-ant-123456789012` is redacted.
-- [ ] P2 two secrets in one message are both redacted.
+<!-- evidence: E1 FIX8 Rust tests in claw-core/src/lib.rs; 58 cargo tests pass -->
+- [x] P2 `risk-level` is not redacted. <!-- e1_fix8_risk_level_not_redacted -->
+- [x] P2 `task-id` is not redacted. <!-- e1_fix8_task_id_not_redacted -->
+- [x] P2 `ask-for-help` is not redacted. <!-- e1_fix8_ask_for_help_not_redacted -->
+- [x] P2 `disk-cache` is not redacted. <!-- e1_fix8_disk_cache_not_redacted -->
+- [x] P2 `sk-123456789012` is redacted. <!-- e1_fix8_real_sk_token_still_redacted -->
+- [x] P2 `sk-ant-123456789012` is redacted. <!-- e1_fix8_real_sk_ant_token_still_redacted -->
+- [x] P2 two secrets in one message are both redacted. <!-- e1_fix8_two_secrets_both_redacted -->
 
 ### Suggested no-dependency helper idea
 

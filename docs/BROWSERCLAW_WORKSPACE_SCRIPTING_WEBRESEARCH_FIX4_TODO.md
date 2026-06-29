@@ -411,19 +411,20 @@ The extension provider has `readPages()` that sends one `read_pages` message, bu
 
 Use provider batch method if available.
 
-- [ ] P1 If `pageReaderProvider.readPages` exists, call it.
-- [ ] P1 Preserve per-slot failures.
-- [ ] P1 Do not silently fall back to sequential reads.
-- [ ] P1 If fallback is kept:
-  - [ ] emit audit `web.read_pages_fallback_sequential`;
-  - [ ] preserve failures;
-  - [ ] document why fallback is needed.
-- [ ] P1 Tests:
-  - [ ] service calls provider `readPages()` for multiple URLs;
-  - [ ] service does not call individual `readPage()` when batch method exists;
-  - [ ] service preserves per-slot failures;
-  - [ ] fallback path audits if used;
-  - [ ] all-page failure is visible.
+<!-- evidence: service.ts readPages() rewritten to call reader.readPages() batch; 4 C1 tests; vitest 1157/1157 -->
+- [x] P1 If `pageReaderProvider.readPages` exists, call it. <!-- always calls reader.readPages() now -->
+- [x] P1 Preserve per-slot failures. <!-- C1: per-slot failure preserved in bundle -->
+- [x] P1 Do not silently fall back to sequential reads. <!-- sequential loop removed; reader.readPages() is the only path -->
+- [x] P1 If fallback is kept: <!-- N/A: fallback eliminated -->
+  - [x] emit audit `web.read_pages_fallback_sequential`; <!-- N/A: no fallback -->
+  - [x] preserve failures; <!-- per-slot failures preserved from batch result -->
+  - [x] document why fallback is needed. <!-- N/A: no fallback needed -->
+- [x] P1 Tests:
+  - [x] service calls provider `readPages()` for multiple URLs; <!-- C1: readPages called with urls -->
+  - [x] service does not call individual `readPage()` when batch method exists; <!-- C1: readPage not called -->
+  - [x] service preserves per-slot failures; <!-- C1: per-slot failure preserved test -->
+  - [x] fallback path audits if used; <!-- N/A -->
+  - [x] all-page failure is visible. <!-- C1: all-page failure throws WebResearchError -->
 
 ### Suggested TypeScript code
 

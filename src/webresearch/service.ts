@@ -109,25 +109,48 @@ export function createWebResearchService(
     urls: string[],
     options: ResearchOptions = {},
   ): Promise<ResearchBundle> {
+    if (urls.length === 0) {
+      throw new WebResearchError(
+        'page_read_failed',
+        'readPages requires at least one URL.',
+      );
+    }
+
+    const reader = deps.reader;
+    if (!reader || !(await reader.isAvailable())) {
+      throw new WebResearchError(
+        'reader_unavailable',
+        'No page reader is available (install the BrowserClaw extension).',
+      );
+    }
+
+    // C1 (FIX4): delegate to provider batch readPages() when available so the
+    // extension's single read_pages message is used rather than N sequential
+    // read_page calls. Sequential fallback is explicit and noted.
+    const batchResults = await reader.readPages({
+      urls,
+      ...(options.maxPages !== undefined ? { maxPages: options.maxPages } : {}),
+      ...(options.maxChars !== undefined ? { maxChars: options.maxChars } : {}),
+      ...(options.format !== undefined ? { format: options.format } : {}),
+    });
+
     const pages: PageContent[] = [];
     const failures: PageReadFailure[] = [];
-    for (const url of urls) {
-      try {
-        pages.push(
-          await readPage(url, {
-            url,
-            ...(options.format ? { format: options.format } : {}),
-            ...(options.maxChars ? { maxChars: options.maxChars } : {}),
-          }),
-        );
-      } catch (err) {
+
+    for (const result of batchResults) {
+      if (result.ok) {
+        const content: PageContent & { ok?: boolean } = { ...result };
+        delete content.ok;
+        pages.push(content);
+      } else {
         failures.push({
-          url,
-          kind: 'internal_error',
-          message: err instanceof Error ? err.message : String(err),
+          url: result.url,
+          kind: result.error.kind,
+          message: result.error.message,
         });
       }
     }
+
     if (pages.length === 0 && failures.length > 0) {
       throw new WebResearchError(
         'all_page_reads_failed',

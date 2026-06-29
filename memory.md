@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-29T01:20:11Z - Claude Sonnet 4.6 - FIX4 C1 (WebResearchService.readPages delegates to batch) DONE
+- Rewrote service.ts readPages() to call reader.readPages() batch method (eliminates sequential loop).
+- Per-slot failures from provider preserved in ResearchBundle.
+- reader_unavailable and all_page_reads_failed errors still thrown.
+- 4 C1 tests; vitest 1157/1157.
+- Next: C2 — ResearchBundle must preserve failures from batch reads.
+
 ## 2026-06-29T01:16:58Z - Claude Sonnet 4.6 - FIX4 B2 (bulk research per-slot URL validation) DONE
 - Added requireStringArrayField() to approvalPayload.ts.
 - Rewrote runApprovedBulkResearch() to use it + per-URL classifyFetchUrl check in one try/catch block.

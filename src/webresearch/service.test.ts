@@ -175,3 +175,66 @@ describe('D3 — research bundle includes failures', () => {
     expect(bundle.failures).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// C1 (FIX4): WebResearchService.readPages() delegates to provider batch method
+// ---------------------------------------------------------------------------
+
+describe('C1 — readPages uses provider batch readPages()', () => {
+  it('C1: calls provider readPages() not individual readPage()', async () => {
+    const reader: PageReaderProvider = {
+      isAvailable: () => Promise.resolve(true),
+      readPage: vi.fn(),
+      readPages: vi.fn(() => Promise.resolve([okPage])),
+      readCurrentTab: vi.fn(),
+    };
+    const svc = createWebResearchService({ reader });
+    await svc.readPages(['https://x/a']);
+    expect(reader.readPages).toHaveBeenCalledWith(
+      expect.objectContaining({ urls: ['https://x/a'] }),
+    );
+    expect(reader.readPage).not.toHaveBeenCalled();
+  });
+
+  it('C1: per-slot failure from provider is preserved in bundle', async () => {
+    const reader: PageReaderProvider = {
+      isAvailable: () => Promise.resolve(true),
+      readPage: vi.fn(),
+      readPages: vi.fn(() =>
+        Promise.resolve([
+          okPage,
+          {
+            ok: false as const,
+            url: 'https://x/b',
+            error: { kind: 'permission_denied' as const, message: 'denied' },
+          },
+        ]),
+      ),
+      readCurrentTab: vi.fn(),
+    };
+    const svc = createWebResearchService({ reader });
+    const bundle = await svc.readPages(['https://x/a', 'https://x/b']);
+    expect(bundle.pages).toHaveLength(1);
+    expect(bundle.failures).toHaveLength(1);
+    expect(bundle.failures[0]?.url).toBe('https://x/b');
+  });
+
+  it('C1: all-page failure throws WebResearchError', async () => {
+    const reader = readerWith({
+      ok: false,
+      url: 'https://x/a',
+      error: { kind: 'timeout', message: 'timed out' },
+    });
+    const svc = createWebResearchService({ reader });
+    await expect(svc.readPages(['https://x/a'])).rejects.toMatchObject({
+      kind: 'all_page_reads_failed',
+    });
+  });
+
+  it('C1: reader unavailable throws reader_unavailable', async () => {
+    const svc = createWebResearchService({});
+    await expect(svc.readPages(['https://x/a'])).rejects.toMatchObject({
+      kind: 'reader_unavailable',
+    });
+  });
+});

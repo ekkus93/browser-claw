@@ -2222,6 +2222,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T09:40:24Z - Claude Haiku 4.5 - Ralph FIX7 COMPLETE: C1/C2 extension validation + D1/D2/D3 gate
+- C1: validateNonEmptyStringArray per-slot check in service-worker.js validateMessageSchema read_pages branch.
+- C2: validateOptionalPositiveIntegerLimit for maxPages in validateMessageSchema + handleReadPages now uses Number.isInteger guard.
+- Docker ext E2E: 5/5 passed after FIX7 changes.
+- 10 new C1/C2 tests in serviceWorkerReadPages.test.ts; 1264 total.
+- D3: all 9 acceptance checklist items ticked. FIX7 complete.
+
 ## 2026-06-29T09:32:48Z - Claude Haiku 4.5 - Ralph FIX7 B1-B4: maxPages validation helper + apply everywhere
 - src/webresearch/limits.ts: normalizeOptionalPositiveIntegerLimit + LimitValidationError + MAX_BATCH_PAGE_READS=10.
 - Applied in: pageReaderProvider.ts, service.ts, webRunner.ts, planOps.ts, referenceRuntime.ts.

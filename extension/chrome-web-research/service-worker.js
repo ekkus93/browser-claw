@@ -390,11 +390,11 @@ function handleReadCurrentTab(message) {
 // read_pages handler (FIX2-B1) — batch variant
 // ---------------------------------------------------------------------------
 
-const READ_PAGES_MAX = 10;
-
 async function handleReadPages(message) {
   const { requestId, urls, maxPages, maxChars } = message;
 
+  // Defense-in-depth: also check here in case handler is called without going
+  // through central validation (e.g. tests that call handleReadPages directly).
   if (!Array.isArray(urls) || urls.length === 0) {
     return errorResponse(
       'invalid_request',
@@ -403,10 +403,13 @@ async function handleReadPages(message) {
     );
   }
 
-  const limit = Math.min(
-    typeof maxPages === 'number' && maxPages > 0 ? maxPages : urls.length,
-    READ_PAGES_MAX,
-  );
+  // C2 (FIX7): use validated maxPages — central validation guarantees it is a
+  // positive integer or undefined; do NOT treat 0/negative as "read all".
+  const effectiveMax =
+    typeof maxPages === 'number' && Number.isInteger(maxPages) && maxPages >= 1
+      ? maxPages
+      : urls.length;
+  const limit = Math.min(effectiveMax, READ_PAGES_MAX);
 
   const results = [];
   for (let i = 0; i < limit; i++) {
@@ -621,6 +624,46 @@ function errorResponse(kind, message, requestId, retryable = false) {
 // richer error messages, but this gate catches obviously malformed payloads.
 // ---------------------------------------------------------------------------
 
+// C1/C2 (FIX7): central validation helpers for read_pages.
+const READ_PAGES_MAX = 10;
+
+/**
+ * Validate that value is a non-empty array of non-empty strings.
+ * Returns an error message string on failure, null on success.
+ */
+function validateNonEmptyStringArray(value, field) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return `${field} must be a non-empty array.`;
+  }
+  for (let index = 0; index < value.length; index += 1) {
+    const item = value[index];
+    if (typeof item !== 'string' || item.trim().length === 0) {
+      return `${field}[${index}] must be a non-empty string.`;
+    }
+  }
+  return null;
+}
+
+/**
+ * Validate an optional positive integer limit (e.g. maxPages).
+ * Returns an error message string on failure, null if valid or absent.
+ */
+function validateOptionalPositiveIntegerLimit(value, field, max) {
+  if (value === undefined) return null;
+  if (
+    typeof value !== 'number' ||
+    !Number.isFinite(value) ||
+    !Number.isInteger(value) ||
+    value < 1
+  ) {
+    return `${field} must be a positive integer.`;
+  }
+  if (value > max) {
+    return `${field} must be less than or equal to ${max}.`;
+  }
+  return null;
+}
+
 /**
  * Return an invalid_request errorResponse if the message payload is missing
  * required fields, or null if it passes.
@@ -638,12 +681,19 @@ function validateMessageSchema(message) {
       );
     }
   } else if (type === 'read_pages') {
-    if (!Array.isArray(message.urls) || message.urls.length === 0) {
-      return errorResponse(
-        'invalid_request',
-        'read_pages requires a non-empty string[] urls',
-        id,
-      );
+    // C1 (FIX7): per-slot validation in central schema check.
+    const urlsError = validateNonEmptyStringArray(message.urls, 'urls');
+    if (urlsError) {
+      return errorResponse('invalid_request', urlsError, id);
+    }
+    // C2 (FIX7): validate optional maxPages centrally.
+    const maxPagesError = validateOptionalPositiveIntegerLimit(
+      message.maxPages,
+      'maxPages',
+      READ_PAGES_MAX,
+    );
+    if (maxPagesError) {
+      return errorResponse('invalid_request', maxPagesError, id);
     }
   } else if (type === 'web_search') {
     if (

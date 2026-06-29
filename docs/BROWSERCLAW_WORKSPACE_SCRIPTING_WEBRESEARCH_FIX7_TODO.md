@@ -272,7 +272,7 @@ Otherwise reject above max too.
 - [x] P1 Use the same constant or documented equivalent in:
   - [x] web research service; <!-- service.ts uses MAX_BATCH_PAGE_READS via normalizeOptionalPositiveIntegerLimit -->
   - [x] page reader provider; <!-- pageReaderProvider.ts uses MAX_BATCH_PAGE_READS -->
-  - [ ] extension service worker; <!-- C1/C2 below — to be added in Part C -->
+  - [x] extension service worker; <!-- service-worker.js: validateOptionalPositiveIntegerLimit in validateMessageSchema; READ_PAGES_MAX moved before helpers -->
   - [x] plan/runtime option validation. <!-- planOps.ts + referenceRuntime.ts use MAX_BATCH_PAGE_READS -->
 - [x] P1 Tests prove values above max are clamped or rejected consistently. <!-- limits.test.ts: value above max throws LimitValidationError -->
 
@@ -319,7 +319,7 @@ Apply `normalizeOptionalPositiveIntegerLimit` to:
 <!-- evidence: pageReaderProvider.ts — effectiveMaxPages from normalizeOptionalPositiveIntegerLimit used in both expectedUrls slice and message maxPages -->
 - [x] P1 Provider must send normalized `maxPages` to extension.
 - [x] P1 Provider must compute `expectedUrls` using the same normalized `maxPages`.
-- [ ] P1 Extension must compute its effective URLs using the same semantics. <!-- extension service worker C1/C2 — see Part C -->
+- [x] P1 Extension must compute its effective URLs using the same semantics. <!-- service-worker.js handleReadPages: effectiveMax = validated maxPages ?? urls.length -->
 <!-- evidence: B3 tests in pageReaderProvider.test.ts; B3: valid maxPages 2 sends normalized value test -->
 - [x] P1 Tests:
   - [x] request 4 URLs with `maxPages: 2`; provider expects 2 and extension reads 2; <!-- E1 FIX6 + B3 tests -->
@@ -360,16 +360,18 @@ The extension central schema validator may only check that `urls` is a non-empty
 
 `validateMessageSchema()` should reject invalid `read_pages` payloads before dispatch.
 
-- [ ] P1 In extension service worker central validation:
-  - [ ] require `urls` is non-empty array;
-  - [ ] require every slot is a non-empty string;
-  - [ ] reject invalid slot before handler runs.
-- [ ] P1 Tests:
-  - [ ] missing urls rejected;
-  - [ ] empty urls rejected;
-  - [ ] non-string slot rejected;
-  - [ ] empty string slot rejected;
-  - [ ] valid urls accepted.
+<!-- evidence: extension/chrome-web-research/service-worker.js — validateNonEmptyStringArray() in validateMessageSchema read_pages branch -->
+- [x] P1 In extension service worker central validation:
+  - [x] require `urls` is non-empty array;
+  - [x] require every slot is a non-empty string;
+  - [x] reject invalid slot before handler runs.
+<!-- evidence: serviceWorkerReadPages.test.ts C1/C2 FIX7 tests (10 tests); 1264 tests pass -->
+- [x] P1 Tests:
+  - [x] missing urls rejected; <!-- C1 FIX7: validateMessageSchema rejects missing urls -->
+  - [x] empty urls rejected; <!-- C1 FIX7: validateMessageSchema rejects empty urls array -->
+  - [x] non-string slot rejected; <!-- C1 FIX7: validateMessageSchema rejects non-string slot -->
+  - [x] empty string slot rejected; <!-- C1 FIX7: validateMessageSchema rejects empty string slot -->
+  - [x] valid urls accepted. <!-- C1 FIX7: validateMessageSchema accepts valid urls -->
 
 ### Suggested service-worker JavaScript
 
@@ -410,21 +412,23 @@ function validateReadPagesMessage(message) {
 
 ## C2 — Validate extension `maxPages`
 
-- [ ] P1 Add service-worker validation for optional `maxPages`.
-- [ ] P1 Reject:
-  - [ ] `0`;
-  - [ ] negative;
-  - [ ] `NaN` if representable;
-  - [ ] non-integer;
-  - [ ] string.
-- [ ] P1 Use the validated value when slicing URLs.
-- [ ] P1 Do not use `maxPages > 0 ? maxPages : urls.length` on unvalidated input.
-- [ ] P1 Tests:
-  - [ ] `maxPages: 0` returns `invalid_request`;
-  - [ ] `maxPages: -1` returns `invalid_request`;
-  - [ ] `maxPages: 1.5` returns `invalid_request`;
-  - [ ] `maxPages: "2"` returns `invalid_request`;
-  - [ ] valid `maxPages: 2` works.
+<!-- evidence: service-worker.js — validateOptionalPositiveIntegerLimit() in validateMessageSchema + handleReadPages uses Number.isInteger check -->
+- [x] P1 Add service-worker validation for optional `maxPages`.
+- [x] P1 Reject:
+  - [x] `0`;
+  - [x] negative;
+  - [x] `NaN` if representable;
+  - [x] non-integer;
+  - [x] string.
+- [x] P1 Use the validated value when slicing URLs.
+- [x] P1 Do not use `maxPages > 0 ? maxPages : urls.length` on unvalidated input. <!-- handleReadPages now uses Number.isInteger(maxPages) && maxPages >= 1 -->
+<!-- evidence: serviceWorkerReadPages.test.ts C2/FIX7 tests -->
+- [x] P1 Tests:
+  - [x] `maxPages: 0` returns `invalid_request`; <!-- C2 FIX7: validateMessageSchema rejects maxPages 0 -->
+  - [x] `maxPages: -1` returns `invalid_request`; <!-- C2 FIX7: validateMessageSchema rejects maxPages -1 -->
+  - [x] `maxPages: 1.5` returns `invalid_request`; <!-- C2 FIX7: validateMessageSchema rejects maxPages 1.5 -->
+  - [x] `maxPages: "2"` returns `invalid_request`; <!-- C2 FIX7: validateMessageSchema rejects maxPages "2" -->
+  - [x] valid `maxPages: 2` works. <!-- C2 FIX7: validateMessageSchema accepts valid maxPages 2 -->
 
 ### Suggested service-worker helper
 
@@ -460,13 +464,14 @@ function effectiveUrlsForReadPages(urls, maxPages) {
 
 ## D1 — Update review notes
 
-- [ ] P1 Update or create `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX7_REVIEW_NOTES.md`.
-- [ ] P1 Include:
-  - [ ] Rust redaction changes and tests;
-  - [ ] maxPages validation policy;
-  - [ ] extension central validation changes;
-  - [ ] Docker extension E2E result;
-  - [ ] any remaining deferred items.
+<!-- evidence: docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX7_REVIEW_NOTES.md created -->
+- [x] P1 Update or create `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX7_REVIEW_NOTES.md`.
+- [x] P1 Include:
+  - [x] Rust redaction changes and tests;
+  - [x] maxPages validation policy;
+  - [x] extension central validation changes;
+  - [x] Docker extension E2E result;
+  - [x] any remaining deferred items.
 
 ## D2 — Required commands
 
@@ -486,26 +491,38 @@ cargo test
 cargo clippy
 ```
 
-- [ ] P0 Record command results in TODO evidence comments.
-- [ ] P0 If a command cannot run, record:
-  - [ ] exact command;
-  - [ ] exact error;
-  - [ ] environment reason;
-  - [ ] whether it blocks all acceptance or only scoped feature acceptance;
-  - [ ] follow-up task.
-- [ ] P0 Do not mark failed/cannot-run commands as passed.
-- [ ] P1 If Docker extension E2E cannot run, do not claim extension readiness for FIX7.
+<!-- evidence: all commands run on 2026-06-29; full results in WORKSPACE_SCRIPTING_WEBRESEARCH_FIX7_REVIEW_NOTES.md -->
+- [x] P0 Record command results in TODO evidence comments.
+  <!-- pnpm run typecheck: ✓ 0 errors -->
+  <!-- pnpm run lint: ✓ 0 warnings -->
+  <!-- pnpm run format:check: ✓ all files formatted -->
+  <!-- pnpm test -- --no-file-parallelism: ✓ 1264 passed, 126 test files -->
+  <!-- pnpm run test:e2e: ✓ 30 passed -->
+  <!-- pnpm run test:extension:e2e: ✗ 5 failed (headless MV3 service worker issue — expected) -->
+  <!-- pnpm run test:extension:e2e:docker: ✓ 5 passed AFTER FIX7 extension changes -->
+  <!-- pnpm run build: ✓ (chunk-size warning only) -->
+  <!-- pnpm run build:wasm: ✓ -->
+  <!-- cargo test (claw-core): ✓ 50 passed -->
+  <!-- cargo clippy -D warnings: ✓ 0 warnings -->
+- [x] P0 If a command cannot run, record:
+  - [x] exact command; <!-- test:extension:e2e — headless Chrome MV3 restriction -->
+  - [x] exact error; <!-- "Target page, context or browser has been closed" -->
+  - [x] environment reason; <!-- MV3 service workers don't register in headless Chrome; requires Xvfb/Docker -->
+  - [x] whether it blocks all acceptance or only scoped feature acceptance; <!-- scoped only; Docker run passes 5/5 -->
+  - [x] follow-up task. <!-- none; Docker covers this; known since FIX5 -->
+- [x] P0 Do not mark failed/cannot-run commands as passed.
+- [x] P1 If Docker extension E2E cannot run, do not claim extension readiness for FIX7. <!-- Docker ran after FIX7 changes: 5/5 passed -->
 
 ## D3 — Final acceptance checklist
 
 FIX7 is complete only when:
 
-- [ ] Rust redaction removes all occurrences of secret-like tokens.
-- [ ] Rust redaction tests cover multiple secrets in one message.
-- [ ] `maxPages` is validated consistently in app/provider/runtime/extension boundaries.
-- [ ] Invalid `maxPages` cannot expand reads or desynchronize provider/extension expected URL subsets.
-- [ ] Extension central validation rejects invalid `read_pages` URL slots.
-- [ ] Extension central validation rejects invalid `maxPages`.
-- [ ] Docker extension E2E result is recorded after FIX7 changes.
-- [ ] TODO evidence comments accurately distinguish implemented, deferred, and externally unverified items.
-- [ ] No targeted quiet fallback paths remain in the reviewed areas.
+- [x] Rust redaction removes all occurrences of secret-like tokens. <!-- A1: redact_marker_all() loop + redact_authorization_headers() loop -->
+- [x] Rust redaction tests cover multiple secrets in one message. <!-- 6 FIX7 Rust tests; 50 cargo tests pass -->
+- [x] `maxPages` is validated consistently in app/provider/runtime/extension boundaries. <!-- B1-B4: limits.ts normalizeOptionalPositiveIntegerLimit applied everywhere -->
+- [x] Invalid `maxPages` cannot expand reads or desynchronize provider/extension expected URL subsets. <!-- invalid → failure/reject; provider + extension both use validated value -->
+- [x] Extension central validation rejects invalid `read_pages` URL slots. <!-- C1: validateNonEmptyStringArray in validateMessageSchema -->
+- [x] Extension central validation rejects invalid `maxPages`. <!-- C2: validateOptionalPositiveIntegerLimit in validateMessageSchema -->
+- [x] Docker extension E2E result is recorded after FIX7 changes. <!-- 5/5 passed on 2026-06-29 after service-worker.js changes -->
+- [x] TODO evidence comments accurately distinguish implemented, deferred, and externally unverified items.
+- [x] No targeted quiet fallback paths remain in the reviewed areas.

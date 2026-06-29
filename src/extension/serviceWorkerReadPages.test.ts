@@ -615,6 +615,107 @@ describe('D2 — central dispatch schema validation', () => {
     });
     expect(res).toBeNull();
   });
+
+  // C1/C2 (FIX7): central validation for read_pages URL slots and maxPages.
+
+  it('C1 FIX7: validateMessageSchema rejects missing urls', () => {
+    const res = validateMessageSchema({ type: 'read_pages', requestId: 'x' });
+    expect(res).not.toBeNull();
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('C1 FIX7: validateMessageSchema rejects empty urls array', () => {
+    const res = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'x',
+      urls: [],
+    });
+    expect(res).not.toBeNull();
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('C1 FIX7: validateMessageSchema rejects non-string slot', () => {
+    const res = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'x',
+      urls: ['https://a.com/', 42],
+    });
+    expect(res).not.toBeNull();
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('C1 FIX7: validateMessageSchema rejects empty string slot', () => {
+    const res = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'x',
+      urls: ['https://a.com/', ''],
+    });
+    expect(res).not.toBeNull();
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('C1 FIX7: validateMessageSchema accepts valid urls', () => {
+    const res = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'x',
+      urls: ['https://a.com/', 'https://b.com/'],
+    });
+    expect(res).toBeNull();
+  });
+
+  it('C2 FIX7: validateMessageSchema rejects maxPages 0', () => {
+    const res = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'x',
+      urls: ['https://a.com/'],
+      maxPages: 0,
+    });
+    expect(res).not.toBeNull();
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('C2 FIX7: validateMessageSchema rejects maxPages -1', () => {
+    const res = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'x',
+      urls: ['https://a.com/'],
+      maxPages: -1,
+    });
+    expect(res).not.toBeNull();
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('C2 FIX7: validateMessageSchema rejects maxPages 1.5', () => {
+    const res = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'x',
+      urls: ['https://a.com/'],
+      maxPages: 1.5,
+    });
+    expect(res).not.toBeNull();
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('C2 FIX7: validateMessageSchema rejects maxPages "2" (string)', () => {
+    const res = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'x',
+      urls: ['https://a.com/'],
+      maxPages: '2',
+    });
+    expect(res).not.toBeNull();
+    expect(err(res)['kind']).toBe('invalid_request');
+  });
+
+  it('C2 FIX7: validateMessageSchema accepts valid maxPages 2', () => {
+    const res = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'x',
+      urls: ['https://a.com/'],
+      maxPages: 2,
+    });
+    expect(res).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

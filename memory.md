@@ -2222,6 +2222,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T09:02:31Z - Claude Sonnet 4.6 - Ralph FIX6 E1: readPages expectedUrls computed at top, used in all failure paths
+- pageReaderProvider.ts: moved expectedUrls computation to top of readPages(); both transport-throw and invalid-response paths now use expectedUrls instead of request.urls.
+- 3 new E1 FIX6 tests: transport throw → 2 failures not 4; invalid top-level → 2 failures not 4; no maxPages → all URLs.
+- vitest 1225/125 ✓.
+- NEXT: Part F (agentBlockParser duplicate script_request / quiet fallback patterns), then G.
+
 ## 2026-06-29T09:00:09Z - Claude Sonnet 4.6 - Ralph FIX6 D1: bulk research rejection before payload parsing
 - webRunner.ts runApprovedBulkResearch(): moved status !== 'approved' branch to top (before parseApprovalPayloadObject call).
 - 4 new D1 tests: rejected+malformed resolves user_rejected, rejected+missing resolves user_rejected, rejected doesn't audit payload-invalid, approved+malformed still audits payload-invalid.

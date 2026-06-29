@@ -647,4 +647,52 @@ describe('E1 (FIX5) — readPages maxPages semantics', () => {
     expect(byUrl.get('https://x/a')?.ok).toBe(true);
     expect(byUrl.get('https://x/b')?.ok).toBe(false);
   });
+
+  // E1 (FIX6): top-level errors must also use expectedUrls, not request.urls.
+
+  it('E1 FIX6: 4 URLs + maxPages 2 + transport throw → 2 failures, not 4', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => {
+        throw new Error('extension unreachable');
+      }),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b', 'https://x/c', 'https://x/d'],
+      maxPages: 2,
+    });
+    expect(results).toHaveLength(2);
+    const urls = results.map((r) => r.url);
+    expect(urls).not.toContain('https://x/c');
+    expect(urls).not.toContain('https://x/d');
+    expect(results.every((r) => !r.ok)).toBe(true);
+  });
+
+  it('E1 FIX6: 4 URLs + maxPages 2 + invalid top-level response → 2 failures, not 4', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: false,
+        error: { message: 'batch failed' },
+      })),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b', 'https://x/c', 'https://x/d'],
+      maxPages: 2,
+    });
+    expect(results).toHaveLength(2);
+    const urls = results.map((r) => r.url);
+    expect(urls).not.toContain('https://x/c');
+    expect(urls).not.toContain('https://x/d');
+  });
+
+  it('E1 FIX6: no maxPages + transport throw → failures for all requested URLs', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => {
+        throw new Error('gone');
+      }),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b'],
+    });
+    expect(results).toHaveLength(2);
+  });
 });

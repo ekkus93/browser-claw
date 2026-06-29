@@ -193,6 +193,16 @@ export function createExtensionPageReader(
     },
 
     async readPages(request: PageReadPagesRequest): Promise<PageReadResult[]> {
+      // E1 (FIX6): compute expectedUrls once at the top — used for ALL failure
+      // and success mappings so top-level errors don't map over skipped URLs.
+      const expectedUrls =
+        typeof request.maxPages === 'number'
+          ? request.urls.slice(
+              0,
+              Math.min(request.maxPages, request.urls.length),
+            )
+          : request.urls;
+
       // F1 (FIX3): send one read_pages message to the extension — no looping.
       const requestId = newRequestId();
       let raw: unknown;
@@ -213,7 +223,7 @@ export function createExtensionPageReader(
             : {}),
         });
       } catch (error) {
-        return request.urls.map((url) => ({
+        return expectedUrls.map((url) => ({
           ok: false as const,
           url,
           error: {
@@ -234,7 +244,7 @@ export function createExtensionPageReader(
           isExtensionResponse(raw) && !raw.ok
             ? raw.error.message
             : 'invalid extension response';
-        return request.urls.map((url) => ({
+        return expectedUrls.map((url) => ({
           ok: false as const,
           url,
           error: { kind: 'internal_error' as const, message: errorMsg },
@@ -250,15 +260,7 @@ export function createExtensionPageReader(
         if (slotUrl) slotByUrl.set(slotUrl, s);
       }
 
-      // E1 (FIX5): only expect results for URLs actually sent to the provider.
-      // URLs beyond maxPages are intentionally skipped and must not appear as failures.
-      const expectedUrls =
-        typeof request.maxPages === 'number'
-          ? request.urls.slice(
-              0,
-              Math.min(request.maxPages, request.urls.length),
-            )
-          : request.urls;
+      // (E1 FIX5 moved to top of function — expectedUrls already computed above)
 
       return expectedUrls.map((url) => {
         const s = slotByUrl.get(url);

@@ -413,18 +413,20 @@ The success mapping uses `expectedUrls`, but top-level failures may still map ov
 
 ### Required behavior
 
-- [ ] P1 Compute `expectedUrls` at the start of `pageReaderProvider.readPages()`.
-- [ ] P1 Use `expectedUrls` for:
-  - [ ] success response mapping;
-  - [ ] top-level extension error response;
-  - [ ] invalid top-level response;
-  - [ ] transport failure;
-  - [ ] missing result slots.
-- [ ] P1 Tests:
-  - [ ] 4 URLs + maxPages 2 + top-level extension error returns 2 failures, not 4;
-  - [ ] 4 URLs + maxPages 2 + invalid top-level response returns 2 failures, not 4;
-  - [ ] 4 URLs + maxPages 2 + thrown transport error returns 2 failures, not 4;
-  - [ ] no maxPages still returns failures for all requested URLs.
+<!-- evidence: src/extension/pageReaderProvider.ts — expectedUrls computed at top of readPages, used in all 3 failure paths and success mapping -->
+- [x] P1 Compute `expectedUrls` at the start of `pageReaderProvider.readPages()`.
+- [x] P1 Use `expectedUrls` for:
+  - [x] success response mapping;
+  - [x] top-level extension error response;
+  - [x] invalid top-level response;
+  - [x] transport failure;
+  - [x] missing result slots.
+<!-- evidence: src/extension/pageReaderProvider.test.ts — 3 new E1 FIX6 tests: transport throw, invalid top-level response, no maxPages -->
+- [x] P1 Tests:
+  - [x] 4 URLs + maxPages 2 + top-level extension error returns 2 failures, not 4; <!-- E1 FIX6: 4 URLs + maxPages 2 + invalid top-level response → 2 failures, not 4 -->
+  - [x] 4 URLs + maxPages 2 + invalid top-level response returns 2 failures, not 4; <!-- E1 FIX6: same test covers invalid response path -->
+  - [x] 4 URLs + maxPages 2 + thrown transport error returns 2 failures, not 4; <!-- E1 FIX6: 4 URLs + maxPages 2 + transport throw → 2 failures, not 4 -->
+  - [x] no maxPages still returns failures for all requested URLs. <!-- E1 FIX6: no maxPages + transport throw → failures for all requested URLs -->
 
 ### Suggested code
 

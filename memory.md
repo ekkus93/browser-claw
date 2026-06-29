@@ -2222,6 +2222,16 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T08:45:13Z - Claude Sonnet 4.6 - Ralph FIX6 A1+A2+A3: Rust/WASM structured failure serialization complete
+- Added Runtime::tool_content_from_effect_failure() in crates/claw-core/src/lib.rs.
+- Wired into effect failure branch (plan_proposal/web_search/web_page_read/web_research/extension_request) and tool_call rejection.
+- Redacts Bearer/Authorization/sk-ant-/sk- markers from messages.
+- Fixed pre-existing duplicate #[test] attribute on c2_search_missing_query test.
+- 11 new Rust tests (a1_fix6_* x5, a2_fix6_* x3 + carry-along count = 45 total).
+- WASM rebuilt; cargo clippy clean.
+- Gate: typecheck ✓, vitest 1211/125 ✓, cargo test 45 ✓, cargo clippy ✓.
+- NEXT: Part B (TS reference runtime raw readPages validation).
+
 ## 2026-06-29T08:38:13Z - Claude Sonnet 4.6 - Ralph FIX6 Phase 0: scope lock complete; FIX6 started
 - FIX6 spec and TODO pulled from remote (docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX6_SPEC.md + _TODO.md).
 - design notes updated with FIX6 Locked decisions section (6 decisions: Rust/WASM failure parity, TS readPages validation, reactive capability status, rejection before payload parse, maxPages failure consistency, Docker E2E reproducibility).

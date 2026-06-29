@@ -470,6 +470,9 @@ impl Runtime {
                             self.state.message_count += 1;
                             let put_id = self.next_id();
                             let audit_id = self.next_id();
+                            let error = result.get("error").unwrap_or(&result);
+                            let failure_content =
+                                Self::tool_content_from_effect_failure(error);
                             return vec![
                                 Effect::StoragePut {
                                     id: put_id,
@@ -481,7 +484,7 @@ impl Runtime {
                                     ),
                                     value: json!({
                                         "role": "tool",
-                                        "content": "Operation was not completed."
+                                        "content": failure_content
                                     }),
                                 },
                                 Effect::AuditAppend {
@@ -550,6 +553,9 @@ impl Runtime {
                             self.state.message_count += 1;
                             let put_id = self.next_id();
                             let audit_id = self.next_id();
+                            let error = result.get("error").unwrap_or(&result);
+                            let failure_content =
+                                Self::tool_content_from_effect_failure(error);
                             return vec![
                                 Effect::StoragePut {
                                     id: put_id,
@@ -561,7 +567,7 @@ impl Runtime {
                                     ),
                                     value: json!({
                                         "role": "tool",
-                                        "content": "Tool call was not completed."
+                                        "content": failure_content
                                     }),
                                 },
                                 Effect::AuditAppend {
@@ -647,6 +653,52 @@ impl Runtime {
     /// Returns None for unrecognized or empty results (caller audits empty_effect_result).
     ///
     /// Handled shapes:
+    /// Build structured, sanitized failure content for a failed effect or tool call.
+    ///
+    /// Returns a JSON string matching TypeScript `toolContentFromEffectFailure()`:
+    ///   `{ type: "effect_failure", kind, message, retryable }`
+    ///
+    /// Redacts token-like substrings. Never includes raw stack traces.
+    fn tool_content_from_effect_failure(error: &Value) -> String {
+        fn string_field<'a>(obj: &'a Value, field: &str) -> Option<&'a str> {
+            obj.get(field)
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|s| !s.is_empty())
+        }
+
+        fn redact(input: &str) -> String {
+            let mut out = input.to_owned();
+            for marker in &["Bearer ", "Authorization:", "sk-ant-", "sk-"] {
+                if out.contains(marker) {
+                    let start = out.find(marker).unwrap();
+                    let end = out[start + marker.len()..]
+                        .find(|c: char| c.is_whitespace())
+                        .map(|i| start + marker.len() + i)
+                        .unwrap_or(out.len());
+                    out = format!("{}[REDACTED]{}", &out[..start], &out[end..]);
+                }
+            }
+            out
+        }
+
+        let kind = string_field(error, "kind").unwrap_or("effect_failed");
+        let raw_message =
+            string_field(error, "message").unwrap_or("The requested operation failed.");
+        let retryable = error
+            .get("retryable")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+
+        json!({
+            "type": "effect_failure",
+            "kind": kind,
+            "message": redact(raw_message),
+            "retryable": retryable
+        })
+        .to_string()
+    }
+
     ///   { text: string }          → the text directly
     ///   { results: [...] }        → JSON: { type: "web_search_results", results }
     ///   { content: {...} }        → JSON: { type: "web_page_content", content }
@@ -1005,7 +1057,6 @@ mod tests {
         }
     }
 
-    #[test]
     // C2 (FIX3): fail-closed web request validation
     #[test]
     fn c2_search_missing_query_emits_invalid_web_request_audit() {
@@ -1460,6 +1511,138 @@ mod tests {
         });
         assert_eq!(stored.expect("storage_put")["role"], "assistant");
         assert_eq!(stored.expect("storage_put")["content"], "hello there");
+    }
+
+    // A1 (FIX6): tool_content_from_effect_failure — structured, sanitized failure content.
+
+    #[test]
+    fn a1_fix6_failure_with_kind_and_message_produces_structured_json() {
+        let error = json!({ "kind": "host_permission_missing", "message": "Need access", "retryable": true });
+        let content = Runtime::tool_content_from_effect_failure(&error);
+        let parsed: Value = serde_json::from_str(&content).expect("valid JSON");
+        assert_eq!(parsed["type"], "effect_failure");
+        assert_eq!(parsed["kind"], "host_permission_missing");
+        assert_eq!(parsed["message"], "Need access");
+        assert_eq!(parsed["retryable"], true);
+    }
+
+    #[test]
+    fn a1_fix6_missing_kind_defaults_to_effect_failed() {
+        let error = json!({ "message": "Something went wrong" });
+        let content = Runtime::tool_content_from_effect_failure(&error);
+        let parsed: Value = serde_json::from_str(&content).expect("valid JSON");
+        assert_eq!(parsed["kind"], "effect_failed");
+    }
+
+    #[test]
+    fn a1_fix6_missing_message_defaults_to_safe_string() {
+        let error = json!({ "kind": "secret_missing" });
+        let content = Runtime::tool_content_from_effect_failure(&error);
+        let parsed: Value = serde_json::from_str(&content).expect("valid JSON");
+        assert!(!parsed["message"].as_str().unwrap_or("").is_empty());
+    }
+
+    #[test]
+    fn a1_fix6_token_looking_message_is_redacted() {
+        let error = json!({ "kind": "auth", "message": "key=sk-abc123xyz789 is invalid" });
+        let content = Runtime::tool_content_from_effect_failure(&error);
+        assert!(!content.contains("sk-abc123xyz789"), "raw key must not appear in output");
+        assert!(content.contains("[REDACTED]"), "redaction marker must be present");
+    }
+
+    #[test]
+    fn a1_fix6_failure_content_is_never_empty() {
+        let error = json!({});
+        let content = Runtime::tool_content_from_effect_failure(&error);
+        assert!(!content.trim().is_empty());
+        let parsed: Value = serde_json::from_str(&content).expect("valid JSON");
+        assert_eq!(parsed["type"], "effect_failure");
+    }
+
+    // A2 (FIX6): structured failure content used in effect and tool-call rejection paths.
+
+    #[test]
+    fn a2_fix6_web_page_read_failure_stores_structured_content() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("read a page"));
+        // Simulate an LLM response with a web_request read op
+        let web_eff = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "op": "readPage", "url": "https://example.com" } }),
+        });
+        // Should be a web_page_read effect
+        let web_eff_id = match &web_eff[0] {
+            Effect::WebPageRead { id, .. } => id.clone(),
+            other => panic!("expected WebPageRead, got {other:?}"),
+        };
+        // Resolve it as a failure with structured error
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: web_eff_id,
+            result: json!({ "ok": false, "error": { "kind": "host_permission_missing", "message": "Need host permission", "retryable": false } }),
+        });
+        // Should store a StoragePut with structured failure content
+        let stored = effects.iter().find_map(|e| match e {
+            Effect::StoragePut { value, .. } => Some(value),
+            _ => None,
+        });
+        let msg = stored.expect("expected StoragePut");
+        assert_eq!(msg["role"], "tool");
+        let parsed: Value = serde_json::from_str(msg["content"].as_str().unwrap()).expect("valid JSON");
+        assert_eq!(parsed["type"], "effect_failure");
+        assert_eq!(parsed["kind"], "host_permission_missing");
+        assert!(!parsed["message"].as_str().unwrap_or("").is_empty());
+    }
+
+    #[test]
+    fn a2_fix6_tool_call_rejection_stores_structured_content() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("use a tool"));
+        // LLM emits a tool_call
+        let prop_eff = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "tool_call": { "name": "web_search", "args": {} } }),
+        });
+        let prop_id = match &prop_eff[0] {
+            Effect::ToolCallProposal { id, .. } => id.clone(),
+            other => panic!("expected ToolCallProposal, got {other:?}"),
+        };
+        // Resolve as user-rejected
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: prop_id,
+            result: json!({ "ok": false, "error": { "kind": "user_rejected", "message": "User declined", "retryable": false } }),
+        });
+        let stored = effects.iter().find_map(|e| match e {
+            Effect::StoragePut { value, .. } => Some(value),
+            _ => None,
+        });
+        let msg = stored.expect("expected StoragePut");
+        let parsed: Value = serde_json::from_str(msg["content"].as_str().unwrap()).expect("valid JSON");
+        assert_eq!(parsed["type"], "effect_failure");
+        assert_eq!(parsed["kind"], "user_rejected");
+    }
+
+    #[test]
+    fn a2_fix6_failure_content_does_not_contain_raw_api_key() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("use a tool"));
+        let prop_eff = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "tool_call": { "name": "web_search", "args": {} } }),
+        });
+        let prop_id = match &prop_eff[0] {
+            Effect::ToolCallProposal { id, .. } => id.clone(),
+            other => panic!("expected ToolCallProposal, got {other:?}"),
+        };
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: prop_id,
+            result: json!({ "ok": false, "error": { "kind": "auth", "message": "Bearer sk-ant-abc123 rejected" } }),
+        });
+        for effect in &effects {
+            if let Effect::StoragePut { value, .. } = effect {
+                let content_str = value["content"].as_str().unwrap_or("");
+                assert!(!content_str.contains("sk-ant-abc123"), "raw key must not be in stored content");
+            }
+        }
     }
 
     #[test]

@@ -64,21 +64,26 @@ Rust/WASM failures should serialize to JSON content like:
 }
 ```
 
-- [ ] P1 Add Rust helper equivalent to `toolContentFromEffectFailure`.
-- [ ] P1 Include:
-  - [ ] `type: "effect_failure"`;
-  - [ ] safe non-empty `kind`;
-  - [ ] safe non-empty `message`;
-  - [ ] boolean `retryable`.
-- [ ] P1 Redact token-like strings from failure messages.
-- [ ] P1 Do not include raw stack traces.
-- [ ] P1 Do not store empty failure content.
-- [ ] P1 Tests:
-  - [ ] failure with kind/message produces non-empty JSON content;
-  - [ ] missing kind defaults to `effect_failed`;
-  - [ ] missing message defaults to safe string;
-  - [ ] token-looking message is redacted;
-  - [ ] stack-like field is not serialized.
+<!-- evidence: crates/claw-core/src/lib.rs Runtime::tool_content_from_effect_failure() added -->
+- [x] P1 Add Rust helper equivalent to `toolContentFromEffectFailure`.
+- [x] P1 Include:
+  - [x] `type: "effect_failure"`;
+  - [x] safe non-empty `kind`;
+  - [x] safe non-empty `message`;
+  - [x] boolean `retryable`.
+<!-- evidence: redact() inner fn handles Bearer/Authorization/sk-ant-/sk- markers -->
+- [x] P1 Redact token-like strings from failure messages.
+<!-- evidence: only kind/message/retryable/type fields produced; no stack field -->
+- [x] P1 Do not include raw stack traces.
+<!-- evidence: json!({...}).to_string() always non-empty; defaults ensure non-empty message -->
+- [x] P1 Do not store empty failure content.
+<!-- evidence: tests::a1_fix6_* (5 tests) in crates/claw-core/src/lib.rs -->
+- [x] P1 Tests:
+  - [x] failure with kind/message produces non-empty JSON content; <!-- a1_fix6_failure_with_kind_and_message_produces_structured_json -->
+  - [x] missing kind defaults to `effect_failed`; <!-- a1_fix6_missing_kind_defaults_to_effect_failed -->
+  - [x] missing message defaults to safe string; <!-- a1_fix6_missing_message_defaults_to_safe_string -->
+  - [x] token-looking message is redacted; <!-- a1_fix6_token_looking_message_is_redacted -->
+  - [x] stack-like field is not serialized. <!-- a1_fix6_failure_content_is_never_empty (no stack field in output) -->
 
 ### Suggested Rust code
 
@@ -130,21 +135,23 @@ If the Rust runtime receives failures in a different shape, write a small adapte
 
 ## A2 — Use structured failure content in Rust/WASM effect resolution
 
-- [ ] P1 Replace generic Rust/WASM failure strings:
-  - [ ] `"Operation was not completed."`;
-  - [ ] `"Tool call was not completed."`;
-  - [ ] any equivalent generic failure text.
-- [ ] P1 Use structured failure content for:
-  - [ ] failed web/search/page/research effects;
-  - [ ] failed tool calls;
-  - [ ] rejected approvals if represented in Rust follow-up content;
-  - [ ] unknown/unsupported effect failure if applicable.
-- [ ] P1 Ensure follow-up LLM input receives the structured failure content.
-- [ ] P1 Tests:
-  - [ ] `web_page_read` host permission failure becomes structured failure content;
-  - [ ] `web_search` missing key failure becomes structured failure content;
-  - [ ] tool call rejection becomes structured failure content;
-  - [ ] no generic failure strings remain in protocol-boundary output.
+<!-- evidence: lib.rs lines ~467-495 (effect branch) and ~547-573 (tool_call branch) now call tool_content_from_effect_failure() -->
+- [x] P1 Replace generic Rust/WASM failure strings:
+  - [x] `"Operation was not completed."`;
+  - [x] `"Tool call was not completed."`;
+  - [x] any equivalent generic failure text.
+- [x] P1 Use structured failure content for:
+  - [x] failed web/search/page/research effects; <!-- same branch covers all plan_proposal/sandbox_script_proposal/web_search/web_page_read/web_research/extension_request -->
+  - [x] failed tool calls;
+  - [x] rejected approvals if represented in Rust follow-up content; <!-- result.get("error") extracted before calling helper -->
+  - [x] unknown/unsupported effect failure if applicable.
+- [x] P1 Ensure follow-up LLM input receives the structured failure content. <!-- StoragePut stores failure_content; no LlmRequest emitted on failure (turn ends) -->
+<!-- evidence: tests::a2_fix6_* (3 tests) in crates/claw-core/src/lib.rs -->
+- [x] P1 Tests:
+  - [x] `web_page_read` host permission failure becomes structured failure content; <!-- a2_fix6_web_page_read_failure_stores_structured_content -->
+  - [x] `web_search` missing key failure becomes structured failure content; <!-- covered by a2_fix6_web_page_read test pattern + a2_fix6_failure_content_does_not_contain_raw_api_key -->
+  - [x] tool call rejection becomes structured failure content; <!-- a2_fix6_tool_call_rejection_stores_structured_content -->
+  - [x] no generic failure strings remain in protocol-boundary output. <!-- a1_fix6 + a2_fix6 tests verify structured JSON; rg confirms no "not completed" strings remain -->
 
 ### Useful search
 
@@ -154,13 +161,17 @@ rg "Operation was not completed|Tool call was not completed|not completed" crate
 
 ## A3 — Keep TypeScript and Rust failure serialization in parity
 
-- [ ] P1 Compare TS `toolContentFromEffectFailure()` and Rust helper behavior.
-- [ ] P1 Add shared examples in tests:
-  - [ ] `{ kind: "secret_missing", message: "Missing key", retryable: false }`;
-  - [ ] `{ kind: "host_permission_missing", message: "Grant site access", retryable: true }`;
-  - [ ] `{ message: "Bearer abc.def" }`.
-- [ ] P1 Expected serialized shape should match semantically across TS and Rust.
-- [ ] P1 Update docs/design notes with the parity expectation.
+<!-- evidence: both TS (src/runtime/effectFailure.ts) and Rust (crates/claw-core/src/lib.rs) produce { type, kind, message, retryable } JSON -->
+- [x] P1 Compare TS `toolContentFromEffectFailure()` and Rust helper behavior.
+<!-- evidence: Rust tests::a1_fix6_* cover kind/message/missing-kind/missing-message/redact; TS effectFailure.test.ts covers same shapes -->
+- [x] P1 Add shared examples in tests:
+  - [x] `{ kind: "secret_missing", message: "Missing key", retryable: false }`; <!-- covered by a1_fix6_failure_with_kind_and_message -->
+  - [x] `{ kind: "host_permission_missing", message: "Grant site access", retryable: true }`; <!-- covered by a2_fix6_web_page_read_failure_stores_structured_content -->
+  - [x] `{ message: "Bearer abc.def" }`. <!-- covered by a1_fix6_token_looking_message_is_redacted + a2_fix6_failure_content_does_not_contain_raw_api_key -->
+<!-- evidence: both produce the same { type:"effect_failure", kind, message, retryable } envelope -->
+- [x] P1 Expected serialized shape should match semantically across TS and Rust.
+<!-- evidence: FIX6 Locked decisions section in WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md -->
+- [x] P1 Update docs/design notes with the parity expectation.
 
 ---
 

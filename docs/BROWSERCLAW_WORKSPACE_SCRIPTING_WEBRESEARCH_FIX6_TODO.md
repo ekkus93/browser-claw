@@ -494,19 +494,21 @@ async function readPages(request: ReadPagesRequest): Promise<ReadPagesResult> {
 
 `AgentActionParseResult` may include duplicate `script_request` variant.
 
-- [ ] P2 Inspect `src/script/agentBlockParser.ts`.
-- [ ] P2 Remove duplicate union entry if present.
-- [ ] P2 Run typecheck/tests.
-- [ ] P2 No behavior change expected.
+<!-- evidence: agentBlockParser.ts line 130 — only one script_request entry in union -->
+- [x] P2 Inspect `src/script/agentBlockParser.ts`.
+- [x] P2 Remove duplicate union entry if present. <!-- no duplicate found; no change needed -->
+- [x] P2 Run typecheck/tests.
+- [x] P2 No behavior change expected.
 
 ## F2 — Search for remaining targeted quiet fallback patterns
 
-- [ ] P2 Run targeted searches:
-  - [ ] `rg "filter\\(|filterMap|filter_map" src/script src/runtime crates/`;
-  - [ ] `rg "\\?\\? ''|\\|\\| ''|unwrap_or_default|unwrap_or\\(\"\"\\)" src/script src/runtime crates/`;
-  - [ ] `rg "Operation was not completed|Tool call was not completed" src crates`;
-- [ ] P2 Review hits at protocol boundaries only.
-- [ ] P2 Replace unsafe fallbacks or document safe ones.
+<!-- evidence: targeted grep — all remaining fallback patterns are post-parse array filters or empty-string guards in Rust, not protocol boundaries -->
+- [x] P2 Run targeted searches:
+  - [x] `rg "filter\\(|filterMap|filter_map" src/script src/runtime crates/`; <!-- hits are legitimate post-parse guards, not silent drops -->
+  - [x] `rg "\\?\\? ''|\\|\\| ''|unwrap_or_default|unwrap_or\\(\"\"\\)" src/script src/runtime crates/`; <!-- ?? '' hits are safe UI fallbacks; none at protocol boundaries -->
+  - [x] `rg "Operation was not completed|Tool call was not completed" src crates`; <!-- only in comment in effectFailure.ts — already replaced in Rust -->
+- [x] P2 Review hits at protocol boundaries only.
+- [x] P2 Replace unsafe fallbacks or document safe ones. <!-- no unsafe fallbacks found -->
 
 ---
 
@@ -514,12 +516,13 @@ async function readPages(request: ReadPagesRequest): Promise<ReadPagesResult> {
 
 ## G1 — Update review notes
 
-- [ ] P1 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX5_REVIEW_NOTES.md` or create FIX6 review notes.
-- [ ] P1 Include:
-  - [ ] what was fixed in FIX6;
-  - [ ] what remains deferred;
-  - [ ] extension E2E result;
-  - [ ] Rust/WASM failure serialization status.
+<!-- evidence: docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX6_REVIEW_NOTES.md created -->
+- [x] P1 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX5_REVIEW_NOTES.md` or create FIX6 review notes.
+- [x] P1 Include:
+  - [x] what was fixed in FIX6;
+  - [x] what remains deferred;
+  - [x] extension E2E result;
+  - [x] Rust/WASM failure serialization status.
 
 ## G2 — Required commands
 
@@ -539,25 +542,37 @@ cargo test
 cargo clippy
 ```
 
-- [ ] P0 Record command results in TODO evidence comments.
-- [ ] P0 If a command cannot run, record:
-  - [ ] exact command;
-  - [ ] exact error;
-  - [ ] environment reason;
-  - [ ] whether it blocks all acceptance or only scoped feature acceptance;
-  - [ ] follow-up task.
-- [ ] P0 Do not mark failed/cannot-run commands as passed.
-- [ ] P1 If Docker extension E2E cannot run, do not claim extension readiness unless a prior still-valid recorded run is intentionally accepted and cited.
+<!-- evidence: all commands run on 2026-06-29; results in WORKSPACE_SCRIPTING_WEBRESEARCH_FIX6_REVIEW_NOTES.md -->
+- [x] P0 Record command results in TODO evidence comments.
+  <!-- pnpm run typecheck: ✓ 0 errors -->
+  <!-- pnpm run lint: ✓ 0 warnings -->
+  <!-- pnpm run format:check: ✓ all files formatted -->
+  <!-- pnpm test -- --no-file-parallelism: ✓ 1225 passed, 125 test files -->
+  <!-- pnpm run test:e2e: ✓ 30 passed -->
+  <!-- pnpm run test:extension:e2e: ✗ 5 failed (headless MV3 service worker issue — expected, documented) -->
+  <!-- pnpm run test:extension:e2e:docker: ✓ 5 passed -->
+  <!-- pnpm run build: ✓ (chunk-size warning only) -->
+  <!-- pnpm run build:wasm: ✓ -->
+  <!-- cargo test (claw-core): ✓ 44 passed -->
+  <!-- cargo clippy -D warnings: ✓ 0 warnings -->
+- [x] P0 If a command cannot run, record:
+  - [x] exact command; <!-- test:extension:e2e — headless Chrome, MV3 service worker restriction -->
+  - [x] exact error; <!-- "Target page, context or browser has been closed" -->
+  - [x] environment reason; <!-- MV3 extension service workers don't register in headless Chrome; requires Xvfb/Docker -->
+  - [x] whether it blocks all acceptance or only scoped feature acceptance; <!-- scoped only; Docker run passes 5/5 -->
+  - [x] follow-up task. <!-- no follow-up; Docker covers this; known since FIX5 -->
+- [x] P0 Do not mark failed/cannot-run commands as passed.
+- [x] P1 If Docker extension E2E cannot run, do not claim extension readiness unless a prior still-valid recorded run is intentionally accepted and cited. <!-- Docker ran and passed 5/5 on 2026-06-29 -->
 
 ## G3 — Final acceptance checklist
 
 FIX6 is complete only when:
 
-- [ ] Rust/WASM structured failure serialization is implemented and tested.
-- [ ] TypeScript reference runtime raw `readPages` validation rejects invalid URL slots and unsafe URLs.
-- [ ] Settings capability status updates after key/vault changes without a new probe.
-- [ ] Rejected bulk-research approval is handled before payload parsing.
-- [ ] `readPages(maxPages)` top-level failures use expected URL subset.
-- [ ] Duplicate `script_request` union entry is removed if present.
-- [ ] Docker extension E2E status is recorded.
-- [ ] No targeted quiet fallback paths remain in the reviewed areas.
+- [x] Rust/WASM structured failure serialization is implemented and tested. <!-- A1-A3: tool_content_from_effect_failure() in lib.rs; 8 unit tests; 44 cargo tests pass -->
+- [x] TypeScript reference runtime raw `readPages` validation rejects invalid URL slots and unsafe URLs. <!-- B1-B3: referenceRuntime.ts per-slot loop + classifyFetchUrl; 5 tests -->
+- [x] Settings capability status updates after key/vault changes without a new probe. <!-- C1-C2: rawExtensionStatus + useMemo reactive derivation; 2 FIX6 tests -->
+- [x] Rejected bulk-research approval is handled before payload parsing. <!-- D1: rejection check at top of runApprovedBulkResearch(); 4 tests -->
+- [x] `readPages(maxPages)` top-level failures use expected URL subset. <!-- E1: expectedUrls at top of readPages(); 3 FIX6 tests -->
+- [x] Duplicate `script_request` union entry is removed if present. <!-- F1: none found; no change needed -->
+- [x] Docker extension E2E status is recorded. <!-- test:extension:e2e:docker: 5/5 passed on 2026-06-29 -->
+- [x] No targeted quiet fallback paths remain in the reviewed areas. <!-- F2: all hits are post-parse or UI layer; none at protocol boundaries -->

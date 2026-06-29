@@ -2222,6 +2222,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T09:08:11Z - Claude Sonnet 4.6 - Ralph FIX6 COMPLETE: F1/F2 audit + G1/G2/G3 all ticked
+- F1: no duplicate script_request in agentBlockParser; F2: no unsafe quiet fallbacks at protocol boundaries.
+- G1: created docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX6_REVIEW_NOTES.md.
+- G2: all commands run; typecheck/lint/format/test/build/cargo all ✓; docker ext E2E 5/5 ✓; headless ext E2E fails (expected MV3 service worker issue).
+- G3: all 8 acceptance checklist items ticked.
+- FIX6 TODO fully complete.
+
 ## 2026-06-29T09:02:31Z - Claude Sonnet 4.6 - Ralph FIX6 E1: readPages expectedUrls computed at top, used in all failure paths
 - pageReaderProvider.ts: moved expectedUrls computation to top of readPages(); both transport-throw and invalid-response paths now use expectedUrls instead of request.urls.
 - 3 new E1 FIX6 tests: transport throw → 2 failures not 4; invalid top-level → 2 failures not 4; no maxPages → all URLs.

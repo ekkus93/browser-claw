@@ -2222,6 +2222,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T09:24:14Z - Claude Haiku 4.5 - Ralph FIX7 Phase0+A: scope lock + Rust multi-occurrence redaction
+- FIX7 scope: Rust redaction multi-occurrence, maxPages validation, extension central validation.
+- Phase 0: design notes updated (FIX7 Locked Decisions section), TODO Phase 0 ticked.
+- A1/A2/A3: replaced one-shot redact() with redact_marker_all() loop + redact_authorization_headers() loop; 6 new FIX7 tests; 50 cargo tests pass; clippy clean.
+- NEXT: Part B (maxPages validation helper + hard max constants + apply everywhere).
+
 ## 2026-06-29T09:08:11Z - Claude Sonnet 4.6 - Ralph FIX6 COMPLETE: F1/F2 audit + G1/G2/G3 all ticked
 - F1: no duplicate script_request in agentBlockParser; F2: no unsafe quiet fallbacks at protocol boundaries.
 - G1: created docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX6_REVIEW_NOTES.md.

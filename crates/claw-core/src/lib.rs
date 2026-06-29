@@ -667,17 +667,51 @@ impl Runtime {
                 .filter(|s| !s.is_empty())
         }
 
+        // A1 (FIX7): redact all occurrences of each marker, not just the first.
+        // Semantically aligned with TypeScript toolContentFromEffectFailure() which
+        // uses global regex replacement. Order: longer/more-specific prefixes first.
+        fn is_secret_delimiter(ch: char) -> bool {
+            ch.is_whitespace()
+                || matches!(
+                    ch,
+                    ',' | ';' | '"' | '\'' | ')' | '(' | ']' | '[' | '}' | '{' | '<' | '>'
+                )
+        }
+
+        fn redact_marker_all(mut input: String, marker: &str) -> String {
+            loop {
+                let Some(start) = input.find(marker) else {
+                    break;
+                };
+                let after_marker = start + marker.len();
+                let end = input[after_marker..]
+                    .find(is_secret_delimiter)
+                    .map(|offset| after_marker + offset)
+                    .unwrap_or(input.len());
+                input = format!("{}[REDACTED]{}", &input[..start], &input[end..]);
+            }
+            input
+        }
+
+        fn redact_authorization_headers(mut input: String) -> String {
+            loop {
+                let Some(start) = input.find("Authorization:") else {
+                    break;
+                };
+                let end = input[start..]
+                    .find(['\n', '\r', ',', ';'])
+                    .map(|offset| start + offset)
+                    .unwrap_or(input.len());
+                input = format!("{}[REDACTED]{}", &input[..start], &input[end..]);
+            }
+            input
+        }
+
         fn redact(input: &str) -> String {
             let mut out = input.to_owned();
-            for marker in &["Bearer ", "Authorization:", "sk-ant-", "sk-"] {
-                if out.contains(marker) {
-                    let start = out.find(marker).unwrap();
-                    let end = out[start + marker.len()..]
-                        .find(|c: char| c.is_whitespace())
-                        .map(|i| start + marker.len() + i)
-                        .unwrap_or(out.len());
-                    out = format!("{}[REDACTED]{}", &out[..start], &out[end..]);
-                }
+            out = redact_authorization_headers(out);
+            for marker in &["Bearer ", "sk-ant-", "sk-"] {
+                out = redact_marker_all(out, marker);
             }
             out
         }
@@ -1643,6 +1677,89 @@ mod tests {
                 assert!(!content_str.contains("sk-ant-abc123"), "raw key must not be in stored content");
             }
         }
+    }
+
+    // A1/A2 (FIX7): multi-occurrence redaction parity tests.
+
+    #[test]
+    fn a1_fix7_two_sk_tokens_both_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "secret_missing",
+            "message": "failed with sk-firstSECRET123 and sk-secondSECRET456",
+            "retryable": false
+        }));
+        assert!(!content.contains("sk-firstSECRET123"), "first sk- token must be redacted");
+        assert!(!content.contains("sk-secondSECRET456"), "second sk- token must be redacted");
+        assert!(content.contains("[REDACTED]"), "redaction marker must be present");
+        let parsed: Value = serde_json::from_str(&content).unwrap();
+        assert_eq!(parsed["type"], "effect_failure");
+        assert_eq!(parsed["kind"], "secret_missing");
+    }
+
+    #[test]
+    fn a1_fix7_sk_ant_and_sk_both_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "auth_failed",
+            "message": "sk-ant-firstSECRET sk-secondSECRET",
+            "retryable": false
+        }));
+        assert!(!content.contains("sk-ant-firstSECRET"), "sk-ant- token must be redacted");
+        assert!(!content.contains("sk-secondSECRET"), "sk- token must be redacted");
+        assert!(content.contains("[REDACTED]"));
+    }
+
+    #[test]
+    fn a1_fix7_two_bearer_tokens_both_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "auth_failed",
+            "message": "Bearer abc.def Bearer xyz.123",
+            "retryable": false
+        }));
+        assert!(!content.contains("abc.def"), "first bearer token must be redacted");
+        assert!(!content.contains("xyz.123"), "second bearer token must be redacted");
+        assert!(!content.contains("Bearer"), "Bearer prefix must be redacted");
+        assert!(content.contains("[REDACTED]"));
+    }
+
+    #[test]
+    fn a1_fix7_authorization_bearer_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "auth_failed",
+            "message": "Authorization: Bearer abc.def.ghi failed",
+            "retryable": false
+        }));
+        assert!(!content.contains("Authorization:"), "Authorization header must be redacted");
+        assert!(!content.contains("abc.def.ghi"), "token must be redacted");
+        // surrounding context "failed" may be preserved
+        let parsed: Value = serde_json::from_str(&content).unwrap();
+        assert_eq!(parsed["type"], "effect_failure");
+        assert!(content.contains("[REDACTED]"));
+    }
+
+    #[test]
+    fn a1_fix7_mixed_authorization_and_sk_both_redacted() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "auth_failed",
+            "message": "Authorization: sk-ant-headertoken and also sk-bodytoken",
+            "retryable": false
+        }));
+        assert!(!content.contains("sk-ant-headertoken"), "header token must be redacted");
+        assert!(!content.contains("sk-bodytoken"), "body token must be redacted");
+        assert!(content.contains("[REDACTED]"));
+    }
+
+    #[test]
+    fn a1_fix7_no_false_positive_on_safe_message() {
+        let content = Runtime::tool_content_from_effect_failure(&json!({
+            "kind": "network_error",
+            "message": "connection timed out after 30s",
+            "retryable": true
+        }));
+        let parsed: Value = serde_json::from_str(&content).unwrap();
+        assert_eq!(parsed["kind"], "network_error");
+        let msg = parsed["message"].as_str().unwrap();
+        assert!(msg.contains("connection timed out"), "safe message must not be mangled");
+        assert!(!content.contains("[REDACTED]"), "no redaction on safe message");
     }
 
     #[test]

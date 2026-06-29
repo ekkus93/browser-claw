@@ -1003,3 +1003,40 @@ These decisions apply to the FIX6 parity and validation hardening pass. See
   run; otherwise a new run is required.
 - **No new broad features in FIX6.** All changes in FIX6 are correctness,
   validation, and parity fixes. Feature additions belong in a separate pass.
+
+## FIX7 Locked decisions (2026-06-29)
+
+These decisions apply to the FIX7 targeted hardening pass. See
+`docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX7_SPEC.md` and
+`...FIX7_TODO.md` for the full scope.
+
+- **Rust failure redaction must redact all occurrences, not just the first.**
+  FIX6 Part A introduced `tool_content_from_effect_failure()` in Rust, but the
+  inner `redact` helper uses a single `if out.contains(marker)` check — it will
+  miss a second `sk-` token in the same message. TypeScript uses
+  `String.prototype.replace(/regex/g, ...)` which is globally replacing. FIX7
+  Part A replaces the one-shot check with a `loop { break when no marker }` pattern
+  using `redact_marker_all` (no regex dep). Order: `Authorization:` before
+  `Bearer ` before `sk-ant-` before `sk-` to avoid partial-prefix double-redaction.
+- **`maxPages` must be validated at every protocol boundary before use.**
+  Invalid `maxPages` values (0, negative, NaN, Infinity, non-integer, string)
+  can desynchronize what BrowserClaw expects to read from what the extension
+  actually reads. FIX7 Part B adds a shared TypeScript helper
+  `normalizeOptionalPositiveIntegerLimit` and applies it at all boundaries:
+  `pageReaderProvider`, `WebResearchService`, `webRunner`, `planOps`,
+  `referenceRuntime`, and the extension service worker. The hard max constant
+  `MAX_BATCH_PAGE_READS = 10` is defined in `src/webresearch/limits.ts`.
+- **Extension central validation (`validateMessageSchema`) must reject bad
+  `read_pages` payloads before dispatch.** Per-slot and `maxPages` validation
+  must not rely on handler best-effort. Central validation runs first; if it
+  fails, the handler never sees the message. This closes the window where a
+  race or type confusion could bypass slot validation.
+- **Invalid `maxPages` must not expand reads.** `0`, negative, NaN, Infinity
+  and non-integers must not be treated as "read all" or silently converted to
+  unlimited. Any boundary that receives an invalid `maxPages` must reject with
+  an explicit error, not fall back to `urls.length`.
+- **Docker extension E2E must be rerun after FIX7 changes.** The extension
+  service worker is modified in FIX7 (central validation). A Docker run is
+  required before marking FIX7 complete; a FIX6 Docker result cannot substitute.
+- **No new broad features in FIX7.** All changes are correctness, validation,
+  and redaction hardening. Feature additions belong in a separate pass.

@@ -2222,6 +2222,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T05:42:56Z - Claude Sonnet 4.6 - Ralph FIX5 C1+C2: normalizeExtensionStatus wired into SettingsScreen; misleading copy fixed DONE
+- C1: SettingsScreen.tsx now calls normalizeExtensionStatus() inside extensionProbe after transport.send(); result stored in capabilityStatus state; passed as capabilities={capabilityStatus} to WebResearchStatus. depedencies: [extensionId, webKey.keyConfigured, webKey.vaultLocked]. 5 C1 integration tests in SettingsScreen.test.tsx (mock createChromeExtensionTransport + vi.stubEnv VITE_CHROME_EXTENSION_ID).
+- C2: Replaced "each new site asks for host permission first" with truthful v0.1 copy — page reads require pre-granted Chrome site access, BrowserClaw cannot complete host-permission grants from this page.
+- Pre-existing SkillsScreen flake fixed: seeds bundled skills test was timing out (1000ms default) when run in full suite; increased findByRole timeout to 5000ms.
+- planOps.test.ts A2 ResearchBundle typing fixed: makeWeb().readPages typed as (): Promise<ResearchBundle>, kind: 'timeout' (not 'page_load_timeout').
+- Gate: typecheck ✓, lint ✓, format ✓, vitest 1194/124 ✓.
+- NEXT: C3 (sandbox policy in Settings) or D1 (shared getServiceWorker helper) or E1 (maxPages semantics fix).
+
 ## 2026-06-28T20:26:54Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 10: Part D2 (canonicalize search secret key IDs) DONE
 - useWebResearchKey.ts: BRAVE_KEY_ID changed from 'brave_search_api_key' to searchProviderSecretId(BRAVE_PROFILE_ID) = 'search_provider:brave'. Now UI and runtime use the same key ID.
 - resolveSearchProviderKey already used searchProviderSecretId — already correct; no change needed.

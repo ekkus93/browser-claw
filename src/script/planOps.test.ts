@@ -4,6 +4,7 @@ import { BrowserClawDB } from '../db/db.ts';
 import { MemoryContentStore } from '../workspace/contentStore.ts';
 import { WorkspaceFs } from '../workspace/workspaceFs.ts';
 import { executePlanOp, PlanOpError, type PlanOpContext } from './planOps.ts';
+import type { ResearchBundle } from '../webresearch/types.ts';
 
 const db = new BrowserClawDB();
 const dispatch = vi.fn();
@@ -163,20 +164,21 @@ describe('A1+A2+A3 (FIX5) — web.readPages strict validation', () => {
     return {
       search: vi.fn(),
       readPage: vi.fn(),
-      readPages: vi.fn(() =>
-        Promise.resolve({
-          query: '',
-          results: [],
-          pages: [
-            {
-              url: 'https://a.example/',
-              finalUrl: 'https://a.example/',
-              text: 'body',
-              length: 4,
-            },
-          ],
-          failures: [],
-        }),
+      readPages: vi.fn(
+        (): Promise<ResearchBundle> =>
+          Promise.resolve({
+            query: '',
+            results: [],
+            pages: [
+              {
+                url: 'https://a.example/',
+                finalUrl: 'https://a.example/',
+                text: 'body',
+                length: 4,
+              },
+            ],
+            failures: [],
+          }),
       ),
       research: vi.fn(),
     };
@@ -229,18 +231,20 @@ describe('A1+A2+A3 (FIX5) — web.readPages strict validation', () => {
 
   it('A2: per-slot failure preserved in returned ResearchBundle', async () => {
     const web = makeWeb();
-    web.readPages = vi.fn(() =>
-      Promise.resolve({
-        query: '',
-        results: [],
-        pages: [],
-        failures: [
-          {
-            url: 'https://b.example/',
-            error: { kind: 'page_load_timeout', message: 'timeout' },
-          },
-        ],
-      }),
+    web.readPages = vi.fn(
+      (): Promise<ResearchBundle> =>
+        Promise.resolve({
+          query: '',
+          results: [],
+          pages: [],
+          failures: [
+            {
+              url: 'https://b.example/',
+              kind: 'timeout',
+              message: 'timeout',
+            },
+          ],
+        }),
     );
     const bundle = (await executePlanOp({ ...ctx, web }, 'web.readPages', {
       urls: ['https://a.example/', 'https://b.example/'],

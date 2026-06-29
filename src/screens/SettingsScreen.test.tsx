@@ -3,14 +3,17 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import providersReducer from '../store/slices/providersSlice.ts';
 import modelsReducer from '../store/slices/modelsSlice.ts';
 import runtimeReducer, {
   runtimeReady,
   runtimeLoaded,
 } from '../store/slices/runtimeSlice.ts';
-import secretsReducer from '../store/slices/secretsSlice.ts';
+import secretsReducer, {
+  vaultLockedSet,
+  secretMetadataUpserted,
+} from '../store/slices/secretsSlice.ts';
 import auditReducer from '../store/slices/auditSlice.ts';
 import SettingsScreen from './SettingsScreen.tsx';
 import { db } from '../db/db.ts';
@@ -31,6 +34,12 @@ import {
   getFallbackProviderId,
 } from '../settings/appSettings.ts';
 import { queryAuditEvents } from '../audit/auditService.ts';
+import { BRAVE_KEY_ID } from './settings/useWebResearchKey.ts';
+
+vi.mock('../extension/chromeTransport.ts', () => ({
+  createChromeExtensionTransport: vi.fn(),
+}));
+import { createChromeExtensionTransport } from '../extension/chromeTransport.ts';
 
 function renderSettings() {
   const store = configureStore({
@@ -241,5 +250,133 @@ describe('SettingsScreen', () => {
       name: 'Load runtime from CDN',
     });
     await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// C1 (FIX5) — normalizeExtensionStatus wired into SettingsScreen
+// ---------------------------------------------------------------------------
+
+function makeStore(
+  opts: { vaultLocked?: boolean; keyConfigured?: boolean } = {},
+) {
+  const store = configureStore({
+    reducer: {
+      providers: providersReducer,
+      models: modelsReducer,
+      runtime: runtimeReducer,
+      secrets: secretsReducer,
+      audit: auditReducer,
+    },
+  });
+  store.dispatch(runtimeReady());
+  if (opts.vaultLocked === false) store.dispatch(vaultLockedSet(false));
+  if (opts.keyConfigured) {
+    store.dispatch(
+      secretMetadataUpserted({
+        id: BRAVE_KEY_ID,
+        label: 'Brave Search API key',
+        storageMode: 'encrypted',
+      }),
+    );
+  }
+  return store;
+}
+
+function rawExtStatus(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    ok: true,
+    requestId: 'r',
+    protocolVersion: 1,
+    extensionVersion: '0.1.0',
+    capabilities: {
+      readPage: {
+        supported: true,
+        requiresHostPermission: true,
+        permissionRequestSupported: false,
+      },
+      readCurrentTab: { supported: false, requiresActiveTab: true },
+      webSearch: { supported: true, providerConfigured: true },
+    },
+    pageReadingAvailable: true,
+    ...overrides,
+  };
+}
+
+describe('C1 (FIX5) — capability status wired into SettingsScreen', () => {
+  beforeEach(() => {
+    vi.stubEnv('VITE_CHROME_EXTENSION_ID', 'test-ext-id');
+    vi.mocked(createChromeExtensionTransport).mockReturnValue({
+      send: vi.fn().mockResolvedValue(rawExtStatus()),
+    });
+  });
+  afterEach(async () => {
+    vi.unstubAllEnvs();
+    await db.app_settings.clear();
+    await db.audit_events.clear();
+  });
+
+  it('C1: connected ext + no key → Connected row, Not ready live search', async () => {
+    const user = userEvent.setup();
+    const store = makeStore({ vaultLocked: false, keyConfigured: false });
+    render(
+      <Provider store={store}>
+        <SettingsScreen />
+      </Provider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+    expect(await screen.findByText('Connected')).toBeInTheDocument();
+    expect(screen.getByText('Not ready')).toBeInTheDocument();
+  });
+
+  it('C1: vault locked → Vault locked row, Not ready live search', async () => {
+    const user = userEvent.setup();
+    const store = makeStore({ vaultLocked: true, keyConfigured: true });
+    render(
+      <Provider store={store}>
+        <SettingsScreen />
+      </Provider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+    expect(await screen.findByText('Vault locked')).toBeInTheDocument();
+    expect(screen.getByText('Not ready')).toBeInTheDocument();
+  });
+
+  it('C1: permissionRequestSupported false → permission row shows Permission required', async () => {
+    const user = userEvent.setup();
+    const store = makeStore({ vaultLocked: false, keyConfigured: false });
+    render(
+      <Provider store={store}>
+        <SettingsScreen />
+      </Provider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+    expect(await screen.findByText('Permission required')).toBeInTheDocument();
+  });
+
+  it('C1: current-tab shows Unsupported in v0.1', async () => {
+    const user = userEvent.setup();
+    const store = makeStore({ vaultLocked: false });
+    render(
+      <Provider store={store}>
+        <SettingsScreen />
+      </Provider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+    expect(await screen.findByText('Unsupported in v0.1')).toBeInTheDocument();
+  });
+
+  it('C1: ext + key + unlocked → live search Ready', async () => {
+    const user = userEvent.setup();
+    const store = makeStore({ vaultLocked: false, keyConfigured: true });
+    render(
+      <Provider store={store}>
+        <SettingsScreen />
+      </Provider>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+    expect(await screen.findByText('Ready')).toBeInTheDocument();
   });
 });

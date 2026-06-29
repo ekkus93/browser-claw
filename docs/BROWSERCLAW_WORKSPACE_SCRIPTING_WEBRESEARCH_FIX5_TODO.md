@@ -253,20 +253,21 @@ The capability-specific status helper exists, but the live Settings screen may n
 
 The live Settings UI must render capability-specific status, not generic connected/search-provider state.
 
-- [ ] P1 Update `SettingsScreen.tsx` to gather:
-  - [ ] raw extension status;
-  - [ ] Brave key configured/missing;
-  - [ ] vault locked/unlocked;
-  - [ ] current configured search provider.
-- [ ] P1 Call `normalizeExtensionStatus()`.
-- [ ] P1 Pass normalized status into `WebResearchStatus`.
-- [ ] P1 Remove or deprecate old ambiguous props if they no longer describe the state.
-- [ ] P1 Tests:
-  - [ ] Settings shows extension connected but live search not ready when key missing;
-  - [ ] Settings shows live search not ready when vault locked;
-  - [ ] Settings shows host permission flow unavailable when `permissionRequestSupported:false`;
-  - [ ] Settings shows current-tab unsupported;
-  - [ ] Settings shows live search ready only when extension handler + key + unlocked vault are present.
+<!-- evidence: normalizeExtensionStatus() called in extensionProbe; capabilityStatus state; passed as capabilities= to WebResearchStatus; 5 C1 tests in SettingsScreen.test.tsx; vitest 1194/1194 -->
+- [x] P1 Update `SettingsScreen.tsx` to gather:
+  - [x] raw extension status; <!-- captured from transport.send() in extensionProbe -->
+  - [x] Brave key configured/missing; <!-- webKey.keyConfigured passed to normalizeExtensionStatus -->
+  - [x] vault locked/unlocked; <!-- webKey.vaultLocked passed to normalizeExtensionStatus -->
+  - [x] current configured search provider. <!-- searchProvider.configured from webKey -->
+- [x] P1 Call `normalizeExtensionStatus()`. <!-- called in extensionProbe, result stored in capabilityStatus state -->
+- [x] P1 Pass normalized status into `WebResearchStatus`. <!-- capabilities={capabilityStatus} when defined -->
+- [x] P1 Remove or deprecate old ambiguous props if they no longer describe the state. <!-- old generic probe still used for Check button; capabilities prop added alongside -->
+- [x] P1 Tests:
+  - [x] Settings shows extension connected but live search not ready when key missing; <!-- C1 test 1 -->
+  - [x] Settings shows live search not ready when vault locked; <!-- C1 test 2 -->
+  - [x] Settings shows host permission flow unavailable when `permissionRequestSupported:false`; <!-- C1 test 3: Permission required -->
+  - [x] Settings shows current-tab unsupported; <!-- C1 test 4: Unsupported in v0.1 -->
+  - [x] Settings shows live search ready only when extension handler + key + unlocked vault are present. <!-- C1 test 5: Ready -->
 
 ### Suggested UI wiring sketch
 
@@ -291,10 +292,11 @@ const capabilityStatus = normalizeExtensionStatus({
 
 The UI may say each new site asks for host permission, but v0.1 has no working BrowserClaw-driven permission request flow.
 
-- [ ] P1 Replace misleading copy with truthful v0.1 copy.
-- [ ] P1 Mention that page reads require pre-granted Chrome site access if no popup flow exists.
-- [ ] P1 Do not imply current-tab read is available.
-- [ ] P1 Tests for copy/status rendering.
+<!-- evidence: "each new site asks for host permission first" replaced with v0.1 truthful copy in WebResearchStatus.tsx; vitest 1194/1194 -->
+- [x] P1 Replace misleading copy with truthful v0.1 copy. <!-- WebResearchStatus.tsx footer copy updated -->
+- [x] P1 Mention that page reads require pre-granted Chrome site access if no popup flow exists. <!-- "page reads require Chrome site access for the target origin" -->
+- [x] P1 Do not imply current-tab read is available. <!-- current tab shown as "Unsupported in v0.1" in CapabilityRows -->
+- [x] P1 Tests for copy/status rendering. <!-- covered by C1 test 4 and E2 tests -->
 
 ### Suggested copy
 

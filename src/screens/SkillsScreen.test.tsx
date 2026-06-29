@@ -35,10 +35,18 @@ describe('SkillsScreen', () => {
   it('seeds bundled skills', async () => {
     renderSkills();
     expect(
-      await screen.findByRole('button', { name: /web-search/ }),
+      await screen.findByRole(
+        'button',
+        { name: /web-search/ },
+        { timeout: 5000 },
+      ),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('button', { name: /summarize-pdf/ }),
+      await screen.findByRole(
+        'button',
+        { name: /summarize-pdf/ },
+        { timeout: 5000 },
+      ),
     ).toBeInTheDocument();
   });
 

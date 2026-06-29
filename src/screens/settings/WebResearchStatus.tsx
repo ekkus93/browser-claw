@@ -229,11 +229,14 @@ export function WebResearchStatus({
         )}
       </div>
 
+      {/* C2 (FIX5): truthful v0.1 copy — no BrowserClaw-driven permission flow exists. */}
       <p className="text-xs text-muted-subtle">
         Web search runs through the companion extension, which proxies the Brave
-        Search API request and keeps the API key in memory only. The extension
-        reads pages on your behalf, and each new site asks for host permission
-        first.
+        Search API request and keeps the API key in memory only. Page reads
+        require Chrome site access for the target origin. In v0.1, BrowserClaw
+        cannot complete new host-permission grants from this page — grant site
+        access through the extension or Chrome settings, then retry the page
+        read.
       </p>
     </div>
   );

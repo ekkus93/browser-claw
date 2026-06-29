@@ -46,6 +46,10 @@ import { useWebResearchKey } from './settings/useWebResearchKey.ts';
 import { createChromeExtensionTransport } from '../extension/chromeTransport.ts';
 import { newRequestId } from '../extension/protocol.ts';
 import { DEFAULT_SCRIPT_POLICY } from '../script/scriptPolicy.ts';
+import {
+  normalizeExtensionStatus,
+  type WebResearchCapabilityStatus,
+} from '../extension/normalizeExtensionStatus.ts';
 
 // No-op for placeholder controls that are shown disabled until their behavior
 // is implemented (Phase 10 honesty: a control either works or is visibly
@@ -275,6 +279,12 @@ export default function SettingsScreen() {
     (import.meta.env.DEV
       ? (new URLSearchParams(window.location.search).get('ext_id') ?? '')
       : '');
+
+  // C1 (FIX5): capability-specific status from the last successful extension probe.
+  const [capabilityStatus, setCapabilityStatus] = useState<
+    WebResearchCapabilityStatus | undefined
+  >(undefined);
+
   const extensionProbe = useMemo(
     () =>
       extensionId
@@ -285,17 +295,30 @@ export default function SettingsScreen() {
                 type: 'get_status',
                 requestId: newRequestId(),
               });
-              const ok =
-                typeof raw === 'object' &&
-                raw !== null &&
-                (raw as Record<string, unknown>)['ok'] === true;
-              return { available: ok };
+              // C1 (FIX5): derive capability-specific status from raw extension response.
+              const normalized = normalizeExtensionStatus({
+                rawStatus: raw as Record<string, unknown>,
+                braveKeyConfigured: webKey.keyConfigured,
+                vaultLocked: webKey.vaultLocked,
+              });
+              setCapabilityStatus(normalized);
+              return { available: normalized.extensionConnected };
             } catch {
+              setCapabilityStatus(
+                normalizeExtensionStatus({
+                  rawStatus: {
+                    ok: false,
+                    error: { kind: 'extension_missing', message: '' },
+                  },
+                  braveKeyConfigured: webKey.keyConfigured,
+                  vaultLocked: webKey.vaultLocked,
+                }),
+              );
               return { available: false };
             }
           }
         : undefined,
-    [extensionId],
+    [extensionId, webKey.keyConfigured, webKey.vaultLocked],
   );
 
   return (
@@ -640,6 +663,9 @@ export default function SettingsScreen() {
                     name: 'Brave Search',
                     configured: webKey.keyConfigured,
                   }}
+                  {...(capabilityStatus !== undefined
+                    ? { capabilities: capabilityStatus }
+                    : {})}
                   {...(extensionProbe !== undefined
                     ? { probe: extensionProbe }
                     : {})}

@@ -185,21 +185,49 @@ async function handleRequestHostPermission(message) {
 // Tab lifecycle helpers
 // ---------------------------------------------------------------------------
 
+// H1 (FIX4): fixed race — install listener BEFORE checking current tab status
+// so a tab that completes while we inspect it isn't missed.
 function waitForTabComplete(tabId, timeoutMs) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      chrome.tabs.onUpdated.removeListener(listener);
-      reject(new Error('page_load_timeout'));
-    }, timeoutMs);
+    let done = false;
+    let timeoutId;
 
-    function listener(id, info) {
-      if (id === tabId && info.status === 'complete') {
-        clearTimeout(timer);
-        chrome.tabs.onUpdated.removeListener(listener);
-        resolve();
+    const cleanup = () => {
+      chrome.tabs.onUpdated.removeListener(onUpdated);
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+    };
+
+    const finish = (fn, value) => {
+      if (done) return;
+      done = true;
+      cleanup();
+      fn(value);
+    };
+
+    const onUpdated = (updatedTabId, changeInfo) => {
+      if (updatedTabId === tabId && changeInfo.status === 'complete') {
+        finish(resolve);
       }
-    }
-    chrome.tabs.onUpdated.addListener(listener);
+    };
+
+    // Install listener first so we don't miss an update between the get() callback
+    // and when we start listening.
+    chrome.tabs.onUpdated.addListener(onUpdated);
+
+    chrome.tabs.get(tabId, (tab) => {
+      if (done) return;
+      if (chrome.runtime.lastError) {
+        finish(reject, new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      if (tab?.status === 'complete') {
+        finish(resolve);
+      }
+    });
+
+    timeoutId = setTimeout(() => {
+      finish(reject, new Error('page_load_timeout'));
+    }, timeoutMs);
   });
 }
 

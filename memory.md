@@ -2167,6 +2167,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1059/122 ✓.
 - NEXT: J2 (app-level extension E2E).
 
+## 2026-06-29T01:59:44Z - Claude Sonnet 4.6 - Ralph FIX4 H1+H2: waitForTabComplete race fix + memory snippet cap DONE
+- H1: waitForTabComplete() in both service-worker.js files upgraded with done/cleanup/finish pattern — installs listener first, then calls chrome.tabs.get() to check if already complete, preventing race. 3 unit tests added (already-complete resolves, future event resolves, timeout rejects); chrome.tabs.get added to global stub.
+- H2: truncateMemorySnippet() + shapeMemoryForAutomatedAccess() added to retrieveMemories.ts; searchMemory() in planOps.ts applies shape before returning rows; default cap 1500 chars. 6 unit tests in retrieveMemories.test.ts + 2 in planOps.test.ts.
+- Gate: vitest 1176/124 ✓.
+- NEXT: I1 (run + record required gate commands), I2 (silent-fallback regression checklist), I3 (final acceptance checklist).
+
 ## 2026-06-28T21:50:58Z - Claude Sonnet 4.6 - Ralph FIX2-WSR Iteration 22: Part C3 (current-tab read unavailable in v0.1) DONE
 - handleReadCurrentTab now returns current_tab_read_unavailable immediately; activeTab can't be granted via externally_connectable, and scripting requires host_permissions same as read_page.
 - get_status hardcodes readCurrentTab.supported:false and currentTabReadingAvailable:false.

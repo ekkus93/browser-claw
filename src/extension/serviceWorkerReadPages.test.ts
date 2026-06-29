@@ -25,6 +25,9 @@ type AnyFn = (...args: any[]) => any;
       },
       removeListener: () => undefined,
     },
+    // H1 (FIX4): tabs.get needed by the race-free waitForTabComplete.
+    // Default: tab still loading (onUpdated listener will fire instead).
+    get: (_tabId: number, cb: AnyFn) => cb({ status: 'loading' }),
     remove: async () => undefined,
   },
   scripting: {
@@ -611,5 +614,76 @@ describe('D2 — central dispatch schema validation', () => {
       requestId: 'x',
     });
     expect(res).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// H1 (FIX4) — waitForTabComplete() race fix
+// Tests handleReadPage() with chrome stub variations to exercise the fix.
+// ---------------------------------------------------------------------------
+
+describe('H1 — waitForTabComplete race fix', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const g = globalThis as any;
+
+  it('H1: tab already complete (tabs.get returns complete) resolves without onUpdated', async () => {
+    const listeners: AnyFn[] = [];
+    g.chrome.tabs.onUpdated.addListener = (cb: AnyFn) => {
+      listeners.push(cb);
+    };
+    g.chrome.tabs.get = (_id: number, cb: AnyFn) => {
+      cb({ status: 'complete' });
+    };
+    const r = await handleReadPage({
+      type: 'read_page',
+      requestId: 'h1-already',
+      url: 'https://example.com/',
+    });
+    expect(r.ok).toBe(true);
+    // Restore
+    g.chrome.tabs.onUpdated.addListener = (cb: AnyFn) => {
+      setTimeout(() => cb(42, { status: 'complete' }), 0);
+    };
+    g.chrome.tabs.get = (_id: number, cb: AnyFn) => cb({ status: 'loading' });
+  });
+
+  it('H1: future onUpdated event resolves when tabs.get shows loading', async () => {
+    g.chrome.tabs.get = (_id: number, cb: AnyFn) => cb({ status: 'loading' });
+    g.chrome.tabs.onUpdated.addListener = (cb: AnyFn) => {
+      setTimeout(() => cb(42, { status: 'complete' }), 5);
+    };
+    const r = await handleReadPage({
+      type: 'read_page',
+      requestId: 'h1-future',
+      url: 'https://example.com/',
+    });
+    expect(r.ok).toBe(true);
+    // Restore
+    g.chrome.tabs.onUpdated.addListener = (cb: AnyFn) => {
+      setTimeout(() => cb(42, { status: 'complete' }), 0);
+    };
+    g.chrome.tabs.get = (_id: number, cb: AnyFn) => cb({ status: 'loading' });
+  });
+
+  it('H1: timeout rejects with page_load_timeout error', async () => {
+    g.chrome.tabs.get = (_id: number, cb: AnyFn) => cb({ status: 'loading' });
+    g.chrome.tabs.onUpdated.addListener = () => {
+      // never fires — force timeout
+    };
+    const r = await handleReadPage({
+      type: 'read_page',
+      requestId: 'h1-timeout',
+      url: 'https://example.com/',
+      timeoutMs: 30,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.error.kind).toBe('page_load_timeout');
+    }
+    // Restore
+    g.chrome.tabs.onUpdated.addListener = (cb: AnyFn) => {
+      setTimeout(() => cb(42, { status: 'complete' }), 0);
+    };
+    g.chrome.tabs.get = (_id: number, cb: AnyFn) => cb({ status: 'loading' });
   });
 });

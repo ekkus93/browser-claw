@@ -256,3 +256,44 @@ describe('F3 — plan tool.call fail-closed args validation', () => {
     ).rejects.toThrow();
   });
 });
+
+describe('H2 (FIX4) — memory.search returns truncated snippets', () => {
+  it('H2: memory.search caps text at 1500 chars by default', async () => {
+    await ctx.db.memories.put({
+      id: 'h2-long',
+      title: 'Big',
+      text: 'z'.repeat(3000),
+      tags: [],
+      source: 'script',
+      createdBy: 'assistant',
+      createdAt: 0,
+      pinned: false,
+      sensitivity: 'normal',
+    });
+    const results = (await executePlanOp(ctx, 'memory.search', {})) as Array<{
+      text: string;
+    }>;
+    expect(results).toHaveLength(1);
+    expect(results[0]!.text.length).toBe(1501); // 1500 chars + '…'
+    expect(results[0]!.text.endsWith('…')).toBe(true);
+  });
+
+  it('H2: memory.search returns short text unchanged', async () => {
+    await ctx.db.memories.put({
+      id: 'h2-short',
+      title: 'Short',
+      text: 'hello world',
+      tags: [],
+      source: 'script',
+      createdBy: 'assistant',
+      createdAt: 0,
+      pinned: false,
+      sensitivity: 'normal',
+    });
+    const results = (await executePlanOp(ctx, 'memory.search', {})) as Array<{
+      text: string;
+    }>;
+    expect(results).toHaveLength(1);
+    expect(results[0]!.text).toBe('hello world');
+  });
+});

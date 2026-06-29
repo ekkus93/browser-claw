@@ -22,6 +22,32 @@ export function filterMemoriesForAutomatedAccess<
     : filtered;
 }
 
+const DEFAULT_SNIPPET_MAX_CHARS = 1500;
+
+/**
+ * H2 (FIX4): Cap automated memory snippet text to prevent unbounded context
+ * growth when LLM or plan searches retrieve large memory rows.
+ */
+export function truncateMemorySnippet(
+  text: string,
+  maxChars = DEFAULT_SNIPPET_MAX_CHARS,
+): string {
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars)}…`;
+}
+
+/**
+ * H2 (FIX4): Shape a memory row for automated (plan/sandbox/LLM) access:
+ * exclude OK fields but cap `text` to avoid prompt bloat.
+ */
+export function shapeMemoryForAutomatedAccess(
+  row: MemoryRow,
+  options: { maxSnippetChars?: number } = {},
+): MemoryRow {
+  const maxChars = options.maxSnippetChars ?? DEFAULT_SNIPPET_MAX_CHARS;
+  return { ...row, text: truncateMemorySnippet(row.text, maxChars) };
+}
+
 /**
  * Pure selection of which saved memories to surface into an LLM prompt for a
  * turn. Kept separate from the runner so the ranking is unit-testable and has

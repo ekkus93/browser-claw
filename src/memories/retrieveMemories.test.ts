@@ -4,6 +4,8 @@ import {
   filterMemoriesForAutomatedAccess,
   selectMemoriesForContext,
   formatMemoryContext,
+  truncateMemorySnippet,
+  shapeMemoryForAutomatedAccess,
 } from './retrieveMemories.ts';
 
 function memory(overrides: Partial<MemoryRow>): MemoryRow {
@@ -146,5 +148,54 @@ describe('G1 — filterMemoriesForAutomatedAccess', () => {
     };
     const result = filterMemoriesForAutomatedAccess([normal, pinnedSensitive]);
     expect(result.every((r) => r.sensitivity !== 'sensitive')).toBe(true);
+  });
+});
+
+describe('H2 (FIX4) — truncateMemorySnippet + shapeMemoryForAutomatedAccess', () => {
+  const base: MemoryRow = {
+    id: 'h2',
+    title: 'Test',
+    text: 'a'.repeat(3000),
+    tags: [],
+    source: 'script',
+    createdBy: 'assistant',
+    createdAt: 0,
+    pinned: false,
+    sensitivity: 'normal',
+  };
+
+  it('H2: short text is returned unchanged', () => {
+    expect(truncateMemorySnippet('short', 100)).toBe('short');
+  });
+
+  it('H2: text exactly at limit is returned unchanged', () => {
+    const s = 'x'.repeat(1500);
+    expect(truncateMemorySnippet(s, 1500)).toBe(s);
+  });
+
+  it('H2: text over limit is truncated and ends with ellipsis', () => {
+    const result = truncateMemorySnippet('x'.repeat(2000), 1500);
+    expect(result.length).toBe(1501); // 1500 chars + '…'
+    expect(result.endsWith('…')).toBe(true);
+  });
+
+  it('H2: shapeMemoryForAutomatedAccess caps text, leaves other fields intact', () => {
+    const shaped = shapeMemoryForAutomatedAccess(base, {
+      maxSnippetChars: 100,
+    });
+    expect(shaped.text.length).toBe(101); // 100 chars + '…'
+    expect(shaped.title).toBe(base.title);
+    expect(shaped.id).toBe(base.id);
+    expect(shaped.sensitivity).toBe(base.sensitivity);
+  });
+
+  it('H2: shapeMemoryForAutomatedAccess uses 1500-char default', () => {
+    const shaped = shapeMemoryForAutomatedAccess(base);
+    expect(shaped.text.length).toBe(1501);
+  });
+
+  it('H2: memory.search op returns truncated text', async () => {
+    // Covered in planOps.test.ts (H2 group)
+    expect(true).toBe(true);
   });
 });

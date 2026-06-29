@@ -12,7 +12,10 @@
 import type { BrowserClawDB } from '../db/db.ts';
 import type { AppDispatch } from '../store/store.ts';
 import type { MemoryRow } from '../db/types.ts';
-import { filterMemoriesForAutomatedAccess } from '../memories/retrieveMemories.ts';
+import {
+  filterMemoriesForAutomatedAccess,
+  shapeMemoryForAutomatedAccess,
+} from '../memories/retrieveMemories.ts';
 import { runToolCall, type ToolContext } from '../tools/tools.ts';
 import { WorkspaceFs } from '../workspace/workspaceFs.ts';
 import {
@@ -177,12 +180,15 @@ async function searchMemory(
     ? await ctx.db.memories.where('tags').equals(tag).toArray()
     : await ctx.db.memories.toArray();
   const visible = filterMemoriesForAutomatedAccess(all);
-  if (!query) return visible;
-  return visible.filter(
-    (m) =>
-      m.title.toLowerCase().includes(query) ||
-      m.text.toLowerCase().includes(query),
-  );
+  const matched = query
+    ? visible.filter(
+        (m) =>
+          m.title.toLowerCase().includes(query) ||
+          m.text.toLowerCase().includes(query),
+      )
+    : visible;
+  // H2 (FIX4): cap snippet text to prevent unbounded context growth.
+  return matched.map((m) => shapeMemoryForAutomatedAccess(m));
 }
 
 async function webOp(

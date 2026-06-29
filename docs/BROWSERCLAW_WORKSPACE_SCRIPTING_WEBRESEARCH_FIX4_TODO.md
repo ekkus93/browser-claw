@@ -328,21 +328,22 @@ async function failInvalidWebEffect(
 
 `runApprovedBulkResearch()` may validate only that `urls` is a non-empty array, then cast it as `string[]`. It must validate every slot.
 
-- [ ] P1 Add `requireStringArrayField()` to approval payload helpers.
-- [ ] P1 Use it in bulk research approval resolver.
-- [ ] P1 Validate each URL with shared URL safety policy before reading.
-- [ ] P1 Invalid payload:
-  - [ ] does not call research/readPages;
-  - [ ] audits `web.bulk_research_payload_invalid`;
-  - [ ] resolves effect as failure.
-- [ ] P1 Tests:
-  - [ ] malformed JSON rejected;
-  - [ ] missing query and urls rejected;
-  - [ ] `urls: []` rejected;
-  - [ ] `urls: ["https://ok", 42]` rejected;
-  - [ ] `urls: [""]` rejected;
-  - [ ] blocked/private URL rejected;
-  - [ ] valid URL array succeeds.
+<!-- evidence: approvalPayload.ts requireStringArrayField(); webRunner.ts B2 rewrite; webRunner.test.ts 5 B2 tests; vitest 1153/1153 -->
+- [x] P1 Add `requireStringArrayField()` to approval payload helpers. <!-- approvalPayload.ts -->
+- [x] P1 Use it in bulk research approval resolver. <!-- runApprovedBulkResearch -->
+- [x] P1 Validate each URL with shared URL safety policy before reading. <!-- classifyFetchUrl per-URL check -->
+- [x] P1 Invalid payload:
+  - [x] does not call research/readPages; <!-- B2 tests: web.readPages not called -->
+  - [x] audits `web.bulk_research_payload_invalid`; <!-- all B2 tests verify auditTypes() -->
+  - [x] resolves effect as failure. <!-- submit called with ok: false -->
+- [x] P1 Tests:
+  - [x] malformed JSON rejected; <!-- F2 existing test -->
+  - [x] missing query and urls rejected; <!-- F2 existing + B2 empty test -->
+  - [x] `urls: []` rejected; <!-- B2: b2-empty -->
+  - [x] `urls: ["https://ok", 42]` rejected; <!-- B2: b2-bad-slot -->
+  - [x] `urls: [""]` rejected; <!-- B2: b2-empty-slot -->
+  - [x] blocked/private URL rejected; <!-- B2: b2-blocked (http://localhost/admin) -->
+  - [x] valid URL array succeeds. <!-- B2: b2-valid -->
 
 ### Suggested TypeScript helper
 

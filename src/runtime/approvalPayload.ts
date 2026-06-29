@@ -71,6 +71,34 @@ export function requireStringField(
 }
 
 /**
+ * B2 (FIX4): Return a validated non-empty string array from a parsed payload.
+ * Throws ApprovalPayloadError if the field is missing, not an array, empty,
+ * or contains any non-string or blank slot.
+ */
+export function requireStringArrayField(
+  obj: Record<string, unknown>,
+  field: string,
+  label: string,
+): string[] {
+  const value = obj[field];
+  if (!Array.isArray(value) || value.length === 0) {
+    throw new ApprovalPayloadError(
+      'approval_payload_missing_field',
+      `${label} approval payload requires a non-empty ${field} array.`,
+    );
+  }
+  return value.map((item: unknown, index: number) => {
+    if (typeof item !== 'string' || item.trim() === '') {
+      throw new ApprovalPayloadError(
+        'approval_payload_invalid_field',
+        `${label}.${field}[${index}] must be a non-empty string.`,
+      );
+    }
+    return item.trim();
+  });
+}
+
+/**
  * Like parseApprovalPayloadObject but returns undefined instead of throwing.
  * Use this for backwards-compatible call sites that handle the undefined case.
  */

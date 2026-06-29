@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-29T01:16:58Z - Claude Sonnet 4.6 - FIX4 B2 (bulk research per-slot URL validation) DONE
+- Added requireStringArrayField() to approvalPayload.ts.
+- Rewrote runApprovedBulkResearch() to use it + per-URL classifyFetchUrl check in one try/catch block.
+- Removed unsafe `parsed.urls as string[]` cast; now validated before readPages call.
+- 5 B2 tests: empty array, non-string slot, empty-string slot, blocked URL, valid array; vitest 1153/1153.
+- Next: C1 — WebResearchService.readPages() must delegate to provider batch method.
+
 ## 2026-06-29T01:09:55Z - Claude Sonnet 4.6 - FIX4 B1 (webRunner fail-closed helpers) DONE
 - Added WebEffectPayloadError + requireEffectString + requireEffectStringArray + failInvalidWebEffect to webRunner.ts.
 - Applied to web_search.query, web_research.query, web_research.urls (effect-level validation before provider/approval).

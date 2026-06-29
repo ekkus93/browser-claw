@@ -350,6 +350,81 @@ describe('runApprovedBulkResearch (F3)', () => {
 });
 
 // ---------------------------------------------------------------------------
+// B2 (FIX4): strict per-slot URL validation in runApprovedBulkResearch
+// ---------------------------------------------------------------------------
+
+describe('B2 — bulk research URL slot validation', () => {
+  it('B2: urls: [] rejected and audits bulk_research_payload_invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'b2-empty',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ urls: [] }),
+    });
+    expect(web.readPages).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+  });
+
+  it('B2: non-string slot in urls rejected', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'b2-bad-slot',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ urls: ['https://a.example', 42] }),
+    });
+    expect(web.readPages).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+  });
+
+  it('B2: empty-string slot in urls rejected', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'b2-empty-slot',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ urls: [''] }),
+    });
+    expect(web.readPages).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+  });
+
+  it('B2: blocked/private URL rejected by safety policy', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'b2-blocked',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ urls: ['http://localhost/admin'] }),
+    });
+    expect(web.readPages).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+  });
+
+  it('B2: valid URL array calls readPages and resolves ok', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'b2-valid',
+      status: 'approved',
+      payloadPreview: JSON.stringify({
+        urls: ['https://a.example/', 'https://b.example/'],
+      }),
+    });
+    expect(web.readPages).toHaveBeenCalledWith(
+      ['https://a.example/', 'https://b.example/'],
+      expect.anything(),
+    );
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: true }),
+      }),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
 // B1 (FIX4): host webRunner fail-closed effect payload validation
 // ---------------------------------------------------------------------------
 

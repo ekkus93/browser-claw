@@ -15,6 +15,7 @@ import { webAuditEvent } from '../audit/auditEvents.ts';
 import { classifyFetchUrl } from '../net/urlSafety.ts';
 import {
   parseApprovalPayloadObject,
+  requireStringArrayField,
   requireStringField,
 } from './approvalPayload.ts';
 import type { AppDispatch } from '../store/store.ts';
@@ -417,12 +418,35 @@ export async function runApprovedBulkResearch(
   deps: WebEffectDeps,
   approval: ApprovedBulkResearch,
 ): Promise<void> {
+  // B2 (FIX4): strict payload parsing — validate every URL slot and check
+  // URL safety policy before calling provider.
   let parsed: Record<string, unknown>;
+  let urls: string[] | undefined;
+  let query: string | undefined;
+
   try {
     parsed = parseApprovalPayloadObject(
       approval.payloadPreview,
-      'Bulk research',
+      'web_bulk_research',
     );
+
+    if ('urls' in parsed) {
+      // URLs mode: validate every slot and check URL safety policy.
+      const rawUrls = requireStringArrayField(
+        parsed,
+        'urls',
+        'web_bulk_research',
+      );
+      for (const url of rawUrls) {
+        if (!classifyFetchUrl(url).ok) {
+          throw new Error(`URL not allowed by safety policy: ${url}`);
+        }
+      }
+      urls = rawUrls;
+    } else {
+      // Query mode: require non-empty query string.
+      query = requireStringField(parsed, 'query', 'web_bulk_research');
+    }
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Invalid bulk research payload';
@@ -442,35 +466,9 @@ export async function runApprovedBulkResearch(
     return;
   }
 
-  // C3 (FIX3): discriminate mode='urls' (readPages) vs mode='query' (research).
-  const isUrlsMode = Array.isArray(parsed.urls) && parsed.urls.length > 0;
-
-  let query: string | undefined;
-  if (!isUrlsMode) {
-    try {
-      query = requireStringField(parsed, 'query', 'Bulk research');
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : 'Invalid bulk research payload';
-      void recordAudit(
-        deps.db,
-        deps.dispatch,
-        webAuditEvent('web.bulk_research_payload_invalid', message, {
-          risk: 'medium',
-          status: 'failure',
-        }),
-      );
-      await deps.submit({
-        type: 'resolve_effect',
-        id: approval.id,
-        result: { ok: false, error: { kind: 'web_invalid_payload', message } },
-      });
-      return;
-    }
-  }
-
+  const isUrlsMode = urls !== undefined;
   const label = isUrlsMode
-    ? `Read ${String((parsed.urls as string[]).length)} page(s)`
+    ? `Read ${String(urls!.length)} page(s)`
     : `Research: ${query ?? ''}`;
 
   if (approval.status !== 'approved') {
@@ -500,7 +498,7 @@ export async function runApprovedBulkResearch(
     const options = sanitizeResearchOptions(parsed.options);
     let bundle: Awaited<ReturnType<typeof deps.web.research>>;
     if (isUrlsMode) {
-      bundle = await deps.web.readPages(parsed.urls as string[], options);
+      bundle = await deps.web.readPages(urls!, options);
     } else {
       bundle = await deps.web.research(query!, options);
     }

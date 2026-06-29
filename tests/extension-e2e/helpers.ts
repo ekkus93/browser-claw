@@ -29,10 +29,33 @@ export async function getExtensionId(context: BrowserContext): Promise<string> {
  * D2 (FIX5): copy an extension directory to a temp dir, dereferencing all symlinks.
  * Returns the path to the staged directory. Call from beforeAll; pass the result as
  * the extension path to Playwright's --load-extension flag.
+ *
+ * Note: fs.cpSync dereference:true does not reliably create real files on all
+ * platforms/versions; we walk the tree manually and use fs.realpath to resolve each
+ * entry before copying, ensuring Chrome always loads real files.
  */
 export function stageExtensionDir(srcDir: string): string {
   const staged = fs.mkdtempSync(path.join(os.tmpdir(), 'bclaw-ext-'));
-  fs.cpSync(srcDir, staged, { recursive: true, dereference: true });
+  const entries = fs.readdirSync(srcDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const src = path.join(srcDir, entry.name);
+    const dst = path.join(staged, entry.name);
+    // Resolve symlinks to their real content regardless of depth.
+    const real = fs.realpathSync(src);
+    const realStat = fs.statSync(real);
+    if (realStat.isDirectory()) {
+      fs.mkdirSync(dst, { recursive: true });
+      // Recurse — but we only go one level for extension fixtures (manifest + sw).
+      const sub = fs.readdirSync(real, { withFileTypes: true });
+      for (const s of sub) {
+        const ssrc = path.join(real, s.name);
+        const sdst = path.join(dst, s.name);
+        fs.copyFileSync(fs.realpathSync(ssrc), sdst);
+      }
+    } else {
+      fs.copyFileSync(real, dst);
+    }
+  }
   return staged;
 }
 

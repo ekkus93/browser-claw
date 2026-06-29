@@ -2,8 +2,9 @@ FROM mcr.microsoft.com/playwright:v1.60.0-jammy
 
 WORKDIR /app
 
-# Copy package manifest and lockfile first for layer caching.
-COPY package.json pnpm-lock.yaml ./
+# Copy package manifest, lockfile, and .npmrc first for layer caching.
+# .npmrc sets confirm-module-purge=false to suppress pnpm's TTY prompt in CI.
+COPY package.json pnpm-lock.yaml .npmrc ./
 
 # Enable corepack (provides pnpm without a separate install step).
 RUN corepack enable && corepack prepare pnpm@latest --activate
@@ -21,4 +22,7 @@ COPY . .
 # J1 fixture server uses devtest.internal as a non-blocked hostname for the
 # fixture page server. Docker run passes --add-host devtest.internal:127.0.0.1
 # to wire the hostname (see test:extension:e2e:docker in package.json).
-CMD ["pnpm", "run", "test:extension:e2e", "--reporter=list"]
+# Extension service workers do not register in Chrome's headless modes.
+# We start Xvfb on :99 so Chrome can run headed (required for MV3 extensions).
+ENV DISPLAY=:99
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1280x1024x24 & sleep 2 && pnpm run test:extension:e2e --reporter=list"]

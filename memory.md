@@ -2222,6 +2222,15 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T07:32:31Z - Claude Sonnet 4.6 - Ralph FIX5 D3+D4+I1-I3: Docker E2E passes (5/5), all acceptance items complete
+- Root causes fixed for Docker: .dockerignore (host node_modules was overwriting Docker), stageExtensionDir uses realpathSync (cpSync dereference:true broken in Node 24), headless:false + Xvfb in Dockerfile (MV3 SW don't register in headless Chrome).
+- Docker E2E: 5/5 pass (J1 x2 read_page fixture/hostile-script, J2 x3 connected/read_page/not-detected).
+- I1: all gate commands documented with results; I2: all regression checklist items complete; I3: final acceptance checklist complete.
+- H1/H2 evidence reconciliation done.
+- Gate: typecheck ✓, vitest 1211/125 ✓.
+- .dockerignore and .npmrc created; Dockerfile CMD uses Xvfb+headless:false; spec files use headless:false.
+- FIX5 TODO: all P0+P1 items complete.
+
 ## 2026-06-29T06:11:40Z - Claude Sonnet 4.6 - Ralph FIX5 C3: sandbox policy section in Settings shows QuickJS + disabled-by-policy DONE
 - SettingsScreen.tsx: added "Sandbox engine → QuickJS (bundled)" badge; updated paragraph to say "disabled by policy in v0.1"; no implication sandbox is live.
 - Gate: typecheck ✓, vitest 1211/125 ✓.

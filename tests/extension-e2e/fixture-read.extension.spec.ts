@@ -84,8 +84,9 @@ test.afterAll(async () => {
 
 async function launchTestCtx(): Promise<BrowserContext> {
   return chromium.launchPersistentContext('', {
+    // D3 (FIX5): omit --headless=new; extensions run headed with xvfb-run in Docker.
+    headless: false,
     args: [
-      '--headless=new',
       `--disable-extensions-except=${stagedExtensionPath}`,
       `--load-extension=${stagedExtensionPath}`,
     ],

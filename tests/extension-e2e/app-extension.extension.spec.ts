@@ -84,8 +84,9 @@ test.afterAll(async () => {
 
 async function launchTestCtx(): Promise<BrowserContext> {
   return chromium.launchPersistentContext('', {
+    // D3 (FIX5): omit --headless=new; extensions run headed with xvfb-run in Docker.
+    headless: false,
     args: [
-      '--headless=new',
       `--disable-extensions-except=${stagedExtensionPath}`,
       `--load-extension=${stagedExtensionPath}`,
     ],
@@ -172,7 +173,8 @@ test('J2: Settings shows Not detected when extension is missing', async () => {
   // Load a browser context WITHOUT the extension; use a fake extension ID so
   // the Settings probe wires up but cannot reach any real extension.
   const ctx = await chromium.launchPersistentContext('', {
-    args: ['--headless=new'],
+    // No extension loaded; headless: false for consistency with xvfb-run Docker environment.
+    headless: false,
   });
   try {
     // 32 hex chars — valid format but no matching extension

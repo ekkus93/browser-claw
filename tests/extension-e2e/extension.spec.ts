@@ -20,8 +20,10 @@ assertExtensionFixture(EXTENSION_PATH);
 
 async function launchCtx(): Promise<BrowserContext> {
   return chromium.launchPersistentContext('', {
+    // D3 (FIX5): omit --headless=new; extensions run headed with xvfb-run in Docker,
+    // and with a real display locally. MV3 service workers do not register in headless mode.
+    headless: false,
     args: [
-      '--headless=new',
       `--disable-extensions-except=${EXTENSION_PATH}`,
       `--load-extension=${EXTENSION_PATH}`,
     ],

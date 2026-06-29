@@ -675,4 +675,210 @@ describe('referenceRuntime', () => {
       ).toBeUndefined();
     }
   });
+
+  // B1 (FIX9): search forwards validated options.
+  it('B1 FIX9: search with options.maxResults 1 emits web_search.options.maxResults === 1', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('search opts'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'search',
+          query: 'browser wasm',
+          options: { maxResults: 1 },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('web_search');
+    expect((effects[0] as Record<string, unknown>)['options']).toMatchObject({
+      maxResults: 1,
+    });
+  });
+
+  it('B1 FIX9: search with invalid maxResults 0 emits invalid_web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('search bad opts'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'search',
+          query: 'browser wasm',
+          options: { maxResults: 0 },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('audit_append');
+    if (effects[0]?.type === 'audit_append') {
+      expect(effects[0].event_type).toBe('runtime.invalid_web_request');
+    }
+  });
+
+  it('B1 FIX9: search with unknown option rejects', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('search unknown opt'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'search',
+          query: 'test',
+          options: { site: 'example.com' },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('audit_append');
+    if (effects[0]?.type === 'audit_append') {
+      expect(effects[0].event_type).toBe('runtime.invalid_web_request');
+    }
+  });
+
+  // B2 (FIX9): readPage forwards validated options.
+  it('B2 FIX9: readPage with options.maxChars 1000 emits web_page_read.options.maxChars === 1000', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPage opts'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'readPage',
+          url: 'https://example.com',
+          options: { maxChars: 1000 },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('web_page_read');
+    expect((effects[0] as Record<string, unknown>)['options']).toMatchObject({
+      maxChars: 1000,
+    });
+  });
+
+  it('B2 FIX9: readPage with invalid maxChars -1 emits invalid_web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPage bad opts'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'readPage',
+          url: 'https://example.com',
+          options: { maxChars: -1 },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('audit_append');
+    if (effects[0]?.type === 'audit_append') {
+      expect(effects[0].event_type).toBe('runtime.invalid_web_request');
+    }
+  });
+
+  it('B2 FIX9: readPage with unknown option rejects', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPage unknown opt'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'readPage',
+          url: 'https://example.com',
+          options: { format: 'markdown' },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('audit_append');
+    if (effects[0]?.type === 'audit_append') {
+      expect(effects[0].event_type).toBe('runtime.invalid_web_request');
+    }
+  });
+
+  // B3 (FIX9): research forwards validated options.
+  it('B3 FIX9: research with options.maxPages 2 emits web_research.options.maxPages === 2', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('research opts'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'research',
+          query: 'webassembly browser agents',
+          options: { maxPages: 2, maxResults: 5 },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('web_research');
+    expect((effects[0] as Record<string, unknown>)['options']).toMatchObject({
+      maxPages: 2,
+      maxResults: 5,
+    });
+  });
+
+  it('B3 FIX9: research with invalid option emits invalid_web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('research bad opts'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'research',
+          query: 'test',
+          options: { maxResults: 0 },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('audit_append');
+    if (effects[0]?.type === 'audit_append') {
+      expect(effects[0].event_type).toBe('runtime.invalid_web_request');
+    }
+  });
+
+  // B4 (FIX9): readPages forwards full options including maxChars.
+  it('B4 FIX9: readPages with options.maxChars 20000 preserves maxChars', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPages full opts'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'readPages',
+          urls: ['https://a.example/', 'https://b.example/'],
+          options: { maxPages: 1, maxChars: 20_000 },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('web_research');
+    expect((effects[0] as Record<string, unknown>)['options']).toMatchObject({
+      maxPages: 1,
+      maxChars: 20_000,
+    });
+  });
+
+  it('B4 FIX9: readPages with invalid maxChars emits invalid_web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPages bad maxChars'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'readPages',
+          urls: ['https://a.example/'],
+          options: { maxChars: 'big' },
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('audit_append');
+    if (effects[0]?.type === 'audit_append') {
+      expect(effects[0].event_type).toBe('runtime.invalid_web_request');
+    }
+  });
 });

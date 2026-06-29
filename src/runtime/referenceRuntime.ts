@@ -3,9 +3,9 @@ import { toolContentFromEffectResult } from './effectResultSerialization.ts';
 import { toolContentFromEffectFailure } from './effectFailure.ts';
 import { classifyFetchUrl } from '../net/urlSafety.ts';
 import {
-  MAX_BATCH_PAGE_READS,
-  normalizeOptionalPositiveIntegerLimit,
-} from '../webresearch/limits.ts';
+  validateRuntimeWebOptions,
+  RuntimeWebOptionsValidationError,
+} from './runtimeWebOptions.ts';
 
 /**
  * A faithful TypeScript port of the deterministic `claw-core` runtime
@@ -264,11 +264,34 @@ export function createReferenceRuntime(
                 },
               ];
             }
+            // B1 (FIX9): validate and forward options for search.
+            let searchOptions;
+            try {
+              searchOptions = validateRuntimeWebOptions(webRequest.options);
+            } catch (err) {
+              return [
+                {
+                  type: 'audit_append',
+                  id: proposalId,
+                  event_type: 'runtime.invalid_web_request',
+                  summary:
+                    err instanceof RuntimeWebOptionsValidationError
+                      ? err.message
+                      : 'web_request search options invalid',
+                  risk: 'medium',
+                },
+              ];
+            }
             state.pending[proposalId] = 'web_search';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;
             return [
-              { type: 'web_search', id: proposalId, query: webRequest.query },
+              {
+                type: 'web_search',
+                id: proposalId,
+                query: webRequest.query,
+                ...(searchOptions ? { options: searchOptions } : {}),
+              },
             ];
           }
           if (op === 'readPage') {
@@ -287,11 +310,34 @@ export function createReferenceRuntime(
                 },
               ];
             }
+            // B2 (FIX9): validate and forward options for readPage.
+            let readPageOptions;
+            try {
+              readPageOptions = validateRuntimeWebOptions(webRequest.options);
+            } catch (err) {
+              return [
+                {
+                  type: 'audit_append',
+                  id: proposalId,
+                  event_type: 'runtime.invalid_web_request',
+                  summary:
+                    err instanceof RuntimeWebOptionsValidationError
+                      ? err.message
+                      : 'web_request readPage options invalid',
+                  risk: 'medium',
+                },
+              ];
+            }
             state.pending[proposalId] = 'web_page_read';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;
             return [
-              { type: 'web_page_read', id: proposalId, url: webRequest.url },
+              {
+                type: 'web_page_read',
+                id: proposalId,
+                url: webRequest.url,
+                ...(readPageOptions ? { options: readPageOptions } : {}),
+              },
             ];
           }
           if (op === 'readCurrentTab') {
@@ -322,6 +368,24 @@ export function createReferenceRuntime(
                 },
               ];
             }
+            // B3 (FIX9): validate and forward options for research.
+            let researchOptions;
+            try {
+              researchOptions = validateRuntimeWebOptions(webRequest.options);
+            } catch (err) {
+              return [
+                {
+                  type: 'audit_append',
+                  id: proposalId,
+                  event_type: 'runtime.invalid_web_request',
+                  summary:
+                    err instanceof RuntimeWebOptionsValidationError
+                      ? err.message
+                      : 'web_request research options invalid',
+                  risk: 'medium',
+                },
+              ];
+            }
             state.pending[proposalId] = 'web_research';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;
@@ -331,6 +395,7 @@ export function createReferenceRuntime(
                 id: proposalId,
                 mode: 'query',
                 query: webRequest.query,
+                ...(researchOptions ? { options: researchOptions } : {}),
               },
             ];
           }
@@ -378,38 +443,25 @@ export function createReferenceRuntime(
               }
               validatedUrls.push(slot.trim());
             }
-            // B3 (FIX7) + B1 (FIX8): validate optional maxPages in web_request
-            // options and forward validated options into the emitted effect.
-            // A1/A2 (FIX8): parser normalizes top-level maxPages into options;
-            // only options.maxPages needs checking here.
-            const rawOptions = webRequest.options as
-              | Record<string, unknown>
-              | undefined;
-            const rawMaxPages = rawOptions?.maxPages;
-            let validatedMaxPages: number | undefined;
-            if (rawMaxPages !== undefined) {
-              try {
-                validatedMaxPages = normalizeOptionalPositiveIntegerLimit(
-                  rawMaxPages,
-                  'maxPages',
-                  { max: MAX_BATCH_PAGE_READS },
-                );
-              } catch {
-                return [
-                  {
-                    type: 'audit_append',
-                    id: proposalId,
-                    event_type: 'runtime.invalid_web_request',
-                    summary: `web_request readPages options.maxPages is invalid: ${String(rawMaxPages)}`,
-                    risk: 'medium',
-                  },
-                ];
-              }
+            // B4 (FIX9): validate and forward full options for readPages.
+            // A1/A2 (FIX8): parser normalizes top-level maxPages into options.
+            let readPagesOptions;
+            try {
+              readPagesOptions = validateRuntimeWebOptions(webRequest.options);
+            } catch (err) {
+              return [
+                {
+                  type: 'audit_append',
+                  id: proposalId,
+                  event_type: 'runtime.invalid_web_request',
+                  summary:
+                    err instanceof RuntimeWebOptionsValidationError
+                      ? err.message
+                      : 'web_request readPages options invalid',
+                  risk: 'medium',
+                },
+              ];
             }
-            const forwardedOptions =
-              validatedMaxPages !== undefined
-                ? { maxPages: validatedMaxPages }
-                : undefined;
             state.pending[proposalId] = 'web_research';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;
@@ -419,7 +471,7 @@ export function createReferenceRuntime(
                 id: proposalId,
                 mode: 'urls',
                 urls: validatedUrls,
-                ...(forwardedOptions ? { options: forwardedOptions } : {}),
+                ...(readPagesOptions ? { options: readPagesOptions } : {}),
               },
             ];
           }

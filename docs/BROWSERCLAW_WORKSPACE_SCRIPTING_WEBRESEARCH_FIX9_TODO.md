@@ -196,59 +196,44 @@ If `site` or `format` is not actually used downstream, remove it from the suppor
 
 ## B1 — Forward options for `search`
 
-- [ ] P1 Update `referenceRuntime.ts` search branch.
-- [ ] P1 Validate options with `validateRuntimeWebOptions`.
-- [ ] P1 Emit `options` if present.
-- [ ] P1 Tests:
-  - [ ] search with `options.maxResults: 1` emits `web_search.options.maxResults === 1`;
-  - [ ] search with invalid `maxResults: 0` emits invalid web request audit;
-  - [ ] search with unknown option rejected.
-
-### Suggested patch shape
-
-```ts
-const options = validateRuntimeWebOptions(webRequest.options);
-
-return [
-  {
-    type: 'web_search',
-    id: proposalId,
-    query,
-    ...(options ? { options } : {}),
-  },
-];
-```
+- [x] P1 Update `referenceRuntime.ts` search branch. <!-- validateRuntimeWebOptions in search op -->
+- [x] P1 Validate options with `validateRuntimeWebOptions`.
+- [x] P1 Emit `options` if present.
+- [x] P1 Tests: <!-- referenceRuntime.test.ts B1 FIX9 tests -->
+  - [x] search with `options.maxResults: 1` emits `web_search.options.maxResults === 1`;
+  - [x] search with invalid `maxResults: 0` emits invalid web request audit;
+  - [x] search with unknown option rejected.
 
 ## B2 — Forward options for `readPage`
 
-- [ ] P1 Update `referenceRuntime.ts` readPage branch.
-- [ ] P1 Validate options with `validateRuntimeWebOptions`.
-- [ ] P1 Emit `options` if present.
-- [ ] P1 Tests:
-  - [ ] readPage with `options.maxChars: 1000` emits `web_page_read.options.maxChars === 1000`;
-  - [ ] readPage with invalid `maxChars: -1` emits invalid web request audit;
-  - [ ] readPage with unknown option rejected.
+- [x] P1 Update `referenceRuntime.ts` readPage branch. <!-- validateRuntimeWebOptions in readPage op -->
+- [x] P1 Validate options with `validateRuntimeWebOptions`.
+- [x] P1 Emit `options` if present.
+- [x] P1 Tests: <!-- referenceRuntime.test.ts B2 FIX9 tests -->
+  - [x] readPage with `options.maxChars: 1000` emits `web_page_read.options.maxChars === 1000`;
+  - [x] readPage with invalid `maxChars: -1` emits invalid web request audit;
+  - [x] readPage with unknown option rejected.
 
 ## B3 — Forward options for `research`
 
-- [ ] P1 Update `referenceRuntime.ts` research query branch.
-- [ ] P1 Validate options with `validateRuntimeWebOptions`.
-- [ ] P1 Emit `options` if present.
-- [ ] P1 Tests:
-  - [ ] research with `options.maxPages: 2` emits `web_research.options.maxPages === 2`;
-  - [ ] research with `options.maxResults: 5` emits `web_research.options.maxResults === 5`;
-  - [ ] research with invalid option emits invalid web request audit.
+- [x] P1 Update `referenceRuntime.ts` research query branch. <!-- validateRuntimeWebOptions in research op -->
+- [x] P1 Validate options with `validateRuntimeWebOptions`.
+- [x] P1 Emit `options` if present.
+- [x] P1 Tests: <!-- referenceRuntime.test.ts B3 FIX9 tests -->
+  - [x] research with `options.maxPages: 2` emits `web_research.options.maxPages === 2`;
+  - [x] research with `options.maxResults: 5` emits `web_research.options.maxResults === 5`;
+  - [x] research with invalid option emits invalid web request audit.
 
 ## B4 — Forward full options for `readPages`
 
-- [ ] P1 Update `referenceRuntime.ts` readPages branch.
-- [ ] P1 Preserve:
-  - [ ] `maxPages`;
-  - [ ] `maxChars`.
-- [ ] P1 Tests:
-  - [ ] readPages with `options.maxPages: 1` preserves maxPages;
-  - [ ] readPages with `options.maxChars: 20000` preserves maxChars;
-  - [ ] readPages with invalid maxChars rejected.
+- [x] P1 Update `referenceRuntime.ts` readPages branch. <!-- replaced ad-hoc maxPages check with validateRuntimeWebOptions -->
+- [x] P1 Preserve:
+  - [x] `maxPages`;
+  - [x] `maxChars`.
+- [x] P1 Tests: <!-- referenceRuntime.test.ts B4 FIX9 tests -->
+  - [x] readPages with `options.maxPages: 1` preserves maxPages;
+  - [x] readPages with `options.maxChars: 20000` preserves maxChars;
+  - [x] readPages with invalid maxChars rejected.
 
 ---
 

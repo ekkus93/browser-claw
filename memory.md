@@ -2222,6 +2222,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T08:51:31Z - Claude Sonnet 4.6 - Ralph FIX6 B1+B2+B3: TS referenceRuntime raw readPages validation complete
+- src/runtime/referenceRuntime.ts: readPages branch now validates every URL slot (typeof/trim/classifyFetchUrl) instead of casting as string[].
+- Imported classifyFetchUrl from '../net/urlSafety.ts'.
+- 5 new B1 tests in referenceRuntime.test.ts; vitest 1216/125 ✓.
+- NEXT: Part C (reactive Settings WebResearch capability status).
+
 ## 2026-06-29T08:45:13Z - Claude Sonnet 4.6 - Ralph FIX6 A1+A2+A3: Rust/WASM structured failure serialization complete
 - Added Runtime::tool_content_from_effect_failure() in crates/claw-core/src/lib.rs.
 - Wired into effect failure branch (plan_proposal/web_search/web_page_read/web_research/extension_request) and tool_call rejection.

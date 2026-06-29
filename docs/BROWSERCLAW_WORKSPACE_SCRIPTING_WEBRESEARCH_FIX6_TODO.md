@@ -189,27 +189,29 @@ This leaves a second path that accepts invalid URL slots.
 
 Raw `web_request.readPages` must validate every URL slot before emitting a `web_research` effect.
 
-- [ ] P1 Add or reuse helper:
-  - [ ] required non-empty string;
-  - [ ] required non-empty string array;
-  - [ ] URL safety validation via shared classifier.
-- [ ] P1 Reject:
-  - [ ] missing `urls`;
-  - [ ] non-array `urls`;
-  - [ ] empty array;
-  - [ ] non-string slot;
-  - [ ] empty/whitespace slot;
-  - [ ] unsafe URL such as localhost/private/file scheme.
-- [ ] P1 Invalid request must:
-  - [ ] emit invalid web request audit/protocol error;
-  - [ ] not emit `web_research`;
-  - [ ] not call web provider.
-- [ ] P1 Tests:
-  - [ ] `urls: []` rejected;
-  - [ ] `urls: ["https://ok", 42]` rejected;
-  - [ ] `urls: [""]` rejected;
-  - [ ] `urls: ["http://localhost"]` rejected;
-  - [ ] valid public HTTPS URLs emit `web_research` mode `urls`.
+<!-- evidence: src/runtime/referenceRuntime.ts readPages branch — per-slot for loop with typeof/trim/classifyFetchUrl checks; classifyFetchUrl imported from '../net/urlSafety.ts' -->
+- [x] P1 Add or reuse helper:
+  - [x] required non-empty string;
+  - [x] required non-empty string array;
+  - [x] URL safety validation via shared classifier.
+- [x] P1 Reject:
+  - [x] missing `urls`;
+  - [x] non-array `urls`;
+  - [x] empty array;
+  - [x] non-string slot;
+  - [x] empty/whitespace slot;
+  - [x] unsafe URL such as localhost/private/file scheme.
+- [x] P1 Invalid request must:
+  - [x] emit invalid web request audit/protocol error;
+  - [x] not emit `web_research`;
+  - [x] not call web provider.
+<!-- evidence: src/runtime/referenceRuntime.test.ts B1 tests (5) -->
+- [x] P1 Tests:
+  - [x] `urls: []` rejected; <!-- B1: readPages with empty urls array -->
+  - [x] `urls: ["https://ok", 42]` rejected; <!-- B1: readPages with non-string slot -->
+  - [x] `urls: [""]` rejected; <!-- B1: readPages with empty string slot -->
+  - [x] `urls: ["http://localhost"]` rejected; <!-- B1: readPages with localhost URL -->
+  - [x] valid public HTTPS URLs emit `web_research` mode `urls`. <!-- B1: readPages with valid public HTTPS URLs -->
 
 ### Suggested TypeScript helper
 
@@ -245,19 +247,24 @@ function requireRuntimeStringArrayField(
 
 ## B2 — Use one web request validator if available
 
-- [ ] P1 If `agentBlockParser` already exposes `validateWebRequest()`, reuse it in `referenceRuntime.ts` instead of creating a parallel helper.
-- [ ] P1 If reuse creates dependency issues, duplicate the minimal strict validation and add comments explaining why.
-- [ ] P1 Tests should cover both parser and reference runtime paths.
+<!-- evidence: agentBlockParser does not expose validateWebRequest() publicly; inline per-slot loop added directly in referenceRuntime.ts readPages branch — avoids cross-module dependency -->
+- [x] P1 If `agentBlockParser` already exposes `validateWebRequest()`, reuse it in `referenceRuntime.ts` instead of creating a parallel helper.
+- [x] P1 If reuse creates dependency issues, duplicate the minimal strict validation and add comments explaining why.
+<!-- evidence: B1 tests cover both paths (existing A2 tests cover parser path; new B1 tests cover reference runtime) -->
+- [x] P1 Tests should cover both parser and reference runtime paths.
 
 ## B3 — Do not emit empty/default values for malformed raw web requests
 
-- [ ] P1 Search `referenceRuntime.ts` for:
-  - [ ] `as string[]`;
-  - [ ] `?? ''`;
-  - [ ] `|| ''`;
-  - [ ] unchecked casts around `web_request`.
-- [ ] P1 Replace protocol-boundary casts/defaults with validation.
-- [ ] P1 Add regression tests for any changed path.
+<!-- evidence: grep shows only ?? '' for conversation/skill IDs (internal defaults, not protocol boundaries); no remaining as string[] casts around web_request -->
+- [x] P1 Search `referenceRuntime.ts` for:
+  - [x] `as string[]`;
+  - [x] `?? ''`;
+  - [x] `|| ''`;
+  - [x] unchecked casts around `web_request`.
+<!-- evidence: as string[] cast removed; replaced with validatedUrls array from per-slot loop -->
+- [x] P1 Replace protocol-boundary casts/defaults with validation.
+<!-- evidence: B1 tests are the regression tests for the changed path -->
+- [x] P1 Add regression tests for any changed path.
 
 Useful command:
 

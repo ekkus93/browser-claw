@@ -489,4 +489,89 @@ describe('referenceRuntime', () => {
       expect(val.content).not.toContain('at Object.');
     }
   });
+
+  // B1 (FIX6): strict per-slot readPages validation in referenceRuntime
+
+  it('B1: readPages with empty urls array emits invalid_web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPages empty'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'readPages', urls: [] } },
+    });
+    expect(effects[0]?.type).toBe('audit_append');
+    if (effects[0]?.type === 'audit_append') {
+      expect(effects[0].event_type).toBe('runtime.invalid_web_request');
+    }
+  });
+
+  it('B1: readPages with non-string slot emits invalid_web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPages non-string'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: { op: 'readPages', urls: ['https://ok.example', 42] },
+      },
+    });
+    expect(effects[0]?.type).toBe('audit_append');
+    if (effects[0]?.type === 'audit_append') {
+      expect(effects[0].event_type).toBe('runtime.invalid_web_request');
+      expect(effects[0].summary).toContain('urls[1]');
+    }
+  });
+
+  it('B1: readPages with empty string slot emits invalid_web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPages empty-slot'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: { web_request: { op: 'readPages', urls: [''] } },
+    });
+    expect(effects[0]?.type).toBe('audit_append');
+    if (effects[0]?.type === 'audit_append') {
+      expect(effects[0].event_type).toBe('runtime.invalid_web_request');
+      expect(effects[0].summary).toContain('urls[0]');
+    }
+  });
+
+  it('B1: readPages with localhost URL emits invalid_web_request', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPages unsafe'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: { op: 'readPages', urls: ['http://localhost/secret'] },
+      },
+    });
+    expect(effects[0]?.type).toBe('audit_append');
+    if (effects[0]?.type === 'audit_append') {
+      expect(effects[0].event_type).toBe('runtime.invalid_web_request');
+    }
+  });
+
+  it('B1: readPages with valid public HTTPS URLs emits web_research', () => {
+    const runtime = createReferenceRuntime();
+    runtime.dispatch(submit('readPages valid'));
+    const effects = runtime.dispatch({
+      type: 'resolve_effect',
+      id: 'eff-2',
+      result: {
+        web_request: {
+          op: 'readPages',
+          urls: ['https://a.example/', 'https://b.example/'],
+        },
+      },
+    });
+    expect(effects[0]?.type).toBe('web_research');
+    if (effects[0]?.type === 'web_research') {
+      const e = effects[0] as { type: string; mode: string; urls: string[] };
+      expect(e.mode).toBe('urls');
+      expect(e.urls).toHaveLength(2);
+    }
+  });
 });

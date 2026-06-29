@@ -1,6 +1,7 @@
 import type { Command, Effect } from './effectTypes.ts';
 import { toolContentFromEffectResult } from './effectResultSerialization.ts';
 import { toolContentFromEffectFailure } from './effectFailure.ts';
+import { classifyFetchUrl } from '../net/urlSafety.ts';
 
 /**
  * A faithful TypeScript port of the deterministic `claw-core` runtime
@@ -330,7 +331,7 @@ export function createReferenceRuntime(
             ];
           }
           if (op === 'readPages') {
-            // C3 (FIX3): explicit URL arrays must not collapse into query:''.
+            // B1 (FIX6): strict per-slot validation — no silent cast.
             if (
               !Array.isArray(webRequest.urls) ||
               webRequest.urls.length === 0
@@ -345,6 +346,34 @@ export function createReferenceRuntime(
                 },
               ];
             }
+            const validatedUrls: string[] = [];
+            for (let i = 0; i < webRequest.urls.length; i++) {
+              const slot = webRequest.urls[i];
+              if (typeof slot !== 'string' || slot.trim() === '') {
+                return [
+                  {
+                    type: 'audit_append',
+                    id: proposalId,
+                    event_type: 'runtime.invalid_web_request',
+                    summary: `web_request readPages urls[${i}] must be a non-empty string`,
+                    risk: 'medium',
+                  },
+                ];
+              }
+              const safety = classifyFetchUrl(slot.trim());
+              if (!safety.ok) {
+                return [
+                  {
+                    type: 'audit_append',
+                    id: proposalId,
+                    event_type: 'runtime.invalid_web_request',
+                    summary: `web_request readPages urls[${i}] is not a safe URL: ${safety.reason}`,
+                    risk: 'medium',
+                  },
+                ];
+              }
+              validatedUrls.push(slot.trim());
+            }
             state.pending[proposalId] = 'web_research';
             state.pending_conversation[proposalId] = conversationId;
             state.pending_skill[proposalId] = skillId;
@@ -353,7 +382,7 @@ export function createReferenceRuntime(
                 type: 'web_research',
                 id: proposalId,
                 mode: 'urls',
-                urls: webRequest.urls as string[],
+                urls: validatedUrls,
               },
             ];
           }

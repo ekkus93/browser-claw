@@ -290,15 +290,17 @@ Central validation rejects invalid `maxPages`, but direct calls to `handleReadPa
 
 `handleReadPages()` must validate `maxPages` itself.
 
-- [ ] P1 Add validation at the start of `handleReadPages()`.
-- [ ] P1 Invalid direct-call `maxPages` returns structured `invalid_request`.
-- [ ] P1 Do not read any page on invalid `maxPages`.
-- [ ] P1 Tests:
-  - [ ] direct `handleReadPages({ maxPages: 0 })` returns `invalid_request`;
-  - [ ] direct `handleReadPages({ maxPages: -1 })` returns `invalid_request`;
-  - [ ] direct `handleReadPages({ maxPages: 1.5 })` returns `invalid_request`;
-  - [ ] direct `handleReadPages({ maxPages: "2" })` returns `invalid_request`;
-  - [ ] valid direct `maxPages: 2` reads only two URLs.
+<!-- evidence: service-worker.js — D1 FIX8 validateOptionalPositiveIntegerLimit call at start of handleReadPages -->
+- [x] P1 Add validation at the start of `handleReadPages()`.
+- [x] P1 Invalid direct-call `maxPages` returns structured `invalid_request`.
+- [x] P1 Do not read any page on invalid `maxPages`.
+<!-- evidence: serviceWorkerReadPages.test.ts D1 FIX8 block (5 tests); 1269 total -->
+- [x] P1 Tests:
+  - [x] direct `handleReadPages({ maxPages: 0 })` returns `invalid_request`;
+  - [x] direct `handleReadPages({ maxPages: -1 })` returns `invalid_request`;
+  - [x] direct `handleReadPages({ maxPages: 1.5 })` returns `invalid_request`;
+  - [x] direct `handleReadPages({ maxPages: "2" })` returns `invalid_request`;
+  - [x] valid direct `maxPages: 2` reads only two URLs.
 
 ### Suggested service-worker patch
 
@@ -327,12 +329,13 @@ async function handleReadPages(message) {
 
 ## D2 — Direct handler should match central validation semantics
 
-- [ ] P1 Ensure central validation and direct handler validation use the same helper.
-- [ ] P1 Ensure above-max behavior matches:
-  - [ ] both reject above max; or
+<!-- evidence: D1 uses validateOptionalPositiveIntegerLimit (same helper as validateMessageSchema); above-max → invalid_request; B1 test updated from "capped at 10" to "invalid_request" -->
+- [x] P1 Ensure central validation and direct handler validation use the same helper.
+- [x] P1 Ensure above-max behavior matches:
+  - [x] both reject above max; or <!-- chosen: reject -->
   - [ ] both clamp above max.
-- [ ] P1 Recommended: both reject above max.
-- [ ] P1 Update any older direct-handler tests that expected capping if the chosen policy is rejection.
+- [x] P1 Recommended: both reject above max. <!-- implemented -->
+- [x] P1 Update any older direct-handler tests that expected capping if the chosen policy is rejection. <!-- B1 "maxPages capped at 10" → updated to "invalid_request" -->
 
 ---
 

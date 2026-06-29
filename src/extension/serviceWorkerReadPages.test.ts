@@ -116,14 +116,16 @@ describe('B1 — handleReadPages (batch)', () => {
     );
   });
 
-  it('B1: maxPages capped at 10 even if message requests more', async () => {
+  it('B1: maxPages above READ_PAGES_MAX returns invalid_request (D2 FIX8: reject, not clamp)', async () => {
     const manyUrls = Array.from(
       { length: 15 },
       (_, i) => `https://example.com/p${String(i)}`,
     );
     const res = await rp({ requestId: 'r6', urls: manyUrls, maxPages: 15 });
-    expect(res['ok']).toBe(true);
-    expect((res['results'] as unknown[]).length).toBe(10);
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
   });
 
   it('B1: non-string URL slot returns invalid_request for that slot', async () => {
@@ -140,6 +142,54 @@ describe('B1 — handleReadPages (batch)', () => {
   it('B1: requestId echoed in top-level response', async () => {
     const res = await rp({ requestId: 'echo-me', urls: [URL1] });
     expect(res['requestId']).toBe('echo-me');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D1 (FIX8): handleReadPages direct-call defense-in-depth for maxPages
+// ---------------------------------------------------------------------------
+
+describe('D1 (FIX8) — handleReadPages direct maxPages validation', () => {
+  it('D1 FIX8: direct maxPages 0 returns invalid_request', async () => {
+    const res = await rp({ requestId: 'd1-0', urls: [URL1], maxPages: 0 });
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
+  });
+
+  it('D1 FIX8: direct maxPages -1 returns invalid_request', async () => {
+    const res = await rp({ requestId: 'd1-neg', urls: [URL1], maxPages: -1 });
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
+  });
+
+  it('D1 FIX8: direct maxPages 1.5 returns invalid_request', async () => {
+    const res = await rp({ requestId: 'd1-frac', urls: [URL1], maxPages: 1.5 });
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
+  });
+
+  it('D1 FIX8: direct maxPages "2" (string) returns invalid_request', async () => {
+    const res = await rp({ requestId: 'd1-str', urls: [URL1], maxPages: '2' });
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
+  });
+
+  it('D1 FIX8: valid direct maxPages 2 reads only two URLs', async () => {
+    const res = await rp({
+      requestId: 'd1-ok',
+      urls: [URL1, URL2, URL3],
+      maxPages: 2,
+    });
+    expect(res['ok']).toBe(true);
+    expect((res['results'] as unknown[]).length).toBe(2);
   });
 });
 

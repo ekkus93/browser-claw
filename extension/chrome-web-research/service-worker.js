@@ -403,12 +403,18 @@ async function handleReadPages(message) {
     );
   }
 
-  // C2 (FIX7): use validated maxPages — central validation guarantees it is a
-  // positive integer or undefined; do NOT treat 0/negative as "read all".
-  const effectiveMax =
-    typeof maxPages === 'number' && Number.isInteger(maxPages) && maxPages >= 1
-      ? maxPages
-      : urls.length;
+  // D1 (FIX8): validate maxPages directly — defense-in-depth for callers that
+  // bypass central validation (direct handler calls, tests, future refactors).
+  const maxPagesDirectError = validateOptionalPositiveIntegerLimit(
+    maxPages,
+    'maxPages',
+    READ_PAGES_MAX,
+  );
+  if (maxPagesDirectError) {
+    return errorResponse('invalid_request', maxPagesDirectError, requestId);
+  }
+
+  const effectiveMax = typeof maxPages === 'number' ? maxPages : urls.length;
   const limit = Math.min(effectiveMax, READ_PAGES_MAX);
 
   const results = [];

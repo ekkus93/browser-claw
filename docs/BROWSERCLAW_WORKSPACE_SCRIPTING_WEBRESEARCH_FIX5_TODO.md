@@ -312,12 +312,13 @@ If the app does not yet provide an extension UI to grant access, say so directly
 
 If Settings has a runtime/script section:
 
-- [ ] P1 Show:
-  - [ ] QuickJS sandbox engine installed;
-  - [ ] user-facing sandbox scripting disabled by policy, if Option B remains selected;
-  - [ ] scripts still require approval if enabled later;
-  - [ ] network/secrets policy.
-- [ ] P1 Do not imply sandboxed scripting is currently user-live if policy blocks it.
+<!-- evidence: SettingsScreen.tsx Sandbox scripting section updated; QuickJS (bundled) badge; "disabled by policy" wording; vitest 1211/125 -->
+- [x] P1 Show:
+  - [x] QuickJS sandbox engine installed; <!-- "Sandbox engine" field → "QuickJS (bundled)" badge -->
+  - [x] user-facing sandbox scripting disabled by policy, if Option B remains selected; <!-- "disabled by policy in v0.1" in paragraph copy -->
+  - [x] scripts still require approval if enabled later; <!-- Requires approval → Always -->
+  - [x] network/secrets policy. <!-- Network access + Secrets access fields -->
+- [x] P1 Do not imply sandboxed scripting is currently user-live if policy blocks it. <!-- paragraph explicitly says "disabled by policy" -->
 
 ---
 

@@ -525,10 +525,17 @@ export default function SettingsScreen() {
             </Section>
 
             <Section title="Sandbox scripting">
+              {/* C3 (FIX5): explicit policy status — sandbox disabled in v0.1; no implication it is live. */}
               <p className="text-xs text-muted">
-                Sandbox scripting (v0.2) is disabled in v0.1. The policy below
-                is read-only; toggling requires a future advanced-mode setting.
+                Sandboxed dynamic scripting (v0.2) is{' '}
+                <strong>disabled by policy in v0.1</strong>. The read-only
+                fields below show the policy that will apply when it is enabled
+                in a future release.
               </p>
+              <Field
+                label="Sandbox engine"
+                control={<Badge tone="neutral">QuickJS (bundled)</Badge>}
+              />
               <Field
                 label="Sandbox scripting enabled"
                 control={

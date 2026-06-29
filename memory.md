@@ -2222,6 +2222,11 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T06:11:40Z - Claude Sonnet 4.6 - Ralph FIX5 C3: sandbox policy section in Settings shows QuickJS + disabled-by-policy DONE
+- SettingsScreen.tsx: added "Sandbox engine → QuickJS (bundled)" badge; updated paragraph to say "disabled by policy in v0.1"; no implication sandbox is live.
+- Gate: typecheck ✓, vitest 1211/125 ✓.
+- NEXT: H1 (overclaim fixes), I1/I2/I3 (acceptance checklists), or D3/D4 (Docker E2E evidence).
+
 ## 2026-06-29T06:09:32Z - Claude Sonnet 4.6 - Ralph FIX5 G1+G2: toolContentFromEffectFailure helper + wired into referenceRuntime DONE
 - G1: src/runtime/effectFailure.ts exports toolContentFromEffectFailure(). Redacts sk-/sk-ant-/Bearer/Authorization from messages. Returns { type:"effect_failure", kind, message, retryable }. 8 tests.
 - G2: referenceRuntime.ts replaces 'Operation was not completed.' and 'Tool call was not completed.' with toolContentFromEffectFailure(). 3 G2 tests verify structured JSON in storage_put.

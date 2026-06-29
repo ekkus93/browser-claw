@@ -139,16 +139,17 @@ Rust currently may default missing tool names to `""`, producing an empty-name `
 
 A malformed tool call must be rejected before proposal.
 
-- [ ] P0 Require `tool_call.name` to be a non-empty trimmed string.
-- [ ] P0 Reject missing/empty/whitespace name.
-- [ ] P0 Emit `runtime.invalid_tool_call` or equivalent protocol audit/error.
-- [ ] P0 Do not emit `tool_call_proposal` on invalid name.
-- [ ] P0 Tests:
-  - [ ] missing name rejected;
-  - [ ] empty name rejected;
-  - [ ] whitespace name rejected;
-  - [ ] valid tool name still emits proposal;
-  - [ ] invalid tool call does not reach host approval path.
+<!-- evidence: claw-core/src/lib.rs — required_tool_name() + audit_invalid_tool_call() + 5 a2_* tests; cargo test 37/37 -->
+- [x] P0 Require `tool_call.name` to be a non-empty trimmed string. <!-- required_tool_name() -->
+- [x] P0 Reject missing/empty/whitespace name. <!-- a2_missing/empty/whitespace tests -->
+- [x] P0 Emit `runtime.invalid_tool_call` or equivalent protocol audit/error. <!-- audit_invalid_tool_call() emits AuditAppend with event_type="runtime.invalid_tool_call" -->
+- [x] P0 Do not emit `tool_call_proposal` on invalid name. <!-- a2_invalid_tool_call_does_not_emit_proposal -->
+- [x] P0 Tests:
+  - [x] missing name rejected; <!-- a2_missing_tool_name_emits_invalid_tool_call_audit -->
+  - [x] empty name rejected; <!-- a2_empty_tool_name_emits_invalid_tool_call_audit -->
+  - [x] whitespace name rejected; <!-- a2_whitespace_tool_name_emits_invalid_tool_call_audit -->
+  - [x] valid tool name still emits proposal; <!-- a2_valid_tool_name_emits_proposal -->
+  - [x] invalid tool call does not reach host approval path. <!-- a2_invalid_tool_call_does_not_emit_proposal -->
 
 ### Suggested Rust code
 

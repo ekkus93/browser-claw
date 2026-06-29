@@ -85,6 +85,27 @@ impl Runtime {
         }]
     }
 
+    // A2 (FIX4): tool_call.name must be a non-empty trimmed string.
+    fn required_tool_name(tool_call: &serde_json::Map<String, Value>) -> Result<String, String> {
+        tool_call
+            .get("name")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(ToOwned::to_owned)
+            .ok_or_else(|| "tool_call.name must be a non-empty string".to_string())
+    }
+
+    fn audit_invalid_tool_call(&mut self, message: String) -> Vec<Effect> {
+        let audit_id = self.next_id();
+        vec![Effect::AuditAppend {
+            id: audit_id,
+            event_type: "runtime.invalid_tool_call".to_string(),
+            summary: message,
+            risk: "medium".to_string(),
+        }]
+    }
+
     fn effects_for_web_request(
         &mut self,
         conversation_id: String,
@@ -309,11 +330,11 @@ impl Runtime {
                         if let Some(tool_call) =
                             result.get("tool_call").and_then(Value::as_object)
                         {
-                            let name = tool_call
-                                .get("name")
-                                .and_then(Value::as_str)
-                                .unwrap_or_default()
-                                .to_string();
+                            // A2 (FIX4): reject empty/missing tool name before proposal.
+                            let name = match Self::required_tool_name(tool_call) {
+                                Ok(n) => n,
+                                Err(msg) => return self.audit_invalid_tool_call(msg),
+                            };
                             let args = tool_call
                                 .get("args")
                                 .cloned()
@@ -1223,6 +1244,91 @@ mod tests {
         assert!(
             matches!(&effects[0], Effect::AuditAppend { event_type, .. } if event_type == "runtime.invalid_web_request"),
             "should reject entire request, not silently drop null slot; got {effects:?}",
+        );
+    }
+
+    // A2 (FIX4): required_tool_name — reject missing/empty/whitespace tool names.
+
+    fn tool_call_result(name: &str) -> serde_json::Value {
+        json!({ "tool_call": { "name": name, "args": {} } })
+    }
+
+    #[test]
+    fn a2_missing_tool_name_emits_invalid_tool_call_audit() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("use a tool"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "tool_call": { "args": {} } }), // no name field
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::AuditAppend { event_type, .. } => {
+                assert_eq!(event_type, "runtime.invalid_tool_call");
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a2_empty_tool_name_emits_invalid_tool_call_audit() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("use a tool"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: tool_call_result(""),
+        });
+        match &effects[0] {
+            Effect::AuditAppend { event_type, .. } => {
+                assert_eq!(event_type, "runtime.invalid_tool_call");
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a2_whitespace_tool_name_emits_invalid_tool_call_audit() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("use a tool"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: tool_call_result("   "),
+        });
+        match &effects[0] {
+            Effect::AuditAppend { event_type, .. } => {
+                assert_eq!(event_type, "runtime.invalid_tool_call");
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a2_valid_tool_name_emits_proposal() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("use a tool"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: tool_call_result("web_search"),
+        });
+        match &effects[0] {
+            Effect::ToolCallProposal { name, .. } => {
+                assert_eq!(name, "web_search");
+            }
+            other => panic!("expected ToolCallProposal, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a2_invalid_tool_call_does_not_emit_proposal() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("use a tool"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "tool_call": { "name": "", "args": {} } }),
+        });
+        assert!(
+            effects.iter().all(|e| !matches!(e, Effect::ToolCallProposal { .. })),
+            "no ToolCallProposal should be emitted for an invalid tool name; got {effects:?}",
         );
     }
 

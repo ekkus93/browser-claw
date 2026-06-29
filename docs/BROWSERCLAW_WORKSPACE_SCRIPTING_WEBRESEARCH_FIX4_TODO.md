@@ -63,22 +63,23 @@ into:
 
 Any invalid URL slot invalidates the whole request.
 
-- [ ] P0 Add or update Rust helper `required_string_array`.
-- [ ] P0 Reject:
-  - [ ] missing `urls`;
-  - [ ] non-array `urls`;
-  - [ ] empty array;
-  - [ ] non-string slot;
-  - [ ] empty/whitespace string slot.
-- [ ] P0 Use this helper in `readPages` mapping.
-- [ ] P0 Invalid request emits `runtime.invalid_web_request` or equivalent audit/protocol error.
-- [ ] P0 Invalid request does not emit web effect.
-- [ ] P0 Tests:
-  - [ ] `urls: []` rejected;
-  - [ ] `urls: ["https://ok", 42]` rejected;
-  - [ ] `urls: [""]` rejected;
-  - [ ] valid URL array accepted;
-  - [ ] no invalid slots are silently dropped.
+<!-- evidence: claw-core/src/lib.rs — required_string_array() + readPages rewrite + 5 a1_* tests; cargo test 32/32 -->
+- [x] P0 Add or update Rust helper `required_string_array`. <!-- lib.rs ~line 43 -->
+- [x] P0 Reject:
+  - [x] missing `urls`; <!-- existing c3 test + required_string_array Ok/Err -->
+  - [x] non-array `urls`; <!-- required_string_array: as_array returns None -->
+  - [x] empty array; <!-- a1_read_pages_empty_array_rejected -->
+  - [x] non-string slot; <!-- a1_read_pages_non_string_slot_rejects_whole_request -->
+  - [x] empty/whitespace string slot. <!-- a1_read_pages_empty_string_slot_rejects_whole_request -->
+- [x] P0 Use this helper in `readPages` mapping. <!-- filter_map block replaced -->
+- [x] P0 Invalid request emits `runtime.invalid_web_request` or equivalent audit/protocol error. <!-- all a1_* tests verify AuditAppend event_type -->
+- [x] P0 Invalid request does not emit web effect. <!-- a1_read_pages_non_string_slot: assert_eq!(effects.len(), 1) -->
+- [x] P0 Tests:
+  - [x] `urls: []` rejected; <!-- a1_read_pages_empty_array_rejected -->
+  - [x] `urls: ["https://ok", 42]` rejected; <!-- a1_read_pages_non_string_slot_rejects_whole_request -->
+  - [x] `urls: [""]` rejected; <!-- a1_read_pages_empty_string_slot_rejects_whole_request -->
+  - [x] valid URL array accepted; <!-- a1_read_pages_valid_array_accepted -->
+  - [x] no invalid slots are silently dropped. <!-- a1_read_pages_no_silent_slot_drop -->
 
 ### Suggested Rust code
 

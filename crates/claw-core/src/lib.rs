@@ -51,6 +51,30 @@ impl Runtime {
         }
     }
 
+    // A1 (FIX4): reject any invalid slot rather than silently dropping it.
+    // Returns Err with a descriptive message if the array is missing, empty,
+    // or contains any non-string or empty/whitespace slot.
+    fn required_string_array(obj: &Value, field: &str) -> Result<Vec<String>, String> {
+        let arr = obj
+            .get(field)
+            .and_then(Value::as_array)
+            .filter(|a| !a.is_empty())
+            .ok_or_else(|| format!("web_request.{field} must be a non-empty array"))?;
+
+        arr.iter()
+            .enumerate()
+            .map(|(idx, v)| {
+                v.as_str()
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(ToOwned::to_owned)
+                    .ok_or_else(|| {
+                        format!("web_request.{field}[{idx}] must be a non-empty string")
+                    })
+            })
+            .collect()
+    }
+
     fn audit_invalid_web_request(&mut self, message: String) -> Vec<Effect> {
         let audit_id = self.next_id();
         vec![Effect::AuditAppend {
@@ -176,26 +200,12 @@ impl Runtime {
                 }]
             }
             "readPages" => {
-                // C3 (FIX3): explicit URL-array reads must not collapse to query:''.
-                let urls_val = web_request.get("urls");
-                let urls: Vec<String> = match urls_val.and_then(Value::as_array) {
-                    Some(arr) if !arr.is_empty() => arr
-                        .iter()
-                        .filter_map(|u| u.as_str())
-                        .filter(|s| !s.trim().is_empty())
-                        .map(str::to_string)
-                        .collect(),
-                    _ => {
-                        return self.audit_invalid_web_request(
-                            "web_request readPages missing required urls array".to_string(),
-                        )
-                    }
+                // A1 (FIX4): any invalid slot (non-string, empty) rejects the whole
+                // request — no silent per-slot filtering.
+                let urls = match Self::required_string_array(web_request, "urls") {
+                    Ok(u) => u,
+                    Err(msg) => return self.audit_invalid_web_request(msg),
                 };
-                if urls.is_empty() {
-                    return self.audit_invalid_web_request(
-                        "web_request readPages urls contained no valid URL strings".to_string(),
-                    );
-                }
                 let options = web_request.get("options").cloned();
                 let effect_id = self.next_id();
                 self.state
@@ -1113,6 +1123,107 @@ mod tests {
             }
             other => panic!("expected audit, got {other:?}"),
         }
+    }
+
+    // A1 (FIX4): required_string_array — reject any invalid slot, not just missing array.
+
+    #[test]
+    fn a1_read_pages_empty_array_rejected() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("readPages empty"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "op": "readPages", "urls": [] } }),
+        });
+        match &effects[0] {
+            Effect::AuditAppend { event_type, summary, .. } => {
+                assert_eq!(event_type, "runtime.invalid_web_request");
+                assert!(summary.contains("urls"), "summary should mention urls: {summary}");
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a1_read_pages_non_string_slot_rejects_whole_request() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("readPages mixed"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": {
+                "op": "readPages",
+                "urls": ["https://ok.example", 42]
+            }}),
+        });
+        assert_eq!(effects.len(), 1, "exactly one effect (audit)");
+        match &effects[0] {
+            Effect::AuditAppend { event_type, summary, .. } => {
+                assert_eq!(event_type, "runtime.invalid_web_request");
+                assert!(summary.contains("urls[1]"), "should identify bad slot: {summary}");
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a1_read_pages_empty_string_slot_rejects_whole_request() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("readPages empty-slot"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": { "op": "readPages", "urls": [""] } }),
+        });
+        match &effects[0] {
+            Effect::AuditAppend { event_type, summary, .. } => {
+                assert_eq!(event_type, "runtime.invalid_web_request");
+                assert!(summary.contains("urls[0]"), "should identify bad slot: {summary}");
+            }
+            other => panic!("expected audit, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a1_read_pages_valid_array_accepted() {
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("readPages valid"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": {
+                "op": "readPages",
+                "urls": ["https://a.example/", "https://b.example/"]
+            }}),
+        });
+        assert_eq!(effects.len(), 1);
+        match &effects[0] {
+            Effect::WebResearch { mode, urls, .. } => {
+                assert_eq!(mode, "urls");
+                let u = urls.as_ref().expect("urls should be present");
+                assert_eq!(u.len(), 2);
+                assert_eq!(u[0], "https://a.example/");
+                assert_eq!(u[1], "https://b.example/");
+            }
+            other => panic!("expected WebResearch, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn a1_read_pages_no_silent_slot_drop() {
+        // The old filter_map silently dropped non-string slots; new code rejects.
+        // This test proves a mixed array does NOT produce a partial WebResearch effect.
+        let mut rt = Runtime::new();
+        rt.dispatch(submit("readPages no-drop"));
+        let effects = rt.dispatch(Command::ResolveEffect {
+            id: "eff-2".to_string(),
+            result: json!({ "web_request": {
+                "op": "readPages",
+                "urls": ["https://good.example", null, "https://also-good.example"]
+            }}),
+        });
+        assert_eq!(effects.len(), 1);
+        assert!(
+            matches!(&effects[0], Effect::AuditAppend { event_type, .. } if event_type == "runtime.invalid_web_request"),
+            "should reject entire request, not silently drop null slot; got {effects:?}",
+        );
     }
 
     // B2 (FIX3): no empty tool messages for structured web results

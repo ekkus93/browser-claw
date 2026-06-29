@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-29T00:52:21Z - Claude Sonnet 4.6 - FIX4 A1 (Rust required_string_array) DONE
+- Added `required_string_array()` helper to ClawRuntime in claw-core/src/lib.rs.
+- Replaced filter_map block in readPages with fail-closed helper call.
+- 5 new a1_* tests: empty array, non-string slot, empty string slot, valid array, no silent drop.
+- cargo test 32/32 pass; clippy clean; wasm rebuilt; vitest 1143/1143 pass.
+- Next: A2 — Rust required_tool_name for tool_call.name.
+
 ## 2026-06-29T00:47:57Z - Claude Sonnet 4.6 - FIX4 Phase 0 (scope lock) started
 - FIX4 spec + TODO pulled from remote (2 new files).
 - FIX4 scope: Rust strict validation (readPages.urls slots, tool_call.name), host webRunner fail-closed helpers, bulk research URL slot validation, empty-page rejection, WebResearchService batch delegation, extension E2E repair, permission status truthfulness, sandbox policy clarity.

@@ -1,6 +1,7 @@
 import { test, expect, chromium, type BrowserContext } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync, readFileSync } from 'node:fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EXTENSION_PATH = path.resolve(
@@ -8,6 +9,30 @@ const EXTENSION_PATH = path.resolve(
   '../../extension/chrome-web-research',
 );
 const APP_ORIGIN = 'http://localhost:5173';
+
+// E1 (FIX4): preflight assertion — fail fast with a clear message if the
+// extension fixture is missing rather than timing out on service worker load.
+function assertExtensionFixture(extensionDir: string): void {
+  const manifestPath = path.join(extensionDir, 'manifest.json');
+  if (!existsSync(manifestPath)) {
+    throw new Error(`Missing extension manifest: ${manifestPath}`);
+  }
+  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+    background?: { service_worker?: string };
+  };
+  const sw = manifest.background?.service_worker;
+  if (typeof sw !== 'string') {
+    throw new Error(
+      'Extension manifest does not define background.service_worker',
+    );
+  }
+  const swPath = path.join(extensionDir, sw);
+  if (!existsSync(swPath)) {
+    throw new Error(`Missing extension service worker: ${swPath}`);
+  }
+}
+
+assertExtensionFixture(EXTENSION_PATH);
 
 async function launchCtx(): Promise<BrowserContext> {
   return chromium.launchPersistentContext('', {
@@ -75,6 +100,7 @@ test('K1: allowed origin can ping the extension', async () => {
   }
 });
 
+// E2 (FIX4): updated to current nested capability schema (C1 of the extension).
 test('K1: get_status reports truthful capability flags', async () => {
   const ctx = await launchCtx();
   try {
@@ -86,10 +112,17 @@ test('K1: get_status reports truthful capability flags', async () => {
     expect(r).toMatchObject({
       ok: true,
       capabilities: {
-        ping: true,
-        getStatus: true,
-        readPage: true,
-        webSearch: true,
+        readPage: {
+          supported: true,
+          requiresHostPermission: true,
+          permissionRequestSupported: true,
+        },
+        readCurrentTab: {
+          supported: false,
+        },
+        webSearch: {
+          supported: true,
+        },
       },
       pageReadingAvailable: true,
       webSearchAvailable: true,

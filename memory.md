@@ -1984,6 +1984,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-29T01:30:56Z - Claude Sonnet 4.6 - FIX4 E1+E2 (E2E preflight + status schema fix) DONE
+- E1: assertExtensionFixture() added to extension.spec.ts — checks manifest exists, service_worker field defined, SW file on disk; throws with clear message.
+- Real extension (extension/chrome-web-research/) confirmed: manifest.json + service-worker.js both present.
+- E2: K1 get_status test updated from flat shape {ping, getStatus, readPage: true} to nested {readPage: {supported}, readCurrentTab: {supported}, webSearch: {supported}}.
+- typecheck+lint+vitest 1164/1164.
+- Next: E3 or Part F/G — check remaining TODO items.
+
 ## 2026-06-29T01:27:56Z - Claude Sonnet 4.6 - FIX4 C2+D1+D2 (ResearchBundle failures; empty-content rejection; missing-slot failures) DONE
 - C2: ResearchBundle failure preservation already covered by existing D3/C1 tests; ticked as done.
 - D1: nonEmptyString() helper in pageReaderProvider.ts; toResult() and batch slot mapper both reject ok:true with empty/whitespace-only text AND empty markdown; 4 D1 tests.

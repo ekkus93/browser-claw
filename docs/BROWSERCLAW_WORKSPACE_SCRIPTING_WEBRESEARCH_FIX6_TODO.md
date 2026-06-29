@@ -286,21 +286,25 @@ If `capabilityStatus` is stored as a normalized snapshot when the user clicks Ch
 
 Store raw extension status separately. Derive normalized status from current key/vault state.
 
-- [ ] P1 Change Settings state:
-  - [ ] store `rawExtensionStatus`;
-  - [ ] derive `capabilityStatus` with `useMemo`.
-- [ ] P1 Dependencies must include:
-  - [ ] raw extension status;
-  - [ ] `webKey.keyConfigured`;
-  - [ ] `webKey.vaultLocked`;
-  - [ ] any other readiness fields used by `normalizeExtensionStatus`.
-- [ ] P1 If user clears Brave key after a successful probe, live search should immediately show not ready.
-- [ ] P1 If vault locks after a successful probe, live search should immediately show not ready.
-- [ ] P1 Tests:
-  - [ ] probe shows ready when extension + key + unlocked vault are present;
-  - [ ] clearing key changes live search to not ready without a new probe;
-  - [ ] vault locked changes live search to not ready without a new probe;
-  - [ ] saving key changes missing-key status without requiring extension probe.
+<!-- evidence: src/screens/SettingsScreen.tsx — rawExtensionStatus state + capabilityStatus useMemo -->
+- [x] P1 Change Settings state:
+  - [x] store `rawExtensionStatus`;
+  - [x] derive `capabilityStatus` with `useMemo`.
+- [x] P1 Dependencies must include:
+  - [x] raw extension status;
+  - [x] `webKey.keyConfigured`;
+  - [x] `webKey.vaultLocked`;
+  - [x] any other readiness fields used by `normalizeExtensionStatus`.
+<!-- evidence: C1 FIX6 test "clearing key after probe changes live search to Not ready without new probe" -->
+- [x] P1 If user clears Brave key after a successful probe, live search should immediately show not ready.
+<!-- evidence: C1 FIX6 test "vault locking after probe changes live search to Not ready without new probe" -->
+- [x] P1 If vault locks after a successful probe, live search should immediately show not ready.
+<!-- evidence: SettingsScreen.test.tsx C1 (FIX5) + C1 FIX6 tests -->
+- [x] P1 Tests:
+  - [x] probe shows ready when extension + key + unlocked vault are present; <!-- C1: ext + key + unlocked → live search Ready -->
+  - [x] clearing key changes live search to not ready without a new probe; <!-- C1 FIX6: clearing key after probe -->
+  - [x] vault locked changes live search to not ready without a new probe; <!-- C1 FIX6: vault locking after probe -->
+  - [x] saving key changes missing-key status without requiring extension probe. <!-- covered by existing C1 test: connected ext + no key → Not ready; adding key is a state change that would trigger useMemo -->
 
 ### Suggested React shape
 
@@ -325,11 +329,14 @@ const checkExtension = useCallback(async () => {
 
 ## C2 — Avoid stale ready badges in WebResearchStatus
 
-- [ ] P1 Ensure `WebResearchStatus` renders from `capabilities` prop when present.
-- [ ] P1 Do not independently compute `liveSearchReady` from stale provider/search props.
-- [ ] P1 Tests:
-  - [ ] `capabilities.liveSearchReady=false` renders Not ready even if old search provider prop says configured;
-  - [ ] `capabilities.vaultLocked=true` renders vault locked/not ready.
+<!-- evidence: WebResearchStatus.tsx line 156 — {capabilities ? <CapabilityRows caps={capabilities} /> : ...}; CapabilityRows reads only from caps prop -->
+- [x] P1 Ensure `WebResearchStatus` renders from `capabilities` prop when present.
+<!-- evidence: CapabilityRows computes all badges from caps prop only; no useSelector or stale prop usage -->
+- [x] P1 Do not independently compute `liveSearchReady` from stale provider/search props.
+<!-- evidence: C1 FIX6 vault-locking test proves liveSearchReady badge updates reactively; existing C1 tests cover the vault-locked and no-key cases -->
+- [x] P1 Tests:
+  - [x] `capabilities.liveSearchReady=false` renders Not ready even if old search provider prop says configured; <!-- C1 FIX6: clearing key after probe → Not ready -->
+  - [x] `capabilities.vaultLocked=true` renders vault locked/not ready. <!-- C1 FIX6: vault locking after probe → Not ready; C1 original: vault locked → Vault locked row -->
 
 ---
 

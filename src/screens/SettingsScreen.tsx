@@ -281,9 +281,21 @@ export default function SettingsScreen() {
       : '');
 
   // C1 (FIX5): capability-specific status from the last successful extension probe.
-  const [capabilityStatus, setCapabilityStatus] = useState<
+  // C1 (FIX6): store raw extension status; derive capabilityStatus reactively so
+  // it updates when key is cleared or vault locks without requiring a new probe.
+  const [rawExtensionStatus, setRawExtensionStatus] =
+    useState<unknown>(undefined);
+
+  const capabilityStatus = useMemo<
     WebResearchCapabilityStatus | undefined
-  >(undefined);
+  >(() => {
+    if (rawExtensionStatus === undefined) return undefined;
+    return normalizeExtensionStatus({
+      rawStatus: rawExtensionStatus,
+      braveKeyConfigured: webKey.keyConfigured,
+      vaultLocked: webKey.vaultLocked,
+    });
+  }, [rawExtensionStatus, webKey.keyConfigured, webKey.vaultLocked]);
 
   const extensionProbe = useMemo(
     () =>
@@ -295,25 +307,18 @@ export default function SettingsScreen() {
                 type: 'get_status',
                 requestId: newRequestId(),
               });
-              // C1 (FIX5): derive capability-specific status from raw extension response.
-              const normalized = normalizeExtensionStatus({
-                rawStatus: raw as Record<string, unknown>,
+              setRawExtensionStatus(raw);
+              const connected = normalizeExtensionStatus({
+                rawStatus: raw,
                 braveKeyConfigured: webKey.keyConfigured,
                 vaultLocked: webKey.vaultLocked,
-              });
-              setCapabilityStatus(normalized);
-              return { available: normalized.extensionConnected };
+              }).extensionConnected;
+              return { available: connected };
             } catch {
-              setCapabilityStatus(
-                normalizeExtensionStatus({
-                  rawStatus: {
-                    ok: false,
-                    error: { kind: 'extension_missing', message: '' },
-                  },
-                  braveKeyConfigured: webKey.keyConfigured,
-                  vaultLocked: webKey.vaultLocked,
-                }),
-              );
+              setRawExtensionStatus({
+                ok: false,
+                error: { kind: 'extension_missing', message: '' },
+              });
               return { available: false };
             }
           }

@@ -13,6 +13,7 @@ import runtimeReducer, {
 import secretsReducer, {
   vaultLockedSet,
   secretMetadataUpserted,
+  secretMetadataRemoved,
 } from '../store/slices/secretsSlice.ts';
 import auditReducer from '../store/slices/auditSlice.ts';
 import SettingsScreen from './SettingsScreen.tsx';
@@ -378,5 +379,47 @@ describe('C1 (FIX5) — capability status wired into SettingsScreen', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Check' }));
     expect(await screen.findByText('Ready')).toBeInTheDocument();
+  });
+
+  // C1 (FIX6): capabilityStatus updates reactively without a new probe.
+
+  it('C1 FIX6: clearing key after probe changes live search to Not ready without new probe', async () => {
+    const user = userEvent.setup();
+    const store = makeStore({ vaultLocked: false, keyConfigured: true });
+    render(
+      <Provider store={store}>
+        <SettingsScreen />
+      </Provider>,
+    );
+    // First probe shows Ready
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+    expect(await screen.findByText('Ready')).toBeInTheDocument();
+    // Now clear the key (no new probe)
+    act(() => {
+      store.dispatch(secretMetadataRemoved(BRAVE_KEY_ID));
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Not ready')).toBeInTheDocument();
+    });
+  });
+
+  it('C1 FIX6: vault locking after probe changes live search to Not ready without new probe', async () => {
+    const user = userEvent.setup();
+    const store = makeStore({ vaultLocked: false, keyConfigured: true });
+    render(
+      <Provider store={store}>
+        <SettingsScreen />
+      </Provider>,
+    );
+    // First probe shows Ready
+    await user.click(screen.getByRole('button', { name: 'Check' }));
+    expect(await screen.findByText('Ready')).toBeInTheDocument();
+    // Vault locks (no new probe)
+    act(() => {
+      store.dispatch(vaultLockedSet(true));
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Not ready')).toBeInTheDocument();
+    });
   });
 });

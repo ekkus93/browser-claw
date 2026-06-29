@@ -2222,6 +2222,15 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T08:57:36Z - Claude Sonnet 4.6 - Ralph FIX6 C1+C2: reactive Settings capability status complete
+- SettingsScreen.tsx: replaced capabilityStatus state with rawExtensionStatus state + useMemo derivation.
+- capabilityStatus now updates reactively when webKey.keyConfigured or webKey.vaultLocked changes, without requiring a new extension probe.
+- extensionProbe stores raw response into rawExtensionStatus (not normalized).
+- C2: WebResearchStatus already correctly renders from capabilities prop only (no stale prop computation).
+- 2 new C1 FIX6 tests: clearing key → Not ready, vault lock → Not ready (no new probe needed).
+- vitest 1218/125 ✓.
+- NEXT: Part D (bulk research rejection ordering).
+
 ## 2026-06-29T08:51:31Z - Claude Sonnet 4.6 - Ralph FIX6 B1+B2+B3: TS referenceRuntime raw readPages validation complete
 - src/runtime/referenceRuntime.ts: readPages branch now validates every URL slot (typeof/trim/classifyFetchUrl) instead of casting as string[].
 - Imported classifyFetchUrl from '../net/urlSafety.ts'.

@@ -291,6 +291,13 @@ async function handleReadPage(message) {
     );
   }
 
+  // E3 (FIX10): validate maxChars directly — defense-in-depth for callers that
+  // bypass central validation (direct handler calls, tests, future refactors).
+  const maxCharsDirectError = validateOptionalMaxChars(maxChars);
+  if (maxCharsDirectError) {
+    return errorResponse('invalid_request', maxCharsDirectError, requestId);
+  }
+
   const safety = classifyExtensionUrl(url);
   if (!safety.ok) {
     return errorResponse('url_blocked', safety.reason, requestId);
@@ -412,6 +419,12 @@ async function handleReadPages(message) {
   );
   if (maxPagesDirectError) {
     return errorResponse('invalid_request', maxPagesDirectError, requestId);
+  }
+
+  // E3 (FIX10): validate maxChars directly — mirrors maxPages defense-in-depth.
+  const maxCharsDirectError = validateOptionalMaxChars(maxChars);
+  if (maxCharsDirectError) {
+    return errorResponse('invalid_request', maxCharsDirectError, requestId);
   }
 
   const effectiveMax = typeof maxPages === 'number' ? maxPages : urls.length;
@@ -670,6 +683,16 @@ function validateOptionalPositiveIntegerLimit(value, field, max) {
   return null;
 }
 
+// E1 (FIX10): validate optional maxChars — defense-in-depth at both the central
+// schema gate and the direct handler level; mirrors the maxPages pattern.
+function validateOptionalMaxChars(value) {
+  return validateOptionalPositiveIntegerLimit(
+    value,
+    'maxChars',
+    DEFAULT_MAX_CHARS,
+  );
+}
+
 /**
  * Return an invalid_request errorResponse if the message payload is missing
  * required fields, or null if it passes.
@@ -686,6 +709,11 @@ function validateMessageSchema(message) {
         id,
       );
     }
+    // E2 (FIX10): validate optional maxChars centrally.
+    const maxCharsError = validateOptionalMaxChars(message.maxChars);
+    if (maxCharsError) {
+      return errorResponse('invalid_request', maxCharsError, id);
+    }
   } else if (type === 'read_pages') {
     // C1 (FIX7): per-slot validation in central schema check.
     const urlsError = validateNonEmptyStringArray(message.urls, 'urls');
@@ -700,6 +728,11 @@ function validateMessageSchema(message) {
     );
     if (maxPagesError) {
       return errorResponse('invalid_request', maxPagesError, id);
+    }
+    // E2 (FIX10): validate optional maxChars centrally.
+    const maxCharsError = validateOptionalMaxChars(message.maxChars);
+    if (maxCharsError) {
+      return errorResponse('invalid_request', maxCharsError, id);
     }
   } else if (type === 'web_search') {
     if (
@@ -813,6 +846,7 @@ export {
   isAllowedSender,
   errorResponse,
   validateMessageSchema,
+  validateOptionalMaxChars,
   classifyExtensionUrl,
   extractPageContent,
   ALLOWED_ORIGINS,

@@ -57,6 +57,7 @@ import {
   handleReadCurrentTab,
   handlers,
   validateMessageSchema,
+  validateOptionalMaxChars,
 } from '../../extension/chrome-web-research/service-worker.js';
 
 const BLOCKED = 'http://localhost/page';
@@ -836,5 +837,206 @@ describe('H1 — waitForTabComplete race fix', () => {
       setTimeout(() => cb(42, { status: 'complete' }), 0);
     };
     g.chrome.tabs.get = (_id: number, cb: AnyFn) => cb({ status: 'loading' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// E1 (FIX10): validateOptionalMaxChars helper
+// ---------------------------------------------------------------------------
+
+describe('E1 (FIX10) — validateOptionalMaxChars', () => {
+  it('E1: undefined returns null (valid — optional field)', () => {
+    expect(validateOptionalMaxChars(undefined)).toBeNull();
+  });
+
+  it('E1: valid positive integer 1000 returns null', () => {
+    expect(validateOptionalMaxChars(1000)).toBeNull();
+  });
+
+  it('E1: 0 returns an error message', () => {
+    expect(validateOptionalMaxChars(0)).toBeTruthy();
+  });
+
+  it('E1: -1 returns an error message', () => {
+    expect(validateOptionalMaxChars(-1)).toBeTruthy();
+  });
+
+  it('E1: 1.5 (non-integer) returns an error message', () => {
+    expect(validateOptionalMaxChars(1.5)).toBeTruthy();
+  });
+
+  it('E1: string "1000" returns an error message', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(validateOptionalMaxChars('1000' as any)).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// E2 (FIX10): validateMessageSchema maxChars gating — read_page and read_pages
+// ---------------------------------------------------------------------------
+
+describe('E2 (FIX10) — validateMessageSchema maxChars for read_page', () => {
+  it('E2: read_page with valid maxChars passes schema', () => {
+    const result = validateMessageSchema({
+      type: 'read_page',
+      requestId: 'e2-ok',
+      url: 'https://example.com/a',
+      maxChars: 1000,
+    });
+    expect(result).toBeNull();
+  });
+
+  it('E2: read_page with maxChars: 0 fails schema with invalid_request', () => {
+    const result = validateMessageSchema({
+      type: 'read_page',
+      requestId: 'e2-zero',
+      url: 'https://example.com/a',
+      maxChars: 0,
+    }) as Record<string, unknown>;
+    expect(result).not.toBeNull();
+    expect((result['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
+  });
+
+  it('E2: read_page with maxChars: -1 fails schema with invalid_request', () => {
+    const result = validateMessageSchema({
+      type: 'read_page',
+      requestId: 'e2-neg',
+      url: 'https://example.com/a',
+      maxChars: -1,
+    }) as Record<string, unknown>;
+    expect(result).not.toBeNull();
+    expect((result['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
+  });
+
+  it('E2: read_page with maxChars: 1.5 fails schema with invalid_request', () => {
+    const result = validateMessageSchema({
+      type: 'read_page',
+      requestId: 'e2-frac',
+      url: 'https://example.com/a',
+      maxChars: 1.5,
+    }) as Record<string, unknown>;
+    expect(result).not.toBeNull();
+  });
+});
+
+describe('E2 (FIX10) — validateMessageSchema maxChars for read_pages', () => {
+  it('E2: read_pages with valid maxChars passes schema', () => {
+    const result = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'e2p-ok',
+      urls: ['https://example.com/a'],
+      maxChars: 2000,
+    });
+    expect(result).toBeNull();
+  });
+
+  it('E2: read_pages with maxChars: 0 fails schema with invalid_request', () => {
+    const result = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'e2p-zero',
+      urls: ['https://example.com/a'],
+      maxChars: 0,
+    }) as Record<string, unknown>;
+    expect(result).not.toBeNull();
+    expect((result['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
+  });
+
+  it('E2: read_pages with maxChars: -1 fails schema with invalid_request', () => {
+    const result = validateMessageSchema({
+      type: 'read_pages',
+      requestId: 'e2p-neg',
+      urls: ['https://example.com/a'],
+      maxChars: -1,
+    }) as Record<string, unknown>;
+    expect(result).not.toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// E3 (FIX10): direct handler defense-in-depth maxChars validation
+// ---------------------------------------------------------------------------
+
+describe('E3 (FIX10) — handleReadPage direct maxChars validation', () => {
+  it('E3: direct handleReadPage with maxChars: 0 returns invalid_request', async () => {
+    const res = (await handleReadPage({
+      type: 'read_page',
+      requestId: 'e3-zero',
+      url: 'https://example.com/a',
+      maxChars: 0,
+    })) as Record<string, unknown>;
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
+  });
+
+  it('E3: direct handleReadPage with maxChars: -1 returns invalid_request', async () => {
+    const res = (await handleReadPage({
+      type: 'read_page',
+      requestId: 'e3-neg',
+      url: 'https://example.com/a',
+      maxChars: -1,
+    })) as Record<string, unknown>;
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
+  });
+
+  it('E3: direct handleReadPage with maxChars: 1.5 returns invalid_request', async () => {
+    const res = (await handleReadPage({
+      type: 'read_page',
+      requestId: 'e3-frac',
+      url: 'https://example.com/a',
+      maxChars: 1.5,
+    })) as Record<string, unknown>;
+    expect(res['ok']).toBe(false);
+  });
+});
+
+describe('E3 (FIX10) — handleReadPages direct maxChars validation', () => {
+  it('E3: direct handleReadPages with maxChars: 0 returns invalid_request', async () => {
+    const res = await rp({
+      requestId: 'e3p-zero',
+      urls: [URL1],
+      maxChars: 0,
+    });
+    expect(res['ok']).toBe(false);
+    expect((res['error'] as Record<string, unknown>)['kind']).toBe(
+      'invalid_request',
+    );
+  });
+
+  it('E3: direct handleReadPages with maxChars: -1 returns invalid_request', async () => {
+    const res = await rp({
+      requestId: 'e3p-neg',
+      urls: [URL1],
+      maxChars: -1,
+    });
+    expect(res['ok']).toBe(false);
+  });
+
+  it('E3: direct handleReadPages with maxChars: 1.5 returns invalid_request', async () => {
+    const res = await rp({
+      requestId: 'e3p-frac',
+      urls: [URL1],
+      maxChars: 1.5,
+    });
+    expect(res['ok']).toBe(false);
+  });
+
+  it('E3: direct handleReadPages with valid maxChars 1000 succeeds', async () => {
+    const res = await rp({
+      requestId: 'e3p-ok',
+      urls: [URL1],
+      maxChars: 1000,
+    });
+    expect(res['ok']).toBe(true);
   });
 });

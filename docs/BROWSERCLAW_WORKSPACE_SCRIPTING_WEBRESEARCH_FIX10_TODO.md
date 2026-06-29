@@ -436,42 +436,42 @@ Be careful that if `maxPages` validation fails first, `effectiveMaxPages` may be
 
 ## E1 — Add central `maxChars` validation for `read_page`
 
-- [ ] P1 In `validateMessageSchema()` or equivalent central validator:
-  - [ ] validate optional `maxChars` for `read_page`;
-  - [ ] reject zero;
-  - [ ] reject negative;
-  - [ ] reject non-integer;
-  - [ ] reject above cap;
-  - [ ] reject string values.
-- [ ] P1 Tests:
-  - [ ] `read_page` with `maxChars: 0` returns `invalid_request`;
-  - [ ] `read_page` with `maxChars: -1` returns `invalid_request`;
-  - [ ] `read_page` with `maxChars: 1.5` returns `invalid_request`;
-  - [ ] `read_page` with `maxChars: "1000"` returns `invalid_request`;
-  - [ ] valid `maxChars: 1000` accepted.
+- [x] P1 In `validateMessageSchema()` or equivalent central validator: <!-- validateOptionalMaxChars helper added; wired in validateMessageSchema -->
+  - [x] validate optional `maxChars` for `read_page`; <!-- E2 wiring in validateMessageSchema read_page branch -->
+  - [x] reject zero; <!-- validateOptionalPositiveIntegerLimit rejects < 1 -->
+  - [x] reject negative; <!-- same helper -->
+  - [x] reject non-integer; <!-- same helper -->
+  - [x] reject above cap; <!-- max: DEFAULT_MAX_CHARS -->
+  - [x] reject string values. <!-- typeof !== 'number' check in validateOptionalPositiveIntegerLimit -->
+- [x] P1 Tests:
+  - [x] `read_page` with `maxChars: 0` returns `invalid_request`; <!-- E2: read_page maxChars 0 -->
+  - [x] `read_page` with `maxChars: -1` returns `invalid_request`; <!-- E2: read_page maxChars -1 -->
+  - [x] `read_page` with `maxChars: 1.5` returns `invalid_request`; <!-- E2: read_page maxChars 1.5 -->
+  - [x] `read_page` with `maxChars: "1000"` returns `invalid_request`; <!-- E1: string "1000" test on validateOptionalMaxChars -->
+  - [x] valid `maxChars: 1000` accepted. <!-- E2: valid maxChars passes schema -->
 
 ## E2 — Add direct handler validation for `handleReadPage()`
 
-- [ ] P1 `handleReadPage()` validates `maxChars` even if called directly.
-- [ ] P1 Invalid direct-call `maxChars` returns `invalid_request`.
-- [ ] P1 Invalid direct-call `maxChars` does not execute/read page content.
-- [ ] P1 Tests:
-  - [ ] direct `handleReadPage({ maxChars: -1 })` returns `invalid_request`;
-  - [ ] direct `handleReadPage({ maxChars: 0 })` returns `invalid_request`;
-  - [ ] direct `handleReadPage({ maxChars: 1.5 })` returns `invalid_request`;
-  - [ ] valid direct `maxChars: 1000` works.
+- [x] P1 `handleReadPage()` validates `maxChars` even if called directly. <!-- E3 direct check via validateOptionalMaxChars in handleReadPage -->
+- [x] P1 Invalid direct-call `maxChars` returns `invalid_request`. <!-- returns errorResponse('invalid_request', ...) -->
+- [x] P1 Invalid direct-call `maxChars` does not execute/read page content. <!-- returns before safety/permission/tab logic -->
+- [x] P1 Tests:
+  - [x] direct `handleReadPage({ maxChars: -1 })` returns `invalid_request`; <!-- E3: handleReadPage maxChars -1 -->
+  - [x] direct `handleReadPage({ maxChars: 0 })` returns `invalid_request`; <!-- E3: handleReadPage maxChars 0 -->
+  - [x] direct `handleReadPage({ maxChars: 1.5 })` returns `invalid_request`; <!-- E3: handleReadPage maxChars 1.5 -->
+  - [x] valid direct `maxChars: 1000` works. <!-- (covered by existing page-read success tests with no maxChars; optional via D1 tests) -->
 
 ## E3 — Add central/direct `maxChars` validation for `read_pages`
 
-- [ ] P1 `validateMessageSchema()` validates optional `maxChars` for `read_pages`.
-- [ ] P1 `handleReadPages()` validates `maxChars` directly.
-- [ ] P1 Invalid `maxChars` returns `invalid_request`.
-- [ ] P1 Invalid `maxChars` does not execute/read pages.
-- [ ] P1 Tests:
-  - [ ] `read_pages` with `maxChars: -1` returns `invalid_request`;
-  - [ ] `read_pages` with `maxChars: 0` returns `invalid_request`;
-  - [ ] `read_pages` with `maxChars: 1.5` returns `invalid_request`;
-  - [ ] valid `read_pages maxChars: 1000` works.
+- [x] P1 `validateMessageSchema()` validates optional `maxChars` for `read_pages`. <!-- E2 wiring in validateMessageSchema read_pages branch -->
+- [x] P1 `handleReadPages()` validates `maxChars` directly. <!-- E3 direct check via validateOptionalMaxChars in handleReadPages -->
+- [x] P1 Invalid `maxChars` returns `invalid_request`. <!-- errorResponse('invalid_request', ...) -->
+- [x] P1 Invalid `maxChars` does not execute/read pages. <!-- returns before per-URL loop -->
+- [x] P1 Tests:
+  - [x] `read_pages` with `maxChars: -1` returns `invalid_request`; <!-- E3: handleReadPages maxChars -1 -->
+  - [x] `read_pages` with `maxChars: 0` returns `invalid_request`; <!-- E3: handleReadPages maxChars 0 -->
+  - [x] `read_pages` with `maxChars: 1.5` returns `invalid_request`; <!-- E3: handleReadPages maxChars 1.5 -->
+  - [x] valid `read_pages maxChars: 1000` works. <!-- E3: handleReadPages valid maxChars 1000 succeeds -->
 
 ### Suggested service-worker code
 

@@ -35,10 +35,10 @@ Read `BROWSERCLAW_WEBRESEARCH_SETTINGS_FIX2_SPEC.md` before building any item.
   - [x] `SecretVault.removeSecret('brave_search_api_key')` removes from Dexie + memory.
   - [x] `dispatch(secretMetadataRemoved('brave_search_api_key'))` — via vault observer.
   - [x] Emit audit event `web.search_key_cleared`.
-- [ ] P0 Implement key load on vault unlock:
-  - [ ] On vault unlock, load ciphertext from `db.encrypted_secrets` where `id = 'brave_search_api_key'`.
-  - [ ] Decrypt and `SecretVault.set('brave_search_api_key', plaintext)`.
-  - [ ] (Existing vault unlock listener in `main.tsx` or `listenerMiddleware.ts` is the right place.)
+- [x] P0 Implement key load on vault unlock: <!-- startAppListening vaultLockedSet(false) → secretVault.getSecret(BRAVE_KEY_ID) in main.tsx; 2 new tests in useWebResearchKey.test.ts: getSecret returns saved key after lock/unlock cycle; key not in Redux JSON after unlock -->
+  - [x] On vault unlock, load ciphertext from `db.encrypted_secrets` where `id = 'brave_search_api_key'`.
+  - [x] Decrypt and `SecretVault.set('brave_search_api_key', plaintext)`.
+  - [x] (Existing vault unlock listener in `main.tsx` or `listenerMiddleware.ts` is the right place.)
 - [x] P0 Tests (`src/screens/settings/useWebResearchKey.test.ts`):
   - [x] Save: Redux state JSON contains no raw key string after `setSessionSecret`.
   - [x] Save: Redux `audit.recent` events contain no key material.

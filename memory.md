@@ -2222,6 +2222,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T11:57:20Z - Claude Sonnet 4.6 - FIX2 A1: vault unlock listener implemented
+- Added `startAppListening` listener in `main.tsx` for `vaultLockedSet(false)` → `secretVault.getSecret(BRAVE_KEY_ID)` to eagerly cache the Brave key on vault unlock.
+- 2 new tests in `useWebResearchKey.test.ts`: lock/unlock cycle recovers key; key NOT in Redux JSON after unlock.
+- Gate: 1285 vitest passed, typecheck clean.
+- Remaining FIX2 open items: all explicitly deferred (Test connection button C1, researchPaths, ChatScreen integration test, Extension read items audit).
+- FIX2 local lint-n-test skill created at `.claude/skills/lint-n-test/SKILL.md` (BrowserClaw-specific, uses --no-file-parallelism).
+
 ## 2026-06-29T10:44:31Z - Claude Sonnet 4.6 - Ralph FIX8 COMPLETE: A+B1+C+D+E+F all done
 - A1/A2: agentBlockParser.ts — canonicalizeWebRequestOptions() normalizes top-level maxPages/maxChars/maxResults; invalid maxPages → malformed; BrowserClawWebRequest.options now typed.
 - B1: referenceRuntime.ts readPages — emits options:{maxPages} in web_research effect.

@@ -73,6 +73,8 @@ import {
   snapshotRestoreWarned,
 } from './store/slices/runtimeSlice.ts';
 import { hydrated, onboardingCompleted } from './store/slices/appSlice.ts';
+import { vaultLockedSet } from './store/slices/secretsSlice.ts';
+import { BRAVE_KEY_ID } from './screens/settings/useWebResearchKey.ts';
 import {
   getOnboardingComplete,
   getLockTimeoutMinutes,
@@ -439,6 +441,20 @@ async function restoreLockTimeout(): Promise<void> {
 }
 
 void restoreLockTimeout();
+
+// On vault unlock, eagerly decrypt and cache the Brave Search key so it is
+// immediately available to search requests without an extra Dexie round-trip.
+startAppListening({
+  actionCreator: vaultLockedSet,
+  effect: async (action) => {
+    if (action.payload) return; // true = locked, false = unlocked
+    try {
+      await secretVault.getSecret(BRAVE_KEY_ID);
+    } catch {
+      // No Brave key saved yet — nothing to cache.
+    }
+  },
+});
 
 // Apply the user's persisted color theme so a reload honours their choice
 // instead of always starting on the default light theme.

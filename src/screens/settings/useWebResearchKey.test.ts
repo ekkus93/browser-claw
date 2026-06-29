@@ -13,7 +13,7 @@ import {
   InMemoryVaultStore,
   createReduxVaultObserver,
 } from '../../secrets/vaultWiring.ts';
-import { BRAVE_KEY_ID } from './useWebResearchKey.ts';
+import { BRAVE_KEY_ID, BRAVE_KEY_LABEL } from './useWebResearchKey.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers — isolated vault + store per test
@@ -251,5 +251,40 @@ describe('H1 — clearKey error handling', () => {
     vault.lock();
     const auditJson = JSON.stringify(store.getState().audit.recent);
     expect(auditJson).not.toContain(RAW_KEY);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// A1 — vault unlock loads encrypted key
+// ---------------------------------------------------------------------------
+
+describe('A1 — vault unlock loads encrypted Brave key', () => {
+  it('A1: setup→save→lock→unlock: getSecret returns the saved key', async () => {
+    const db = new BrowserClawDB();
+    await db.open();
+    const store = makeStore();
+    const vault = makeVault(store, db);
+    const RAW_KEY = 'bsa-unlock-recovery-test-key';
+    await vault.setup('test-passphrase');
+    await vault.putEncryptedSecret(BRAVE_KEY_ID, BRAVE_KEY_LABEL, RAW_KEY);
+    vault.lock();
+    await vault.unlock('test-passphrase');
+    // Simulates what the vault unlock listener in main.tsx does eagerly.
+    const recovered = await vault.getSecret(BRAVE_KEY_ID);
+    expect(recovered).toBe(RAW_KEY);
+  });
+
+  it('A1: after unlock+getSecret, key NOT in Redux state JSON', async () => {
+    const db = new BrowserClawDB();
+    await db.open();
+    const store = makeStore();
+    const vault = makeVault(store, db);
+    const RAW_KEY = 'bsa-unlock-leak-check-key-002';
+    await vault.setup('test-passphrase');
+    await vault.putEncryptedSecret(BRAVE_KEY_ID, BRAVE_KEY_LABEL, RAW_KEY);
+    vault.lock();
+    await vault.unlock('test-passphrase');
+    await vault.getSecret(BRAVE_KEY_ID);
+    expect(JSON.stringify(store.getState())).not.toContain(RAW_KEY);
   });
 });

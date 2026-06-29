@@ -474,14 +474,15 @@ Compute expected URLs as:
 const expectedUrls = request.urls.slice(0, request.maxPages ?? request.urls.length);
 ```
 
-- [ ] P1 Update `pageReaderProvider.readPages()` response mapping.
-- [ ] P1 Missing-result failures should only be generated for `expectedUrls`.
-- [ ] P1 Intentionally skipped URLs due to `maxPages` should not appear as failures.
-- [ ] P1 If useful, include `skipped` count separately, but not as failure.
-- [ ] P1 Tests:
-  - [ ] 4 URLs + maxPages 2 + 2 results -> no missing failures for URLs 3/4;
-  - [ ] 4 URLs + maxPages 2 + 1 result -> one missing failure for URL 2;
-  - [ ] no maxPages + missing result -> missing failure.
+<!-- evidence: pageReaderProvider.ts uses expectedUrls = request.urls.slice(0, Math.min(maxPages, urls.length)); D2 test updated; 3 E1 tests added; vitest 1197/124 -->
+- [x] P1 Update `pageReaderProvider.readPages()` response mapping. <!-- expectedUrls computed; result mapped over expectedUrls -->
+- [x] P1 Missing-result failures should only be generated for `expectedUrls`. <!-- only expectedUrls.map(...) -->
+- [x] P1 Intentionally skipped URLs due to `maxPages` should not appear as failures. <!-- URLs beyond maxPages not in result -->
+- [x] P1 If useful, include `skipped` count separately, but not as failure. <!-- not included; spec says "if useful" -->
+- [x] P1 Tests:
+  - [x] 4 URLs + maxPages 2 + 2 results -> no missing failures for URLs 3/4; <!-- E1 test 1 -->
+  - [x] 4 URLs + maxPages 2 + 1 result -> one missing failure for URL 2; <!-- E1 test 2 -->
+  - [x] no maxPages + missing result -> missing failure. <!-- E1 test 3 -->
 
 ### Suggested patch
 

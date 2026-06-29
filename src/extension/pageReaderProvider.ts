@@ -250,7 +250,17 @@ export function createExtensionPageReader(
         if (slotUrl) slotByUrl.set(slotUrl, s);
       }
 
-      return request.urls.map((url) => {
+      // E1 (FIX5): only expect results for URLs actually sent to the provider.
+      // URLs beyond maxPages are intentionally skipped and must not appear as failures.
+      const expectedUrls =
+        typeof request.maxPages === 'number'
+          ? request.urls.slice(
+              0,
+              Math.min(request.maxPages, request.urls.length),
+            )
+          : request.urls;
+
+      return expectedUrls.map((url) => {
         const s = slotByUrl.get(url);
         if (!s) {
           // D2: extension did not return a result for this URL.

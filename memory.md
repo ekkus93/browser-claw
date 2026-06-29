@@ -2222,6 +2222,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T05:49:59Z - Claude Sonnet 4.6 - Ralph FIX5 E1: readPages(maxPages) skipped-URL semantics fixed DONE
+- pageReaderProvider.ts readPages(): added expectedUrls = request.urls.slice(0, Math.min(maxPages, urls.length)); result now maps over expectedUrls not request.urls.
+- URLs intentionally skipped by maxPages no longer appear as missing-result failures.
+- D2 existing test (maxPages sent in message) updated to reflect new behavior: 2 results expected, not 3; x/3 absent from results.
+- 3 new E1 tests: 4+maxPages2+2ok=no URL3/4 failures; 4+maxPages2+1ok=URL2 failure; no maxPages+missing=failure.
+- Gate: typecheck ✓, lint ✓, format ✓, vitest 1197/124 ✓.
+- NEXT: F1 (web_page_read invalid URL audit) or G1 (toolContentFromEffectFailure) or D1 (shared getServiceWorker helper).
+
 ## 2026-06-29T05:42:56Z - Claude Sonnet 4.6 - Ralph FIX5 C1+C2: normalizeExtensionStatus wired into SettingsScreen; misleading copy fixed DONE
 - C1: SettingsScreen.tsx now calls normalizeExtensionStatus() inside extensionProbe after transport.send(); result stored in capabilityStatus state; passed as capabilities={capabilityStatus} to WebResearchStatus. depedencies: [extensionId, webKey.keyConfigured, webKey.vaultLocked]. 5 C1 integration tests in SettingsScreen.test.tsx (mock createChromeExtensionTransport + vi.stubEnv VITE_CHROME_EXTENSION_ID).
 - C2: Replaced "each new site asks for host permission first" with truthful v0.1 copy — page reads require pre-granted Chrome site access, BrowserClaw cannot complete host-permission grants from this page.

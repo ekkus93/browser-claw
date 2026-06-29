@@ -395,9 +395,10 @@ describe('createExtensionPageReader (E9)', () => {
     }
   });
 
-  it('D2: maxPages sent in message — unreturned URLs become failure entries', async () => {
+  it('D2+E1: maxPages sent in message — only expected URLs in result; skipped URL absent', async () => {
     // Extension honours maxPages=2 and returns only 2 of 3 slots.
-    // D2 requires the provider to create failure entries for the missing URL.
+    // E1 (FIX5): URLs beyond maxPages are intentionally skipped and must NOT appear
+    // as failure entries — only the 2 expectedUrls are in the result set.
     const reader = createExtensionPageReader({
       transport: transport((msg) => {
         const m = msg as Record<string, unknown>;
@@ -420,13 +421,13 @@ describe('createExtensionPageReader (E9)', () => {
       urls: ['https://x/1', 'https://x/2', 'https://x/3'],
       maxPages: 2,
     });
-    // All 3 requested URLs must be represented.
-    expect(results).toHaveLength(3);
-    const ok = results.filter((r) => r.ok);
-    const fail = results.filter((r) => !r.ok);
-    expect(ok).toHaveLength(2);
-    expect(fail).toHaveLength(1);
-    expect(fail[0]?.url).toBe('https://x/3');
+    // Only the 2 expected URLs are in the result; x/3 is silently skipped.
+    expect(results).toHaveLength(2);
+    expect(results.every((r) => r.ok)).toBe(true);
+    const urls = results.map((r) => r.url);
+    expect(urls).toContain('https://x/1');
+    expect(urls).toContain('https://x/2');
+    expect(urls).not.toContain('https://x/3');
   });
 
   // D1 (FIX4): reject ok:true responses with no readable content.
@@ -579,5 +580,71 @@ describe('createExtensionPageReader (E9)', () => {
     });
     expect(results).toHaveLength(2);
     expect(results.every((r) => !r.ok)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// E1 (FIX5) — maxPages must not generate failures for intentionally skipped URLs
+// ---------------------------------------------------------------------------
+
+describe('E1 (FIX5) — readPages maxPages semantics', () => {
+  function readPagesTransport(
+    resultUrls: string[],
+  ): ReturnType<typeof transport> {
+    return transport(() => ({
+      ok: true,
+      requestId: 'r',
+      results: resultUrls.map((url) => ({
+        url,
+        ok: true,
+        finalUrl: url,
+        text: `body of ${url}`,
+        length: 10,
+      })),
+    }));
+  }
+
+  it('E1: 4 URLs + maxPages 2 + 2 results → no missing failures for URLs 3 and 4', async () => {
+    const reader = createExtensionPageReader({
+      transport: readPagesTransport(['https://x/a', 'https://x/b']),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b', 'https://x/c', 'https://x/d'],
+      maxPages: 2,
+    });
+    expect(results).toHaveLength(2);
+    const urls = results.map((r) => r.url);
+    expect(urls).not.toContain('https://x/c');
+    expect(urls).not.toContain('https://x/d');
+    expect(results.every((r) => r.ok)).toBe(true);
+  });
+
+  it('E1: 4 URLs + maxPages 2 + 1 result → one missing failure for URL 2', async () => {
+    const reader = createExtensionPageReader({
+      transport: readPagesTransport(['https://x/a']),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b', 'https://x/c', 'https://x/d'],
+      maxPages: 2,
+    });
+    expect(results).toHaveLength(2);
+    const byUrl = new Map(results.map((r) => [r.url, r]));
+    expect(byUrl.get('https://x/a')?.ok).toBe(true);
+    expect(byUrl.get('https://x/b')?.ok).toBe(false);
+    expect(byUrl.has('https://x/c')).toBe(false);
+    expect(byUrl.has('https://x/d')).toBe(false);
+  });
+
+  it('E1: no maxPages + missing result → missing failure', async () => {
+    const reader = createExtensionPageReader({
+      transport: readPagesTransport(['https://x/a']),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b'],
+    });
+    expect(results).toHaveLength(2);
+    const byUrl = new Map(results.map((r) => [r.url, r]));
+    expect(byUrl.get('https://x/a')?.ok).toBe(true);
+    expect(byUrl.get('https://x/b')?.ok).toBe(false);
   });
 });

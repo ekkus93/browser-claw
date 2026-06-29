@@ -1040,3 +1040,36 @@ These decisions apply to the FIX7 targeted hardening pass. See
   required before marking FIX7 complete; a FIX6 Docker result cannot substitute.
 - **No new broad features in FIX7.** All changes are correctness, validation,
   and redaction hardening. Feature additions belong in a separate pass.
+
+## FIX8 Locked decisions (2026-06-29)
+
+- **`browserclaw-web` top-level limit fields must be normalized into canonical
+  `options`.** The model may emit `maxPages`, `maxChars`, `maxResults` at the
+  top level of a `browserclaw-web` block. The runtime expects `options.maxPages`
+  etc. Top-level fields must be validated and merged into the canonical `options`
+  shape during parse/validation so limits are never silently dropped.
+- **Invalid top-level `maxPages` must be rejected before effect emission.**
+  `validateWebRequest()` must reject `maxPages: 0`, negative, non-integer,
+  or string values. An invalid top-level `maxPages` is a malformed/protocol
+  error and must not result in a web effect being emitted.
+- **`referenceRuntime` must not validate options and then drop them.** After
+  validating `options.maxPages`, the validated options object must be forwarded
+  into the emitted `web_research`/`web_search`/`web_page_read` effect. Validate
+  and then silently omit is not acceptable.
+- **Web effect handlers must audit/resolve invalid option payloads instead of
+  throwing.** `createWebEffectHandler()` calls `sanitizeResearchOptions()` before
+  any try/catch. If `sanitizeResearchOptions()` throws (e.g. invalid `maxPages`),
+  the handler throws uncaught. FIX8 wraps option sanitization in try/catch and
+  routes failures through `failInvalidWebEffect()`.
+- **`handleReadPages()` must validate `maxPages` even when called directly.**
+  Central validation in `validateMessageSchema` rejects invalid `maxPages`, but
+  direct handler invocations (e.g. tests, future refactors) bypass that path.
+  `handleReadPages()` must call `validateOptionalPositiveIntegerLimit` at its
+  own start and return a structured `invalid_request` response on failure.
+- **Rust failure redaction must avoid obvious safe-word false positives while
+  preserving secret redaction.** The FIX7 loop-based `redact_marker_all()` may
+  redact ordinary words containing `sk-` such as `risk-level`, `task-id`,
+  `ask-for-help`, `disk-cache`. FIX8 adds boundary/min-length checks: only
+  redact `sk-` tokens that start at a non-alphanumeric boundary AND have at
+  least 12 secret-like characters following the prefix. `Bearer ` requires a
+  word boundary before it.

@@ -2222,6 +2222,15 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T10:26:35Z - Claude Sonnet 4.6 - Ralph FIX8 Phase 0: scope lock
+- FIX8 is a narrow hardening pass after FIX7.
+- A: canonical web options — top-level maxPages/maxChars/maxResults must be normalized into options; invalid top-level maxPages must be rejected at parse time.
+- B: referenceRuntime must forward validated options into emitted web effects (readPages, research, search, readPage).
+- C: createWebEffectHandler() must catch sanitizeResearchOptions() failures and audit/resolve them instead of throwing.
+- D: handleReadPages() must validate maxPages itself even when called directly (defense-in-depth).
+- E: Rust redaction precision — add boundary/min-length checks to avoid false positives on words like risk-level.
+- Design notes updated; FIX8 decisions locked.
+
 ## 2026-06-29T09:40:24Z - Claude Haiku 4.5 - Ralph FIX7 COMPLETE: C1/C2 extension validation + D1/D2/D3 gate
 - C1: validateNonEmptyStringArray per-slot check in service-worker.js validateMessageSchema read_pages branch.
 - C2: validateOptionalPositiveIntegerLimit for maxPages in validateMessageSchema + handleReadPages now uses Number.isInteger guard.

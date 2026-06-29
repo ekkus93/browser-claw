@@ -10,22 +10,26 @@ P2 = polish, robustness, or future hardening
 
 ## Phase 0 — Scope Lock and Evidence Hygiene
 
-- [ ] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX8_SPEC.md`.
-- [ ] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX8_TODO.md`.
-- [ ] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX8 section:
-  - [ ] `browserclaw-web` top-level limit fields must be normalized into canonical `options`.
-  - [ ] Invalid top-level `maxPages` must be rejected before effect emission.
-  - [ ] `referenceRuntime` must not validate options and then drop them.
-  - [ ] Web effect handlers must audit/resolve invalid option payloads instead of throwing.
-  - [ ] `handleReadPages()` must validate `maxPages` even when called directly.
-  - [ ] Rust failure redaction must avoid obvious safe-word false positives while preserving secret redaction.
-- [ ] P0 Update `memory.md` with:
-  - [ ] real `date -u` timestamp;
-  - [ ] model name;
-  - [ ] concise summary of FIX8 scope.
-- [ ] P0 Do not add broad new features in this pass.
-- [ ] P0 Do not check TODO boxes without evidence comments pointing to source/tests.
-- [ ] P0 Correct any FIX7 evidence comments that imply `browserclaw-web` top-level `maxPages` handling was complete.
+<!-- evidence: files added by git pull from remote -->
+- [x] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX8_SPEC.md`.
+- [x] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX8_TODO.md`.
+<!-- evidence: WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md — FIX8 section appended -->
+- [x] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX8 section:
+  - [x] `browserclaw-web` top-level limit fields must be normalized into canonical `options`.
+  - [x] Invalid top-level `maxPages` must be rejected before effect emission.
+  - [x] `referenceRuntime` must not validate options and then drop them.
+  - [x] Web effect handlers must audit/resolve invalid option payloads instead of throwing.
+  - [x] `handleReadPages()` must validate `maxPages` even when called directly.
+  - [x] Rust failure redaction must avoid obvious safe-word false positives while preserving secret redaction.
+<!-- evidence: memory.md updated with Phase 0 entry -->
+- [x] P0 Update `memory.md` with:
+  - [x] real `date -u` timestamp;
+  - [x] model name;
+  - [x] concise summary of FIX8 scope.
+- [x] P0 Do not add broad new features in this pass.
+- [x] P0 Do not check TODO boxes without evidence comments pointing to source/tests.
+<!-- evidence: FIX7 B3 note added — browserclaw-web top-level maxPages was not covered in FIX7 -->
+- [x] P0 Correct any FIX7 evidence comments that imply `browserclaw-web` top-level `maxPages` handling was complete.
 
 ---
 

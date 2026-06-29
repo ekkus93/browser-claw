@@ -868,3 +868,45 @@ These decisions apply to the FIX3 live-path correctness pass. See
 - **`waitForTabComplete()` race is fixed (P2).** The extension now checks existing
   tab status before attaching the `onUpdated` listener, so a tab that completes
   before listener setup does not time out.
+
+## FIX4 Locked decisions (2026-06-29)
+
+These decisions apply to the FIX4 protocol-validation hardening pass. See
+`docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX4_SPEC.md` and
+`...FIX4_TODO.md` for the full scope.
+
+- **FIX4 closes remaining quiet-fallback gaps.** FIX3 wired up the live paths;
+  FIX4 ensures every protocol boundary validates and fails visibly rather than
+  silently coercing malformed data into "best effort" defaults. No broad new
+  product features are added in this pass.
+- **Rust `readPages.urls` must reject invalid slots, not filter them.** A new
+  `required_string_array()` Rust helper rejects the whole request if any slot is
+  missing, non-string, or empty/whitespace. Silent per-slot filtering is removed.
+- **Rust `tool_call.name` must be required and non-empty.** A new
+  `required_tool_name()` Rust helper rejects the tool call with
+  `runtime.invalid_tool_call` if the name is missing, empty, or whitespace-only.
+  An empty-name `tool_call_proposal` must never reach the host.
+- **Host `webRunner` must not default malformed fields to empty values.** Patterns
+  like `const query = effect.query ?? ''` are replaced with strict
+  `requireEffectStringField()` / `requireEffectStringArrayField()` helpers.
+  Missing, empty, or whitespace-only values resolve the effect as failure and audit
+  `web.effect_payload_invalid`.
+- **Bulk research approval URL parsing must be per-slot strict.** `runApprovedBulkResearch()`
+  must validate every slot in the URL array, not just check that the array is
+  non-empty. Invalid URL slots must block the request and audit
+  `web.bulk_research_payload_invalid`.
+- **Page reader must reject empty successful page responses.** An `ok: true`
+  response with no meaningful content (empty text, whitespace-only, zero length)
+  must be treated as a protocol error, not returned as a successful read.
+- **`WebResearchService.readPages()` must delegate to provider batch `readPages()`
+  when available.** Sequential URL-by-URL fallback is only allowed if explicitly
+  configured AND audited. Silent downgrade is disallowed.
+- **Extension E2E must prove a real `read_page` against a fixture page.** A
+  failing or skipped extension E2E lane cannot be counted as extension readiness.
+  `permissionRequestSupported` must reflect whether the permission flow can
+  actually complete (e.g., requires user gesture), not just that a handler exists.
+- **Sandbox scripting policy must be explicit in UI and docs.** If sandboxed
+  scripting is implemented but disabled in v0.1, the UI must say so honestly —
+  not present an active-looking interface backed by a no-op.
+- **`waitForTabComplete()` tab-load race fix (P2, carried from FIX3).** P2
+  deferred from FIX3; I1 is in FIX4 scope as a P2 item.

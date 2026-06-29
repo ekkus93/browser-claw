@@ -10,21 +10,22 @@ P2 = polish, robustness, or future hardening
 
 ## Phase 0 — Scope Lock and Evidence Hygiene
 
-- [ ] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX4_SPEC.md`.
-- [ ] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX4_TODO.md`.
-- [ ] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX4 section:
-  - [ ] Rust validation must reject malformed protocol data rather than filter/default it.
-  - [ ] Host runners must not trust runtime validation.
-  - [ ] `read_pages` must be genuinely live or explicitly/audited downgraded.
-  - [ ] Extension E2E must prove real `read_page`.
-  - [ ] Permission status must not overpromise.
-  - [ ] Sandbox product policy must be explicit.
-- [ ] P0 Update `memory.md` with:
-  - [ ] real `date -u` timestamp;
-  - [ ] model name;
-  - [ ] concise summary of FIX4 scope.
-- [ ] P0 Do not add broad new features in this pass.
-- [ ] P0 Do not check TODO boxes without evidence comments pointing to source/tests.
+<!-- evidence: spec+TODO files were pulled from remote; design notes updated; memory.md updated with real timestamp 2026-06-29T00:47:57Z -->
+- [x] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX4_SPEC.md`. <!-- file present after git pull -->
+- [x] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX4_TODO.md`. <!-- file present after git pull -->
+- [x] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX4 section:
+  - [x] Rust validation must reject malformed protocol data rather than filter/default it.
+  - [x] Host runners must not trust runtime validation.
+  - [x] `read_pages` must be genuinely live or explicitly/audited downgraded.
+  - [x] Extension E2E must prove real `read_page`.
+  - [x] Permission status must not overpromise.
+  - [x] Sandbox product policy must be explicit.
+- [x] P0 Update `memory.md` with:
+  - [x] real `date -u` timestamp; <!-- 2026-06-29T00:47:57Z -->
+  - [x] model name; <!-- Claude Sonnet 4.6 -->
+  - [x] concise summary of FIX4 scope.
+- [x] P0 Do not add broad new features in this pass.
+- [x] P0 Do not check TODO boxes without evidence comments pointing to source/tests.
 
 ---
 

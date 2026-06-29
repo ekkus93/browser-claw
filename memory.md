@@ -1984,6 +1984,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: Parts I1, I2, I3 — Regex/range/skill transaction hardening.
 
+## 2026-06-29T00:47:57Z - Claude Sonnet 4.6 - FIX4 Phase 0 (scope lock) started
+- FIX4 spec + TODO pulled from remote (2 new files).
+- FIX4 scope: Rust strict validation (readPages.urls slots, tool_call.name), host webRunner fail-closed helpers, bulk research URL slot validation, empty-page rejection, WebResearchService batch delegation, extension E2E repair, permission status truthfulness, sandbox policy clarity.
+- Design notes appended with FIX4 locked decisions.
+- Next: A1 — Rust required_string_array + readPages reject-on-invalid-slot.
+
 ## 2026-06-28T23:30:59Z - Claude Sonnet 4.6 - FIX3 K1+K2+K3 acceptance gate DONE
 - K1: all 12 regression items covered by existing tests (cross-referenced).
 - K2: typecheck/lint/format/test/build/wasm/cargo all PASS; test:extension:e2e cannot-run (environment EADDRINUSE, real-Chrome-only).

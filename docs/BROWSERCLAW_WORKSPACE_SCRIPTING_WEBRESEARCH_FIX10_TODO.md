@@ -194,29 +194,29 @@ Bad examples:
 
 ### Required behavior
 
-- [ ] P1 `undefined` options should return `{ url }`.
-- [ ] P1 non-object options should throw invalid effect payload.
-- [ ] P1 array options should throw invalid effect payload.
-- [ ] P1 unknown fields should throw invalid effect payload.
-- [ ] P1 `format` should be rejected in FIX10 unless fully supported end-to-end.
-- [ ] P1 `timeoutMs` should be rejected in FIX10 unless fully supported/validated end-to-end.
-- [ ] P1 `maxChars` should be validated with `normalizeOptionalPositiveIntegerLimit` and `MAX_WEB_PAGE_CHARS`.
-- [ ] P1 Reject:
-  - [ ] string;
-  - [ ] zero;
-  - [ ] negative;
-  - [ ] non-integer;
-  - [ ] above cap.
-- [ ] P1 Tests:
-  - [ ] `maxChars: "2000"` rejected;
-  - [ ] `maxChars: 0` rejected;
-  - [ ] `maxChars: -1` rejected;
-  - [ ] `maxChars: 1.5` rejected;
-  - [ ] `maxChars` above cap rejected;
-  - [ ] `format` rejected;
-  - [ ] `timeoutMs` rejected;
-  - [ ] unknown option rejected;
-  - [ ] valid `maxChars: 1000` accepted.
+- [x] P1 `undefined` options should return `{ url }`. <!-- assertPlainOptionsObject returns {} for undefined; url always added -->
+- [x] P1 non-object options should throw invalid effect payload. <!-- assertPlainOptionsObject throws WebEffectPayloadError -->
+- [x] P1 array options should throw invalid effect payload. <!-- assertPlainOptionsObject checks Array.isArray -->
+- [x] P1 unknown fields should throw invalid effect payload. <!-- rejectUnknownOptionFields throws for fields not in PAGE_READ_OPTION_FIELDS -->
+- [x] P1 `format` should be rejected in FIX10 unless fully supported end-to-end. <!-- PAGE_READ_OPTION_FIELDS = new Set(['maxChars']); format not present -->
+- [x] P1 `timeoutMs` should be rejected in FIX10 unless fully supported/validated end-to-end. <!-- PAGE_READ_OPTION_FIELDS = new Set(['maxChars']); timeoutMs not present -->
+- [x] P1 `maxChars` should be validated with `normalizeOptionalPositiveIntegerLimit` and `MAX_WEB_PAGE_CHARS`. <!-- src/runtime/webRunner.ts: sanitizeReadOptions -->
+- [x] P1 Reject:
+  - [x] string; <!-- normalizeOptionalPositiveIntegerLimit throws on non-number -->
+  - [x] zero; <!-- normalizeOptionalPositiveIntegerLimit throws on value < 1 -->
+  - [x] negative; <!-- normalizeOptionalPositiveIntegerLimit throws on value < 1 -->
+  - [x] non-integer; <!-- normalizeOptionalPositiveIntegerLimit throws on !Number.isInteger -->
+  - [x] above cap. <!-- max: MAX_WEB_PAGE_CHARS (50_000) -->
+- [x] P1 Tests:
+  - [x] `maxChars: "2000"` rejected; <!-- test b2-str -->
+  - [x] `maxChars: 0` rejected; <!-- test b2-zero -->
+  - [x] `maxChars: -1` rejected; <!-- test b2-neg -->
+  - [x] `maxChars: 1.5` rejected; <!-- test b2-float -->
+  - [x] `maxChars` above cap rejected; <!-- test b2-cap -->
+  - [x] `format` rejected; <!-- test b2-fmt -->
+  - [x] `timeoutMs` rejected; <!-- test b2-timeout -->
+  - [x] unknown option rejected; <!-- test b2-unk -->
+  - [x] valid `maxChars: 1000` accepted. <!-- test b1-ok -->
 
 ### Suggested code
 
@@ -243,17 +243,17 @@ function sanitizeReadOptions(input: unknown, url: string): PageReadRequest {
 
 ## B2 — Direct `web_page_read` invalid options must resolve/audit as invalid effect payload
 
-- [ ] P1 Ensure direct `web_page_read` effects validate options before `web.page_read_started`.
-- [ ] P1 Invalid page-read options must:
-  - [ ] audit `web.effect_payload_invalid` or existing equivalent;
-  - [ ] resolve effect `ok:false`;
-  - [ ] not audit `web.page_read_started`;
-  - [ ] not call page reader provider.
-- [ ] P1 Tests:
-  - [ ] direct `web_page_read` with `options.maxChars: -1` resolves invalid payload;
-  - [ ] direct `web_page_read` with `options.maxChars: "2000"` resolves invalid payload;
-  - [ ] invalid page-read options do not call provider;
-  - [ ] invalid page-read options do not audit `web.page_read_failed`.
+- [x] P1 Ensure direct `web_page_read` effects validate options before `web.page_read_started`. <!-- sanitizeReadOptions call added before approvalRequested dispatch in web_page_read branch; src/runtime/webRunner.ts -->
+- [x] P1 Invalid page-read options must:
+  - [x] audit `web.effect_payload_invalid` or existing equivalent; <!-- failInvalidWebEffect audits web.effect_payload_invalid -->
+  - [x] resolve effect `ok:false`; <!-- failInvalidWebEffect resolves ok:false -->
+  - [x] not audit `web.page_read_started`; <!-- return before approval dispatch, no page_read_started possible -->
+  - [x] not call page reader provider. <!-- return before approval dispatch -->
+- [x] P1 Tests:
+  - [x] direct `web_page_read` with `options.maxChars: -1` resolves invalid payload; <!-- test b2-neg -->
+  - [x] direct `web_page_read` with `options.maxChars: "2000"` resolves invalid payload; <!-- test b2-str -->
+  - [x] invalid page-read options do not call provider; <!-- web.readPage not.toHaveBeenCalled in B2 tests -->
+  - [x] invalid page-read options do not audit `web.page_read_failed`. <!-- b2-str checks not.toContain('web.page_read_failed') -->
 
 ---
 

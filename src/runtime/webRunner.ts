@@ -197,17 +197,26 @@ function sanitizeResearchOptions(input: unknown): ResearchOptions {
   };
 }
 
+// B1 (FIX10): only maxChars is supported for web_page_read effects.
+// format and timeoutMs are not supported end-to-end; reject them.
+const PAGE_READ_OPTION_FIELDS: ReadonlySet<string> = new Set(['maxChars']);
+
 function sanitizeReadOptions(input: unknown, url: string): PageReadRequest {
-  const o = (
-    typeof input === 'object' && input !== null ? input : {}
-  ) as Record<string, unknown>;
+  const o = assertPlainOptionsObject(input, 'web_page_read.options');
+  rejectUnknownOptionFields(
+    o,
+    PAGE_READ_OPTION_FIELDS,
+    'web_page_read.options',
+  );
+  const maxChars =
+    o.maxChars !== undefined
+      ? normalizeOptionalPositiveIntegerLimit(o.maxChars, 'maxChars', {
+          max: MAX_WEB_PAGE_CHARS,
+        })
+      : undefined;
   return {
     url,
-    ...(o.format === 'text' || o.format === 'markdown'
-      ? { format: o.format }
-      : {}),
-    ...(typeof o.maxChars === 'number' ? { maxChars: o.maxChars } : {}),
-    ...(typeof o.timeoutMs === 'number' ? { timeoutMs: o.timeoutMs } : {}),
+    ...(maxChars !== undefined ? { maxChars } : {}),
   };
 }
 
@@ -346,6 +355,14 @@ export function createWebEffectHandler(deps: WebEffectDeps) {
         effect.id,
         new Error(`web_page_read.url is not an allowed URL: ${url}`),
       );
+      return;
+    }
+    // B2 (FIX10): validate options before queuing approval so invalid options
+    // fail early (web.effect_payload_invalid) and never reach the approval card.
+    try {
+      sanitizeReadOptions(effect.options, url);
+    } catch (error) {
+      await failInvalidWebEffect(deps, effect.id, error);
       return;
     }
     deps.dispatch(

@@ -293,6 +293,134 @@ describe('createWebEffectHandler (F3)', () => {
     expect(await auditTypes()).not.toContain('web.effect_payload_invalid');
   });
 
+  it('B1 (FIX10): valid maxChars queues approval and is not rejected', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_page_read',
+      id: 'b1-ok',
+      url: 'https://example.com/page',
+      options: { maxChars: 1000 },
+    });
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'approvals/approvalRequested',
+      }),
+    );
+    expect(await auditTypes()).not.toContain('web.effect_payload_invalid');
+  });
+
+  it('B2 (FIX10): maxChars string is invalid effect payload, not page_read_failed', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_page_read',
+      id: 'b2-str',
+      url: 'https://example.com/page',
+      options: { maxChars: '2000' as unknown as number },
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'approvals/approvalRequested' }),
+    );
+    const types = await auditTypes();
+    expect(types).toContain('web.effect_payload_invalid');
+    expect(types).not.toContain('web.page_read_started');
+    expect(types).not.toContain('web.page_read_failed');
+  });
+
+  it('B2 (FIX10): maxChars negative is invalid effect payload', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_page_read',
+      id: 'b2-neg',
+      url: 'https://example.com/page',
+      options: { maxChars: -1 },
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('B2 (FIX10): maxChars zero is invalid effect payload', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_page_read',
+      id: 'b2-zero',
+      url: 'https://example.com/page',
+      options: { maxChars: 0 },
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('B2 (FIX10): maxChars non-integer is invalid effect payload', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_page_read',
+      id: 'b2-float',
+      url: 'https://example.com/page',
+      options: { maxChars: 1.5 },
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('B2 (FIX10): maxChars above cap is invalid effect payload', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_page_read',
+      id: 'b2-cap',
+      url: 'https://example.com/page',
+      options: { maxChars: 999999 },
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('B2 (FIX10): format field is rejected as unsupported', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_page_read',
+      id: 'b2-fmt',
+      url: 'https://example.com/page',
+      options: { format: 'markdown' } as unknown as { maxChars: number },
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+    expect(await auditTypes()).not.toContain('web.page_read_started');
+  });
+
+  it('B2 (FIX10): timeoutMs field is rejected as unsupported', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_page_read',
+      id: 'b2-timeout',
+      url: 'https://example.com/page',
+      options: { timeoutMs: 10000 } as unknown as { maxChars: number },
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('B2 (FIX10): unknown option field is rejected', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_page_read',
+      id: 'b2-unk',
+      url: 'https://example.com/page',
+      options: { unknown: true } as unknown as { maxChars: number },
+    });
+    expect(web.readPage).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
   it('gates a bulk research run behind approval (reads nothing yet)', async () => {
     const web = makeWeb();
     const handle = createWebEffectHandler(deps(web));

@@ -9,11 +9,13 @@
 import type { SecretFailureKind, KeySource } from '../providers/providerKey.ts';
 import type { SearchOptions, SearchProvider, SearchResult } from './types.ts';
 import type { SearchProviderProfileRow } from '../db/types.ts';
+import { MAX_SEARCH_RESULTS } from './limits.ts';
+
+export { MAX_SEARCH_RESULTS };
 
 export const BRAVE_PROFILE_ID = 'brave';
 export const BRAVE_SEARCH_URL =
   'https://api.search.brave.com/res/v1/web/search';
-export const MAX_SEARCH_RESULTS = 20;
 
 // FIX1-G1: Brave Search API does not support browser-origin CORS.
 // A direct browser fetch to api.search.brave.com fails with a CORS error.

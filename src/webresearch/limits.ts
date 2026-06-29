@@ -1,5 +1,7 @@
 export const MAX_BATCH_PAGE_READS = 10;
-export const DEFAULT_MAX_PAGE_CHARS = 50_000;
+export const MAX_SEARCH_RESULTS = 20;
+export const MAX_WEB_PAGE_CHARS = 50_000;
+export const DEFAULT_MAX_PAGE_CHARS = MAX_WEB_PAGE_CHARS;
 
 export class LimitValidationError extends Error {
   readonly kind: string;

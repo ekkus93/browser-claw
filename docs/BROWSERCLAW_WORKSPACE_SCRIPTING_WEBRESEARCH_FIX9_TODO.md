@@ -40,23 +40,23 @@ P2 = polish, robustness, or future hardening
 
 Add one runtime web-options validator for model-authored `web_request.options`.
 
-- [ ] P1 Add `validateRuntimeWebOptions(raw: unknown)`.
-- [ ] P1 Behavior:
-  - [ ] `undefined` returns `undefined`;
-  - [ ] non-object rejected;
-  - [ ] array rejected;
-  - [ ] unknown fields rejected unless explicitly supported;
-  - [ ] `maxPages` validated with `normalizeOptionalPositiveIntegerLimit`;
-  - [ ] `maxResults` validated with `normalizeOptionalPositiveIntegerLimit`;
-  - [ ] `maxChars` validated with `normalizeOptionalPositiveIntegerLimit`;
-  - [ ] optional `site` validated if supported;
-  - [ ] optional `format` validated if supported.
-- [ ] P1 Tests:
-  - [ ] `options: undefined` accepted;
-  - [ ] `options: []` rejected;
-  - [ ] `options: "bad"` rejected;
-  - [ ] `options: { unknown: true }` rejected;
-  - [ ] valid `maxPages/maxResults/maxChars` accepted.
+- [x] P1 Add `validateRuntimeWebOptions(raw: unknown)`. <!-- src/runtime/runtimeWebOptions.ts -->
+- [x] P1 Behavior:
+  - [x] `undefined` returns `undefined`;
+  - [x] non-object rejected;
+  - [x] array rejected;
+  - [x] unknown fields rejected unless explicitly supported;
+  - [x] `maxPages` validated with `normalizeOptionalPositiveIntegerLimit`;
+  - [x] `maxResults` validated with `normalizeOptionalPositiveIntegerLimit`;
+  - [x] `maxChars` validated with `normalizeOptionalPositiveIntegerLimit`;
+  - [x] optional `site` validated if supported; <!-- site rejected as unsupported (per replies3.md) -->
+  - [x] optional `format` validated if supported. <!-- format rejected as unsupported (per replies3.md) -->
+- [x] P1 Tests: <!-- src/runtime/runtimeWebOptions.test.ts — 29 tests -->
+  - [x] `options: undefined` accepted;
+  - [x] `options: []` rejected;
+  - [x] `options: "bad"` rejected;
+  - [x] `options: { unknown: true }` rejected;
+  - [x] valid `maxPages/maxResults/maxChars` accepted.
 
 ### Suggested TypeScript implementation
 
@@ -159,36 +159,36 @@ If `site` or `format` is not actually used downstream, remove it from the suppor
 
 ## A2 — Validate `maxResults`
 
-- [ ] P1 Add/confirm `MAX_SEARCH_RESULTS`.
-- [ ] P1 Validate:
-  - [ ] string rejected;
-  - [ ] zero rejected;
-  - [ ] negative rejected;
-  - [ ] non-integer rejected;
-  - [ ] above max rejected;
-  - [ ] valid positive integer accepted.
+- [x] P1 Add/confirm `MAX_SEARCH_RESULTS`. <!-- moved from braveSearch.ts to limits.ts; braveSearch.ts re-exports it -->
+- [x] P1 Validate:
+  - [x] string rejected;
+  - [x] zero rejected;
+  - [x] negative rejected;
+  - [x] non-integer rejected;
+  - [x] above max rejected;
+  - [x] valid positive integer accepted.
 - [ ] P1 Apply validation in:
-  - [ ] `agentBlockParser` canonical web options;
-  - [ ] `referenceRuntime` options;
-  - [ ] web runner/search options if present.
-- [ ] P1 Tests for each invalid case.
+  - [ ] `agentBlockParser` canonical web options; <!-- Part C1 -->
+  - [x] `referenceRuntime` options; <!-- via validateRuntimeWebOptions in Part B -->
+  - [ ] web runner/search options if present. <!-- Part C -->
+- [x] P1 Tests for each invalid case. <!-- runtimeWebOptions.test.ts A2 tests -->
 
 ## A3 — Validate `maxChars`
 
-- [ ] P1 Add/confirm `MAX_PAGE_CHARS` or use existing `DEFAULT_MAX_PAGE_CHARS` as cap if appropriate.
-- [ ] P1 Validate:
-  - [ ] string rejected;
-  - [ ] zero rejected, unless zero has explicitly documented meaning;
-  - [ ] negative rejected;
-  - [ ] non-integer rejected;
-  - [ ] above max rejected;
-  - [ ] valid positive integer accepted.
+- [x] P1 Add/confirm `MAX_PAGE_CHARS` or use existing `DEFAULT_MAX_PAGE_CHARS` as cap if appropriate. <!-- MAX_WEB_PAGE_CHARS=50_000 added to limits.ts; DEFAULT_MAX_PAGE_CHARS aliased -->
+- [x] P1 Validate:
+  - [x] string rejected;
+  - [x] zero rejected, unless zero has explicitly documented meaning;
+  - [x] negative rejected;
+  - [x] non-integer rejected;
+  - [x] above max rejected;
+  - [x] valid positive integer accepted.
 - [ ] P1 Apply validation in:
-  - [ ] `agentBlockParser` canonical web options;
-  - [ ] `referenceRuntime` options;
-  - [ ] web runner/page read options if present;
-  - [ ] page reader provider if not already.
-- [ ] P1 Tests for each invalid case.
+  - [ ] `agentBlockParser` canonical web options; <!-- Part C2 -->
+  - [x] `referenceRuntime` options; <!-- via validateRuntimeWebOptions in Part B -->
+  - [ ] web runner/page read options if present; <!-- Part C -->
+  - [ ] page reader provider if not already. <!-- Part C -->
+- [x] P1 Tests for each invalid case. <!-- runtimeWebOptions.test.ts A3 tests -->
 
 ---
 

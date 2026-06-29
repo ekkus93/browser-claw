@@ -2222,6 +2222,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T06:04:17Z - Claude Sonnet 4.6 - Ralph FIX5 F1: web_page_read invalid URL now audits web.effect_payload_invalid DONE
+- webRunner.ts: effect handler split invalid URL into missing/empty (failInvalidWebEffect) + blocked classifyFetchUrl (failInvalidWebEffect); both cases now use shared helper (consistent with web_search/web_research).
+- webRunner.ts: approval handler replaced web.page_read_payload_invalid with failInvalidWebEffect; blocked URL after approval also uses failInvalidWebEffect.
+- Tests: G1 tests updated from web.page_read_payload_invalid → web.effect_payload_invalid; 4 new F1 effect-level tests + updated "rejects disallowed URL" test.
+- Gate: typecheck ✓, lint ✓, format ✓, vitest 1200/124 ✓.
+- NEXT: G1 (toolContentFromEffectFailure helper) or D3/D4 (Docker E2E evidence) or C3 (sandbox policy in Settings).
+
 ## 2026-06-29T05:58:05Z - Claude Sonnet 4.6 - Ralph FIX5 D1+D2: shared getServiceWorker helper; stageExtensionDir resolves symlinks DONE
 - Created tests/extension-e2e/helpers.ts: getServiceWorker() (checks existing[0] first, then waitForEvent 20s), getExtensionId(), stageExtensionDir() (fs.cpSync dereference:true into mkdtempSync), assertExtensionFixture() (checks manifest, SW exists, not a symlink).
 - extension.spec.ts: removed local assertExtensionFixture + getExtensionId; imported from helpers.ts; K1 test uses getServiceWorker() not bare waitForEvent.

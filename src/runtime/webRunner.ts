@@ -256,16 +256,23 @@ export function createWebEffectHandler(deps: WebEffectDeps) {
     }
 
     // web_page_read: validate the URL and gate behind approval.
+    // F1 (FIX5): missing/invalid/blocked URL audits web.effect_payload_invalid
+    // (consistent with web_search and web_research invalid-payload handling).
     const url = effect.url;
-    if (typeof url !== 'string' || !classifyFetchUrl(url).ok) {
-      await deps.submit({
-        type: 'resolve_effect',
-        id: effect.id,
-        result: {
-          ok: false,
-          error: { kind: 'web_invalid_url', message: 'URL is not allowed' },
-        },
-      });
+    if (typeof url !== 'string' || url.trim() === '') {
+      await failInvalidWebEffect(
+        deps,
+        effect.id,
+        new Error('web_page_read.url must be a non-empty string.'),
+      );
+      return;
+    }
+    if (!classifyFetchUrl(url).ok) {
+      await failInvalidWebEffect(
+        deps,
+        effect.id,
+        new Error(`web_page_read.url is not an allowed URL: ${url}`),
+      );
       return;
     }
     deps.dispatch(
@@ -322,36 +329,18 @@ export async function runApprovedWebPageRead(
     );
     url = requireStringField(parsed, 'url', 'web_page_read');
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    void recordAudit(
-      deps.db,
-      deps.dispatch,
-      webAuditEvent(
-        'web.page_read_payload_invalid',
-        'Web page read approval payload was invalid.',
-        { status: 'failure' },
-      ),
-    );
-    await deps.submit({
-      type: 'resolve_effect',
-      id: approval.id,
-      result: {
-        ok: false,
-        error: { kind: 'approval_payload_invalid', message, retryable: false },
-      },
-    });
+    // F1 (FIX5): use shared failInvalidWebEffect to audit web.effect_payload_invalid.
+    await failInvalidWebEffect(deps, approval.id, error);
     return;
   }
 
   if (!classifyFetchUrl(url).ok) {
-    await deps.submit({
-      type: 'resolve_effect',
-      id: approval.id,
-      result: {
-        ok: false,
-        error: { kind: 'web_invalid_url', message: 'URL is not allowed' },
-      },
-    });
+    // F1 (FIX5): blocked URL after approval must also audit web.effect_payload_invalid.
+    await failInvalidWebEffect(
+      deps,
+      approval.id,
+      new Error(`web_page_read.url is not an allowed URL: ${url}`),
+    );
     return;
   }
 

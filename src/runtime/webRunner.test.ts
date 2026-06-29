@@ -117,7 +117,7 @@ describe('createWebEffectHandler (F3)', () => {
     expect(submit).not.toHaveBeenCalled();
   });
 
-  it('rejects a disallowed page-read URL outright', async () => {
+  it('F1: rejects a disallowed page-read URL and audits web.effect_payload_invalid', async () => {
     const handle = createWebEffectHandler(deps());
     await handle({
       type: 'web_page_read',
@@ -129,7 +129,50 @@ describe('createWebEffectHandler (F3)', () => {
         result: expect.objectContaining({ ok: false }),
       }),
     );
-    expect(dispatch).not.toHaveBeenCalled();
+    // Dispatch may be called for audit but not for approval.
+    const approvalCall = dispatch.mock.calls.find((c) =>
+      String(c[0]?.type).includes('approvalRequested'),
+    );
+    expect(approvalCall).toBeUndefined();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('F1: missing URL audits web.effect_payload_invalid', async () => {
+    const handle = createWebEffectHandler(deps());
+    await handle({
+      type: 'web_page_read',
+      id: 'p2-missing',
+      url: undefined as unknown as string,
+    });
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('F1: empty URL string audits web.effect_payload_invalid', async () => {
+    const handle = createWebEffectHandler(deps());
+    await handle({ type: 'web_page_read', id: 'p2-empty', url: '' });
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('F1: valid URL still queues approval, no invalid audit', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_page_read',
+      id: 'p2-valid',
+      url: 'https://example.com/page',
+    });
+    expect(dispatch).toHaveBeenCalled();
+    expect(await auditTypes()).not.toContain('web.effect_payload_invalid');
   });
 
   it('gates a bulk research run behind approval (reads nothing yet)', async () => {
@@ -204,7 +247,8 @@ describe('runApprovedWebPageRead (F3)', () => {
   });
 
   // G1 (FIX3): strict payload parsing — fail-closed on malformed/missing URL.
-  it('G1: malformed JSON payload does not call readPage', async () => {
+  // F1 (FIX5): now audits web.effect_payload_invalid (consistent with web_search/web_research).
+  it('G1+F1: malformed JSON payload does not call readPage', async () => {
     const web = makeWeb();
     await runApprovedWebPageRead(deps(web), {
       id: 'g1-bad-json',
@@ -216,14 +260,16 @@ describe('runApprovedWebPageRead (F3)', () => {
       expect.objectContaining({
         result: expect.objectContaining({
           ok: false,
-          error: expect.objectContaining({ kind: 'approval_payload_invalid' }),
+          error: expect.objectContaining({
+            kind: 'web_effect_payload_invalid',
+          }),
         }),
       }),
     );
-    expect(await auditTypes()).toContain('web.page_read_payload_invalid');
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
   });
 
-  it('G1: missing url field does not call readPage', async () => {
+  it('G1+F1: missing url field does not call readPage', async () => {
     const web = makeWeb();
     await runApprovedWebPageRead(deps(web), {
       id: 'g1-no-url',
@@ -236,10 +282,10 @@ describe('runApprovedWebPageRead (F3)', () => {
         result: expect.objectContaining({ ok: false }),
       }),
     );
-    expect(await auditTypes()).toContain('web.page_read_payload_invalid');
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
   });
 
-  it('G1: empty url string does not call readPage', async () => {
+  it('G1+F1: empty url string does not call readPage', async () => {
     const web = makeWeb();
     await runApprovedWebPageRead(deps(web), {
       id: 'g1-empty-url',
@@ -247,10 +293,10 @@ describe('runApprovedWebPageRead (F3)', () => {
       payloadPreview: JSON.stringify({ url: '' }),
     });
     expect(web.readPage).not.toHaveBeenCalled();
-    expect(await auditTypes()).toContain('web.page_read_payload_invalid');
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
   });
 
-  it('G1: audit on payload invalid does not include url value in summary', async () => {
+  it('G1+F1: audit on payload invalid does not include url value in summary', async () => {
     const web = makeWeb();
     await runApprovedWebPageRead(deps(web), {
       id: 'g1-no-secret',
@@ -260,7 +306,7 @@ describe('runApprovedWebPageRead (F3)', () => {
     });
     const rows = await db.audit_events.toArray();
     const invalidAudit = rows.find(
-      (a) => a.type === 'web.page_read_payload_invalid',
+      (a) => a.type === 'web.effect_payload_invalid',
     );
     expect(invalidAudit).toBeDefined();
     expect(invalidAudit?.summary).not.toContain('SECRET_VALUE');

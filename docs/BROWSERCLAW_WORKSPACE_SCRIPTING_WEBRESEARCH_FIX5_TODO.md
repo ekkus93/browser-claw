@@ -519,17 +519,18 @@ return {
 
 All malformed web effect payloads should share the same invalid-effect audit helper unless there is a strong reason not to.
 
-- [ ] P1 Update `web_page_read` effect handling.
-- [ ] P1 Missing/empty/unsafe URL:
-  - [ ] does not call page reader;
-  - [ ] audits `web.effect_payload_invalid`;
-  - [ ] resolves effect as failure;
-  - [ ] includes safe `kind`/message.
-- [ ] P1 Tests:
-  - [ ] missing URL audits `web.effect_payload_invalid`;
-  - [ ] empty URL audits `web.effect_payload_invalid`;
-  - [ ] blocked private URL audits `web.effect_payload_invalid`;
-  - [ ] valid URL still proceeds.
+<!-- evidence: effect handler and approval handler both use failInvalidWebEffect(); G1 tests updated to expect web.effect_payload_invalid; 4 F1 tests + 4 G1+F1 tests; vitest 1200/124 -->
+- [x] P1 Update `web_page_read` effect handling. <!-- effect handler: missing/empty URL → failInvalidWebEffect; blocked URL → failInvalidWebEffect -->
+- [x] P1 Missing/empty/unsafe URL:
+  - [x] does not call page reader; <!-- failInvalidWebEffect returns before readPage -->
+  - [x] audits `web.effect_payload_invalid`; <!-- failInvalidWebEffect calls recordAudit -->
+  - [x] resolves effect as failure; <!-- failInvalidWebEffect calls deps.submit with ok:false -->
+  - [x] includes safe `kind`/message. <!-- web_effect_payload_invalid kind with message -->
+- [x] P1 Tests:
+  - [x] missing URL audits `web.effect_payload_invalid`; <!-- F1 test: missing URL -->
+  - [x] empty URL audits `web.effect_payload_invalid`; <!-- F1 test: empty URL string -->
+  - [x] blocked private URL audits `web.effect_payload_invalid`; <!-- F1 test: localhost -->
+  - [x] valid URL still proceeds. <!-- F1 test: valid URL queues approval -->
 
 ### Suggested patch shape
 

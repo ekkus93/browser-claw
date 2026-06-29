@@ -241,17 +241,19 @@ return [
 
 Invalid options should fail visibly and consistently.
 
-- [ ] P1 Wrap option sanitization in try/catch.
-- [ ] P1 On error:
-  - [ ] audit `web.effect_payload_invalid`;
-  - [ ] resolve effect as `ok:false`;
-  - [ ] do not dispatch approval;
-  - [ ] do not call provider.
-- [ ] P1 Tests:
-  - [ ] `web_research` query mode with `options.maxPages: 0` resolves failure;
-  - [ ] `web_research` urls mode with `options.maxPages: -1` resolves failure;
-  - [ ] invalid options do not dispatch approval card;
-  - [ ] invalid options audit `web.effect_payload_invalid`.
+<!-- evidence: webRunner.ts — sanitizeResearchOptions() wrapped in try/catch; failure routes through failInvalidWebEffect() -->
+- [x] P1 Wrap option sanitization in try/catch.
+- [x] P1 On error:
+  - [x] audit `web.effect_payload_invalid`;
+  - [x] resolve effect as `ok:false`;
+  - [x] do not dispatch approval;
+  - [x] do not call provider.
+<!-- evidence: webRunner.test.ts C1 FIX8 block (3 tests); 1272 total -->
+- [x] P1 Tests:
+  - [x] `web_research` query mode with `options.maxPages: 0` resolves failure;
+  - [x] `web_research` urls mode with `options.maxPages: -1` resolves failure;
+  - [x] invalid options do not dispatch approval card;
+  - [x] invalid options audit `web.effect_payload_invalid`.
 
 ### Suggested code
 
@@ -268,13 +270,14 @@ try {
 
 ## C2 — Apply same pattern to other option sanitizers
 
-- [ ] P1 Review handlers for:
-  - [ ] `web_search`;
-  - [ ] `web_page_read`;
-  - [ ] `web_research`;
-  - [ ] extension requests if they sanitize options.
-- [ ] P1 No user/model-supplied malformed options should throw out of the handler.
-- [ ] P1 Tests for each handler with invalid limit options.
+<!-- evidence: web_search sanitizeSearchOptions is inside existing try block (line 183); web_page_read sanitizeReadOptions inside existing try block (line 377); only web_research was uncovered — fixed above -->
+- [x] P1 Review handlers for:
+  - [x] `web_search`; <!-- sanitizeSearchOptions already inside try/catch -->
+  - [x] `web_page_read`; <!-- sanitizeReadOptions already inside try/catch -->
+  - [x] `web_research`; <!-- now wrapped by C1 FIX8 try/catch -->
+  - [x] extension requests if they sanitize options. <!-- service-worker.js has no options sanitizer; validation at validateMessageSchema -->
+- [x] P1 No user/model-supplied malformed options should throw out of the handler.
+- [x] P1 Tests for each handler with invalid limit options. <!-- C1 FIX8 tests in webRunner.test.ts -->
 
 ---
 

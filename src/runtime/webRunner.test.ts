@@ -634,3 +634,70 @@ describe('B1 — web_research effect payload validation', () => {
     expect(await auditTypes()).toContain('web.effect_payload_invalid');
   });
 });
+
+// ---------------------------------------------------------------------------
+// C1 (FIX8): sanitizeResearchOptions failures must audit/resolve, not throw
+// ---------------------------------------------------------------------------
+
+describe('C1 (FIX8) — invalid effect.options audits and resolves, not throws', () => {
+  function noApproval() {
+    return (dispatch as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (c: unknown[]) =>
+        typeof c[0] === 'object' &&
+        c[0] !== null &&
+        (c[0] as Record<string, unknown>).type ===
+          'approvals/approvalRequested',
+    );
+  }
+
+  it('C1 FIX8: query mode with options.maxPages 0 resolves ok:false, audits effect_payload_invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'c1-q-0',
+      mode: 'query',
+      query: 'test',
+      options: { maxPages: 0 },
+    } as unknown as Parameters<typeof handle>[0]);
+    expect(noApproval()).toHaveLength(0);
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('C1 FIX8: urls mode with options.maxPages -1 resolves ok:false, audits effect_payload_invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'c1-u-neg',
+      mode: 'urls',
+      urls: ['https://a.example/'],
+      options: { maxPages: -1 },
+    } as unknown as Parameters<typeof handle>[0]);
+    expect(noApproval()).toHaveLength(0);
+    expect(submit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({ ok: false }),
+      }),
+    );
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('C1 FIX8: invalid options do not dispatch approval card', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'c1-no-approval',
+      mode: 'query',
+      query: 'q',
+      options: { maxPages: 1.5 },
+    } as unknown as Parameters<typeof handle>[0]);
+    expect(noApproval()).toHaveLength(0);
+  });
+});

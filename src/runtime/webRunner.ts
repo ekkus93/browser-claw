@@ -223,7 +223,15 @@ export function createWebEffectHandler(deps: WebEffectDeps) {
       // C3 (FIX3): discriminate mode:'query' vs mode:'urls' so URL arrays
       // are never collapsed to an empty query string.
       // B1 (FIX4): validate fields before approval dispatch.
-      const options = sanitizeResearchOptions(effect.options);
+      // C1 (FIX8): wrap option sanitization — invalid effect.options must not
+      // throw out of the handler; audit and resolve instead.
+      let options: ResearchOptions;
+      try {
+        options = sanitizeResearchOptions(effect.options);
+      } catch (error) {
+        await failInvalidWebEffect(deps, effect.id, error);
+        return;
+      }
       const maxPages = options.maxPages ?? 'default';
       if (effect.mode === 'urls') {
         let urlList: string[];

@@ -14,6 +14,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect, chromium, type BrowserContext } from '@playwright/test';
+import {
+  assertExtensionFixture,
+  getExtensionId,
+  stageExtensionDir,
+} from './helpers.ts';
 
 interface ChromeRuntime {
   sendMessage(
@@ -33,12 +38,18 @@ const FIXTURE_PORT = 7779;
 const FIXTURE_ORIGIN = `http://${FIXTURE_HOST}:${FIXTURE_PORT}`;
 const FIXTURE_DIR = path.resolve(__dirname, 'fixtures');
 
-const TEST_EXTENSION_PATH = path.resolve(__dirname, 'test-extension');
+const TEST_EXTENSION_SRC = path.resolve(__dirname, 'test-extension');
 const APP_ORIGIN = 'http://localhost:5173';
 
 let fixtureServer: http.Server | null = null;
+// D2 (FIX5): staged copy of test-extension with symlinks dereferenced.
+let stagedExtensionPath: string;
 
 test.beforeAll(async () => {
+  // D2 (FIX5): stage the extension to a temp dir so service-worker.js is a real file.
+  stagedExtensionPath = stageExtensionDir(TEST_EXTENSION_SRC);
+  assertExtensionFixture(stagedExtensionPath);
+
   fixtureServer = http.createServer((req, res) => {
     const safePath = path.resolve(
       FIXTURE_DIR,
@@ -75,21 +86,10 @@ async function launchTestCtx(): Promise<BrowserContext> {
   return chromium.launchPersistentContext('', {
     args: [
       '--headless=new',
-      `--disable-extensions-except=${TEST_EXTENSION_PATH}`,
-      `--load-extension=${TEST_EXTENSION_PATH}`,
+      `--disable-extensions-except=${stagedExtensionPath}`,
+      `--load-extension=${stagedExtensionPath}`,
     ],
   });
-}
-
-async function getExtensionId(ctx: BrowserContext): Promise<string> {
-  // E3 (FIX4): check already-registered service workers first; the extension
-  // may have registered before waitForEvent listener was attached.
-  const existing = ctx.serviceWorkers();
-  if (existing.length > 0) {
-    return existing[0]!.url().split('/')[2]!;
-  }
-  const sw = await ctx.waitForEvent('serviceworker', { timeout: 20_000 });
-  return sw.url().split('/')[2]!;
 }
 
 async function sendMsg(

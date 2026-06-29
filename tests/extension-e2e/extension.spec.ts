@@ -1,7 +1,11 @@
 import { test, expect, chromium, type BrowserContext } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync, readFileSync } from 'node:fs';
+import {
+  assertExtensionFixture,
+  getExtensionId,
+  getServiceWorker,
+} from './helpers.ts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const EXTENSION_PATH = path.resolve(
@@ -10,28 +14,8 @@ const EXTENSION_PATH = path.resolve(
 );
 const APP_ORIGIN = 'http://localhost:5173';
 
-// E1 (FIX4): preflight assertion — fail fast with a clear message if the
-// extension fixture is missing rather than timing out on service worker load.
-function assertExtensionFixture(extensionDir: string): void {
-  const manifestPath = path.join(extensionDir, 'manifest.json');
-  if (!existsSync(manifestPath)) {
-    throw new Error(`Missing extension manifest: ${manifestPath}`);
-  }
-  const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
-    background?: { service_worker?: string };
-  };
-  const sw = manifest.background?.service_worker;
-  if (typeof sw !== 'string') {
-    throw new Error(
-      'Extension manifest does not define background.service_worker',
-    );
-  }
-  const swPath = path.join(extensionDir, sw);
-  if (!existsSync(swPath)) {
-    throw new Error(`Missing extension service worker: ${swPath}`);
-  }
-}
-
+// E1 (FIX4) / D1+D2 (FIX5): preflight assertion — uses shared helper which also
+// checks for symlinked service workers (fragile in Docker/headless).
 assertExtensionFixture(EXTENSION_PATH);
 
 async function launchCtx(): Promise<BrowserContext> {
@@ -42,17 +26,6 @@ async function launchCtx(): Promise<BrowserContext> {
       `--load-extension=${EXTENSION_PATH}`,
     ],
   });
-}
-
-async function getExtensionId(ctx: BrowserContext): Promise<string> {
-  // E3 (FIX4): check already-registered service workers first; the extension
-  // may have registered before waitForEvent listener was attached.
-  const existing = ctx.serviceWorkers();
-  if (existing.length > 0) {
-    return existing[0]!.url().split('/')[2]!;
-  }
-  const sw = await ctx.waitForEvent('serviceworker', { timeout: 20_000 });
-  return sw.url().split('/')[2]!;
 }
 
 async function sendMsg(
@@ -77,7 +50,8 @@ async function sendMsg(
 test('K1: extension loads, service worker is chrome-extension://', async () => {
   const ctx = await launchCtx();
   try {
-    const sw = await ctx.waitForEvent('serviceworker', { timeout: 20_000 });
+    // D1 (FIX5): use shared helper that checks existing service workers first.
+    const sw = await getServiceWorker(ctx);
     expect(sw.url()).toMatch(/^chrome-extension:\/\//);
   } finally {
     await ctx.close();

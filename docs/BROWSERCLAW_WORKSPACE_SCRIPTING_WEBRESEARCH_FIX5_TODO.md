@@ -329,12 +329,13 @@ If Settings has a runtime/script section:
 
 At least one E2E test still uses direct `ctx.waitForEvent('serviceworker')`, while the helper was updated to check existing service workers first.
 
-- [ ] P1 Add shared helper `getServiceWorker(context)`.
-- [ ] P1 Use it in every extension E2E test.
-- [ ] P1 No direct `context.waitForEvent('serviceworker')` calls outside the helper.
-- [ ] P1 Tests/lint:
-  - [ ] search confirms only helper calls waitForEvent;
-  - [ ] service worker startup no longer times out when worker already exists.
+<!-- evidence: tests/extension-e2e/helpers.ts — getServiceWorker(), getExtensionId(), assertExtensionFixture(), stageExtensionDir(); all 3 specs updated; rg confirms only helpers.ts calls waitForEvent; vitest 1197/124 -->
+- [x] P1 Add shared helper `getServiceWorker(context)`. <!-- helpers.ts:getServiceWorker -->
+- [x] P1 Use it in every extension E2E test. <!-- all 3 specs import from helpers.ts -->
+- [x] P1 No direct `context.waitForEvent('serviceworker')` calls outside the helper. <!-- rg confirms: only helpers.ts:20 -->
+- [x] P1 Tests/lint:
+  - [x] search confirms only helper calls waitForEvent; <!-- rg output: only tests/extension-e2e/helpers.ts:20 -->
+  - [x] service worker startup no longer times out when worker already exists. <!-- getServiceWorker checks serviceWorkers()[0] first -->
 
 ### Suggested helper
 
@@ -365,23 +366,19 @@ rg "waitForEvent\\('serviceworker'|waitForEvent\\(\"serviceworker\"" tests/exten
 
 Choose one:
 
-### Option A — load real built extension only
+### Option B chosen — stage into temp dir
 
-- [ ] P1 Delete or stop using `tests/extension-e2e/test-extension`.
-- [ ] P1 Use `extension/chrome-web-research` or build output as `EXTENSION_PATH`.
-- [ ] P1 Assert `manifest.json` and `service-worker.js` are real files.
+<!-- evidence: stageExtensionDir() in helpers.ts uses fs.cpSync with dereference:true; beforeAll in fixture-read + app-extension specs calls stageExtensionDir then assertExtensionFixture; assertExtensionFixture in helpers.ts throws if SW is symlink; vitest 1197/124 -->
 
-### Option B — copy service worker into fixture
-
-- [ ] P1 Replace symlink with an actual copied file during test setup.
-- [ ] P1 Ensure copy happens before Playwright launches Chromium.
-- [ ] P1 Assert `lstat().isSymbolicLink() === false`.
+- [x] P1 Replace symlink with an actual copied file during test setup. <!-- stageExtensionDir() copies to mkdtempSync with dereference:true -->
+- [x] P1 Ensure copy happens before Playwright launches Chromium. <!-- beforeAll: stageExtensionDir then assertExtensionFixture, launchTestCtx uses stagedExtensionPath -->
+- [x] P1 Assert `lstat().isSymbolicLink() === false`. <!-- assertExtensionFixture in helpers.ts throws if symlink -->
 
 ### Required tests/checks
 
-- [ ] P1 Preflight fails if service worker path is missing.
-- [ ] P1 Preflight warns/fails if service worker is symlink and policy disallows it.
-- [ ] P1 Extension loads with real service worker.
+- [x] P1 Preflight fails if service worker path is missing. <!-- assertExtensionFixture: throws if swPath missing -->
+- [x] P1 Preflight warns/fails if service worker is symlink and policy disallows it. <!-- assertExtensionFixture: throws if isSymbolicLink() -->
+- [x] P1 Extension loads with real service worker. <!-- staged copy is dereference:true; no symlinks -->
 
 ### Suggested preflight enhancement
 

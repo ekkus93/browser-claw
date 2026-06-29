@@ -2222,6 +2222,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T05:58:05Z - Claude Sonnet 4.6 - Ralph FIX5 D1+D2: shared getServiceWorker helper; stageExtensionDir resolves symlinks DONE
+- Created tests/extension-e2e/helpers.ts: getServiceWorker() (checks existing[0] first, then waitForEvent 20s), getExtensionId(), stageExtensionDir() (fs.cpSync dereference:true into mkdtempSync), assertExtensionFixture() (checks manifest, SW exists, not a symlink).
+- extension.spec.ts: removed local assertExtensionFixture + getExtensionId; imported from helpers.ts; K1 test uses getServiceWorker() not bare waitForEvent.
+- fixture-read.extension.spec.ts + app-extension.extension.spec.ts: import from helpers.ts; beforeAll calls stageExtensionDir + assertExtensionFixture; launchTestCtx uses stagedExtensionPath.
+- rg confirms: only helpers.ts:20 calls waitForEvent('serviceworker').
+- Gate: typecheck ✓, lint ✓, format ✓, vitest 1197/124 ✓.
+- NEXT: F1 (web_page_read invalid URL audit) or G1 (toolContentFromEffectFailure) or D3/D4 (Docker E2E).
+
 ## 2026-06-29T05:49:59Z - Claude Sonnet 4.6 - Ralph FIX5 E1: readPages(maxPages) skipped-URL semantics fixed DONE
 - pageReaderProvider.ts readPages(): added expectedUrls = request.urls.slice(0, Math.min(maxPages, urls.length)); result now maps over expectedUrls not request.urls.
 - URLs intentionally skipped by maxPages no longer appear as missing-result failures.

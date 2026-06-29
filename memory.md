@@ -2402,3 +2402,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - FIX9 gate evidence corrected: test:extension:e2e:docker [x] → [ ] with explicit NOT ATTEMPTED language.
 - Design notes: FIX10 Locked decisions section appended.
 - NEXT: Part A — strict webRunner search option validation (A1 + A2).
+
+## 2026-06-29T23:52:47Z - Claude Sonnet 4.6 - FIX10 Parts A-F: all complete, 1388 tests passing
+- Part A: assertPlainOptionsObject + rejectUnknownOptionFields helpers in webRunner.ts. SEARCH_OPTION_FIELDS={'maxResults'} — site and all unknown fields rejected. sanitizeSearchOptions strict. 8 tests. Commit 4e9a3cd.
+- Part B: PAGE_READ_OPTION_FIELDS={'maxChars'} — format/timeoutMs/unknown rejected. sanitizeReadOptions strict. B2 try/catch validates options before approvalRequested dispatch. 10 tests. Commit 1e780b5.
+- Part C: failInvalidPageReadPayload() helper → web.page_read_payload_invalid (new dedicated event). runApprovedWebPageRead restructured: URL+options validated in single try/catch before web.page_read_started. 5 new C1 tests; 4 G1+F1 tests updated (now check web.page_read_payload_invalid + web_invalid_payload error kind). Commit 736eb7c.
+- Part D: normalizeOptionalMaxChars in pageReaderProvider.ts. readPage: validates maxChars before exchange(), returns ok:false on invalid. readPages: second independent try/catch after maxPages+expectedUrls, maps expectedUrls to ok:false on invalid. 9 tests. Commit 145e101.
+- Part E: validateOptionalMaxChars helper in service-worker.js (uses DEFAULT_MAX_CHARS). Wired in validateMessageSchema for read_page and read_pages (E2). Wired directly in handleReadPage + handleReadPages (E3). Exported + declared in service-worker.d.ts. 20 tests in serviceWorkerReadPages.test.ts. Commit a1ad8bf.
+- Part F: WORKSPACE_SCRIPTING_WEBRESEARCH_FIX10_REVIEW_NOTES.md created. Gate: typecheck ✓, lint ✓, format ✓, vitest 1388/127 ✓, test:e2e 30/30 ✓, test:extension:e2e FAIL (5 chromium env — pre-existing), test:extension:e2e:docker PASS 5/5, build ✓, build:wasm ✓, cargo test ✓, cargo clippy ✓. F3 checklist all ticked.
+- FIX10 fully complete. NEXT: next FIX or item from main spec TODO.

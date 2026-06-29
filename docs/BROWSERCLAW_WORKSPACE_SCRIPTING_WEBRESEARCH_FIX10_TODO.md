@@ -506,14 +506,14 @@ Use the existing error response shape and helper naming in the service worker.
 
 ## F1 — Update review notes
 
-- [ ] P1 Update or create `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX10_REVIEW_NOTES.md`.
-- [ ] P1 Include:
-  - [ ] strict search options behavior;
-  - [ ] strict page-read options behavior;
-  - [ ] approved page-read invalid-payload classification;
-  - [ ] provider `maxChars` validation;
-  - [ ] extension `maxChars` validation;
-  - [ ] exact extension E2E status.
+- [x] P1 Update or create `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX10_REVIEW_NOTES.md`. <!-- created 2026-06-29T23:52:47Z -->
+- [x] P1 Include:
+  - [x] strict search options behavior; <!-- Part A section in review notes -->
+  - [x] strict page-read options behavior; <!-- Part B section in review notes -->
+  - [x] approved page-read invalid-payload classification; <!-- Part C section in review notes -->
+  - [x] provider `maxChars` validation; <!-- Part D section in review notes -->
+  - [x] extension `maxChars` validation; <!-- Part E section in review notes -->
+  - [x] exact extension E2E status. <!-- Gate results table: 5 fail in Chromium env; 5/5 pass in Docker -->
 
 ## F2 — Required commands
 
@@ -533,15 +533,29 @@ cargo test
 cargo clippy
 ```
 
-- [ ] P0 Record command results in TODO evidence comments.
-- [ ] P0 If a command cannot run, record:
-  - [ ] exact command;
-  - [ ] exact error;
-  - [ ] environment reason;
-  - [ ] whether it blocks all acceptance or only scoped feature acceptance;
-  - [ ] follow-up task.
-- [ ] P0 Do not mark failed/cannot-run commands as passed.
-- [ ] P1 If Docker extension E2E cannot run, leave its task unchecked or explicitly mark it cannot-run. Do not imply it passed.
+- [x] P0 Record command results in TODO evidence comments. <!-- all commands run and documented below -->
+- [x] P0 If a command cannot run, record: <!-- N/A: all commands ran; Chromium extension E2E documented as environment-only failure -->
+  - [x] exact command; <!-- N/A -->
+  - [x] exact error; <!-- N/A -->
+  - [x] environment reason; <!-- Chromium headless extension API not available -->
+  - [x] whether it blocks all acceptance or only scoped feature acceptance; <!-- does not block: Docker run passes -->
+  - [x] follow-up task. <!-- N/A: known pre-existing issue -->
+- [x] P0 Do not mark failed/cannot-run commands as passed. <!-- Chromium E2E not marked pass; Docker PASS stated separately -->
+- [x] P1 If Docker extension E2E cannot run, leave its task unchecked or explicitly mark it cannot-run. Do not imply it passed. <!-- Docker ran: PASS 5/5 -->
+
+### Gate evidence (2026-06-29T23:52:47Z)
+
+- [x] P0 `pnpm run typecheck` — PASS
+- [x] P0 `pnpm run lint` — PASS (0 warnings)
+- [x] P0 `pnpm run format:check` — PASS
+- [x] P0 `pnpm test -- --no-file-parallelism` — PASS: 1388 tests, 127 files
+- [x] P1 `pnpm run test:e2e` — PASS: 30/30
+- [ ] P1 `pnpm run test:extension:e2e` — FAIL (environment): 5/5 Chromium extension tests fail — Chromium headless extension API unavailable in this environment; pre-existing, NOT a FIX10 regression; passes in Docker.
+- [x] P1 `pnpm run test:extension:e2e:docker` — PASS: 5/5
+- [x] P1 `pnpm run build` — PASS (chunk size warning pre-existing)
+- [x] P1 `pnpm run build:wasm` — PASS
+- [x] P1 `cargo test --workspace` — PASS (0 tests; Rust workspace has no tests yet)
+- [x] P1 `cargo clippy --workspace --all-targets -- -D warnings` — PASS
 
 ### Evidence examples
 
@@ -561,13 +575,13 @@ If Docker is unavailable:
 
 FIX10 is complete only when:
 
-- [ ] `sanitizeSearchOptions()` rejects invalid/unsupported options.
-- [ ] invalid search options resolve/audit as invalid effect payload and do not call provider.
-- [ ] `sanitizeReadOptions()` rejects invalid/unsupported options.
-- [ ] direct `web_page_read` invalid options resolve/audit as invalid effect payload and do not call provider.
-- [ ] approved page-read invalid options are payload-invalid before `web.page_read_started`.
-- [ ] `pageReaderProvider.readPage()` validates `maxChars`.
-- [ ] `pageReaderProvider.readPages()` validates `maxChars`.
-- [ ] extension `read_page` validates `maxChars` centrally and in direct handler.
-- [ ] extension `read_pages` validates `maxChars` centrally and in direct handler.
-- [ ] gate evidence honestly distinguishes pass/fail/cannot-run/not-attempted.
+- [x] `sanitizeSearchOptions()` rejects invalid/unsupported options. <!-- strict sanitizer with assertPlainOptionsObject + rejectUnknownOptionFields + SEARCH_OPTION_FIELDS -->
+- [x] invalid search options resolve/audit as invalid effect payload and do not call provider. <!-- web.effect_payload_invalid before search_started; provider not called -->
+- [x] `sanitizeReadOptions()` rejects invalid/unsupported options. <!-- strict sanitizer with PAGE_READ_OPTION_FIELDS={'maxChars'}; format/timeoutMs/unknown fields rejected -->
+- [x] direct `web_page_read` invalid options resolve/audit as invalid effect payload and do not call provider. <!-- B2 try/catch before approvalRequested; web.effect_payload_invalid -->
+- [x] approved page-read invalid options are payload-invalid before `web.page_read_started`. <!-- C1: failInvalidPageReadPayload → web.page_read_payload_invalid; started never fires -->
+- [x] `pageReaderProvider.readPage()` validates `maxChars`. <!-- D1: normalizeOptionalMaxChars in readPage; returns ok:false before exchange() -->
+- [x] `pageReaderProvider.readPages()` validates `maxChars`. <!-- D2: second try/catch after maxPages + expectedUrls; returns failures before transport.send -->
+- [x] extension `read_page` validates `maxChars` centrally and in direct handler. <!-- E2: validateMessageSchema; E3: handleReadPage direct check -->
+- [x] extension `read_pages` validates `maxChars` centrally and in direct handler. <!-- E2: validateMessageSchema; E3: handleReadPages direct check -->
+- [x] gate evidence honestly distinguishes pass/fail/cannot-run/not-attempted. <!-- F2: test:extension:e2e marked FAIL (environment); Docker PASS 5/5; FIX9 docker item left unchecked -->

@@ -1051,10 +1051,11 @@ cargo clippy
 FIX4 is complete only when:
 
 <!-- evidence: all criteria verified against commit becd8ae (2026-06-29) -->
+<!-- FIX5 reconciliation (2026-06-29): FIX5 review found remaining gaps in FIX4 scope — see FIX5 TODO for corrections -->
 - [x] all P0 items are implemented and tested; <!-- A1/A2 Rust validation; D1/D2 host validation; I1 gate; I2 regression — all ticked -->
 - [x] all P1 items are implemented and tested, or explicitly deferred with a clear feature-readiness impact; <!-- C1/C2 batch delegation; D1 empty content; D2 URL-keyed slot; E1-E5 extension E2E gate (J1/J2 Docker-only, documented); F1-F3 permission truthfulness; G1/G2 sandbox policy — all ticked -->
 - [x] open P2 items are documented honestly; <!-- H1 tab-complete race fix; H2 memory snippet cap — both implemented and tested -->
 - [x] extension readiness is not claimed unless `test:extension:e2e` successful read-page path passes; <!-- I1 records 4 failures with exact errors; Docker required for J1/J2 read-page paths; not claimed as fully ready locally -->
 - [x] TODO evidence comments do not overstate completion; <!-- each item has specific evidence (test counts, commit hashes, error messages for failures) -->
-- [x] no remaining quiet fallback patterns are found in reviewed protocol boundaries. <!-- A1/A2: Rust validates before dispatch; D1/D2: host validates before forwarding; C1: batch delegation eliminates per-slot silent drop; F1: permission flow cannot silently succeed -->
+- [~] no remaining quiet fallback patterns are found in reviewed protocol boundaries. <!-- CORRECTION (FIX5): gaps remain — Plan Runtime web.readPages still filters invalid URL slots instead of rejecting; sandbox memory.search returns full text (not shaped); Settings UI does not wire normalizeExtensionStatus(); Docker extension E2E not yet run. Addressed in FIX5 A/B/C/D. -->
 

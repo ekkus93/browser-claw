@@ -2167,6 +2167,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1059/122 ✓.
 - NEXT: J2 (app-level extension E2E).
 
+## 2026-06-29T04:46:01Z - Claude Sonnet 4.6 - Ralph FIX5 Phase 0: scope lock + design notes + FIX4 overclaim reconciliation
+- FIX5 spec/TODO pulled from remote (commits a8a2a4f). 8 parts: A (Plan Runtime web.readPages strict), B (sandbox memory cap), C (Settings status wiring), D (extension E2E evidence), E (maxPages missing-result semantics), F (web_page_read audit), G (sanitized failure content), H (reconciliation).
+- Design notes updated with FIX5 locked decisions section.
+- FIX4 overclaims to reconcile: extension E2E not accepted (Docker not run), sandbox memory cap only in Plan Runtime (not sandbox path), Settings UI capability wiring not proven, "no remaining quiet fallback" claim premature.
+- NEXT: Phase 0 completion (tick spec/TODO present, reconcile FIX4 evidence), then A1 (requirePlanStringArrayField).
+
 ## 2026-06-29T02:17:18Z - Claude Sonnet 4.6 - Ralph FIX4 I1+I2+I3: gate commands recorded, regression checklist, final acceptance DONE
 - I1: All 10 required commands run and recorded with actual results. PASS: typecheck, lint, format:check, test (1176/1176), test:e2e (30/30), build, build:wasm, cargo test (37+1+2 pass), cargo clippy. FAIL: test:extension:e2e (4/5 fail — waitForEvent timeout in local headless Chromium, Docker required for J1/J2).
 - Typecheck fix: H1 test used r.ok / r.error narrowing but MsgResult=Record<string,unknown>; changed to bracket access with explicit cast.

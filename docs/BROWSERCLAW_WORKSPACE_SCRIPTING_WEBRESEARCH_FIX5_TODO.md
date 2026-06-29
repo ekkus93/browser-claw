@@ -10,26 +10,27 @@ P2 = polish, robustness, or future hardening
 
 ## Phase 0 — Scope Lock and Evidence Hygiene
 
-- [ ] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX5_SPEC.md`.
-- [ ] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX5_TODO.md`.
-- [ ] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX5 section:
-  - [ ] Plan Runtime `web.readPages` must not filter invalid URL slots.
-  - [ ] Sandbox memory search must use the same snippet cap as Plan Runtime.
-  - [ ] Settings UI must use capability-specific WebResearch status.
-  - [ ] Extension E2E readiness requires a recorded successful read-page run or must be explicitly blocked.
-  - [ ] `maxPages` must not create false missing-result failures.
-  - [ ] effect failures should serialize sanitized kind/message content.
-- [ ] P0 Update `memory.md` with:
-  - [ ] real `date -u` timestamp;
-  - [ ] model name;
-  - [ ] concise summary of FIX5 scope.
-- [ ] P0 Do not add broad new features in this pass.
-- [ ] P0 Do not check TODO boxes without evidence comments pointing to source/tests.
-- [ ] P0 Reconcile any previous FIX4 evidence comments that overstate:
-  - [ ] extension readiness;
-  - [ ] sandbox memory snippet caps;
-  - [ ] Settings UI capability status wiring;
-  - [ ] "no remaining quiet fallback" claims.
+<!-- evidence: spec/TODO files present after git pull a8a2a4f; design notes FIX5 section added; memory.md updated with real timestamp 2026-06-29T04:46:01Z; FIX4 I3 last item corrected from [x] to [~] with gap list -->
+- [x] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX5_SPEC.md`. <!-- present after git pull -->
+- [x] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX5_TODO.md`. <!-- present after git pull -->
+- [x] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX5 section:
+  - [x] Plan Runtime `web.readPages` must not filter invalid URL slots. <!-- in FIX5 locked decisions -->
+  - [x] Sandbox memory search must use the same snippet cap as Plan Runtime. <!-- in FIX5 locked decisions -->
+  - [x] Settings UI must use capability-specific WebResearch status. <!-- in FIX5 locked decisions -->
+  - [x] Extension E2E readiness requires a recorded successful read-page run or must be explicitly blocked. <!-- in FIX5 locked decisions -->
+  - [x] `maxPages` must not create false missing-result failures. <!-- in FIX5 locked decisions -->
+  - [x] effect failures should serialize sanitized kind/message content. <!-- in FIX5 locked decisions -->
+- [x] P0 Update `memory.md` with:
+  - [x] real `date -u` timestamp; <!-- 2026-06-29T04:46:01Z -->
+  - [x] model name; <!-- Claude Sonnet 4.6 -->
+  - [x] concise summary of FIX5 scope. <!-- memory.md entry added -->
+- [x] P0 Do not add broad new features in this pass. <!-- confirmed: only closes quiet-fallback gaps -->
+- [x] P0 Do not check TODO boxes without evidence comments pointing to source/tests. <!-- confirmed: all checks include evidence -->
+- [x] P0 Reconcile any previous FIX4 evidence comments that overstate:
+  - [x] extension readiness; <!-- FIX4 I3 last item changed to [~] with correction note -->
+  - [x] sandbox memory snippet caps; <!-- FIX4 I3 correction note lists sandbox path as gap -->
+  - [x] Settings UI capability status wiring; <!-- FIX4 I3 correction note lists Settings UI as gap -->
+  - [x] "no remaining quiet fallback" claims. <!-- FIX4 I3 last item explicitly corrected -->
 
 ---
 

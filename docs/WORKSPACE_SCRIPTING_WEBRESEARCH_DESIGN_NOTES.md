@@ -910,3 +910,44 @@ These decisions apply to the FIX4 protocol-validation hardening pass. See
   not present an active-looking interface backed by a no-op.
 - **`waitForTabComplete()` tab-load race fix (P2, carried from FIX3).** P2
   deferred from FIX3; I1 is in FIX4 scope as a P2 item.
+
+## FIX5 Locked decisions (2026-06-29)
+
+These decisions apply to the FIX5 follow-up hardening pass. See
+`docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX5_SPEC.md` and
+`...FIX5_TODO.md` for the full scope.
+
+- **Plan Runtime `web.readPages` must not filter invalid URL slots.** The
+  current `args.urls.filter(...)` approach silently drops non-string slots.
+  Replace with `requirePlanStringArrayField()` that throws `PlanOpError` on
+  any invalid slot (missing array, empty array, non-string item, empty string
+  item). No web provider call is made when validation fails.
+- **Plan Runtime `web.readPages` must call `ctx.web.readPages()` once (batch),
+  not loop over `ctx.web.readPage()`.** If the web context does not expose a
+  batch API, fail with a visible `unsupported_op` error rather than silently
+  degrading to single-URL loops.
+- **Sandbox memory search must use the same snippet cap as Plan Runtime.**
+  `filterMemoriesForAutomatedAccess()` + `shapeMemoryForAutomatedAccess()` are
+  the canonical helpers for any automated (plan/sandbox/LLM) memory access.
+  Returning raw `m.text` from any automated path is disallowed.
+- **Settings UI must use `normalizeExtensionStatus()` to render capability
+  status.** It is not sufficient for the helper to exist in tests; the live
+  Settings screen must call it and pass the result to `WebResearchStatus`.
+  Misleading copy that implies a working host-permission request flow must be
+  removed (v0.1 has no popup UI for that flow).
+- **Extension E2E readiness requires a recorded successful `read_page` run.**
+  Local headless Chromium failures are documented in FIX4; FIX5 must run and
+  record Docker extension E2E, or explicitly block extension/page-reader
+  readiness with a follow-up task.
+- **`readPages(maxPages)` must not generate missing-result failures for
+  intentionally skipped URLs.** Only URLs in `expectedUrls = urls.slice(0,
+  maxPages)` should appear in the result map; URLs beyond `maxPages` are
+  silently skipped, not failures.
+- **`web_page_read` invalid URL/payload must audit `web.effect_payload_invalid`
+  consistently**, matching the pattern already used for `web_search` and
+  `web_research` invalid payloads.
+- **Effect failures must produce structured, non-empty, sanitized content.**
+  Generic strings like "Operation was not completed" are replaced with
+  `toolContentFromEffectFailure()` JSON output containing `type`, `kind`,
+  `message`, and `retryable` fields; token-like strings in messages are
+  redacted.

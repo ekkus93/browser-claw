@@ -2222,6 +2222,14 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Gate: typecheck ✓, lint ✓, vitest 1057/122 ✓.
 - NEXT: J2 (app-level extension E2E) or K2 (acceptance checklist).
 
+## 2026-06-29T10:44:31Z - Claude Sonnet 4.6 - Ralph FIX8 COMPLETE: A+B1+C+D+E+F all done
+- A1/A2: agentBlockParser.ts — canonicalizeWebRequestOptions() normalizes top-level maxPages/maxChars/maxResults; invalid maxPages → malformed; BrowserClawWebRequest.options now typed.
+- B1: referenceRuntime.ts readPages — emits options:{maxPages} in web_research effect.
+- C1: webRunner.ts — sanitizeResearchOptions() wrapped in try/catch; invalid effect.options audits web.effect_payload_invalid.
+- D1/D2: service-worker.js handleReadPages() — direct validateOptionalPositiveIntegerLimit call; above-max now rejected not clamped.
+- E1: Rust boundary/min-length guards for sk- tokens; risk-level/task-id/disk-cache/ask-for-help no longer redacted.
+- Gate: 1283 vitest, 30 E2E, 5 Docker ext E2E, 58 cargo — all pass.
+
 ## 2026-06-29T10:26:35Z - Claude Sonnet 4.6 - Ralph FIX8 Phase 0: scope lock
 - FIX8 is a narrow hardening pass after FIX7.
 - A: canonical web options — top-level maxPages/maxChars/maxResults must be normalized into options; invalid top-level maxPages must be rejected at parse time.

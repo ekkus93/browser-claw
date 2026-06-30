@@ -17,6 +17,9 @@ export declare function errorResponse(
 ): MsgResult;
 export declare function validateMessageSchema(msg: Msg): MsgResult | null;
 export declare function validateOptionalMaxChars(value: unknown): string | null;
+export declare function validateOptionalMaxResults(
+  value: unknown,
+): string | null;
 export declare const handlers: Record<string, (msg: Msg) => unknown>;
 export declare const isAllowedSender: (sender: unknown) => boolean;
 export declare const ALLOWED_ORIGINS: string[];

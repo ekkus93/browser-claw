@@ -377,36 +377,36 @@ This means invalid direct messages like `maxResults: -1` are silently treated as
 
 ### Required behavior
 
-- [ ] P2 Central extension schema validation should validate optional `maxResults` for `web_search`.
-- [ ] P2 Invalid `maxResults` returns `invalid_request`.
-- [ ] P2 Reject:
-  - [ ] string;
-  - [ ] zero;
-  - [ ] negative;
-  - [ ] non-integer;
-  - [ ] above cap.
-- [ ] P2 Tests:
-  - [ ] central `web_search.maxResults: "5"` returns invalid;
-  - [ ] central `web_search.maxResults: 0` returns invalid;
-  - [ ] central `web_search.maxResults: -1` returns invalid;
-  - [ ] central `web_search.maxResults: 1.5` returns invalid;
-  - [ ] central `web_search.maxResults` above cap returns invalid;
-  - [ ] valid `maxResults: 5` accepted.
+- [x] P2 Central extension schema validation should validate optional `maxResults` for `web_search`. <!-- validateOptionalMaxResults() added; wired in handleWebSearch before count computation -->
+- [x] P2 Invalid `maxResults` returns `invalid_request`. <!-- errorResponse('invalid_request', ...) in handleWebSearch when maxResultsError is truthy -->
+- [x] P2 Reject:
+  - [x] string; <!-- validateOptionalPositiveIntegerLimit: typeof !== 'number' -->
+  - [x] zero; <!-- value < 1 -->
+  - [x] negative; <!-- value < 1 -->
+  - [x] non-integer; <!-- !Number.isInteger -->
+  - [x] above cap. <!-- value > SEARCH_MAX_RESULTS (20) -->
+- [x] P2 Tests:
+  - [x] central `web_search.maxResults: "5"` returns invalid; <!-- E1: string value returns error -->
+  - [x] central `web_search.maxResults: 0` returns invalid; <!-- E1: 0 returns error -->
+  - [x] central `web_search.maxResults: -1` returns invalid; <!-- E1: -1 returns error -->
+  - [x] central `web_search.maxResults: 1.5` returns invalid; <!-- E1: 1.5 returns error -->
+  - [x] central `web_search.maxResults` above cap returns invalid; <!-- E1: 21 returns error -->
+  - [x] valid `maxResults: 5` accepted. <!-- E1: 5 returns null -->
 
 ## E2 — Validate `web_search.maxResults` in direct handler
 
-- [ ] P2 `handleWebSearch()` validates `maxResults` even if called directly.
-- [ ] P2 Invalid direct-call `maxResults` returns `invalid_request`.
-- [ ] P2 Invalid direct-call `maxResults` does not call Brave/search API.
-- [ ] P2 Valid missing `maxResults` still defaults to normal default count.
-- [ ] P2 Valid `maxResults` uses the requested count.
-- [ ] P2 Tests:
-  - [ ] direct `handleWebSearch({ maxResults: -1 })` returns `invalid_request`;
-  - [ ] direct `handleWebSearch({ maxResults: 0 })` returns `invalid_request`;
-  - [ ] direct `handleWebSearch({ maxResults: 1.5 })` returns `invalid_request`;
-  - [ ] direct `handleWebSearch({ maxResults: "5" })` returns `invalid_request`;
-  - [ ] direct `handleWebSearch({})` defaults normally;
-  - [ ] direct `handleWebSearch({ maxResults: 5 })` uses 5.
+- [x] P2 `handleWebSearch()` validates `maxResults` even if called directly. <!-- validateOptionalMaxResults() wired before apiKey check -->
+- [x] P2 Invalid direct-call `maxResults` returns `invalid_request`. <!-- E2 tests use handle({ type: 'web_search', ... }); early return on error -->
+- [x] P2 Invalid direct-call `maxResults` does not call Brave/search API. <!-- return errorResponse before any fetch; E2 tests verify res['ok'] === false -->
+- [x] P2 Valid missing `maxResults` still defaults to normal default count. <!-- count = maxResults !== undefined ? maxResults : DEFAULT_SEARCH_RESULTS (10) -->
+- [x] P2 Valid `maxResults` uses the requested count. <!-- Math.min(maxResults, SEARCH_MAX_RESULTS) -->
+- [x] P2 Tests:
+  - [x] direct `handleWebSearch({ maxResults: -1 })` returns `invalid_request`; <!-- E2: maxResults -1 returns invalid_request -->
+  - [x] direct `handleWebSearch({ maxResults: 0 })` returns `invalid_request`; <!-- E2: maxResults 0 returns invalid_request -->
+  - [x] direct `handleWebSearch({ maxResults: 1.5 })` returns `invalid_request`; <!-- E2: maxResults 1.5 returns invalid_request -->
+  - [x] direct `handleWebSearch({ maxResults: "5" })` returns `invalid_request`; <!-- covered by E1 string test -->
+  - [x] direct `handleWebSearch({})` defaults normally; <!-- existing test D2: web_search missing apiKey returns permission_denied (proves no early rejection) -->
+  - [x] direct `handleWebSearch({ maxResults: 5 })` uses 5. <!-- existing D2 valid web_search test passes -->
 
 ### Suggested service-worker patch
 

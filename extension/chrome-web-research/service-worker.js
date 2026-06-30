@@ -517,6 +517,8 @@ function handleGetStatus(message) {
 
 const BRAVE_SEARCH_URL_SW = 'https://api.search.brave.com/res/v1/web/search';
 const SEARCH_MAX_RESULTS = 20;
+// E1 (FIX11): internal default used when maxResults is omitted; not exported.
+const DEFAULT_SEARCH_RESULTS = 10;
 
 async function handleWebSearch(message) {
   const { requestId, query, apiKey, maxResults } = message;
@@ -529,8 +531,18 @@ async function handleWebSearch(message) {
     );
   }
 
+  // E1 (FIX11): reject invalid maxResults instead of silently defaulting to 10.
+  const maxResultsError = validateOptionalMaxResults(maxResults);
+  if (maxResultsError) {
+    return errorResponse(
+      'invalid_request',
+      `web_search: ${maxResultsError}`,
+      requestId,
+    );
+  }
+
   const count = Math.min(
-    typeof maxResults === 'number' && maxResults > 0 ? maxResults : 10,
+    maxResults !== undefined ? maxResults : DEFAULT_SEARCH_RESULTS,
     SEARCH_MAX_RESULTS,
   );
 
@@ -693,6 +705,16 @@ function validateOptionalMaxChars(value) {
   );
 }
 
+// E1 (FIX11): validate optional maxResults — reject invalid values instead of
+// silently defaulting to DEFAULT_SEARCH_RESULTS.
+function validateOptionalMaxResults(value) {
+  return validateOptionalPositiveIntegerLimit(
+    value,
+    'maxResults',
+    SEARCH_MAX_RESULTS,
+  );
+}
+
 /**
  * Return an invalid_request errorResponse if the message payload is missing
  * required fields, or null if it passes.
@@ -847,6 +869,7 @@ export {
   errorResponse,
   validateMessageSchema,
   validateOptionalMaxChars,
+  validateOptionalMaxResults,
   classifyExtensionUrl,
   extractPageContent,
   ALLOWED_ORIGINS,

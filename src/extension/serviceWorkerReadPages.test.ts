@@ -58,6 +58,7 @@ import {
   handlers,
   validateMessageSchema,
   validateOptionalMaxChars,
+  validateOptionalMaxResults,
 } from '../../extension/chrome-web-research/service-worker.js';
 
 const BLOCKED = 'http://localhost/page';
@@ -1038,5 +1039,74 @@ describe('E3 (FIX10) — handleReadPages direct maxChars validation', () => {
       maxChars: 1000,
     });
     expect(res['ok']).toBe(true);
+  });
+});
+
+// E1 (FIX11): validateOptionalMaxResults helper
+describe('E1 (FIX11) — validateOptionalMaxResults', () => {
+  it('E1: undefined returns null', () => {
+    expect(validateOptionalMaxResults(undefined)).toBeNull();
+  });
+
+  it('E1: valid positive integer returns null', () => {
+    expect(validateOptionalMaxResults(5)).toBeNull();
+  });
+
+  it('E1: 0 returns error string', () => {
+    expect(validateOptionalMaxResults(0)).toBeTruthy();
+  });
+
+  it('E1: -1 returns error string', () => {
+    expect(validateOptionalMaxResults(-1)).toBeTruthy();
+  });
+
+  it('E1: 1.5 returns error string', () => {
+    expect(validateOptionalMaxResults(1.5)).toBeTruthy();
+  });
+
+  it('E1: string value returns error string', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(validateOptionalMaxResults('5' as any)).toBeTruthy();
+  });
+
+  it('E1: above cap (21) returns error string', () => {
+    expect(validateOptionalMaxResults(21)).toBeTruthy();
+  });
+});
+
+// E2 (FIX11): handleWebSearch rejects invalid maxResults instead of defaulting
+describe('E2 (FIX11) — handleWebSearch invalid maxResults rejection', () => {
+  async function ws(msg: Record<string, unknown>) {
+    return handle({
+      type: 'web_search',
+      requestId: 'e2-r',
+      query: 'test query',
+      apiKey: 'test-key',
+      ...msg,
+    });
+  }
+
+  it('E2: maxResults 0 returns invalid_request', async () => {
+    const res = await ws({ maxResults: 0 });
+    expect(res['ok']).toBe(false);
+    expect(res['error']).toMatchObject({ kind: 'invalid_request' });
+  });
+
+  it('E2: maxResults -1 returns invalid_request', async () => {
+    const res = await ws({ maxResults: -1 });
+    expect(res['ok']).toBe(false);
+    expect(res['error']).toMatchObject({ kind: 'invalid_request' });
+  });
+
+  it('E2: maxResults 1.5 returns invalid_request', async () => {
+    const res = await ws({ maxResults: 1.5 });
+    expect(res['ok']).toBe(false);
+    expect(res['error']).toMatchObject({ kind: 'invalid_request' });
+  });
+
+  it('E2: maxResults above cap (21) returns invalid_request', async () => {
+    const res = await ws({ maxResults: 21 });
+    expect(res['ok']).toBe(false);
+    expect(res['error']).toMatchObject({ kind: 'invalid_request' });
   });
 });

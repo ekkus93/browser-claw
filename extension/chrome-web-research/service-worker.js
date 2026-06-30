@@ -767,6 +767,12 @@ function validateMessageSchema(message) {
         id,
       );
     }
+    // A1 (FIX13): validate maxResults before apiKey so a malformed request
+    // shape returns invalid_request rather than being masked as permission_denied.
+    const maxResultsError = validateOptionalMaxResults(message.maxResults);
+    if (maxResultsError) {
+      return errorResponse('invalid_request', maxResultsError, id);
+    }
     if (
       typeof message.apiKey !== 'string' ||
       message.apiKey.trim().length === 0
@@ -776,12 +782,6 @@ function validateMessageSchema(message) {
         'web_search requires a non-empty string apiKey',
         id,
       );
-    }
-    // B1 (FIX12): validate optional maxResults centrally — mirrors the direct
-    // handler check in handleWebSearch() which stays as a defensive layer.
-    const maxResultsError = validateOptionalMaxResults(message.maxResults);
-    if (maxResultsError) {
-      return errorResponse('invalid_request', maxResultsError, id);
     }
   } else if (type === 'request_host_permission') {
     if (

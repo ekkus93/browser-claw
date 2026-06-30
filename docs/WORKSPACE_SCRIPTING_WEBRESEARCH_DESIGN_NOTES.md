@@ -1203,3 +1203,22 @@ These decisions apply to the FIX7 targeted hardening pass. See
   `pnpm run test:extension:e2e` CANNOT RUN in this environment (no persistent
   Chrome / display). The Docker lane (`test:extension:e2e:docker`) PASSES (5/5)
   and is the authoritative result. All other required commands pass.
+
+## FIX13 Locked decisions (2026-06-29)
+
+- **Central `web_search` schema validation must check `maxResults` before `apiKey`.**
+  A malformed request shape (invalid `maxResults`) should return `invalid_request`
+  regardless of whether `apiKey` is present. Hiding a shape error behind a credential
+  error makes errors non-deterministic and misleads callers. Order: query → maxResults →
+  apiKey.
+- **`invalid_request` for bad shape; `permission_denied` for missing credential.**
+  When the `web_search` request is structurally valid (query non-empty, maxResults valid
+  or absent) but `apiKey` is missing/empty, the response is `permission_denied`. Shape
+  errors always surface first as `invalid_request`.
+- **Direct `handleWebSearch()` validation remains unchanged.**
+  The `validateOptionalMaxResults()` call inside `handleWebSearch()` is a defense-in-depth
+  layer and must not be removed. The only change in FIX13 is the ordering within
+  `validateMessageSchema()`.
+- **FIX12 B1/B2 tests are not deleted or replaced.**
+  FIX13 adds a new `A1 (FIX13)` describe block in `serviceWorkerReadPages.test.ts`.
+  The existing FIX12 blocks remain and all still pass.

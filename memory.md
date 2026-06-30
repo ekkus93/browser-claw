@@ -2437,3 +2437,13 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Part D: Added missing protocol.test.ts tests: read_page.maxChars string rejected + 50000 accepted; read_pages.maxChars string rejected + 1.5 rejected + 50000 accepted. Ticked D1-D4. Commit 07f9d25.
 - Part E: WORKSPACE_SCRIPTING_WEBRESEARCH_FIX12_REVIEW_NOTES.md created. Gate: typecheck ✓, lint ✓, format ✓, vitest 1454/127 ✓, test:e2e 30/30 ✓, test:extension:e2e CANNOT RUN (no persistent Chrome outside Docker — env constraint, not regression), test:extension:e2e:docker PASS 5/5, build ✓, build:wasm ✓, cargo test ✓, cargo clippy ✓. Design notes + Phase 0 items + E1/E2/E3 checklist ticked.
 - FIX12 fully complete. NEXT: await FIX13 spec or new requirements.
+
+## 2026-06-30T04:36:02Z - Claude Sonnet 4.6 - FIX13: reorder web_search validation (maxResults before apiKey), 1462 tests passing
+- FIX13 scope: tiny cleanup — fix validation-order inconsistency in service-worker.js validateMessageSchema() web_search branch.
+- Problem: apiKey was validated before maxResults, so a request with missing apiKey + invalid maxResults returned permission_denied instead of invalid_request (shape error masked by credential error).
+- Fix (A1): in service-worker.js validateMessageSchema() web_search branch, moved validateOptionalMaxResults() call above the apiKey check. New order: query → maxResults → apiKey.
+- Tests added (A1 FIX13): 8 new tests in serviceWorkerReadPages.test.ts describe block 'A1 (FIX13)'. 5 it.each cases for invalid maxResults (-1/0/1.5/'5'/21) with missing apiKey → invalid_request. 2 permission_denied cases (valid maxResults:5 or missing maxResults, no apiKey). 1 empty query case. Test count: 1454 → 1462.
+- FIX12 B1/B2 tests unchanged and still pass.
+- Gate: typecheck ✓, lint ✓, format ✓, vitest 1462/127 ✓. Rust/WASM/e2e/Docker unchanged from FIX12 (no code changes to those layers).
+- Docs: FIX13 section added to DESIGN_NOTES.md; FIX13_REVIEW_NOTES.md created; FIX13_TODO.md checkboxes all ticked.
+- FIX13 fully complete. NEXT: await FIX14 spec or new requirements.

@@ -1238,3 +1238,61 @@ describe('B2 (FIX12) — handleWebSearch direct maxResults validation', () => {
     expect(capturedUrl).toContain('count=5');
   });
 });
+
+// A1 (FIX13): central schema validates maxResults before apiKey.
+describe('A1 (FIX13) — web_search validation order: maxResults before apiKey', () => {
+  function schema(overrides: Record<string, unknown>) {
+    return validateMessageSchema({
+      type: 'web_search',
+      requestId: 'fix13-r',
+      query: 'browser agents',
+      ...overrides,
+    }) as Record<string, unknown> | null;
+  }
+
+  it.each([
+    ['negative', -1],
+    ['zero', 0],
+    ['non-integer', 1.5],
+    ['string', '5'],
+    ['above cap', 21],
+  ])(
+    'A1 (FIX13): missing apiKey + invalid maxResults %s returns invalid_request',
+    (_label, maxResults) => {
+      const res = schema({ maxResults: maxResults as number });
+      expect(res).not.toBeNull();
+      expect((res as Record<string, unknown>)['error']).toMatchObject({
+        kind: 'invalid_request',
+      });
+    },
+  );
+
+  it('A1 (FIX13): missing apiKey + valid maxResults 5 returns permission_denied', () => {
+    const res = schema({ maxResults: 5 });
+    expect(res).not.toBeNull();
+    expect((res as Record<string, unknown>)['error']).toMatchObject({
+      kind: 'permission_denied',
+    });
+  });
+
+  it('A1 (FIX13): missing apiKey + missing maxResults returns permission_denied', () => {
+    const res = schema({});
+    expect(res).not.toBeNull();
+    expect((res as Record<string, unknown>)['error']).toMatchObject({
+      kind: 'permission_denied',
+    });
+  });
+
+  it('A1 (FIX13): empty query still returns invalid_request', () => {
+    const res = validateMessageSchema({
+      type: 'web_search',
+      requestId: 'fix13-empty-q',
+      query: '',
+      maxResults: -1,
+    }) as Record<string, unknown> | null;
+    expect(res).not.toBeNull();
+    expect((res as Record<string, unknown>)['error']).toMatchObject({
+      kind: 'invalid_request',
+    });
+  });
+});

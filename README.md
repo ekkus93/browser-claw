@@ -1,5 +1,7 @@
 # BrowserClaw
 
+[![CI](https://github.com/ekkus93/browser-claw/actions/workflows/ci.yml/badge.svg)](https://github.com/ekkus93/browser-claw/actions/workflows/ci.yml)
+
 A browser-only, local-first AI agent console. Kinda like OpenClaw, but in your browser.
 
 All state lives in your browser. No server required. API keys stay in memory only — never written to disk, localStorage, or logs.

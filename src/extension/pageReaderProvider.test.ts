@@ -904,3 +904,63 @@ describe('D2 (FIX10) — maxChars validation in readPages', () => {
     expect(results.every((r) => !r.ok)).toBe(true);
   });
 });
+
+describe('A1 (FIX12) — readPages top-level extension error kind mapping', () => {
+  it('A1: top-level extension invalid_request maps to invalid_request for every expected URL', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: false,
+        requestId: 'r',
+        error: {
+          kind: 'invalid_request',
+          message: 'maxChars must be a positive integer',
+        },
+      })),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b'],
+    });
+    expect(results).toHaveLength(2);
+    expect(results.every((r) => !r.ok)).toBe(true);
+    expect(
+      results.every((r) => !r.ok && r.error.kind === 'invalid_request'),
+    ).toBe(true);
+  });
+
+  it('A1: top-level extension permission_denied maps to permission_denied for every expected URL', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: false,
+        requestId: 'r',
+        error: { kind: 'permission_denied', message: 'denied' },
+      })),
+    });
+    const results = await reader.readPages({
+      urls: ['https://x/a', 'https://x/b'],
+    });
+    expect(results).toHaveLength(2);
+    expect(
+      results.every((r) => !r.ok && r.error.kind === 'permission_denied'),
+    ).toBe(true);
+  });
+
+  it('A1: malformed batch extension response (not an ExtensionResponse) maps to internal_error', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({ ok: 'maybe' })),
+    });
+    const results = await reader.readPages({ urls: ['https://x/a'] });
+    expect(results[0]?.ok).toBe(false);
+    if (results[0] && !results[0].ok)
+      expect(results[0].error.kind).toBe('internal_error');
+  });
+
+  it('A1: successful response missing results array maps to internal_error', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({ ok: true, requestId: 'r' })),
+    });
+    const results = await reader.readPages({ urls: ['https://x/a'] });
+    expect(results[0]?.ok).toBe(false);
+    if (results[0] && !results[0].ok)
+      expect(results[0].error.kind).toBe('internal_error');
+  });
+});

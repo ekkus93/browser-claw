@@ -62,15 +62,15 @@ If the extension returns `invalid_request`, this incorrectly becomes `internal_e
 
 ### Required behavior
 
-- [ ] P1 If response is not an extension response, return per-URL `internal_error`.
-- [ ] P1 If response is an extension error response, use `toError(raw)`.
-- [ ] P1 Extension `invalid_request` must become page-read `invalid_request`.
-- [ ] P1 If response is successful but `results` is missing/not array, return per-URL `internal_error`.
-- [ ] P1 Tests:
-  - [ ] top-level batch extension `invalid_request` maps to `invalid_request` for every expected URL;
-  - [ ] top-level batch extension `permission_denied` still maps to the expected provider error kind;
-  - [ ] malformed batch extension response maps to `internal_error`;
-  - [ ] successful response missing `results` maps to `internal_error`.
+- [x] P1 If response is not an extension response, return per-URL `internal_error`. <!-- pageReaderProvider.ts: split 3-case guard; case 1 -->
+- [x] P1 If response is an extension error response, use `toError(raw)`. <!-- pageReaderProvider.ts: case 2 — toError() maps via ERROR_KIND_MAP -->
+- [x] P1 Extension `invalid_request` must become page-read `invalid_request`. <!-- pageReaderProvider.ts: ERROR_KIND_MAP already maps invalid_request→invalid_request; now used in batch path -->
+- [x] P1 If response is successful but `results` is missing/not array, return per-URL `internal_error`. <!-- pageReaderProvider.ts: case 3 -->
+- [x] P1 Tests: <!-- pageReaderProvider.test.ts: A1 (FIX12) describe block -->
+  - [x] top-level batch extension `invalid_request` maps to `invalid_request` for every expected URL; <!-- 'A1: top-level extension invalid_request maps to invalid_request for every expected URL' -->
+  - [x] top-level batch extension `permission_denied` still maps to the expected provider error kind; <!-- 'A1: top-level extension permission_denied maps to permission_denied for every expected URL' -->
+  - [x] malformed batch extension response maps to `internal_error`; <!-- 'A1: malformed batch extension response (not an ExtensionResponse) maps to internal_error' -->
+  - [x] successful response missing `results` maps to `internal_error`. <!-- 'A1: successful response missing results array maps to internal_error' -->
 
 ### Suggested code
 

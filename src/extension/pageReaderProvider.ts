@@ -310,20 +310,35 @@ export function createExtensionPageReader(
         }));
       }
 
-      // Top-level error — extension rejected the batch itself.
-      if (
-        !isExtensionResponse(raw) ||
-        !raw.ok ||
-        !Array.isArray(raw['results'])
-      ) {
-        const errorMsg =
-          isExtensionResponse(raw) && !raw.ok
-            ? raw.error.message
-            : 'invalid extension response';
+      // A1 (FIX12): split top-level batch errors into 3 cases so that the
+      // extension's own error kind (e.g. invalid_request) is preserved via
+      // toError(), while truly malformed responses stay internal_error.
+      if (!isExtensionResponse(raw)) {
         return expectedUrls.map((url) => ({
           ok: false as const,
           url,
-          error: { kind: 'internal_error' as const, message: errorMsg },
+          error: {
+            kind: 'internal_error' as const,
+            message: 'invalid extension response',
+            retryable: false,
+          },
+        }));
+      }
+
+      if (!raw.ok) {
+        const error = toError(raw);
+        return expectedUrls.map((url) => ({ ok: false as const, url, error }));
+      }
+
+      if (!Array.isArray(raw['results'])) {
+        return expectedUrls.map((url) => ({
+          ok: false as const,
+          url,
+          error: {
+            kind: 'internal_error' as const,
+            message: 'invalid extension response',
+            retryable: false,
+          },
         }));
       }
 

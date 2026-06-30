@@ -10,21 +10,21 @@ P2 = polish, robustness, or future hardening
 
 ## Phase 0 — Scope Lock and Evidence Hygiene
 
-- [ ] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_SPEC.md`.
-- [ ] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_TODO.md`.
-- [ ] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX11 section:
-  - [ ] `web_research.options` must be strict like search/page-read options.
-  - [ ] `site` and `format` are rejected in FIX11 because they are not honored end-to-end.
-  - [ ] approved bulk-research invalid options must remain payload-invalid.
-  - [ ] provider-local invalid input should use `invalid_request`, not `internal_error`.
-  - [ ] extension protocol/service-worker validation should agree for `maxChars` and `maxResults`.
-- [ ] P0 Update `memory.md` with:
-  - [ ] real `date -u` timestamp;
-  - [ ] model name;
-  - [ ] concise summary of FIX11 scope.
-- [ ] P0 Do not add broad new features in this pass.
-- [ ] P0 Do not implement `site` filtering or `format` conversion in FIX11.
-- [ ] P0 Do not check TODO boxes without evidence comments pointing to source/tests.
+- [x] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_SPEC.md`. <!-- added by user in 0a1f1da -->
+- [x] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_TODO.md`. <!-- added by user in 0a1f1da -->
+- [x] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX11 section: <!-- FIX11 Locked decisions section added -->
+  - [x] `web_research.options` must be strict like search/page-read options. <!-- RESEARCH_OPTION_FIELDS; assertPlainOptionsObject; rejectUnknownOptionFields -->
+  - [x] `site` and `format` are rejected in FIX11 because they are not honored end-to-end. <!-- ResearchOptions becomes standalone type; site/format removed from type -->
+  - [x] approved bulk-research invalid options must remain payload-invalid. <!-- existing payload try/catch; strict A1 sanitizer plugs in automatically -->
+  - [x] provider-local invalid input should use `invalid_request`, not `internal_error`. <!-- ERROR_KIND_MAP updated; PageReadErrorKind gets invalid_request -->
+  - [x] extension protocol/service-worker validation should agree for `maxChars` and `maxResults`. <!-- protocol.ts inline validation; validateOptionalMaxResults in service-worker.js -->
+- [x] P0 Update `memory.md` with: <!-- updated below -->
+  - [x] real `date -u` timestamp; <!-- 2026-06-29T... -->
+  - [x] model name; <!-- Claude Sonnet 4.6 -->
+  - [x] concise summary of FIX11 scope. <!-- in memory.md entry -->
+- [x] P0 Do not add broad new features in this pass. <!-- meta-constraint -->
+- [x] P0 Do not implement `site` filtering or `format` conversion in FIX11. <!-- confirmed; both fields rejected -->
+- [x] P0 Do not check TODO boxes without evidence comments pointing to source/tests. <!-- all evidence comments added inline -->
 
 ---
 

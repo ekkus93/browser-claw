@@ -2411,3 +2411,11 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Part E: validateOptionalMaxChars helper in service-worker.js (uses DEFAULT_MAX_CHARS). Wired in validateMessageSchema for read_page and read_pages (E2). Wired directly in handleReadPage + handleReadPages (E3). Exported + declared in service-worker.d.ts. 20 tests in serviceWorkerReadPages.test.ts. Commit a1ad8bf.
 - Part F: WORKSPACE_SCRIPTING_WEBRESEARCH_FIX10_REVIEW_NOTES.md created. Gate: typecheck ✓, lint ✓, format ✓, vitest 1388/127 ✓, test:e2e 30/30 ✓, test:extension:e2e FAIL (5 chromium env — pre-existing), test:extension:e2e:docker PASS 5/5, build ✓, build:wasm ✓, cargo test ✓, cargo clippy ✓. F3 checklist all ticked.
 - FIX10 fully complete. NEXT: next FIX or item from main spec TODO.
+
+## 2026-06-30T00:48:00Z - Claude Sonnet 4.6 - FIX11 Phase 0: scope lock and design notes
+- FIX11 scope: strict `sanitizeResearchOptions()` (RESEARCH_OPTION_FIELDS); remove `site`/`format` from `ResearchOptions` type; approved bulk-research invalid options remain payload-invalid; `PageReadErrorKind` gets `invalid_request`; `ERROR_KIND_MAP` maps extension `invalid_request` → `'invalid_request'`; `protocol.ts` inline `maxChars` validation for `read_page`/`read_pages`; extension `validateOptionalMaxResults()` + `DEFAULT_SEARCH_RESULTS = 10`.
+- Decision 1: Remove `site` and `format` from `ResearchOptions` type (no longer extends `SearchOptions`). Fix compile errors — they identify hidden legacy paths.
+- Decision 2: Map extension `invalid_request` → `'invalid_request'` in `ERROR_KIND_MAP`. Add `'invalid_request'` to `PageReadErrorKind`. Only `internal_error` for unexpected failures.
+- Decision 3: Inline validation style in `protocol.ts` (no new helper); consistent with existing `web_search.maxResults` check pattern.
+- Decision 4: `DEFAULT_SEARCH_RESULTS = 10` as internal constant in service-worker.js; not exported.
+- NEXT: Part A — strict sanitizeResearchOptions() + remove site/format from type.

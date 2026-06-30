@@ -1147,3 +1147,31 @@ These decisions apply to the FIX7 targeted hardening pass. See
 - **Gate evidence must distinguish pass / fail / cannot-run / not-attempted.** A
   NOT ATTEMPTED task must remain `[ ]` unchecked, not `[x]`. This corrects the FIX9
   `test:extension:e2e:docker` checkbox which was ticked while noting NOT ATTEMPTED.
+
+## FIX11 Locked decisions (2026-06-29, from `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_RESPONSES.md`)
+
+- **`sanitizeResearchOptions()` must be strict like search/page-read sanitizers.**
+  Use `assertPlainOptionsObject()` + `rejectUnknownOptionFields()` (FIX10 helpers).
+  `RESEARCH_OPTION_FIELDS = {'maxPages', 'maxResults', 'maxChars'}` only.
+  `site` and `format` are rejected because they are not honored end-to-end; they
+  must not be accepted at any sanitizer boundary in FIX11.
+- **`site` and `format` removed from `ResearchOptions` type.** `ResearchOptions`
+  no longer extends `SearchOptions`; it becomes a standalone type with only
+  `maxPages?`, `maxResults?`, `maxChars?`. Compile errors from this change identify
+  hidden legacy paths that assumed unsupported options — fix those paths, do not
+  suppress errors or keep dead fields.
+- **Approved bulk-research invalid options must remain payload-invalid before
+  `web.research_started`.** The payload try/catch structure from FIX9/FIX10 is
+  retained; the strict sanitizer from Part A plugs in automatically.
+- **Extension `invalid_request` maps to `PageReadResult.error.kind === 'invalid_request'`.**
+  Update `ERROR_KIND_MAP` in `pageReaderProvider.ts` so extension-side `invalid_request`
+  does not become `internal_error`. Add `'invalid_request'` to `PageReadErrorKind`.
+  `internal_error` is reserved for unexpected failures and malformed extension responses.
+- **`protocol.ts` validates `read_page/read_pages.maxChars` inline.** No new helper;
+  use the existing `return { ok: false, reason }` style already in `parseExtensionRequest()`.
+  Cap: 50,000 (= `MAX_WEB_PAGE_CHARS`).
+- **Extension `web_search.maxResults` must be validated, not silently defaulted.**
+  Add `DEFAULT_SEARCH_RESULTS = 10` (internal constant, not exported) and
+  `validateOptionalMaxResults()` helper. Wire in `validateMessageSchema()` and
+  `handleWebSearch()`. Invalid `maxResults` returns `invalid_request`; valid absent
+  `maxResults` uses `DEFAULT_SEARCH_RESULTS`.

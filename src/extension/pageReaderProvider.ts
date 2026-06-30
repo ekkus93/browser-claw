@@ -49,7 +49,9 @@ export interface ExtensionPageReaderDeps {
 const ERROR_KIND_MAP: Record<ExtensionErrorKind, PageReadErrorKind> = {
   // A2 canonical error kinds
   unsupported_message_type: 'internal_error',
-  invalid_request: 'internal_error',
+  // C1 (FIX11): extension invalid_request maps to invalid_request, not internal_error.
+  // internal_error is reserved for unexpected failures and malformed extension responses.
+  invalid_request: 'invalid_request',
   origin_not_allowed: 'permission_denied',
   permission_denied: 'permission_denied',
   host_permission_missing: 'permission_denied',
@@ -208,10 +210,11 @@ export function createExtensionPageReader(
           err instanceof LimitValidationError
             ? err.message
             : 'Invalid maxChars.';
+        // C1 (FIX11): local invalid caller input uses invalid_request, not internal_error.
         return Promise.resolve({
           ok: false,
           url: request.url,
-          error: { kind: 'internal_error', message, retryable: false },
+          error: { kind: 'invalid_request', message, retryable: false },
         });
       }
       return exchange(
@@ -240,10 +243,11 @@ export function createExtensionPageReader(
           err instanceof LimitValidationError
             ? err.message
             : 'invalid maxPages';
+        // C1 (FIX11): invalid caller input uses invalid_request, not internal_error.
         return request.urls.map((url) => ({
           ok: false as const,
           url,
-          error: { kind: 'internal_error' as const, message },
+          error: { kind: 'invalid_request' as const, message },
         }));
       }
 
@@ -267,10 +271,11 @@ export function createExtensionPageReader(
           err instanceof LimitValidationError
             ? err.message
             : 'Invalid maxChars.';
+        // C1 (FIX11): invalid caller input uses invalid_request, not internal_error.
         return expectedUrls.map((url) => ({
           ok: false as const,
           url,
-          error: { kind: 'internal_error' as const, message },
+          error: { kind: 'invalid_request' as const, message },
         }));
       }
 

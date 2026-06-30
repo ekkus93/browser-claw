@@ -766,7 +766,7 @@ describe('B3 (FIX7) — maxPages validation in readPages', () => {
 });
 
 describe('D1 (FIX10) — maxChars validation in readPage', () => {
-  it('D1: maxChars 0 returns internal_error without calling extension', async () => {
+  it('D1/C1: maxChars 0 returns invalid_request without calling extension', async () => {
     const send = vi.fn();
     const reader = createExtensionPageReader({ transport: { send } });
     const result = await reader.readPage({
@@ -776,11 +776,11 @@ describe('D1 (FIX10) — maxChars validation in readPage', () => {
     expect(send).not.toHaveBeenCalled();
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.error.kind).toBe('internal_error');
+      expect(result.error.kind).toBe('invalid_request');
     }
   });
 
-  it('D1: maxChars -1 returns internal_error without calling extension', async () => {
+  it('D1/C1: maxChars -1 returns invalid_request without calling extension', async () => {
     const send = vi.fn();
     const reader = createExtensionPageReader({ transport: { send } });
     const result = await reader.readPage({
@@ -789,9 +789,10 @@ describe('D1 (FIX10) — maxChars validation in readPage', () => {
     });
     expect(send).not.toHaveBeenCalled();
     expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe('invalid_request');
   });
 
-  it('D1: maxChars 1.5 returns internal_error without calling extension', async () => {
+  it('D1/C1: maxChars 1.5 returns invalid_request without calling extension', async () => {
     const send = vi.fn();
     const reader = createExtensionPageReader({ transport: { send } });
     const result = await reader.readPage({
@@ -800,6 +801,22 @@ describe('D1 (FIX10) — maxChars validation in readPage', () => {
     });
     expect(send).not.toHaveBeenCalled();
     expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe('invalid_request');
+  });
+
+  it('C1 (FIX11): extension invalid_request response maps to PageReadResult invalid_request', async () => {
+    const reader = createExtensionPageReader({
+      transport: transport(() => ({
+        ok: false,
+        requestId: 'r',
+        error: { kind: 'invalid_request', message: 'bad url' },
+      })),
+    });
+    const result = await reader.readPage({ url: 'https://x/a' });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.kind).toBe('invalid_request');
+    }
   });
 
   it('D1: valid maxChars 1000 is forwarded in the extension message', async () => {
@@ -822,7 +839,7 @@ describe('D1 (FIX10) — maxChars validation in readPage', () => {
 });
 
 describe('D2 (FIX10) — maxChars validation in readPages', () => {
-  it('D2: maxChars 0 returns failure for every expected URL without calling extension', async () => {
+  it('D2/C1: maxChars 0 returns invalid_request failure for every expected URL without calling extension', async () => {
     const send = vi.fn();
     const reader = createExtensionPageReader({ transport: { send } });
     const results = await reader.readPages({
@@ -831,9 +848,12 @@ describe('D2 (FIX10) — maxChars validation in readPages', () => {
     });
     expect(send).not.toHaveBeenCalled();
     expect(results.every((r) => !r.ok)).toBe(true);
+    expect(
+      results.every((r) => !r.ok && r.error.kind === 'invalid_request'),
+    ).toBe(true);
   });
 
-  it('D2: maxChars -1 returns failure for every URL', async () => {
+  it('D2/C1: maxChars -1 returns invalid_request failure for every URL', async () => {
     const send = vi.fn();
     const reader = createExtensionPageReader({ transport: { send } });
     const results = await reader.readPages({
@@ -842,9 +862,12 @@ describe('D2 (FIX10) — maxChars validation in readPages', () => {
     });
     expect(send).not.toHaveBeenCalled();
     expect(results.every((r) => !r.ok)).toBe(true);
+    expect(
+      results.every((r) => !r.ok && r.error.kind === 'invalid_request'),
+    ).toBe(true);
   });
 
-  it('D2: maxChars 1.5 returns failure for every URL', async () => {
+  it('D2/C1: maxChars 1.5 returns invalid_request failure for every URL', async () => {
     const send = vi.fn();
     const reader = createExtensionPageReader({ transport: { send } });
     const results = await reader.readPages({
@@ -853,6 +876,9 @@ describe('D2 (FIX10) — maxChars validation in readPages', () => {
     });
     expect(send).not.toHaveBeenCalled();
     expect(results.every((r) => !r.ok)).toBe(true);
+    expect(
+      results.every((r) => !r.ok && r.error.kind === 'invalid_request'),
+    ).toBe(true);
   });
 
   it('D2: valid maxChars 2000 is sent in extension message', async () => {

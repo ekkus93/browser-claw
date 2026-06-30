@@ -230,14 +230,14 @@ internal_error
 
 ### Required behavior
 
-- [ ] P1 Check the `PageReadErrorKind` / related error union.
-- [ ] P1 If `invalid_request` is missing, add it.
-- [ ] P1 `pageReaderProvider.readPage()` invalid `maxChars` returns error kind `invalid_request`.
-- [ ] P1 `pageReaderProvider.readPages()` invalid `maxChars` returns per-URL error kind `invalid_request`.
-- [ ] P1 Tests:
-  - [ ] readPage invalid `maxChars` returns `invalid_request`;
-  - [ ] readPages invalid `maxChars` returns `invalid_request` for each expected URL;
-  - [ ] no tests expect `internal_error` for invalid caller limits.
+- [x] P1 Check the `PageReadErrorKind` / related error union. <!-- types.ts: PageReadErrorKind already had all variants -->
+- [x] P1 If `invalid_request` is missing, add it. <!-- added in Part A: types.ts line 61 -->
+- [x] P1 `pageReaderProvider.readPage()` invalid `maxChars` returns error kind `invalid_request`. <!-- readPage() try/catch: kind: 'invalid_request' -->
+- [x] P1 `pageReaderProvider.readPages()` invalid `maxChars` returns per-URL error kind `invalid_request`. <!-- readPages() try/catch: kind: 'invalid_request' -->
+- [x] P1 Tests:
+  - [x] readPage invalid `maxChars` returns `invalid_request`; <!-- D1/C1 tests: maxChars 0/-1/1.5 all assert kind='invalid_request' -->
+  - [x] readPages invalid `maxChars` returns `invalid_request` for each expected URL; <!-- D2/C1 tests: same checks -->
+  - [x] no tests expect `internal_error` for invalid caller limits. <!-- updated D1/D2 tests to assert 'invalid_request'; maxPages invalid also fixed to 'invalid_request' -->
 
 ### Suggested type update
 

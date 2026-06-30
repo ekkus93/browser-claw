@@ -185,24 +185,24 @@ The service worker rejects above-cap values, so protocol.ts and service-worker d
 
 ### Required behavior
 
-- [ ] P2 Update `parseExtensionRequest()` or equivalent protocol parser.
-- [ ] P2 `web_search.maxResults` must be optional.
-- [ ] P2 Missing `maxResults` is accepted.
-- [ ] P2 Valid `1 <= maxResults <= 20` accepted.
-- [ ] P2 Reject:
-  - [ ] string;
-  - [ ] zero;
-  - [ ] negative;
-  - [ ] non-integer;
-  - [ ] above 20.
-- [ ] P2 Tests:
-  - [ ] `web_search.maxResults: "5"` rejected;
-  - [ ] `web_search.maxResults: 0` rejected;
-  - [ ] `web_search.maxResults: -1` rejected;
-  - [ ] `web_search.maxResults: 1.5` rejected;
-  - [ ] `web_search.maxResults: 21` rejected;
-  - [ ] `web_search.maxResults: 20` accepted;
-  - [ ] missing `web_search.maxResults` accepted.
+- [x] P2 Update `parseExtensionRequest()` or equivalent protocol parser. <!-- protocol.ts: web_search branch updated with SEARCH_MAX_RESULTS cap -->
+- [x] P2 `web_search.maxResults` must be optional. <!-- guard checks `message.maxResults !== undefined` first -->
+- [x] P2 Missing `maxResults` is accepted. <!-- C1 test: 'C1: missing maxResults accepted' -->
+- [x] P2 Valid `1 <= maxResults <= 20` accepted. <!-- C1 test: 'C1: maxResults 20 (at cap) accepted' -->
+- [x] P2 Reject:
+  - [x] string; <!-- C1 test: 'C1: maxResults "5" (string) rejected' -->
+  - [x] zero; <!-- C1 test: 'C1: maxResults 0 rejected' -->
+  - [x] negative; <!-- C1 test: 'C1: maxResults -1 rejected' -->
+  - [x] non-integer; <!-- C1 test: 'C1: maxResults 1.5 rejected' -->
+  - [x] above 20. <!-- C1 test: 'C1: maxResults 21 (above cap) rejected' -->
+- [x] P2 Tests:
+  - [x] `web_search.maxResults: "5"` rejected; <!-- protocol.test.ts: 'C1: maxResults "5" (string) rejected' -->
+  - [x] `web_search.maxResults: 0` rejected; <!-- protocol.test.ts: 'C1: maxResults 0 rejected' -->
+  - [x] `web_search.maxResults: -1` rejected; <!-- protocol.test.ts: 'C1: maxResults -1 rejected' -->
+  - [x] `web_search.maxResults: 1.5` rejected; <!-- protocol.test.ts: 'C1: maxResults 1.5 rejected' -->
+  - [x] `web_search.maxResults: 21` rejected; <!-- protocol.test.ts: 'C1: maxResults 21 (above cap) rejected' -->
+  - [x] `web_search.maxResults: 20` accepted; <!-- protocol.test.ts: 'C1: maxResults 20 (at cap) accepted' -->
+  - [x] missing `web_search.maxResults` accepted. <!-- protocol.test.ts: 'C1: missing maxResults accepted' -->
 
 ### Suggested inline code
 

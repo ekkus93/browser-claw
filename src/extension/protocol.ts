@@ -169,15 +169,20 @@ export function parseExtensionRequest(message: unknown): RequestParse {
         reason: 'web_search requires a non-empty string query',
       };
     }
+    // C1 (FIX12): cap matches service-worker SEARCH_MAX_RESULTS (20) for parity.
+    const SEARCH_MAX_RESULTS = 20;
     if (
       message.maxResults !== undefined &&
       (typeof message.maxResults !== 'number' ||
+        !Number.isFinite(message.maxResults) ||
         !Number.isInteger(message.maxResults) ||
-        message.maxResults < 1)
+        message.maxResults < 1 ||
+        message.maxResults > SEARCH_MAX_RESULTS)
     ) {
       return {
         ok: false,
-        reason: 'web_search maxResults must be a positive integer',
+        reason:
+          'web_search maxResults must be a positive integer no greater than 20.',
       };
     }
   }

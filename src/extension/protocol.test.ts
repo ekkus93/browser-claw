@@ -327,3 +327,48 @@ describe('D1/D2 (FIX11) — maxChars validation in read_page and read_pages', ()
     ).toBe(true);
   });
 });
+
+describe('C1 (FIX12) — web_search.maxResults cap parity in parseExtensionRequest', () => {
+  function ws(maxResults: unknown) {
+    return parseExtensionRequest({
+      type: 'web_search',
+      requestId: 'r1',
+      query: 'q',
+      maxResults,
+    });
+  }
+
+  it('C1: maxResults "5" (string) rejected', () => {
+    expect(ws('5').ok).toBe(false);
+  });
+
+  it('C1: maxResults 0 rejected', () => {
+    expect(ws(0).ok).toBe(false);
+  });
+
+  it('C1: maxResults -1 rejected', () => {
+    expect(ws(-1).ok).toBe(false);
+  });
+
+  it('C1: maxResults 1.5 rejected', () => {
+    expect(ws(1.5).ok).toBe(false);
+  });
+
+  it('C1: maxResults 21 (above cap) rejected', () => {
+    expect(ws(21).ok).toBe(false);
+  });
+
+  it('C1: maxResults 20 (at cap) accepted', () => {
+    expect(ws(20).ok).toBe(true);
+  });
+
+  it('C1: missing maxResults accepted', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'web_search',
+        requestId: 'r1',
+        query: 'q',
+      }).ok,
+    ).toBe(true);
+  });
+});

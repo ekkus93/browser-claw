@@ -1,0 +1,518 @@
+# BrowserClaw Workspace/Scripting/WebResearch FIX11 TODO
+
+## Priority Key
+
+```text
+P0 = security/correctness blocker
+P1 = required for feature completeness
+P2 = polish, robustness, or future hardening
+```
+
+## Phase 0 — Scope Lock and Evidence Hygiene
+
+- [ ] P0 Add `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_SPEC.md`.
+- [ ] P0 Add this file as `docs/BROWSERCLAW_WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_TODO.md`.
+- [ ] P0 Update `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_DESIGN_NOTES.md` with a FIX11 section:
+  - [ ] `web_research.options` must be strict like search/page-read options.
+  - [ ] `site` and `format` are rejected in FIX11 because they are not honored end-to-end.
+  - [ ] approved bulk-research invalid options must remain payload-invalid.
+  - [ ] provider-local invalid input should use `invalid_request`, not `internal_error`.
+  - [ ] extension protocol/service-worker validation should agree for `maxChars` and `maxResults`.
+- [ ] P0 Update `memory.md` with:
+  - [ ] real `date -u` timestamp;
+  - [ ] model name;
+  - [ ] concise summary of FIX11 scope.
+- [ ] P0 Do not add broad new features in this pass.
+- [ ] P0 Do not implement `site` filtering or `format` conversion in FIX11.
+- [ ] P0 Do not check TODO boxes without evidence comments pointing to source/tests.
+
+---
+
+# Part A — Strict `webRunner` Research Option Validation
+
+## A1 — Replace permissive `sanitizeResearchOptions()`
+
+### Problem
+
+`sanitizeResearchOptions()` still behaves like the old permissive sanitizers.
+
+Bad current pattern:
+
+```ts
+function sanitizeResearchOptions(input: unknown): ResearchOptions {
+  const o = (
+    typeof input === 'object' && input !== null ? input : {}
+  ) as Record<string, unknown>;
+
+  return {
+    ...(typeof o.maxPages === 'number' ? { maxPages: o.maxPages } : {}),
+    ...(typeof o.maxResults === 'number' ? { maxResults: o.maxResults } : {}),
+    ...(typeof o.maxChars === 'number' ? { maxChars: o.maxChars } : {}),
+    ...(typeof o.site === 'string' ? { site: o.site } : {}),
+    ...(o.format === 'text' || o.format === 'markdown' ? { format: o.format } : {}),
+  };
+}
+```
+
+This silently accepts/drops values and accepts unsupported fields.
+
+### Required behavior
+
+- [ ] P1 `undefined` options should return `{}`.
+- [ ] P1 non-object options should throw invalid effect payload.
+- [ ] P1 array options should throw invalid effect payload.
+- [ ] P1 unknown fields should throw invalid effect payload.
+- [ ] P1 `site` should be rejected in FIX11.
+- [ ] P1 `format` should be rejected in FIX11.
+- [ ] P1 `maxPages` should be validated with `normalizeOptionalPositiveIntegerLimit`.
+- [ ] P1 `maxResults` should be validated with `normalizeOptionalPositiveIntegerLimit`.
+- [ ] P1 `maxChars` should be validated with `normalizeOptionalPositiveIntegerLimit`.
+- [ ] P1 Reject:
+  - [ ] string values;
+  - [ ] zero values;
+  - [ ] negative values;
+  - [ ] non-integer values;
+  - [ ] above-cap values.
+- [ ] P1 Tests:
+  - [ ] `options: "bad"` rejected;
+  - [ ] `options: []` rejected;
+  - [ ] `options: { unknown: true }` rejected;
+  - [ ] `options: { site: "example.com" }` rejected;
+  - [ ] `options: { format: "markdown" }` rejected;
+  - [ ] `maxPages: 0` rejected;
+  - [ ] `maxResults: "5"` rejected;
+  - [ ] `maxChars: -1` rejected;
+  - [ ] valid `maxPages/maxResults/maxChars` accepted.
+
+### Suggested code
+
+Reuse the helpers added in FIX10 if available:
+
+```ts
+const RESEARCH_OPTION_FIELDS = new Set([
+  'maxPages',
+  'maxResults',
+  'maxChars',
+]);
+
+function sanitizeResearchOptions(input: unknown): ResearchOptions {
+  const o = assertPlainOptionsObject(input, 'web_research.options');
+  rejectUnknownOptionFields(o, RESEARCH_OPTION_FIELDS, 'web_research.options');
+
+  const maxPages =
+    o.maxPages !== undefined
+      ? normalizeOptionalPositiveIntegerLimit(o.maxPages, 'maxPages', {
+          max: MAX_BATCH_PAGE_READS,
+        })
+      : undefined;
+
+  const maxResults =
+    o.maxResults !== undefined
+      ? normalizeOptionalPositiveIntegerLimit(o.maxResults, 'maxResults', {
+          max: MAX_SEARCH_RESULTS,
+        })
+      : undefined;
+
+  const maxChars =
+    o.maxChars !== undefined
+      ? normalizeOptionalPositiveIntegerLimit(o.maxChars, 'maxChars', {
+          max: MAX_WEB_PAGE_CHARS,
+        })
+      : undefined;
+
+  return {
+    ...(maxPages !== undefined ? { maxPages } : {}),
+    ...(maxResults !== undefined ? { maxResults } : {}),
+    ...(maxChars !== undefined ? { maxChars } : {}),
+  };
+}
+```
+
+## A2 — Direct invalid `web_research.options` must fail before approval
+
+- [ ] P1 Ensure direct `web_research` effects validate options before dispatching approval.
+- [ ] P1 Invalid options must:
+  - [ ] audit `web.effect_payload_invalid`;
+  - [ ] resolve effect `ok:false`;
+  - [ ] not dispatch an approval card;
+  - [ ] not audit `web.research_started`;
+  - [ ] not call providers.
+- [ ] P1 Tests:
+  - [ ] direct `web_research` with `options: "bad"` resolves invalid payload;
+  - [ ] direct `web_research` with `options: []` resolves invalid payload;
+  - [ ] direct `web_research` with `options.site` resolves invalid payload;
+  - [ ] direct `web_research` with `options.format` resolves invalid payload;
+  - [ ] direct `web_research` with unknown option resolves invalid payload;
+  - [ ] invalid direct research options do not dispatch approval.
+
+### Suggested handler shape
+
+If not already structured this way, keep option validation before approval creation:
+
+```ts
+let options: ResearchOptions;
+
+try {
+  options = sanitizeResearchOptions(effect.options);
+} catch (error) {
+  await failInvalidWebEffect(deps, effect.id, error);
+  return;
+}
+
+// Only after this point may approval be requested.
+await deps.dispatchApproval({
+  // ...
+  payloadPreview: JSON.stringify({
+    // ...
+    options,
+  }),
+});
+```
+
+---
+
+# Part B — Approved Bulk Research Payload Invalid Options
+
+## B1 — Confirm approved payload options use strict sanitizer
+
+### Problem
+
+FIX10 moved bulk-research option validation into the payload-validation block. FIX11 must confirm it now uses the strict `sanitizeResearchOptions()` from Part A.
+
+### Required behavior
+
+- [ ] P1 `runApprovedBulkResearch()` must call strict `sanitizeResearchOptions(parsed.options)` inside the payload-validation `try` block.
+- [ ] P1 Invalid options must:
+  - [ ] audit `web.bulk_research_payload_invalid`;
+  - [ ] resolve effect `ok:false`;
+  - [ ] not audit `web.research_started`;
+  - [ ] not call search provider;
+  - [ ] not call page reader provider.
+- [ ] P1 Tests:
+  - [ ] approved bulk-research payload with `options: "bad"` audits `web.bulk_research_payload_invalid`;
+  - [ ] approved bulk-research payload with `options: []` audits `web.bulk_research_payload_invalid`;
+  - [ ] approved bulk-research payload with `options.site` audits `web.bulk_research_payload_invalid`;
+  - [ ] approved bulk-research payload with `options.format` audits `web.bulk_research_payload_invalid`;
+  - [ ] approved bulk-research payload with unknown option audits `web.bulk_research_payload_invalid`;
+  - [ ] invalid options do not audit `web.research_failed`;
+  - [ ] invalid options do not audit `web.research_started`;
+  - [ ] invalid options do not call providers.
+
+### Suggested code shape
+
+```ts
+let parsed: Record<string, unknown>;
+let options: ResearchOptions;
+
+try {
+  parsed = parseApprovalPayloadObject(
+    approval.payloadPreview,
+    'web_bulk_research',
+  );
+
+  options = sanitizeResearchOptions(parsed.options);
+
+  // existing query/urls validation here
+} catch (error) {
+  await failInvalidBulkResearchPayload(deps, approval, error);
+  return;
+}
+
+await deps.recordAudit({
+  type: 'web.research_started',
+  // ...
+});
+
+// provider execution only after payload is fully validated
+```
+
+---
+
+# Part C — Provider Error Kind for Invalid Local Input
+
+## C1 — Add/use `invalid_request` in page-read provider errors
+
+### Problem
+
+`pageReaderProvider` now rejects invalid local `maxChars`, but the review found it may report this as `internal_error`.
+
+Invalid local caller input should be classified as:
+
+```text
+invalid_request
+```
+
+not:
+
+```text
+internal_error
+```
+
+### Required behavior
+
+- [ ] P1 Check the `PageReadErrorKind` / related error union.
+- [ ] P1 If `invalid_request` is missing, add it.
+- [ ] P1 `pageReaderProvider.readPage()` invalid `maxChars` returns error kind `invalid_request`.
+- [ ] P1 `pageReaderProvider.readPages()` invalid `maxChars` returns per-URL error kind `invalid_request`.
+- [ ] P1 Tests:
+  - [ ] readPage invalid `maxChars` returns `invalid_request`;
+  - [ ] readPages invalid `maxChars` returns `invalid_request` for each expected URL;
+  - [ ] no tests expect `internal_error` for invalid caller limits.
+
+### Suggested type update
+
+Find the relevant error type and add `invalid_request`.
+
+Example:
+
+```ts
+export type PageReadErrorKind =
+  | 'invalid_request'
+  | 'permission_denied'
+  | 'not_found'
+  | 'timeout'
+  | 'network_error'
+  | 'internal_error';
+```
+
+Adapt to the existing project type names.
+
+### Suggested return shape
+
+```ts
+return {
+  ok: false,
+  url: request.url,
+  error: {
+    kind: 'invalid_request',
+    message: error instanceof Error ? error.message : 'Invalid maxChars.',
+    retryable: false,
+  },
+};
+```
+
+For `readPages()`:
+
+```ts
+return expectedUrls.map((url) => ({
+  ok: false,
+  url,
+  error: {
+    kind: 'invalid_request',
+    message,
+    retryable: false,
+  },
+}));
+```
+
+---
+
+# Part D — Extension Protocol `maxChars` Validation Parity
+
+## D1 — Validate `read_page.maxChars` in `src/extension/protocol.ts`
+
+### Problem
+
+The Chrome service worker validates `read_page.maxChars`, but BrowserClaw-side extension protocol parsing may still accept it without validation.
+
+### Required behavior
+
+- [ ] P2 Update `parseExtensionRequest()` or equivalent protocol parser.
+- [ ] P2 Validate optional `maxChars` for `read_page`:
+  - [ ] string rejected;
+  - [ ] zero rejected;
+  - [ ] negative rejected;
+  - [ ] non-integer rejected;
+  - [ ] above cap rejected;
+  - [ ] valid positive integer accepted.
+- [ ] P2 Tests:
+  - [ ] `read_page.maxChars: "1000"` rejected;
+  - [ ] `read_page.maxChars: 0` rejected;
+  - [ ] `read_page.maxChars: -1` rejected;
+  - [ ] `read_page.maxChars: 1.5` rejected;
+  - [ ] valid `read_page.maxChars: 1000` accepted.
+
+### Suggested helper
+
+Use or add a parser helper analogous to the service worker helper:
+
+```ts
+function validateOptionalPositiveIntegerLimitForProtocol(
+  value: unknown,
+  field: string,
+  max: number,
+): number | undefined {
+  if (value === undefined) return undefined;
+
+  if (
+    typeof value !== 'number' ||
+    !Number.isFinite(value) ||
+    !Number.isInteger(value) ||
+    value < 1 ||
+    value > max
+  ) {
+    throw new ExtensionProtocolError(
+      'invalid_request',
+      `${field} must be a positive integer no greater than ${max}.`,
+    );
+  }
+
+  return value;
+}
+```
+
+Adapt error names to the existing protocol parser style.
+
+## D2 — Validate `read_pages.maxChars` in `src/extension/protocol.ts`
+
+- [ ] P2 Validate optional `maxChars` for `read_pages`.
+- [ ] P2 Use the same cap as the service worker: 50,000.
+- [ ] P2 Tests:
+  - [ ] `read_pages.maxChars: "1000"` rejected;
+  - [ ] `read_pages.maxChars: 0` rejected;
+  - [ ] `read_pages.maxChars: -1` rejected;
+  - [ ] `read_pages.maxChars: 1.5` rejected;
+  - [ ] valid `read_pages.maxChars: 1000` accepted.
+
+---
+
+# Part E — Extension Direct `web_search.maxResults` Validation
+
+## E1 — Validate `web_search.maxResults` centrally
+
+### Problem
+
+The extension service worker direct `web_search` path can default invalid `maxResults` to 10.
+
+Bad behavior:
+
+```js
+const count = Math.min(
+  typeof maxResults === 'number' && maxResults > 0 ? maxResults : 10,
+  SEARCH_MAX_RESULTS,
+);
+```
+
+This means invalid direct messages like `maxResults: -1` are silently treated as default searches.
+
+### Required behavior
+
+- [ ] P2 Central extension schema validation should validate optional `maxResults` for `web_search`.
+- [ ] P2 Invalid `maxResults` returns `invalid_request`.
+- [ ] P2 Reject:
+  - [ ] string;
+  - [ ] zero;
+  - [ ] negative;
+  - [ ] non-integer;
+  - [ ] above cap.
+- [ ] P2 Tests:
+  - [ ] central `web_search.maxResults: "5"` returns invalid;
+  - [ ] central `web_search.maxResults: 0` returns invalid;
+  - [ ] central `web_search.maxResults: -1` returns invalid;
+  - [ ] central `web_search.maxResults: 1.5` returns invalid;
+  - [ ] central `web_search.maxResults` above cap returns invalid;
+  - [ ] valid `maxResults: 5` accepted.
+
+## E2 — Validate `web_search.maxResults` in direct handler
+
+- [ ] P2 `handleWebSearch()` validates `maxResults` even if called directly.
+- [ ] P2 Invalid direct-call `maxResults` returns `invalid_request`.
+- [ ] P2 Invalid direct-call `maxResults` does not call Brave/search API.
+- [ ] P2 Valid missing `maxResults` still defaults to normal default count.
+- [ ] P2 Valid `maxResults` uses the requested count.
+- [ ] P2 Tests:
+  - [ ] direct `handleWebSearch({ maxResults: -1 })` returns `invalid_request`;
+  - [ ] direct `handleWebSearch({ maxResults: 0 })` returns `invalid_request`;
+  - [ ] direct `handleWebSearch({ maxResults: 1.5 })` returns `invalid_request`;
+  - [ ] direct `handleWebSearch({ maxResults: "5" })` returns `invalid_request`;
+  - [ ] direct `handleWebSearch({})` defaults normally;
+  - [ ] direct `handleWebSearch({ maxResults: 5 })` uses 5.
+
+### Suggested service-worker patch
+
+```js
+function validateOptionalMaxResults(value) {
+  return validateOptionalPositiveIntegerLimit(
+    value,
+    'maxResults',
+    SEARCH_MAX_RESULTS,
+  );
+}
+
+async function handleWebSearch(message) {
+  const maxResultsError = validateOptionalMaxResults(message.maxResults);
+  if (maxResultsError) {
+    return errorResponse('invalid_request', maxResultsError, message.requestId);
+  }
+
+  const count = message.maxResults ?? DEFAULT_SEARCH_RESULTS;
+
+  // existing search path
+}
+```
+
+If there is no `DEFAULT_SEARCH_RESULTS`, introduce one:
+
+```js
+const DEFAULT_SEARCH_RESULTS = 10;
+const SEARCH_MAX_RESULTS = 20;
+```
+
+---
+
+# Part F — Evidence and Gate
+
+## F1 — Update review notes
+
+- [ ] P1 Update or create `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_REVIEW_NOTES.md`.
+- [ ] P1 Include:
+  - [ ] strict research option behavior;
+  - [ ] direct invalid research effect behavior;
+  - [ ] approved bulk-research invalid payload behavior;
+  - [ ] pageReaderProvider `invalid_request` behavior;
+  - [ ] extension protocol `maxChars` validation behavior;
+  - [ ] extension `web_search.maxResults` validation behavior;
+  - [ ] exact extension E2E status.
+
+## F2 — Required commands
+
+Run and record actual results:
+
+```bash
+pnpm run typecheck
+pnpm run lint
+pnpm run format:check
+pnpm run test
+pnpm run test:e2e
+pnpm run test:extension:e2e
+pnpm run test:extension:e2e:docker
+pnpm run build
+pnpm run build:wasm
+cargo test
+cargo clippy
+```
+
+- [ ] P0 Record command results in TODO evidence comments.
+- [ ] P0 If a command cannot run, record:
+  - [ ] exact command;
+  - [ ] exact error;
+  - [ ] environment reason;
+  - [ ] whether it blocks all acceptance or only scoped feature acceptance;
+  - [ ] follow-up task.
+- [ ] P0 Do not mark failed/cannot-run commands as passed.
+- [ ] P1 If Docker extension E2E cannot run, leave its task unchecked or explicitly mark it cannot-run. Do not imply it passed.
+
+## F3 — Final acceptance checklist
+
+FIX11 is complete only when:
+
+- [ ] `sanitizeResearchOptions()` rejects non-object/array options.
+- [ ] `sanitizeResearchOptions()` rejects unknown fields.
+- [ ] `sanitizeResearchOptions()` rejects `site` and `format`.
+- [ ] `sanitizeResearchOptions()` validates `maxPages`, `maxResults`, and `maxChars`.
+- [ ] invalid direct `web_research.options` resolves/audits as invalid effect payload and does not request approval.
+- [ ] invalid approved bulk-research options resolve/audit as payload-invalid before `web.research_started`.
+- [ ] `pageReaderProvider` reports invalid local `maxChars` as `invalid_request`.
+- [ ] `src/extension/protocol.ts` validates `read_page/read_pages maxChars`.
+- [ ] extension direct `web_search.maxResults` rejects invalid values instead of defaulting.
+- [ ] gate evidence is honest.

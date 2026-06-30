@@ -1175,3 +1175,31 @@ These decisions apply to the FIX7 targeted hardening pass. See
   `validateOptionalMaxResults()` helper. Wire in `validateMessageSchema()` and
   `handleWebSearch()`. Invalid `maxResults` returns `invalid_request`; valid absent
   `maxResults` uses `DEFAULT_SEARCH_RESULTS`.
+
+## FIX12 Locked decisions (2026-06-30)
+
+- **Batch `readPages()` top-level extension `invalid_request` must map to `invalid_request`.**
+  The combined `!isExtensionResponse(raw) || !raw.ok || !Array.isArray(raw['results'])`
+  guard in `pageReaderProvider.readPages()` was split into three cases so that the
+  extension's own error kind is preserved via `toError()`. Malformed responses
+  (not an `ExtensionResponse`) and successful responses missing `results` still
+  return `internal_error`.
+- **Service-worker central schema and direct handler must both validate `web_search.maxResults`.**
+  `validateMessageSchema()` now calls `validateOptionalMaxResults(message.maxResults)`
+  in the `web_search` branch. `handleWebSearch()` retains its own defensive check.
+  Both layers validate independently (central first, direct as fallback).
+- **BrowserClaw-side protocol must cap `web_search.maxResults` at 20.**
+  `parseExtensionRequest()` now rejects `maxResults > SEARCH_MAX_RESULTS (20)`.
+  Protocol.ts and service-worker now agree: `web_search.maxResults` must be a
+  positive integer ≤ 20; `read_page/read_pages.maxChars` must be a positive
+  integer ≤ 50,000.
+- **Explicit test evidence must match actual tests.**
+  FIX12 added string-type and at-cap tests for `read_page.maxChars` and
+  `read_pages.maxChars` that were previously claimed in FIX11 but not tested.
+  Central-schema and direct-handler validation tests are in separate describe
+  blocks (B1 vs B2 in `serviceWorkerReadPages.test.ts`) to make the distinction
+  clear.
+- **Gate evidence must distinguish pass/fail/cannot-run/not-attempted.**
+  `pnpm run test:extension:e2e` CANNOT RUN in this environment (no persistent
+  Chrome / display). The Docker lane (`test:extension:e2e:docker`) PASSES (5/5)
+  and is the authoritative result. All other required commands pass.

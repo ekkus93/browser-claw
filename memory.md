@@ -2428,3 +2428,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Part E: validateOptionalMaxResults() added to service-worker.js (uses validateOptionalPositiveIntegerLimit with SEARCH_MAX_RESULTS=20). DEFAULT_SEARCH_RESULTS=10 constant added. handleWebSearch() validates before count computation; rejects invalid maxResults with invalid_request. Exported + declared in service-worker.d.ts. 11 tests (7 E1 + 4 E2). Commit 02900ca.
 - Part F: WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_REVIEW_NOTES.md created. Gate: typecheck ✓, lint ✓, format ✓, vitest 1425/127 ✓, test:e2e CANNOT RUN (headless), test:extension:e2e CANNOT RUN, test:extension:e2e:docker CANNOT RUN (no Docker). F3 checklist all ticked.
 - FIX11 fully complete. NEXT: next FIX or item from main spec TODO.
+
+## 2026-06-30T01:58:53Z - Claude Sonnet 4.6 - FIX12 Parts A-E: all complete, 1454 tests passing
+- FIX12 scope: narrow cleanup pass — fix readPages() top-level error mapping; add central web_search.maxResults validation; cap protocol.ts maxResults at 20; add missing explicit tests; run all gate commands.
+- Part A: pageReaderProvider.readPages() split 3-case guard. (1) non-ExtensionResponse → internal_error; (2) ExtensionResponse ok:false → toError(raw) which maps via ERROR_KIND_MAP; (3) ok:true but missing results → internal_error. 4 A1 tests. Commit 13601b0.
+- Part B: service-worker.js validateMessageSchema() now calls validateOptionalMaxResults() in web_search branch. handleWebSearch() defensive check retained. 6 B1 central-schema tests + 7 B2 direct-handler tests (including fetch-URL capture with vi.stubGlobal). Commit 5397b91.
+- Part C: protocol.ts parseExtensionRequest() web_search branch now rejects maxResults > 20 (SEARCH_MAX_RESULTS constant added locally). 7 C1 tests. Commit f2ab065.
+- Part D: Added missing protocol.test.ts tests: read_page.maxChars string rejected + 50000 accepted; read_pages.maxChars string rejected + 1.5 rejected + 50000 accepted. Ticked D1-D4. Commit 07f9d25.
+- Part E: WORKSPACE_SCRIPTING_WEBRESEARCH_FIX12_REVIEW_NOTES.md created. Gate: typecheck ✓, lint ✓, format ✓, vitest 1454/127 ✓, test:e2e 30/30 ✓, test:extension:e2e CANNOT RUN (no persistent Chrome outside Docker — env constraint, not regression), test:extension:e2e:docker PASS 5/5, build ✓, build:wasm ✓, cargo test ✓, cargo clippy ✓. Design notes + Phase 0 items + E1/E2/E3 checklist ticked.
+- FIX12 fully complete. NEXT: await FIX13 spec or new requirements.

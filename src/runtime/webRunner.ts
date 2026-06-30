@@ -162,18 +162,24 @@ function sanitizeSearchOptions(input: unknown): SearchOptions {
   };
 }
 
+// A1 (FIX11): strict research options sanitizer — mirrors sanitizeSearchOptions and
+// sanitizeReadOptions from FIX10. Only maxPages, maxResults, maxChars are supported;
+// site and format are rejected because they are not honored end-to-end.
+const RESEARCH_OPTION_FIELDS: ReadonlySet<string> = new Set([
+  'maxPages',
+  'maxResults',
+  'maxChars',
+]);
+
 function sanitizeResearchOptions(input: unknown): ResearchOptions {
-  const o = (
-    typeof input === 'object' && input !== null ? input : {}
-  ) as Record<string, unknown>;
+  const o = assertPlainOptionsObject(input, 'web_research.options');
+  rejectUnknownOptionFields(o, RESEARCH_OPTION_FIELDS, 'web_research.options');
   const maxPages =
     o.maxPages !== undefined
       ? normalizeOptionalPositiveIntegerLimit(o.maxPages, 'maxPages', {
           max: MAX_BATCH_PAGE_READS,
         })
       : undefined;
-  // D1 (FIX9): validate maxResults and maxChars so invalid values throw here
-  // rather than silently passing through to the provider.
   const maxResults =
     o.maxResults !== undefined
       ? normalizeOptionalPositiveIntegerLimit(o.maxResults, 'maxResults', {
@@ -187,12 +193,8 @@ function sanitizeResearchOptions(input: unknown): ResearchOptions {
         })
       : undefined;
   return {
-    ...(maxResults !== undefined ? { maxResults } : {}),
-    ...(typeof o.site === 'string' ? { site: o.site } : {}),
     ...(maxPages !== undefined ? { maxPages } : {}),
-    ...(o.format === 'text' || o.format === 'markdown'
-      ? { format: o.format }
-      : {}),
+    ...(maxResults !== undefined ? { maxResults } : {}),
     ...(maxChars !== undefined ? { maxChars } : {}),
   };
 }
@@ -327,9 +329,7 @@ export function createWebEffectHandler(deps: WebEffectDeps) {
             kind: 'bulk_research',
             title: `Research: ${query}`,
             risk: 'high',
-            summary: `Web research "${query}" reading up to ${maxPages} pages${
-              options.site ? ` on ${options.site}` : ''
-            }`,
+            summary: `Web research "${query}" reading up to ${maxPages} pages`,
             payloadPreview: JSON.stringify({ query, options }),
           }),
         );

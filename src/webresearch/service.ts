@@ -94,7 +94,6 @@ export function createWebResearchService(
         pages.push(
           await readPage(result.url, {
             url: result.url,
-            ...(options.format ? { format: options.format } : {}),
             ...(options.maxChars ? { maxChars: options.maxChars } : {}),
           }),
         );
@@ -150,7 +149,6 @@ export function createWebResearchService(
         ? { maxPages: effectiveMaxPages }
         : {}),
       ...(options.maxChars !== undefined ? { maxChars: options.maxChars } : {}),
-      ...(options.format !== undefined ? { format: options.format } : {}),
     });
 
     const pages: PageContent[] = [];

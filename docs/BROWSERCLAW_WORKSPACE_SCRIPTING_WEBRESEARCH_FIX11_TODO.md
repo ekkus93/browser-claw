@@ -36,53 +36,33 @@ P2 = polish, robustness, or future hardening
 
 `sanitizeResearchOptions()` still behaves like the old permissive sanitizers.
 
-Bad current pattern:
-
-```ts
-function sanitizeResearchOptions(input: unknown): ResearchOptions {
-  const o = (
-    typeof input === 'object' && input !== null ? input : {}
-  ) as Record<string, unknown>;
-
-  return {
-    ...(typeof o.maxPages === 'number' ? { maxPages: o.maxPages } : {}),
-    ...(typeof o.maxResults === 'number' ? { maxResults: o.maxResults } : {}),
-    ...(typeof o.maxChars === 'number' ? { maxChars: o.maxChars } : {}),
-    ...(typeof o.site === 'string' ? { site: o.site } : {}),
-    ...(o.format === 'text' || o.format === 'markdown' ? { format: o.format } : {}),
-  };
-}
-```
-
-This silently accepts/drops values and accepts unsupported fields.
-
 ### Required behavior
 
-- [ ] P1 `undefined` options should return `{}`.
-- [ ] P1 non-object options should throw invalid effect payload.
-- [ ] P1 array options should throw invalid effect payload.
-- [ ] P1 unknown fields should throw invalid effect payload.
-- [ ] P1 `site` should be rejected in FIX11.
-- [ ] P1 `format` should be rejected in FIX11.
-- [ ] P1 `maxPages` should be validated with `normalizeOptionalPositiveIntegerLimit`.
-- [ ] P1 `maxResults` should be validated with `normalizeOptionalPositiveIntegerLimit`.
-- [ ] P1 `maxChars` should be validated with `normalizeOptionalPositiveIntegerLimit`.
-- [ ] P1 Reject:
-  - [ ] string values;
-  - [ ] zero values;
-  - [ ] negative values;
-  - [ ] non-integer values;
-  - [ ] above-cap values.
-- [ ] P1 Tests:
-  - [ ] `options: "bad"` rejected;
-  - [ ] `options: []` rejected;
-  - [ ] `options: { unknown: true }` rejected;
-  - [ ] `options: { site: "example.com" }` rejected;
-  - [ ] `options: { format: "markdown" }` rejected;
-  - [ ] `maxPages: 0` rejected;
-  - [ ] `maxResults: "5"` rejected;
-  - [ ] `maxChars: -1` rejected;
-  - [ ] valid `maxPages/maxResults/maxChars` accepted.
+- [x] P1 `undefined` options should return `{}`. <!-- assertPlainOptionsObject returns {} for undefined -->
+- [x] P1 non-object options should throw invalid effect payload. <!-- assertPlainOptionsObject throws WebEffectPayloadError -->
+- [x] P1 array options should throw invalid effect payload. <!-- assertPlainOptionsObject throws for arrays -->
+- [x] P1 unknown fields should throw invalid effect payload. <!-- rejectUnknownOptionFields throws for unknown keys -->
+- [x] P1 `site` should be rejected in FIX11. <!-- not in RESEARCH_OPTION_FIELDS; rejectUnknownOptionFields rejects it -->
+- [x] P1 `format` should be rejected in FIX11. <!-- not in RESEARCH_OPTION_FIELDS; rejectUnknownOptionFields rejects it -->
+- [x] P1 `maxPages` should be validated with `normalizeOptionalPositiveIntegerLimit`. <!-- webRunner.ts: normalizeOptionalPositiveIntegerLimit(o.maxPages, ...) -->
+- [x] P1 `maxResults` should be validated with `normalizeOptionalPositiveIntegerLimit`. <!-- same -->
+- [x] P1 `maxChars` should be validated with `normalizeOptionalPositiveIntegerLimit`. <!-- same -->
+- [x] P1 Reject:
+  - [x] string values; <!-- assertPlainOptionsObject rejects non-objects -->
+  - [x] zero values; <!-- normalizeOptionalPositiveIntegerLimit rejects < 1 -->
+  - [x] negative values; <!-- same -->
+  - [x] non-integer values; <!-- same -->
+  - [x] above-cap values. <!-- max: MAX_BATCH_PAGE_READS / MAX_SEARCH_RESULTS / MAX_WEB_PAGE_CHARS -->
+- [x] P1 Tests:
+  - [x] `options: "bad"` rejected; <!-- test a1-str -->
+  - [x] `options: []` rejected; <!-- test a1-arr -->
+  - [x] `options: { unknown: true }` rejected; <!-- test a1-unk -->
+  - [x] `options: { site: "example.com" }` rejected; <!-- test a1-site -->
+  - [x] `options: { format: "markdown" }` rejected; <!-- test a1-fmt -->
+  - [x] `maxPages: 0` rejected; <!-- test a1-pg-zero -->
+  - [x] `maxResults: "5"` rejected; <!-- test a1-res-str -->
+  - [x] `maxChars: -1` rejected; <!-- test a1-chars-neg -->
+  - [x] valid `maxPages/maxResults/maxChars` accepted. <!-- test a1-ok -->
 
 ### Suggested code
 
@@ -130,20 +110,20 @@ function sanitizeResearchOptions(input: unknown): ResearchOptions {
 
 ## A2 — Direct invalid `web_research.options` must fail before approval
 
-- [ ] P1 Ensure direct `web_research` effects validate options before dispatching approval.
-- [ ] P1 Invalid options must:
-  - [ ] audit `web.effect_payload_invalid`;
-  - [ ] resolve effect `ok:false`;
-  - [ ] not dispatch an approval card;
-  - [ ] not audit `web.research_started`;
-  - [ ] not call providers.
-- [ ] P1 Tests:
-  - [ ] direct `web_research` with `options: "bad"` resolves invalid payload;
-  - [ ] direct `web_research` with `options: []` resolves invalid payload;
-  - [ ] direct `web_research` with `options.site` resolves invalid payload;
-  - [ ] direct `web_research` with `options.format` resolves invalid payload;
-  - [ ] direct `web_research` with unknown option resolves invalid payload;
-  - [ ] invalid direct research options do not dispatch approval.
+- [x] P1 Ensure direct `web_research` effects validate options before dispatching approval. <!-- existing try/catch; strict A1 sanitizer plugs in -->
+- [x] P1 Invalid options must:
+  - [x] audit `web.effect_payload_invalid`; <!-- failInvalidWebEffect emits this -->
+  - [x] resolve effect `ok:false`; <!-- failInvalidWebEffect submits ok:false -->
+  - [x] not dispatch an approval card; <!-- return before approvalRequested dispatch -->
+  - [x] not audit `web.research_started`; <!-- return before audit -->
+  - [x] not call providers. <!-- return before provider call -->
+- [x] P1 Tests:
+  - [x] direct `web_research` with `options: "bad"` resolves invalid payload; <!-- test a1-str checks effect_payload_invalid + no research -->
+  - [x] direct `web_research` with `options: []` resolves invalid payload; <!-- test a1-arr -->
+  - [x] direct `web_research` with `options.site` resolves invalid payload; <!-- test a1-site -->
+  - [x] direct `web_research` with `options.format` resolves invalid payload; <!-- test a1-fmt -->
+  - [x] direct `web_research` with unknown option resolves invalid payload; <!-- test a1-unk -->
+  - [x] invalid direct research options do not dispatch approval. <!-- test a1-str checks dispatch not.toHaveBeenCalledWith approvalRequested -->
 
 ### Suggested handler shape
 
@@ -181,22 +161,22 @@ FIX10 moved bulk-research option validation into the payload-validation block. F
 
 ### Required behavior
 
-- [ ] P1 `runApprovedBulkResearch()` must call strict `sanitizeResearchOptions(parsed.options)` inside the payload-validation `try` block.
-- [ ] P1 Invalid options must:
-  - [ ] audit `web.bulk_research_payload_invalid`;
-  - [ ] resolve effect `ok:false`;
-  - [ ] not audit `web.research_started`;
-  - [ ] not call search provider;
-  - [ ] not call page reader provider.
-- [ ] P1 Tests:
-  - [ ] approved bulk-research payload with `options: "bad"` audits `web.bulk_research_payload_invalid`;
-  - [ ] approved bulk-research payload with `options: []` audits `web.bulk_research_payload_invalid`;
-  - [ ] approved bulk-research payload with `options.site` audits `web.bulk_research_payload_invalid`;
-  - [ ] approved bulk-research payload with `options.format` audits `web.bulk_research_payload_invalid`;
-  - [ ] approved bulk-research payload with unknown option audits `web.bulk_research_payload_invalid`;
-  - [ ] invalid options do not audit `web.research_failed`;
-  - [ ] invalid options do not audit `web.research_started`;
-  - [ ] invalid options do not call providers.
+- [x] P1 `runApprovedBulkResearch()` must call strict `sanitizeResearchOptions(parsed.options)` inside the payload-validation `try` block. <!-- webRunner.ts:554; strict A1 sanitizer now in place -->
+- [x] P1 Invalid options must:
+  - [x] audit `web.bulk_research_payload_invalid`; <!-- inline audit in payload catch -->
+  - [x] resolve effect `ok:false`; <!-- deps.submit ok:false in catch -->
+  - [x] not audit `web.research_started`; <!-- return before started audit -->
+  - [x] not call search provider; <!-- return before deps.web.research -->
+  - [x] not call page reader provider. <!-- return before deps.web.readPages -->
+- [x] P1 Tests:
+  - [x] approved bulk-research payload with `options: "bad"` audits `web.bulk_research_payload_invalid`; <!-- test b1-str -->
+  - [x] approved bulk-research payload with `options: []` audits `web.bulk_research_payload_invalid`; <!-- test b1-arr -->
+  - [x] approved bulk-research payload with `options.site` audits `web.bulk_research_payload_invalid`; <!-- test b1-site -->
+  - [x] approved bulk-research payload with `options.format` audits `web.bulk_research_payload_invalid`; <!-- test b1-fmt -->
+  - [x] approved bulk-research payload with unknown option audits `web.bulk_research_payload_invalid`; <!-- test b1-unk -->
+  - [x] invalid options do not audit `web.research_failed`; <!-- b1-str checks not.toContain('web.research_failed') -->
+  - [x] invalid options do not audit `web.research_started`; <!-- b1-str checks not.toContain('web.research_started') -->
+  - [x] invalid options do not call providers. <!-- web.research not.toHaveBeenCalled in B1 tests -->
 
 ### Suggested code shape
 

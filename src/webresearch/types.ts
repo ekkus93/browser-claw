@@ -55,7 +55,11 @@ export interface PageContent {
   length: number;
 }
 
+// C1 (FIX11): 'invalid_request' added for locally-detected invalid caller inputs
+// (e.g., bad maxChars) and extension-side invalid_request responses. 'internal_error'
+// is reserved for unexpected failures, malformed extension responses, and bugs.
 export type PageReadErrorKind =
+  | 'invalid_request'
   | 'permission_denied'
   | 'timeout'
   | 'navigation_failed'
@@ -92,9 +96,13 @@ export interface ResearchBundle {
   summary?: string;
 }
 
-export interface ResearchOptions extends SearchOptions {
+// A1 (FIX11): ResearchOptions is a standalone type — no longer extends SearchOptions.
+// `site` and `format` are rejected at the sanitizer boundary in FIX11 because neither
+// is honored end-to-end. They can be reintroduced in a future pass with full provider
+// support, approval copy, and tests.
+export interface ResearchOptions {
   maxPages?: number;
-  format?: ReadFormat;
+  maxResults?: number;
   maxChars?: number;
 }
 

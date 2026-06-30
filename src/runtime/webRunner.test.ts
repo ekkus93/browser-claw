@@ -439,6 +439,137 @@ describe('createWebEffectHandler (F3)', () => {
     );
     expect(web.research).not.toHaveBeenCalled();
   });
+
+  it('A1/A2 (FIX11): web_research with string options audits effect_payload_invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'a1-str',
+      mode: 'query',
+      query: 'opfs',
+      options: 'bad' as unknown as Record<string, unknown>,
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'approvals/approvalRequested' }),
+    );
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('A1/A2 (FIX11): web_research with array options audits effect_payload_invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'a1-arr',
+      mode: 'query',
+      query: 'opfs',
+      options: [] as unknown as Record<string, unknown>,
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('A1/A2 (FIX11): web_research with options.site audits effect_payload_invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'a1-site',
+      mode: 'query',
+      query: 'opfs',
+      options: { site: 'example.com' } as unknown as Record<string, unknown>,
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('A1/A2 (FIX11): web_research with options.format audits effect_payload_invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'a1-fmt',
+      mode: 'query',
+      query: 'opfs',
+      options: { format: 'markdown' } as unknown as Record<string, unknown>,
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('A1/A2 (FIX11): web_research with unknown option audits effect_payload_invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'a1-unk',
+      mode: 'query',
+      query: 'opfs',
+      options: { unknown: true } as unknown as Record<string, unknown>,
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('A1/A2 (FIX11): web_research with maxPages: 0 audits effect_payload_invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'a1-pg-zero',
+      mode: 'query',
+      query: 'opfs',
+      options: { maxPages: 0 },
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('A1/A2 (FIX11): web_research with maxResults: "5" audits effect_payload_invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'a1-res-str',
+      mode: 'query',
+      query: 'opfs',
+      options: { maxResults: '5' } as unknown as Record<string, unknown>,
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('A1/A2 (FIX11): web_research with maxChars: -1 audits effect_payload_invalid', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'a1-chars-neg',
+      mode: 'query',
+      query: 'opfs',
+      options: { maxChars: -1 },
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.effect_payload_invalid');
+  });
+
+  it('A1 (FIX11): valid maxPages/maxResults/maxChars all accepted', async () => {
+    const web = makeWeb();
+    const handle = createWebEffectHandler(deps(web));
+    await handle({
+      type: 'web_research',
+      id: 'a1-ok',
+      mode: 'query',
+      query: 'opfs',
+      options: { maxPages: 2, maxResults: 5, maxChars: 20000 },
+    });
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'approvals/approvalRequested' }),
+    );
+    expect(await auditTypes()).not.toContain('web.effect_payload_invalid');
+  });
 });
 
 describe('runApprovedWebPageRead (F3)', () => {
@@ -1074,5 +1205,72 @@ describe('runApprovedBulkResearch — D1 (FIX9) invalid options → payload_inva
     });
     expect(web.research).not.toHaveBeenCalled();
     expect(web.readPages).not.toHaveBeenCalled();
+  });
+
+  it('B1 (FIX11): approved bulk-research with string options audits bulk_research_payload_invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'b1-str',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ query: 'opfs', options: 'bad' }),
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    const types = await auditTypes();
+    expect(types).toContain('web.bulk_research_payload_invalid');
+    expect(types).not.toContain('web.research_started');
+    expect(types).not.toContain('web.research_failed');
+  });
+
+  it('B1 (FIX11): approved bulk-research with array options audits bulk_research_payload_invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'b1-arr',
+      status: 'approved',
+      payloadPreview: JSON.stringify({ query: 'opfs', options: [] }),
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+  });
+
+  it('B1 (FIX11): approved bulk-research with options.site audits bulk_research_payload_invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'b1-site',
+      status: 'approved',
+      payloadPreview: JSON.stringify({
+        query: 'opfs',
+        options: { site: 'example.com' },
+      }),
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+  });
+
+  it('B1 (FIX11): approved bulk-research with options.format audits bulk_research_payload_invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'b1-fmt',
+      status: 'approved',
+      payloadPreview: JSON.stringify({
+        query: 'opfs',
+        options: { format: 'markdown' },
+      }),
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
+  });
+
+  it('B1 (FIX11): approved bulk-research with unknown option audits bulk_research_payload_invalid', async () => {
+    const web = makeWeb();
+    await runApprovedBulkResearch(deps(web), {
+      id: 'b1-unk',
+      status: 'approved',
+      payloadPreview: JSON.stringify({
+        query: 'opfs',
+        options: { unknown: true },
+      }),
+    });
+    expect(web.research).not.toHaveBeenCalled();
+    expect(await auditTypes()).toContain('web.bulk_research_payload_invalid');
   });
 });

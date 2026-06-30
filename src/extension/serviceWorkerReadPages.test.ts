@@ -4,7 +4,7 @@
  * Imports the plain-JS service worker and stubs Chrome APIs
  * so the handler runs without a real browser.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyFn = (...args: any[]) => any;
@@ -1108,5 +1108,133 @@ describe('E2 (FIX11) — handleWebSearch invalid maxResults rejection', () => {
     const res = await ws({ maxResults: 21 });
     expect(res['ok']).toBe(false);
     expect(res['error']).toMatchObject({ kind: 'invalid_request' });
+  });
+});
+
+// B1 (FIX12): central validateMessageSchema() now validates web_search.maxResults.
+describe('B1 (FIX12) — central validateMessageSchema web_search.maxResults validation', () => {
+  function schema(extra: Record<string, unknown>) {
+    return validateMessageSchema({
+      type: 'web_search',
+      requestId: 'b1-r',
+      query: 'q',
+      apiKey: 'k',
+      ...extra,
+    });
+  }
+
+  it('B1: maxResults "5" (string) rejected by central schema', () => {
+    const res = schema({ maxResults: '5' });
+    expect(res).not.toBeNull();
+    expect((res as Record<string, unknown>)['error']).toMatchObject({
+      kind: 'invalid_request',
+    });
+  });
+
+  it('B1: maxResults 0 rejected by central schema', () => {
+    const res = schema({ maxResults: 0 });
+    expect(res).not.toBeNull();
+    expect((res as Record<string, unknown>)['error']).toMatchObject({
+      kind: 'invalid_request',
+    });
+  });
+
+  it('B1: maxResults -1 rejected by central schema', () => {
+    const res = schema({ maxResults: -1 });
+    expect(res).not.toBeNull();
+    expect((res as Record<string, unknown>)['error']).toMatchObject({
+      kind: 'invalid_request',
+    });
+  });
+
+  it('B1: maxResults 1.5 rejected by central schema', () => {
+    const res = schema({ maxResults: 1.5 });
+    expect(res).not.toBeNull();
+    expect((res as Record<string, unknown>)['error']).toMatchObject({
+      kind: 'invalid_request',
+    });
+  });
+
+  it('B1: maxResults 21 rejected by central schema', () => {
+    const res = schema({ maxResults: 21 });
+    expect(res).not.toBeNull();
+    expect((res as Record<string, unknown>)['error']).toMatchObject({
+      kind: 'invalid_request',
+    });
+  });
+
+  it('B1: maxResults 20 (at cap) accepted by central schema', () => {
+    expect(schema({ maxResults: 20 })).toBeNull();
+  });
+});
+
+// B2 (FIX12): handleWebSearch() still validates maxResults directly (defense in depth).
+describe('B2 (FIX12) — handleWebSearch direct maxResults validation', () => {
+  type WsFn = (m: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  const directWs = (extra: Record<string, unknown>) =>
+    (handlers['web_search'] as WsFn)({
+      type: 'web_search',
+      requestId: 'b2-r',
+      query: 'q',
+      apiKey: 'k',
+      ...extra,
+    });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('B2: string maxResults returns invalid_request from direct handler', async () => {
+    const res = await directWs({ maxResults: '5' });
+    expect(res['ok']).toBe(false);
+    expect(res['error']).toMatchObject({ kind: 'invalid_request' });
+  });
+
+  it('B2: maxResults 0 returns invalid_request from direct handler', async () => {
+    const res = await directWs({ maxResults: 0 });
+    expect(res['ok']).toBe(false);
+    expect(res['error']).toMatchObject({ kind: 'invalid_request' });
+  });
+
+  it('B2: maxResults -1 returns invalid_request from direct handler', async () => {
+    const res = await directWs({ maxResults: -1 });
+    expect(res['ok']).toBe(false);
+    expect(res['error']).toMatchObject({ kind: 'invalid_request' });
+  });
+
+  it('B2: maxResults 1.5 returns invalid_request from direct handler', async () => {
+    const res = await directWs({ maxResults: 1.5 });
+    expect(res['ok']).toBe(false);
+    expect(res['error']).toMatchObject({ kind: 'invalid_request' });
+  });
+
+  it('B2: maxResults 21 returns invalid_request from direct handler', async () => {
+    const res = await directWs({ maxResults: 21 });
+    expect(res['ok']).toBe(false);
+    expect(res['error']).toMatchObject({ kind: 'invalid_request' });
+  });
+
+  it('B2: missing maxResults defaults to count=10 in the search URL', async () => {
+    let capturedUrl = '';
+    vi.stubGlobal('fetch', (url: string) => {
+      capturedUrl = url;
+      return Promise.reject(new Error('no network'));
+    });
+    const res = await directWs({});
+    expect(res['ok']).toBe(false);
+    expect(res['error']).toMatchObject({ kind: 'internal_error' });
+    expect(capturedUrl).toContain('count=10');
+  });
+
+  it('B2: maxResults 5 uses count=5 in the search URL', async () => {
+    let capturedUrl = '';
+    vi.stubGlobal('fetch', (url: string) => {
+      capturedUrl = url;
+      return Promise.reject(new Error('no network'));
+    });
+    const res = await directWs({ maxResults: 5 });
+    expect(res['ok']).toBe(false);
+    expect(res['error']).toMatchObject({ kind: 'internal_error' });
+    expect(capturedUrl).toContain('count=5');
   });
 });

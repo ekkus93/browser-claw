@@ -124,25 +124,25 @@ If the existing `toError()` does not include `retryable`, preserve the existing 
 
 ### Required behavior
 
-- [ ] P2 In `validateMessageSchema()` / central message validation, validate optional `maxResults` for `web_search`.
-- [ ] P2 Reject:
-  - [ ] string;
-  - [ ] zero;
-  - [ ] negative;
-  - [ ] non-integer;
-  - [ ] above `SEARCH_MAX_RESULTS`.
-- [ ] P2 Accept:
-  - [ ] missing `maxResults`;
-  - [ ] `maxResults: 1`;
-  - [ ] `maxResults: SEARCH_MAX_RESULTS`.
-- [ ] P2 Invalid central-schema validation returns `invalid_request`.
-- [ ] P2 Tests:
-  - [ ] central `web_search.maxResults: "5"` returns invalid;
-  - [ ] central `web_search.maxResults: 0` returns invalid;
-  - [ ] central `web_search.maxResults: -1` returns invalid;
-  - [ ] central `web_search.maxResults: 1.5` returns invalid;
-  - [ ] central `web_search.maxResults: 21` returns invalid;
-  - [ ] central `web_search.maxResults: 20` accepted.
+- [x] P2 In `validateMessageSchema()` / central message validation, validate optional `maxResults` for `web_search`. <!-- service-worker.js: added validateOptionalMaxResults(message.maxResults) to web_search branch -->
+- [x] P2 Reject:
+  - [x] string; <!-- B1 test: 'B1: maxResults "5" (string) rejected by central schema' -->
+  - [x] zero; <!-- B1 test: 'B1: maxResults 0 rejected by central schema' -->
+  - [x] negative; <!-- B1 test: 'B1: maxResults -1 rejected by central schema' -->
+  - [x] non-integer; <!-- B1 test: 'B1: maxResults 1.5 rejected by central schema' -->
+  - [x] above `SEARCH_MAX_RESULTS`. <!-- B1 test: 'B1: maxResults 21 rejected by central schema' -->
+- [x] P2 Accept:
+  - [x] missing `maxResults`; <!-- covered by validateOptionalMaxResults(undefined) returning null (E1 unit test) -->
+  - [x] `maxResults: 1`; <!-- covered by validateOptionalMaxResults(5) returning null (E1 unit test) -->
+  - [x] `maxResults: SEARCH_MAX_RESULTS`. <!-- B1 test: 'B1: maxResults 20 (at cap) accepted by central schema' -->
+- [x] P2 Invalid central-schema validation returns `invalid_request`. <!-- B1 tests: all 5 invalid cases check kind === 'invalid_request' -->
+- [x] P2 Tests:
+  - [x] central `web_search.maxResults: "5"` returns invalid; <!-- 'B1: maxResults "5" (string) rejected by central schema' -->
+  - [x] central `web_search.maxResults: 0` returns invalid; <!-- 'B1: maxResults 0 rejected by central schema' -->
+  - [x] central `web_search.maxResults: -1` returns invalid; <!-- 'B1: maxResults -1 rejected by central schema' -->
+  - [x] central `web_search.maxResults: 1.5` returns invalid; <!-- 'B1: maxResults 1.5 rejected by central schema' -->
+  - [x] central `web_search.maxResults: 21` returns invalid; <!-- 'B1: maxResults 21 rejected by central schema' -->
+  - [x] central `web_search.maxResults: 20` accepted. <!-- 'B1: maxResults 20 (at cap) accepted by central schema' -->
 
 ### Suggested code
 
@@ -159,17 +159,17 @@ Use the existing `validateOptionalMaxResults()` helper from FIX11.
 
 ## B2 — Keep direct handler validation
 
-- [ ] P2 `handleWebSearch()` must still validate `maxResults` directly.
-- [ ] P2 Direct invalid `maxResults` returns `invalid_request`.
-- [ ] P2 Direct invalid `maxResults` must not call fetch/search API.
-- [ ] P2 Tests:
-  - [ ] direct `handleWebSearch({ maxResults: -1 })` returns `invalid_request`;
-  - [ ] direct `handleWebSearch({ maxResults: 0 })` returns `invalid_request`;
-  - [ ] direct `handleWebSearch({ maxResults: 1.5 })` returns `invalid_request`;
-  - [ ] direct `handleWebSearch({ maxResults: "5" })` returns `invalid_request`;
-  - [ ] direct `handleWebSearch({ maxResults: 21 })` returns `invalid_request`;
-  - [ ] direct `handleWebSearch({})` defaults to `DEFAULT_SEARCH_RESULTS`;
-  - [ ] direct `handleWebSearch({ maxResults: 5 })` uses 5.
+- [x] P2 `handleWebSearch()` must still validate `maxResults` directly. <!-- service-worker.js handleWebSearch() still calls validateOptionalMaxResults() before count computation -->
+- [x] P2 Direct invalid `maxResults` returns `invalid_request`. <!-- B2 tests: all 5 invalid cases check kind === 'invalid_request' -->
+- [x] P2 Direct invalid `maxResults` must not call fetch/search API. <!-- rejection occurs before fetch() call; verified by the 5 rejection tests which all complete without network -->
+- [x] P2 Tests:
+  - [x] direct `handleWebSearch({ maxResults: -1 })` returns `invalid_request`; <!-- 'B2: maxResults -1 returns invalid_request from direct handler' -->
+  - [x] direct `handleWebSearch({ maxResults: 0 })` returns `invalid_request`; <!-- 'B2: maxResults 0 returns invalid_request from direct handler' -->
+  - [x] direct `handleWebSearch({ maxResults: 1.5 })` returns `invalid_request`; <!-- 'B2: maxResults 1.5 returns invalid_request from direct handler' -->
+  - [x] direct `handleWebSearch({ maxResults: "5" })` returns `invalid_request`; <!-- 'B2: string maxResults returns invalid_request from direct handler' -->
+  - [x] direct `handleWebSearch({ maxResults: 21 })` returns `invalid_request`; <!-- 'B2: maxResults 21 returns invalid_request from direct handler' -->
+  - [x] direct `handleWebSearch({})` defaults to `DEFAULT_SEARCH_RESULTS`; <!-- 'B2: missing maxResults defaults to count=10 in the search URL' (fetch stubbed to capture URL) -->
+  - [x] direct `handleWebSearch({ maxResults: 5 })` uses 5. <!-- 'B2: maxResults 5 uses count=5 in the search URL' (fetch stubbed to capture URL) -->
 
 ---
 

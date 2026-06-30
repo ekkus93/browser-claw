@@ -777,6 +777,12 @@ function validateMessageSchema(message) {
         id,
       );
     }
+    // B1 (FIX12): validate optional maxResults centrally — mirrors the direct
+    // handler check in handleWebSearch() which stays as a defensive layer.
+    const maxResultsError = validateOptionalMaxResults(message.maxResults);
+    if (maxResultsError) {
+      return errorResponse('invalid_request', maxResultsError, id);
+    }
   } else if (type === 'request_host_permission') {
     if (
       typeof message.origin !== 'string' ||

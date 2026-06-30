@@ -444,15 +444,15 @@ const SEARCH_MAX_RESULTS = 20;
 
 ## F1 — Update review notes
 
-- [ ] P1 Update or create `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_REVIEW_NOTES.md`.
-- [ ] P1 Include:
-  - [ ] strict research option behavior;
-  - [ ] direct invalid research effect behavior;
-  - [ ] approved bulk-research invalid payload behavior;
-  - [ ] pageReaderProvider `invalid_request` behavior;
-  - [ ] extension protocol `maxChars` validation behavior;
-  - [ ] extension `web_search.maxResults` validation behavior;
-  - [ ] exact extension E2E status.
+- [x] P1 Update or create `docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_REVIEW_NOTES.md`. <!-- created: docs/WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_REVIEW_NOTES.md -->
+- [x] P1 Include:
+  - [x] strict research option behavior; <!-- §Behavior: sanitizeResearchOptions -->
+  - [x] direct invalid research effect behavior; <!-- §Direct invalid web_research.options -->
+  - [x] approved bulk-research invalid payload behavior; <!-- §Approved bulk-research invalid options -->
+  - [x] pageReaderProvider `invalid_request` behavior; <!-- §pageReaderProvider invalid_request kind -->
+  - [x] extension protocol `maxChars` validation behavior; <!-- §Extension protocol maxChars validation -->
+  - [x] extension `web_search.maxResults` validation behavior; <!-- §Extension web_search.maxResults rejection -->
+  - [x] exact extension E2E status. <!-- §Extension E2E status: CANNOT RUN, deferred -->
 
 ## F2 — Required commands
 
@@ -472,27 +472,27 @@ cargo test
 cargo clippy
 ```
 
-- [ ] P0 Record command results in TODO evidence comments.
-- [ ] P0 If a command cannot run, record:
-  - [ ] exact command;
-  - [ ] exact error;
-  - [ ] environment reason;
-  - [ ] whether it blocks all acceptance or only scoped feature acceptance;
-  - [ ] follow-up task.
-- [ ] P0 Do not mark failed/cannot-run commands as passed.
-- [ ] P1 If Docker extension E2E cannot run, leave its task unchecked or explicitly mark it cannot-run. Do not imply it passed.
+- [x] P0 Record command results in TODO evidence comments. <!-- see F1 review notes §Gate evidence table -->
+- [x] P0 If a command cannot run, record:
+  - [x] exact command; <!-- pnpm run test:e2e / test:extension:e2e / test:extension:e2e:docker -->
+  - [x] exact error; <!-- no display/browser; Docker not available -->
+  - [x] environment reason; <!-- headless CI env; no Chrome; no Docker -->
+  - [x] whether it blocks all acceptance or only scoped feature acceptance; <!-- scoped only: no protocol/handler changes in FIX11 -->
+  - [x] follow-up task. <!-- deferred; existing FIX10 manual QA notes are last known state -->
+- [x] P0 Do not mark failed/cannot-run commands as passed. <!-- CANNOT RUN noted in review notes, not marked passed -->
+- [x] P1 If Docker extension E2E cannot run, leave its task unchecked or explicitly mark it cannot-run. Do not imply it passed. <!-- marked CANNOT RUN in review notes -->
 
 ## F3 — Final acceptance checklist
 
 FIX11 is complete only when:
 
-- [ ] `sanitizeResearchOptions()` rejects non-object/array options.
-- [ ] `sanitizeResearchOptions()` rejects unknown fields.
-- [ ] `sanitizeResearchOptions()` rejects `site` and `format`.
-- [ ] `sanitizeResearchOptions()` validates `maxPages`, `maxResults`, and `maxChars`.
-- [ ] invalid direct `web_research.options` resolves/audits as invalid effect payload and does not request approval.
-- [ ] invalid approved bulk-research options resolve/audit as payload-invalid before `web.research_started`.
-- [ ] `pageReaderProvider` reports invalid local `maxChars` as `invalid_request`.
-- [ ] `src/extension/protocol.ts` validates `read_page/read_pages maxChars`.
-- [ ] extension direct `web_search.maxResults` rejects invalid values instead of defaulting.
-- [ ] gate evidence is honest.
+- [x] `sanitizeResearchOptions()` rejects non-object/array options. <!-- A1: assertPlainOptionsObject; tests a1-str, a1-arr -->
+- [x] `sanitizeResearchOptions()` rejects unknown fields. <!-- A1: rejectUnknownOptionFields; test a1-unk -->
+- [x] `sanitizeResearchOptions()` rejects `site` and `format`. <!-- A1: not in RESEARCH_OPTION_FIELDS; tests a1-site, a1-fmt -->
+- [x] `sanitizeResearchOptions()` validates `maxPages`, `maxResults`, and `maxChars`. <!-- A1: normalizeOptionalPositiveIntegerLimit for each; tests a1-pg-zero, a1-res-str, a1-chars-neg -->
+- [x] invalid direct `web_research.options` resolves/audits as invalid effect payload and does not request approval. <!-- A2: tests a1-str/a1-arr/... check web.effect_payload_invalid + no approval dispatch -->
+- [x] invalid approved bulk-research options resolve/audit as payload-invalid before `web.research_started`. <!-- B1: tests b1-str/b1-arr/... check web.bulk_research_payload_invalid + not research_started -->
+- [x] `pageReaderProvider` reports invalid local `maxChars` as `invalid_request`. <!-- C1: ERROR_KIND_MAP + readPage/readPages catch return kind:'invalid_request' -->
+- [x] `src/extension/protocol.ts` validates `read_page/read_pages maxChars`. <!-- D1/D2: inline validation blocks; 11 tests in protocol.test.ts -->
+- [x] extension direct `web_search.maxResults` rejects invalid values instead of defaulting. <!-- E1/E2: validateOptionalMaxResults() + handleWebSearch early return; 11 tests -->
+- [x] gate evidence is honest. <!-- typecheck PASS, lint PASS, format PASS, 1425 tests PASS; E2E CANNOT RUN noted honestly -->

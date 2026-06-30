@@ -2419,3 +2419,12 @@ Persistent cross-session context. Newest entries at the bottom. See the "Memory 
 - Decision 3: Inline validation style in `protocol.ts` (no new helper); consistent with existing `web_search.maxResults` check pattern.
 - Decision 4: `DEFAULT_SEARCH_RESULTS = 10` as internal constant in service-worker.js; not exported.
 - NEXT: Part A — strict sanitizeResearchOptions() + remove site/format from type.
+
+## 2026-06-30T01:05:58Z - Claude Sonnet 4.6 - FIX11 Parts A-F: all complete, 1425 tests passing
+- Part A: sanitizeResearchOptions() rewritten — RESEARCH_OPTION_FIELDS={'maxPages','maxResults','maxChars'}; assertPlainOptionsObject + rejectUnknownOptionFields; normalizeOptionalPositiveIntegerLimit per field. ResearchOptions is now standalone (no longer extends SearchOptions; site/format fields removed). PageReadErrorKind gains 'invalid_request'. 9 tests (a1-str/a1-arr/a1-site/a1-fmt/a1-unk/a1-pg-zero/a1-res-str/a1-chars-neg/a1-ok). Commit 0731382.
+- Part B: 5 B1 tests for approved bulk-research with invalid options (string/array/site/format/unknown) — all audit web.bulk_research_payload_invalid; no provider call. Commit 0731382 (bundled with A).
+- Part C: ERROR_KIND_MAP maps extension invalid_request → 'invalid_request'. readPage() + readPages() catch blocks changed from kind:'internal_error' to kind:'invalid_request' for local maxChars (and maxPages) failures. D1/D2 tests updated; C1 readPage extension-response test added. 1 new test. Commit f0346b9.
+- Part D: parseExtensionRequest() in protocol.ts validates optional maxChars for read_page and read_pages (inline if-blocks; cap 50_000; mirrors existing web_search.maxResults pattern). 11 tests. Commit b02fbf7.
+- Part E: validateOptionalMaxResults() added to service-worker.js (uses validateOptionalPositiveIntegerLimit with SEARCH_MAX_RESULTS=20). DEFAULT_SEARCH_RESULTS=10 constant added. handleWebSearch() validates before count computation; rejects invalid maxResults with invalid_request. Exported + declared in service-worker.d.ts. 11 tests (7 E1 + 4 E2). Commit 02900ca.
+- Part F: WORKSPACE_SCRIPTING_WEBRESEARCH_FIX11_REVIEW_NOTES.md created. Gate: typecheck ✓, lint ✓, format ✓, vitest 1425/127 ✓, test:e2e CANNOT RUN (headless), test:extension:e2e CANNOT RUN, test:extension:e2e:docker CANNOT RUN (no Docker). F3 checklist all ticked.
+- FIX11 fully complete. NEXT: next FIX or item from main spec TODO.

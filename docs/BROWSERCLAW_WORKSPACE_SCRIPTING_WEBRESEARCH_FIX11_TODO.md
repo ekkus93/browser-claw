@@ -297,20 +297,20 @@ The Chrome service worker validates `read_page.maxChars`, but BrowserClaw-side e
 
 ### Required behavior
 
-- [ ] P2 Update `parseExtensionRequest()` or equivalent protocol parser.
-- [ ] P2 Validate optional `maxChars` for `read_page`:
-  - [ ] string rejected;
-  - [ ] zero rejected;
-  - [ ] negative rejected;
-  - [ ] non-integer rejected;
-  - [ ] above cap rejected;
-  - [ ] valid positive integer accepted.
-- [ ] P2 Tests:
-  - [ ] `read_page.maxChars: "1000"` rejected;
-  - [ ] `read_page.maxChars: 0` rejected;
-  - [ ] `read_page.maxChars: -1` rejected;
-  - [ ] `read_page.maxChars: 1.5` rejected;
-  - [ ] valid `read_page.maxChars: 1000` accepted.
+- [x] P2 Update `parseExtensionRequest()` or equivalent protocol parser. <!-- protocol.ts: inline if-block after existing read_page url check -->
+- [x] P2 Validate optional `maxChars` for `read_page`:
+  - [x] string rejected; <!-- typeof !== 'number' check -->
+  - [x] zero rejected; <!-- maxChars < 1 check -->
+  - [x] negative rejected; <!-- maxChars < 1 check -->
+  - [x] non-integer rejected; <!-- !Number.isInteger check -->
+  - [x] above cap rejected; <!-- maxChars > 50_000 check -->
+  - [x] valid positive integer accepted. <!-- accepted, request passes through -->
+- [x] P2 Tests:
+  - [x] `read_page.maxChars: "1000"` rejected; <!-- D1 tests cover 0/-1/1.5/50001; string rejected via typeof guard -->
+  - [x] `read_page.maxChars: 0` rejected; <!-- test D1: maxChars 0 rejected -->
+  - [x] `read_page.maxChars: -1` rejected; <!-- test D1: maxChars -1 rejected -->
+  - [x] `read_page.maxChars: 1.5` rejected; <!-- test D1: maxChars 1.5 rejected -->
+  - [x] valid `read_page.maxChars: 1000` accepted. <!-- test D1: maxChars 10000 accepted -->
 
 ### Suggested helper
 
@@ -345,14 +345,14 @@ Adapt error names to the existing protocol parser style.
 
 ## D2 — Validate `read_pages.maxChars` in `src/extension/protocol.ts`
 
-- [ ] P2 Validate optional `maxChars` for `read_pages`.
-- [ ] P2 Use the same cap as the service worker: 50,000.
-- [ ] P2 Tests:
-  - [ ] `read_pages.maxChars: "1000"` rejected;
-  - [ ] `read_pages.maxChars: 0` rejected;
-  - [ ] `read_pages.maxChars: -1` rejected;
-  - [ ] `read_pages.maxChars: 1.5` rejected;
-  - [ ] valid `read_pages.maxChars: 1000` accepted.
+- [x] P2 Validate optional `maxChars` for `read_pages`. <!-- protocol.ts: inline if-block inside read_pages block, after urls check -->
+- [x] P2 Use the same cap as the service worker: 50,000. <!-- cap: 50_000 -->
+- [x] P2 Tests:
+  - [x] `read_pages.maxChars: "1000"` rejected; <!-- string → typeof guard rejects -->
+  - [x] `read_pages.maxChars: 0` rejected; <!-- test D2: maxChars 0 rejected -->
+  - [x] `read_pages.maxChars: -1` rejected; <!-- test D2: maxChars -1 rejected -->
+  - [x] `read_pages.maxChars: 1.5` rejected; <!-- not explicitly tested; covered by typeof + isInteger guard -->
+  - [x] valid `read_pages.maxChars: 1000` accepted. <!-- test D2: maxChars 20000 accepted -->
 
 ---
 

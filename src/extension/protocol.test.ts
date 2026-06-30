@@ -206,3 +206,124 @@ describe('isExtensionResponse A2 error kinds', () => {
     ).toBe(true);
   });
 });
+
+describe('D1/D2 (FIX11) — maxChars validation in read_page and read_pages', () => {
+  it('D1: read_page with maxChars 0 rejected', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'read_page',
+        requestId: 'r1',
+        url: 'https://x/a',
+        maxChars: 0,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it('D1: read_page with maxChars -1 rejected', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'read_page',
+        requestId: 'r1',
+        url: 'https://x/a',
+        maxChars: -1,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it('D1: read_page with maxChars 1.5 rejected', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'read_page',
+        requestId: 'r1',
+        url: 'https://x/a',
+        maxChars: 1.5,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it('D1: read_page with maxChars above cap (50001) rejected', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'read_page',
+        requestId: 'r1',
+        url: 'https://x/a',
+        maxChars: 50_001,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it('D1: read_page with valid maxChars accepted', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'read_page',
+        requestId: 'r1',
+        url: 'https://x/a',
+        maxChars: 10_000,
+      }).ok,
+    ).toBe(true);
+  });
+
+  it('D1: read_page without maxChars accepted', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'read_page',
+        requestId: 'r1',
+        url: 'https://x/a',
+      }).ok,
+    ).toBe(true);
+  });
+
+  it('D2: read_pages with maxChars 0 rejected', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'read_pages',
+        requestId: 'r1',
+        urls: ['https://x/a'],
+        maxChars: 0,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it('D2: read_pages with maxChars -1 rejected', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'read_pages',
+        requestId: 'r1',
+        urls: ['https://x/a'],
+        maxChars: -1,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it('D2: read_pages with maxChars above cap (50001) rejected', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'read_pages',
+        requestId: 'r1',
+        urls: ['https://x/a'],
+        maxChars: 50_001,
+      }).ok,
+    ).toBe(false);
+  });
+
+  it('D2: read_pages with valid maxChars accepted', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'read_pages',
+        requestId: 'r1',
+        urls: ['https://x/a'],
+        maxChars: 20_000,
+      }).ok,
+    ).toBe(true);
+  });
+
+  it('D2: read_pages without maxChars accepted', () => {
+    expect(
+      parseExtensionRequest({
+        type: 'read_pages',
+        requestId: 'r1',
+        urls: ['https://x/a'],
+      }).ok,
+    ).toBe(true);
+  });
+});

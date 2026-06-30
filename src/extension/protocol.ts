@@ -118,6 +118,21 @@ export function parseExtensionRequest(message: unknown): RequestParse {
   ) {
     return { ok: false, reason: `${type} requires a string url/origin` };
   }
+  // D1 (FIX11): validate read_page.maxChars inline — cap matches service-worker MAX_CHARS.
+  if (type === 'read_page') {
+    if (
+      message.maxChars !== undefined &&
+      (typeof message.maxChars !== 'number' ||
+        !Number.isInteger(message.maxChars) ||
+        message.maxChars < 1 ||
+        message.maxChars > 50_000)
+    ) {
+      return {
+        ok: false,
+        reason: 'read_page maxChars must be a positive integer ≤ 50000',
+      };
+    }
+  }
   if (type === 'read_pages') {
     const urls = message.urls;
     if (
@@ -128,6 +143,19 @@ export function parseExtensionRequest(message: unknown): RequestParse {
       return {
         ok: false,
         reason: 'read_pages requires a non-empty string[] urls',
+      };
+    }
+    // D2 (FIX11): validate read_pages.maxChars inline — same cap as read_page.
+    if (
+      message.maxChars !== undefined &&
+      (typeof message.maxChars !== 'number' ||
+        !Number.isInteger(message.maxChars) ||
+        message.maxChars < 1 ||
+        message.maxChars > 50_000)
+    ) {
+      return {
+        ok: false,
+        reason: 'read_pages maxChars must be a positive integer ≤ 50000',
       };
     }
   }

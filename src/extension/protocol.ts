@@ -1,9 +1,7 @@
 /**
- * Extension message protocol (Part E6). The strict, versioned contract between
- * BrowserClaw and the Web Research Companion. Every message carries a
- * `requestId`; requests and responses are validated on BOTH sides; messages from
- * non-BrowserClaw origins are rejected. These are pure shapes + validators (the
- * BrowserClaw side); the extension's service worker mirrors them.
+ * Extension message protocol. Every message carries a requestId; requests and
+ * responses are validated on both sides, and external senders must match an
+ * explicitly configured BrowserClaw application URL.
  */
 
 import type { ReadFormat } from '../webresearch/types.ts';
@@ -41,7 +39,6 @@ export type ExtensionRequest =
       type: 'web_search';
       requestId: string;
       query: string;
-      /** Optional API key forwarded from SecretVault; never stored or logged. */
       apiKey?: string;
       maxResults?: number;
     };
@@ -59,7 +56,6 @@ const REQUEST_TYPES: readonly ExtensionRequestType[] = [
 ];
 
 export type ExtensionErrorKind =
-  // A2 canonical error kinds (used by A3+ service-worker handlers)
   | 'unsupported_message_type'
   | 'invalid_request'
   | 'origin_not_allowed'
@@ -72,11 +68,9 @@ export type ExtensionErrorKind =
   | 'extraction_failed'
   | 'output_too_large'
   | 'internal_error'
-  // C2: permission request flow must be done from extension popup (user gesture)
+  | 'startup_failure'
   | 'permission_flow_required'
-  // C3: current-tab read unavailable in v0.1 (activeTab not grantable via externally_connectable)
   | 'current_tab_read_unavailable'
-  // Legacy kinds (v0.1 service-worker; kept for backward compat)
   | 'timeout'
   | 'navigation_failed'
   | 'unsupported_url'
@@ -94,15 +88,14 @@ export type ExtensionResponse =
   | { ok: true; requestId: string; [field: string]: unknown }
   | { ok: false; requestId: string; error: ExtensionError };
 
-function isObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null;
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }
 
 export type RequestParse =
   | { ok: true; request: ExtensionRequest }
   | { ok: false; reason: string };
 
-/** Validate an untrusted message as an {@link ExtensionRequest}. */
 export function parseExtensionRequest(message: unknown): RequestParse {
   if (!isObject(message)) return { ok: false, reason: 'not an object' };
   if (typeof message.requestId !== 'string' || message.requestId.length === 0) {
@@ -118,7 +111,6 @@ export function parseExtensionRequest(message: unknown): RequestParse {
   ) {
     return { ok: false, reason: `${type} requires a string url/origin` };
   }
-  // D1 (FIX11): validate read_page.maxChars inline — cap matches service-worker MAX_CHARS.
   if (type === 'read_page') {
     if (
       message.maxChars !== undefined &&
@@ -137,7 +129,7 @@ export function parseExtensionRequest(message: unknown): RequestParse {
     const urls = message.urls;
     if (
       !Array.isArray(urls) ||
-      !urls.every((u) => typeof u === 'string') ||
+      !urls.every((url) => typeof url === 'string') ||
       urls.length === 0
     ) {
       return {
@@ -145,7 +137,6 @@ export function parseExtensionRequest(message: unknown): RequestParse {
         reason: 'read_pages requires a non-empty string[] urls',
       };
     }
-    // D2 (FIX11): validate read_pages.maxChars inline — same cap as read_page.
     if (
       message.maxChars !== undefined &&
       (typeof message.maxChars !== 'number' ||
@@ -169,15 +160,14 @@ export function parseExtensionRequest(message: unknown): RequestParse {
         reason: 'web_search requires a non-empty string query',
       };
     }
-    // C1 (FIX12): cap matches service-worker SEARCH_MAX_RESULTS (20) for parity.
-    const SEARCH_MAX_RESULTS = 20;
+    const searchMaxResults = 20;
     if (
       message.maxResults !== undefined &&
       (typeof message.maxResults !== 'number' ||
         !Number.isFinite(message.maxResults) ||
         !Number.isInteger(message.maxResults) ||
         message.maxResults < 1 ||
-        message.maxResults > SEARCH_MAX_RESULTS)
+        message.maxResults > searchMaxResults)
     ) {
       return {
         ok: false,
@@ -189,7 +179,6 @@ export function parseExtensionRequest(message: unknown): RequestParse {
   return { ok: true, request: message as unknown as ExtensionRequest };
 }
 
-/** Validate an untrusted message as an {@link ExtensionResponse}. */
 export function isExtensionResponse(
   message: unknown,
 ): message is ExtensionResponse {
@@ -202,17 +191,42 @@ export function isExtensionResponse(
   return false;
 }
 
-/** Reject any message whose sender origin isn't an allowed BrowserClaw origin. */
+/**
+ * Require exact scheme, host, and port. When an allowed application URL has a
+ * path, the sender must be at that path or below it on a segment boundary.
+ */
 export function isAllowedSenderUrl(
   senderUrl: string | undefined,
-  allowedOrigins: readonly string[],
+  allowedApplicationUrls: readonly string[],
 ): boolean {
   if (!senderUrl) return false;
-  return allowedOrigins.some((origin) => senderUrl.startsWith(`${origin}/`));
+
+  let sender: URL;
+  try {
+    sender = new URL(senderUrl);
+  } catch {
+    return false;
+  }
+
+  return allowedApplicationUrls.some((allowedUrl) => {
+    let allowed: URL;
+    try {
+      allowed = new URL(allowedUrl);
+    } catch {
+      return false;
+    }
+    if (sender.origin !== allowed.origin) return false;
+
+    const allowedPath = allowed.pathname.replace(/\/$/, '');
+    if (allowedPath.length === 0) return true;
+    return (
+      sender.pathname === allowedPath ||
+      sender.pathname.startsWith(`${allowedPath}/`)
+    );
+  });
 }
 
 let counter = 0;
-/** A unique request id. Uses crypto.randomUUID when available, else a counter. */
 export function newRequestId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return `req_${crypto.randomUUID()}`;

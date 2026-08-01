@@ -1,0 +1,94 @@
+name: RC Security Diagnostics Once
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/security-diagnostics-once.yml'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  diagnose:
+    name: Publish redacted security diagnostics
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Collect redacted diagnostics
+        id: collect
+        shell: bash
+        run: |
+          set +e
+          python3 scripts/scan_release_secrets.py --self-test > scanner-self-test.log 2>&1
+          self_test_status=$?
+          python3 scripts/scan_release_secrets.py --working-tree --git-history > scanner.log 2>&1
+          scanner_status=$?
+          pnpm audit --prod --audit-level high > pnpm-audit.log 2>&1
+          audit_status=$?
+          pnpm run typecheck > typecheck.log 2>&1
+          typecheck_status=$?
+          pnpm exec vitest run --no-file-parallelism > unit.log 2>&1
+          unit_status=$?
+          set -e
+
+          {
+            echo '# BrowserClaw RC security diagnostic'
+            echo
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Scanner self-test exit: \`${self_test_status}\`"
+            echo "- Working-tree/history scan exit: \`${scanner_status}\`"
+            echo "- Production pnpm audit exit: \`${audit_status}\`"
+            echo "- TypeScript exit: \`${typecheck_status}\`"
+            echo "- Unit-test exit: \`${unit_status}\`"
+            echo
+            echo '## Redacted secret scanner output'
+            echo '```text'
+            cat scanner-self-test.log scanner.log
+            echo '```'
+            echo
+            echo '## Production dependency audit'
+            echo '```text'
+            cat pnpm-audit.log
+            echo '```'
+            echo
+            echo '## TypeScript summary'
+            echo '```text'
+            tail -n 40 typecheck.log
+            echo '```'
+            echo
+            echo '## Unit-test summary'
+            echo '```text'
+            tail -n 60 unit.log
+            echo '```'
+          } > report.md
+
+          printf 'scanner_status=%s\n' "${scanner_status}" >> "${GITHUB_OUTPUT}"
+          printf 'audit_status=%s\n' "${audit_status}" >> "${GITHUB_OUTPUT}"
+          printf 'typecheck_status=%s\n' "${typecheck_status}" >> "${GITHUB_OUTPUT}"
+          printf 'unit_status=%s\n' "${unit_status}" >> "${GITHUB_OUTPUT}"
+      - name: Publish diagnostic to issue 2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue comment 2 --repo "${GITHUB_REPOSITORY}" --body-file report.md
+      - name: Enforce diagnostic success
+        shell: bash
+        run: |
+          set -euo pipefail
+          test '${{ steps.collect.outputs.scanner_status }}' = '0'
+          test '${{ steps.collect.outputs.audit_status }}' = '0'
+          test '${{ steps.collect.outputs.typecheck_status }}' = '0'
+          test '${{ steps.collect.outputs.unit_status }}' = '0'

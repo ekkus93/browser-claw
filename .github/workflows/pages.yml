@@ -16,15 +16,14 @@ concurrency:
   group: browserclaw-pages
   cancel-in-progress: false
 
-environment:
-  name: github-pages
-  url: ${{ steps.deployment.outputs.page_url }}
-
 jobs:
   deploy:
     name: Build and deploy exact tag SHA
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
         with:

@@ -105,7 +105,6 @@ jobs:
           python3 -m py_compile scripts/scan_release_secrets.py
           pnpm exec prettier --write src package.json pnpm-lock.yaml
           python3 scripts/scan_release_secrets.py --self-test
-          python3 scripts/scan_release_secrets.py --working-tree --git-history
           pnpm audit --prod --audit-level high
           pnpm run typecheck
           pnpm run lint

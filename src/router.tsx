@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { createBrowserRouter } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router';
 import AppLayout from './AppLayout.tsx';
 import { IndexRedirect } from './components/shell/IndexRedirect.tsx';
 import { PlaceholderScreen } from './screens/PlaceholderScreen.tsx';

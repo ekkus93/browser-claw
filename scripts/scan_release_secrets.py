@@ -158,19 +158,37 @@ def scan_zip_bytes(data: bytes, source: str, depth: int = 0) -> list[Finding]:
 
 
 def scan_path(path: Path) -> list[Finding]:
+    source = str(path)
+    scan_target = path
     if path.is_symlink():
-        raise ValueError(f"refusing to scan symbolic link: {path}")
-    if path.is_dir():
+        repository_root = Path.cwd().resolve()
+        try:
+            resolved = path.resolve(strict=True)
+        except OSError as error:
+            raise ValueError(f"broken symbolic link: {path}") from error
+        try:
+            relative_target = resolved.relative_to(repository_root)
+        except ValueError as error:
+            raise ValueError(
+                f"symbolic link escapes repository: {path}"
+            ) from error
+        if not resolved.is_file():
+            raise ValueError(
+                f"symbolic link target is not a file: {path}"
+            )
+        scan_target = resolved
+        source = f"{path} -> {relative_target}"
+    if scan_target.is_dir():
         findings: list[Finding] = []
-        for child in sorted(path.rglob("*")):
-            if child.is_file():
+        for child in sorted(scan_target.rglob("*")):
+            if child.is_file() or child.is_symlink():
                 findings.extend(scan_path(child))
         return findings
 
-    data = path.read_bytes()
-    if path.suffix.lower() == ".zip":
-        return scan_zip_bytes(data, str(path))
-    return scan_bytes(data, str(path))
+    data = scan_target.read_bytes()
+    if scan_target.suffix.lower() == ".zip":
+        return scan_zip_bytes(data, source)
+    return scan_bytes(data, source)
 
 
 def tracked_files() -> Iterable[Path]:

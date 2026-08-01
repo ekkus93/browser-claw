@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router';
 import { AppShell } from './components/shell/AppShell.tsx';
 import { RightInspectorPanel } from './components/shell/RightInspectorPanel.tsx';
 import { SafetyOverrideBanner } from './components/shell/SafetyOverrideBanner.tsx';

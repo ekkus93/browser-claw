@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 import { MessageSquare, PlugZap } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { db } from '../db/db.ts';
 import type { MessageRow } from '../db/types.ts';
 import { useAppDispatch, useAppSelector } from '../store/hooks.ts';

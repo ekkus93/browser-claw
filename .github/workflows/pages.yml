@@ -1,0 +1,73 @@
+name: Deploy BrowserClaw Pages
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v0.1.0-rc.*'
+      - 'v0.1.0'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: browserclaw-pages
+  cancel-in-progress: false
+
+environment:
+  name: github-pages
+  url: ${{ steps.deployment.outputs.page_url }}
+
+jobs:
+  deploy:
+    name: Build and deploy exact tag SHA
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Install pinned wasm-pack
+        run: cargo install wasm-pack --version 0.13.1 --locked
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Set immutable deployment metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF_NAME}" == *-rc.* ]]; then
+            channel=rc
+          else
+            channel=stable
+          fi
+          {
+            echo 'VITE_RELEASE_VERSION=0.1.0'
+            echo "VITE_GIT_SHA=${GITHUB_SHA}"
+            echo "VITE_BUILD_UTC=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "VITE_RELEASE_CHANNEL=${channel}"
+            echo 'VITE_BASE_PATH=/browser-claw/'
+            echo 'VITE_CHROME_EXTENSION_ID=mgobfbgnjfnlpahiniaincgpkinnodka'
+            echo 'VITE_DEMO_MODE=false'
+            echo 'VITE_ALLOW_REFERENCE_RUNTIME_FALLBACK=false'
+            echo 'VITE_ALLOW_MOCK_PROVIDER=false'
+          } >> "${GITHUB_ENV}"
+      - run: pnpm run build:wasm
+      - run: pnpm run build:release
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

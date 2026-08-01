@@ -1,14 +1,23 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  /** Enable seeded demo data; implies the dev runtime/provider overrides. */
   readonly VITE_DEMO_MODE?: string;
-  /** Permit falling back to the TS reference runtime if WASM can't load. */
   readonly VITE_ALLOW_REFERENCE_RUNTIME_FALLBACK?: string;
-  /** Permit the mock provider to answer when no real provider is configured. */
   readonly VITE_ALLOW_MOCK_PROVIDER?: string;
+  readonly VITE_CHROME_EXTENSION_ID?: string;
+  readonly VITE_RELEASE_VERSION?: string;
+  readonly VITE_GIT_SHA?: string;
+  readonly VITE_BUILD_UTC?: string;
+  readonly VITE_RELEASE_CHANNEL?: string;
+  readonly VITE_BASE_PATH?: string;
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+declare const __BROWSERCLAW_VERSION__: string;
+declare const __BROWSERCLAW_GIT_SHA__: string;
+declare const __BROWSERCLAW_BUILD_UTC__: string;
+declare const __BROWSERCLAW_RELEASE_CHANNEL__: string;
+declare const __BROWSERCLAW_EXTENSION_ID__: string;

@@ -1,8 +1,13 @@
 {
   "name": "claw-wasm",
   "type": "module",
+  "description": "BrowserClaw's browser-hosted Rust/WASM agent runtime",
   "version": "0.1.0",
-  "license": "Apache-2.0",
+  "license": "SEE LICENSE IN ../../LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ekkus93/browser-claw"
+  },
   "files": [
     "claw_wasm_bg.wasm",
     "claw_wasm.js",

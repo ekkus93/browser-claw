@@ -56,7 +56,8 @@ const extensionId =
   process.env.VITE_CHROME_EXTENSION_ID ?? releaseConfig.extensionId;
 
 if (strict) {
-  if (releaseVersion !== releaseConfig.version) fail('release version mismatch');
+  if (releaseVersion !== releaseConfig.version)
+    fail('release version mismatch');
   if (!/^[0-9a-f]{40}$/i.test(gitSha)) fail('full commit SHA is required');
   if (releaseChannel !== 'rc' && releaseChannel !== 'stable') {
     fail('release channel must be rc or stable');

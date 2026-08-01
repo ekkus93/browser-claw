@@ -4,7 +4,9 @@ import { readFileSync } from 'node:fs';
 const strict = process.argv.includes('--strict');
 
 function readJson(path) {
-  return JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'));
+  return JSON.parse(
+    readFileSync(new URL(`../${path}`, import.meta.url), 'utf8'),
+  );
 }
 
 function fail(message) {
@@ -13,7 +15,9 @@ function fail(message) {
 
 function requireEqual(label, actual, expected) {
   if (actual !== expected) {
-    fail(`${label} is ${JSON.stringify(actual)}; expected ${JSON.stringify(expected)}`);
+    fail(
+      `${label} is ${JSON.stringify(actual)}; expected ${JSON.stringify(expected)}`,
+    );
   }
 }
 
@@ -43,7 +47,11 @@ requireEqual(
   manifest.version_name,
   releaseConfig.rcVersionName,
 );
-requireEqual('extension manifest key', manifest.key, releaseConfig.extensionPublicKey);
+requireEqual(
+  'extension manifest key',
+  manifest.key,
+  releaseConfig.extensionPublicKey,
+);
 requireEqual(
   'extension ID derived from manifest key',
   extensionIdFromKey(manifest.key),
@@ -53,7 +61,9 @@ requireEqual(
 const expectedProductionMatch = `${releaseConfig.productionOrigin}${releaseConfig.productionBasePath}*`;
 const matches = manifest.externally_connectable?.matches;
 if (!Array.isArray(matches) || !matches.includes(expectedProductionMatch)) {
-  fail(`externally_connectable.matches must include ${expectedProductionMatch}`);
+  fail(
+    `externally_connectable.matches must include ${expectedProductionMatch}`,
+  );
 }
 if (
   matches.some(

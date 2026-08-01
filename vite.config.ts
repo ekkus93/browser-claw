@@ -10,7 +10,10 @@ const packageJson = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
 ) as { version: string };
 const releaseConfig = JSON.parse(
-  readFileSync(new URL('./release/release-config.json', import.meta.url), 'utf8'),
+  readFileSync(
+    new URL('./release/release-config.json', import.meta.url),
+    'utf8',
+  ),
 ) as { extensionId: string };
 
 const version = process.env.VITE_RELEASE_VERSION ?? packageJson.version;

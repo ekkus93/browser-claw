@@ -46,10 +46,7 @@ export function parseBuildMetadata(raw: RawBuildMetadata): BuildMetadata {
     throw new Error('Build metadata buildUtc must be an ISO-8601 UTC value.');
   }
 
-  const releaseChannel = requireString(
-    raw.releaseChannel,
-    'releaseChannel',
-  );
+  const releaseChannel = requireString(raw.releaseChannel, 'releaseChannel');
   if (!['development', 'rc', 'stable'].includes(releaseChannel)) {
     throw new Error(
       'Build metadata releaseChannel must be development, rc, or stable.',

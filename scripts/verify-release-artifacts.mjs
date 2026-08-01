@@ -56,13 +56,18 @@ for (const artifact of manifest.artifacts) {
   ) {
     fail('malformed artifact entry');
   }
-  if (!/^browserclaw-(app|extension)-0\.1\.0(?:-rc\.\d+)?\.zip$/.test(artifact.name)) {
+  if (
+    !/^browserclaw-(app|extension)-0\.1\.0(?:-rc\.\d+)?\.zip$/.test(
+      artifact.name,
+    )
+  ) {
     fail(`unexpected artifact filename: ${artifact.name}`);
   }
   const path = join(output, artifact.name);
   if (!existsSync(path)) fail(`missing artifact: ${artifact.name}`);
   const actual = sha256(path);
-  if (actual !== artifact.sha256) fail(`manifest checksum mismatch: ${artifact.name}`);
+  if (actual !== artifact.sha256)
+    fail(`manifest checksum mismatch: ${artifact.name}`);
   if (expectedChecksums.get(artifact.name) !== actual) {
     fail(`SHA256SUMS mismatch: ${artifact.name}`);
   }
@@ -74,7 +79,10 @@ for (const artifact of manifest.artifacts) {
 }
 
 const manifestChecksum = sha256(manifestPath);
-if (expectedChecksums.get('browserclaw-release-manifest.json') !== manifestChecksum) {
+if (
+  expectedChecksums.get('browserclaw-release-manifest.json') !==
+  manifestChecksum
+) {
   fail('release manifest checksum mismatch');
 }
 if (expectedChecksums.size !== 3) {

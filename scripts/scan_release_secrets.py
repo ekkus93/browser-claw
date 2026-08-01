@@ -91,10 +91,7 @@ PATTERNS: tuple[SecretPattern, ...] = (
 
 def redact(value: bytes) -> tuple[str, str]:
     fingerprint = hashlib.sha256(value).hexdigest()[:16]
-    try:
-        text = value.decode("ascii", errors="replace")
-    except UnicodeDecodeError:
-        text = "<binary>"
+    text = value.decode("ascii", errors="replace")
     if len(text) <= 12:
         preview = "<redacted>"
     else:
@@ -102,11 +99,16 @@ def redact(value: bytes) -> tuple[str, str]:
     return preview, fingerprint
 
 
-def line_number(data: bytes, offset: int) -> int:
-    return data.count(b"\n", 0, offset) + 1
+def line_number(data: bytes, offset: int, line_offset: int = 0) -> int:
+    return line_offset + data.count(b"\n", 0, offset) + 1
 
 
-def scan_bytes(data: bytes, source: str) -> list[Finding]:
+def scan_bytes(
+    data: bytes,
+    source: str,
+    *,
+    line_offset: int = 0,
+) -> list[Finding]:
     if len(data) > MAX_TEXT_BYTES or b"\x00" in data:
         return []
 
@@ -119,7 +121,11 @@ def scan_bytes(data: bytes, source: str) -> list[Finding]:
                 Finding(
                     kind=pattern.name,
                     source=source,
-                    line=line_number(data, match.start(pattern.group)),
+                    line=line_number(
+                        data,
+                        match.start(pattern.group),
+                        line_offset,
+                    ),
                     preview=preview,
                     fingerprint=fingerprint,
                 )
@@ -136,7 +142,9 @@ def scan_zip_bytes(data: bytes, source: str, depth: int = 0) -> list[Finding]:
         for member in archive.infolist():
             member_source = f"{source}!{member.filename}"
             if member.flag_bits & 0x1:
-                raise ValueError(f"encrypted ZIP member cannot be scanned: {member_source}")
+                raise ValueError(
+                    f"encrypted ZIP member cannot be scanned: {member_source}"
+                )
             if member.is_dir():
                 continue
             if member.file_size > MAX_TEXT_BYTES:
@@ -185,7 +193,7 @@ def scan_working_tree() -> list[Finding]:
 
 
 def scan_git_history() -> list[Finding]:
-    completed = subprocess.run(
+    process = subprocess.Popen(
         [
             "git",
             "log",
@@ -196,10 +204,25 @@ def scan_git_history() -> list[Finding]:
             "--format=commit:%H",
             "--patch",
         ],
-        check=True,
         stdout=subprocess.PIPE,
     )
-    return scan_bytes(completed.stdout, "git-history-patch-stream")
+    if process.stdout is None:
+        process.kill()
+        raise OSError("git history scanner did not receive stdout")
+
+    findings: list[Finding] = []
+    for output_line, data in enumerate(process.stdout, start=1):
+        findings.extend(
+            scan_bytes(
+                data,
+                "git-history-patch-stream",
+                line_offset=output_line - 1,
+            )
+        )
+    return_code = process.wait()
+    if return_code != 0:
+        raise subprocess.CalledProcessError(return_code, process.args)
+    return findings
 
 
 def run_self_test() -> None:
@@ -285,6 +308,11 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (OSError, subprocess.CalledProcessError, zipfile.BadZipFile, ValueError) as error:
+    except (
+        OSError,
+        subprocess.CalledProcessError,
+        zipfile.BadZipFile,
+        ValueError,
+    ) as error:
         print(f"Secret scan could not complete: {error}", file=sys.stderr)
         raise SystemExit(2) from error

@@ -5,13 +5,8 @@ import { SafetyOverrideBanner } from './components/shell/SafetyOverrideBanner.ts
 import { SnapshotRestoreBanner } from './components/shell/SnapshotRestoreBanner.tsx';
 import { RuntimeBlockedScreen } from './components/shell/RuntimeBlockedScreen.tsx';
 import { useAppSelector } from './store/hooks.ts';
-import { APP_VERSION } from './lib/appMeta.ts';
+import { APP_BUILD, APP_VERSION } from './lib/appMeta.ts';
 
-/**
- * Top-level layout route: wraps every screen in the shared AppShell. The right
- * inspector is shown only where it's useful (Chat for now, per the spec);
- * individual screens will refine this in later phases.
- */
 export default function AppLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -28,7 +23,6 @@ export default function AppLayout() {
   const providerModel = useAppSelector(
     (state) => state.providers.activeProviderModel,
   );
-  // Prefer the active remote provider's model; fall back to a loaded local model.
   const modelLabel = providerModel ?? localModelLabel;
   const storageUsedBytes = useAppSelector((state) => state.storage.usedBytes);
   const storageTotalBytes = useAppSelector((state) => state.storage.quotaBytes);
@@ -45,15 +39,15 @@ export default function AppLayout() {
         modelLabel,
         storageUsedBytes,
         storageTotalBytes,
-        // The top-bar provider/model button is a real affordance: route to
-        // /models (where remote providers and local models are managed) instead
-        // of leaving the onClick a silent no-op.
         onSelectModel: () => navigate('/models'),
-        // The top-bar Settings button is a real affordance: route to /settings
-        // (TODO Phase 9.2) instead of leaving the onClick a silent no-op.
         onOpenSettings: () => navigate('/settings'),
       }}
-      sidebar={{ footer: { status: runtimeStatus, version: APP_VERSION } }}
+      sidebar={{
+        footer: {
+          status: runtimeStatus,
+          version: `${APP_VERSION} · ${APP_BUILD.shortGitSha}`,
+        },
+      }}
     >
       <SafetyOverrideBanner />
       <SnapshotRestoreBanner />

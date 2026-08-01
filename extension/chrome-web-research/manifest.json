@@ -2,11 +2,17 @@
   "manifest_version": 3,
   "name": "BrowserClaw Web Research Companion",
   "version": "0.1.0",
-  "description": "Reads web pages for BrowserClaw and returns sanitized text/markdown. Read-only; never fills forms, reads cookies, or scrapes logged-in pages.",
+  "version_name": "0.1.0-rc.1",
+  "description": "Reads user-approved public web pages for BrowserClaw and returns sanitized text or Markdown. It does not read cookies, fill forms, or access pages without host permission.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2FXPSmcLMAGL93z53/c36w+UL7qfwOdsDRN/ugjouivcxKc7Q24c2KePohUloTaVNVHP8s963/Y4ayHsHAB/ck2szZwVnRnNduTSFpb54nptaD4SRFOid0lCmvlDeaNqvIvHPh4vUxzVQGUbb5NNL8YqUpUoVGUySvdnR+Iv53Q+i32Suc3myRtvutBP097w2Kb5CuVZ5IkoQYsLns9V73emZpA93ECec9esNLxw2OjELZTJbhZjqtHIYaD5wvN58Wn9YF1Fzi7XBkkkMNQZTf80HNrJdHeI3kY0NlsflIGEIscM7+L0bYJqOxigJQjwkDAgm/k6l2Hhv/Zz8/uFDwIDAQAB",
   "permissions": ["tabs", "scripting", "storage"],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "externally_connectable": {
-    "matches": ["http://localhost:5173/*", "http://127.0.0.1:5173/*"]
+    "matches": [
+      "https://ekkus93.github.io/browser-claw/*",
+      "http://localhost:5173/*",
+      "http://127.0.0.1:5173/*"
+    ]
   },
   "background": {
     "service_worker": "service-worker.js",

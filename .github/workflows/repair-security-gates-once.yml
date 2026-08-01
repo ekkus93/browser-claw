@@ -15,9 +15,9 @@ concurrency:
 
 jobs:
   repair:
-    name: Repair scanner and Router advisories
+    name: Apply scanner and Router repairs
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -31,17 +31,17 @@ jobs:
           node-version: '22'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Permit only contained tracked symlinks
+      - name: Apply source and dependency repairs
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
 
-          path = Path('scripts/scan_release_secrets.py')
-          text = path.read_text(encoding='utf-8')
-          start = text.index('def scan_path(path: Path) -> list[Finding]:')
-          end = text.index('\n\ndef tracked_files()', start)
+          scanner_path = Path('scripts/scan_release_secrets.py')
+          scanner = scanner_path.read_text(encoding='utf-8')
+          start = scanner.index('def scan_path(path: Path) -> list[Finding]:')
+          end = scanner.index('\n\ndef tracked_files()', start)
           replacement = '''def scan_path(path: Path) -> list[Finding]:
               source = str(path)
               scan_target = path
@@ -75,14 +75,10 @@ jobs:
                   return scan_zip_bytes(data, source)
               return scan_bytes(data, source)
           '''
-          path.write_text(text[:start] + replacement + text[end:], encoding='utf-8')
-          PY
-      - name: Migrate React Router to patched major
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
+          scanner_path.write_text(
+              scanner[:start] + replacement + scanner[end:],
+              encoding='utf-8',
+          )
 
           changed = 0
           for suffix in ('*.ts', '*.tsx'):
@@ -98,24 +94,21 @@ jobs:
           PY
           pnpm remove react-router-dom
           pnpm add react-router@8.3.0 --save-exact
-      - name: Format and validate repairs
+          pnpm exec prettier --write src package.json pnpm-lock.yaml
+      - name: Validate transformation postconditions
         shell: bash
         run: |
           set -euo pipefail
           python3 -m py_compile scripts/scan_release_secrets.py
-          pnpm exec prettier --write src package.json pnpm-lock.yaml
           python3 scripts/scan_release_secrets.py --self-test
-          pnpm audit --prod --audit-level high
-          pnpm run typecheck
-          pnpm run lint
-          pnpm run format:check
-          pnpm exec vitest run --no-file-parallelism
           if git grep -n "react-router-dom" -- package.json pnpm-lock.yaml src; then
             echo 'react-router-dom remains in product sources or lockfile.' >&2
             exit 1
           fi
+          grep -F '"react-router": "8.3.0"' package.json
+          pnpm exec prettier --check src package.json pnpm-lock.yaml
           git diff --check
-      - name: Commit validated repairs
+      - name: Commit repairs for authoritative CI
         shell: bash
         run: |
           set -euo pipefail

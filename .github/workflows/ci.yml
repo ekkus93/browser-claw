@@ -20,6 +20,20 @@ env:
   WASM_PACK_VERSION: '0.13.1'
 
 jobs:
+  workflow-lint:
+    name: GitHub Actions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache: false
+      - name: Install pinned actionlint
+        run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+      - run: actionlint -color
+
   release-config:
     name: Release configuration
     runs-on: ubuntu-24.04
@@ -167,6 +181,7 @@ jobs:
   release:
     name: Release
     needs:
+      - workflow-lint
       - release-config
       - typecheck
       - lint-format

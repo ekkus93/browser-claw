@@ -68,7 +68,6 @@ export type ExtensionErrorKind =
   | 'extraction_failed'
   | 'output_too_large'
   | 'internal_error'
-  | 'startup_failure'
   | 'permission_flow_required'
   | 'current_tab_read_unavailable'
   | 'timeout'

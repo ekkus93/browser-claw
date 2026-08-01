@@ -1,0 +1,165 @@
+name: Repair React Test Warnings Once
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/fix-react-test-warnings-once.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: browserclaw-fix-react-test-warnings-once
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair and validate React test warnings
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply source-level test repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              file = Path(path)
+              text = file.read_text(encoding='utf-8')
+              if text.count(old) != 1:
+                  raise SystemExit(f'{path}: expected one occurrence of {old!r}')
+              file.write_text(text.replace(old, new), encoding='utf-8')
+
+          replace_once(
+              'src/screens/ModelsScreen.test.tsx',
+              "import { render, screen, waitFor, within } from '@testing-library/react';",
+              "import { cleanup, render, screen, waitFor, within } from '@testing-library/react';",
+          )
+          replace_once(
+              'src/screens/ModelsScreen.test.tsx',
+              "afterEach(async () => {\n  vi.unstubAllGlobals();",
+              "afterEach(async () => {\n  cleanup();\n  vi.unstubAllGlobals();",
+          )
+
+          replace_once(
+              'src/screens/SettingsScreen.test.tsx',
+              "import { act, render, screen, waitFor } from '@testing-library/react';",
+              "import { act, cleanup, render, screen, waitFor } from '@testing-library/react';",
+          )
+          replace_once(
+              'src/screens/SettingsScreen.test.tsx',
+              "  afterEach(async () => {\n    await db.app_settings.clear();",
+              "  afterEach(async () => {\n    cleanup();\n    await db.app_settings.clear();",
+          )
+
+          replace_once(
+              'src/screens/SecurityScreen.test.tsx',
+              "import { render, screen, waitFor } from '@testing-library/react';",
+              "import { cleanup, render, screen, waitFor } from '@testing-library/react';",
+          )
+          replace_once(
+              'src/screens/SecurityScreen.test.tsx',
+              "afterEach(() => {\n  // Clear plaintext + the 15-min auto-lock timer between tests.\n  secretVault.lock();",
+              "afterEach(() => {\n  // Unmount subscribers before changing the singleton vault state.\n  cleanup();\n  // Clear plaintext + the 15-min auto-lock timer between tests.\n  secretVault.lock();",
+          )
+
+          replace_once(
+              'src/screens/ChatScreen.test.tsx',
+              "import { render, screen, waitFor } from '@testing-library/react';",
+              "import { act, render, screen, waitFor } from '@testing-library/react';",
+          )
+          replace_once(
+              'src/screens/ChatScreen.test.tsx',
+              "    store.dispatch(\n      chatErrored({ kind: 'cors', message: 'Blocked by the browser (CORS).' }),\n    );",
+              "    act(() => {\n      store.dispatch(\n        chatErrored({ kind: 'cors', message: 'Blocked by the browser (CORS).' }),\n      );\n    });",
+          )
+          replace_once(
+              'src/screens/ChatScreen.test.tsx',
+              "    store.dispatch(\n      approvalRequested({\n        id: 'a1',\n        kind: 'tool_call',\n        title: 'Write file',\n        risk: 'high',\n        summary: 'writes a file',\n        payloadPreview: '{\"path\":\"/x\"}',\n      }),\n    );",
+              "    act(() => {\n      store.dispatch(\n        approvalRequested({\n          id: 'a1',\n          kind: 'tool_call',\n          title: 'Write file',\n          risk: 'high',\n          summary: 'writes a file',\n          payloadPreview: '{\"path\":\"/x\"}',\n        }),\n      );\n    });",
+          )
+
+          replace_once(
+              'src/components/shell/SnapshotRestoreBanner.test.tsx',
+              "import { render, screen } from '@testing-library/react';",
+              "import { act, render, screen } from '@testing-library/react';",
+          )
+          replace_once(
+              'src/components/shell/SnapshotRestoreBanner.test.tsx',
+              "    store.dispatch(snapshotRestoreWarned('incompatible'));",
+              "    act(() => {\n      store.dispatch(snapshotRestoreWarned('incompatible'));\n    });",
+          )
+          replace_once(
+              'src/components/shell/SnapshotRestoreBanner.test.tsx',
+              "    store.dispatch(snapshotRestoreWarned('restore_failed'));",
+              "    act(() => {\n      store.dispatch(snapshotRestoreWarned('restore_failed'));\n    });",
+          )
+
+          replace_once(
+              'src/components/shell/IndexRedirect.test.tsx',
+              "import { render, screen } from '@testing-library/react';",
+              "import { act, render, screen } from '@testing-library/react';",
+          )
+          replace_once(
+              'src/components/shell/IndexRedirect.test.tsx',
+              "    store.dispatch(hydrated());",
+              "    act(() => {\n      store.dispatch(hydrated());\n    });",
+          )
+          replace_once(
+              'src/components/shell/IndexRedirect.test.tsx',
+              "    store.dispatch(onboardingCompleted());\n    store.dispatch(hydrated());",
+              "    act(() => {\n      store.dispatch(onboardingCompleted());\n      store.dispatch(hydrated());\n    });",
+          )
+          PY
+      - name: Format and validate targeted tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=(
+            src/screens/ModelsScreen.test.tsx
+            src/screens/SettingsScreen.test.tsx
+            src/screens/SecurityScreen.test.tsx
+            src/screens/ChatScreen.test.tsx
+            src/components/shell/SnapshotRestoreBanner.test.tsx
+            src/components/shell/IndexRedirect.test.tsx
+          )
+          pnpm exec prettier --write "${files[@]}"
+          log="${RUNNER_TEMP}/targeted-tests.log"
+          pnpm exec vitest run --no-file-parallelism "${files[@]}" 2>&1 | tee "${log}"
+          if grep -F 'not wrapped in act' "${log}"; then
+            echo 'First-party React act warning remains.' >&2
+            exit 1
+          fi
+          pnpm exec eslint "${files[@]}" --max-warnings 0
+          pnpm exec prettier --check "${files[@]}"
+          git diff --check
+      - name: Commit validated repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- \
+            src/screens/ModelsScreen.test.tsx \
+            src/screens/SettingsScreen.test.tsx \
+            src/screens/SecurityScreen.test.tsx \
+            src/screens/ChatScreen.test.tsx \
+            src/components/shell/SnapshotRestoreBanner.test.tsx \
+            src/components/shell/IndexRedirect.test.tsx
+          git commit -m 'test: eliminate React state-update warnings'
+          git push origin HEAD:master

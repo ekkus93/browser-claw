@@ -110,6 +110,42 @@ The JSON payload sets:
 
 when compaction occurs. If the body remains too large without discarding required failure evidence, the publisher fails instead of writing truncated or invalid JSON.
 
+## Installation validation evidence
+
+The bridge was exercised through real `CI` runs on `master`.
+
+### Successful run
+
+- Commit: `a4ad981d6db1debe4352fff567193dd5a5782600`
+- Run ID: `30716133172`
+- Attempt: `1`
+- Final result: `completed` / `success`
+- Jobs published: eight, including the skipped non-tag release job
+- Problem steps: none
+- Artifact API: queried successfully; the non-tag run produced zero artifacts
+- State transitions observed in issue `#1`: pending, in progress, and completed
+
+### Controlled failure run
+
+A disposable TypeScript source file was committed to force an unambiguous failure and was removed immediately after validation.
+
+- Probe commit: `3380161b5c30d380fb318f42d5c38e26780f1983`
+- Run ID: `30716270179`
+- Attempt: `1`
+- Final result: `completed` / `failure`
+- TypeScript job ID: `91412228152`
+- Failed TypeScript step: `Run pnpm run typecheck`
+- Build job ID: `91412228146`
+- Failed build step: `Run pnpm run build`
+- Retrieved diagnostic: `TS2322`, assigning a number to a string
+- Probe-removal commit: `45c2c99c976694311b19abff38ccaa1b575604de`
+
+The temporary failure source is not present in the repository after validation.
+
+### Supersession test
+
+The probe-removal run was deliberately superseded by this documentation-only commit while it was active. The publisher must keep issue `#1` pointed at the newest run and reject any late event for the superseded SHA. The final result of the newest clean commit remains the authoritative installation signoff in issue `#1`.
+
 ## Ralph Loop operating procedure
 
 For each BrowserClaw Ralph Loop iteration:

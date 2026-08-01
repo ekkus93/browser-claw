@@ -140,11 +140,13 @@ jobs:
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   build:
-    name: Build
+    name: Build and package RC artifacts
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
@@ -159,8 +161,34 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Set exact-SHA RC dry-run metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo 'VITE_RELEASE_VERSION=0.1.0'
+            echo "VITE_GIT_SHA=${GITHUB_SHA}"
+            echo "VITE_BUILD_UTC=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo 'VITE_RELEASE_CHANNEL=rc'
+            echo 'VITE_BASE_PATH=/browser-claw/'
+            echo 'VITE_CHROME_EXTENSION_ID=mgobfbgnjfnlpahiniaincgpkinnodka'
+            echo 'VITE_DEMO_MODE=false'
+            echo 'VITE_ALLOW_REFERENCE_RUNTIME_FALLBACK=false'
+            echo 'VITE_ALLOW_MOCK_PROVIDER=false'
+          } >> "${GITHUB_ENV}"
       - run: pnpm run build:wasm
-      - run: pnpm run build
+      - run: pnpm run build:release
+      - name: Package deterministic RC archives
+        run: GITHUB_REF_NAME=v0.1.0-rc.1 pnpm run package:release
+      - run: pnpm run verify:release-artifacts
+      - name: Upload exact-SHA RC dry-run artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: browserclaw-rc-dry-run-${{ github.sha }}
+          path: release-artifacts
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
   extension-e2e:
     name: Extension E2E (Docker)

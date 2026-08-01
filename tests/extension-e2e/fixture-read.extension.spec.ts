@@ -123,7 +123,7 @@ test('J1: read_page of fixture page returns sanitized content', async () => {
       requestId: 'j1-read',
       url: `${FIXTURE_ORIGIN}/public-article.html`,
     });
-    expect(r).toMatchObject({ ok: true });
+    expect(r, JSON.stringify(r)).toMatchObject({ ok: true });
     const result = r as {
       ok: true;
       title?: string;

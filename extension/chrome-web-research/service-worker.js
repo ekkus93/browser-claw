@@ -191,10 +191,12 @@ function waitForTabComplete(tabId, timeoutMs) {
   return new Promise((resolve, reject) => {
     let done = false;
     let timeoutId;
+    let pollId;
 
     const cleanup = () => {
       chrome.tabs.onUpdated.removeListener(onUpdated);
       if (timeoutId !== undefined) clearTimeout(timeoutId);
+      if (pollId !== undefined) clearInterval(pollId);
     };
 
     const finish = (fn, value) => {
@@ -204,30 +206,34 @@ function waitForTabComplete(tabId, timeoutMs) {
       fn(value);
     };
 
+    const inspectTab = () => {
+      chrome.tabs.get(tabId, (tab) => {
+        if (done) return;
+        if (chrome.runtime.lastError) {
+          finish(reject, new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        if (tab?.status === 'complete') {
+          finish(resolve);
+        }
+      });
+    };
+
     const onUpdated = (updatedTabId, changeInfo) => {
       if (updatedTabId === tabId && changeInfo.status === 'complete') {
         finish(resolve);
       }
     };
 
-    // Install listener first so we don't miss an update between the get() callback
-    // and when we start listening.
+    // Keep the event listener for the fast path and poll as a bounded
+    // fallback because MV3 service-worker scheduling can occasionally
+    // miss the completion transition in constrained CI environments.
     chrome.tabs.onUpdated.addListener(onUpdated);
-
-    chrome.tabs.get(tabId, (tab) => {
-      if (done) return;
-      if (chrome.runtime.lastError) {
-        finish(reject, new Error(chrome.runtime.lastError.message));
-        return;
-      }
-      if (tab?.status === 'complete') {
-        finish(resolve);
-      }
-    });
-
+    pollId = setInterval(inspectTab, 250);
     timeoutId = setTimeout(() => {
       finish(reject, new Error('page_load_timeout'));
     }, timeoutMs);
+    inspectTab();
   });
 }
 

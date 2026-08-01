@@ -11,7 +11,8 @@ import stat
 import sys
 import zipfile
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Mapping
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
@@ -35,6 +36,12 @@ FORBIDDEN_PARTS = {
     "__pycache__",
 }
 FORBIDDEN_SUFFIXES = {".pem", ".key", ".p12", ".pfx"}
+SOURCE_ORIGIN_BLOCK = """const ALLOWED_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173'];
+
+function isAllowedSender(sender) {
+  const url = sender && sender.url ? sender.url : '';
+  return ALLOWED_ORIGINS.some((origin) => url.startsWith(origin + '/'));
+}"""
 
 
 def fail(message: str) -> None:
@@ -68,11 +75,10 @@ def validate_archive_path(path: Path) -> None:
         fail(f"private-key-like file must not be packaged: {path.as_posix()}")
 
 
-def zip_info(name: str, executable: bool = False) -> zipfile.ZipInfo:
+def zip_info(name: str) -> zipfile.ZipInfo:
     info = zipfile.ZipInfo(name, FIXED_TIMESTAMP)
     info.create_system = 3
-    mode = 0o755 if executable else 0o644
-    info.external_attr = (stat.S_IFREG | mode) << 16
+    info.external_attr = (stat.S_IFREG | 0o644) << 16
     info.compress_type = zipfile.ZIP_DEFLATED
     return info
 
@@ -82,7 +88,9 @@ def write_zip(
     source: Path,
     files: Iterable[Path],
     prefix: str = "",
+    overrides: Mapping[Path, bytes] | None = None,
 ) -> None:
+    replacements = overrides or {}
     with zipfile.ZipFile(
         output,
         mode="w",
@@ -96,7 +104,57 @@ def write_zip(
             if absolute.is_symlink():
                 fail(f"symbolic links are not permitted in artifacts: {relative}")
             name = f"{prefix}{relative.as_posix()}"
-            archive.writestr(zip_info(name), absolute.read_bytes())
+            data = replacements.get(relative, absolute.read_bytes())
+            archive.writestr(zip_info(name), data)
+
+
+def build_production_service_worker(config: dict[str, object]) -> bytes:
+    source_path = EXTENSION / "service-worker.js"
+    source = source_path.read_text(encoding="utf-8")
+    if source.count(SOURCE_ORIGIN_BLOCK) != 1:
+        fail("service-worker origin policy source block is missing or ambiguous")
+
+    production_url = str(config.get("productionUrl", ""))
+    parsed = urlsplit(production_url)
+    if parsed.scheme != "https" or not parsed.netloc or not parsed.path:
+        fail("productionUrl must be an HTTPS URL with an application path")
+    production_application_url = production_url.rstrip("/")
+    allowed_urls = [
+        production_application_url,
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
+    allowed_json = json.dumps(allowed_urls, separators=(",", ":"))
+    production_block = f"""const ALLOWED_ORIGINS = {allowed_json};
+
+function isAllowedSender(sender) {{
+  const rawUrl = sender && sender.url ? sender.url : '';
+  let candidate;
+  try {{
+    candidate = new URL(rawUrl);
+  }} catch {{
+    return false;
+  }}
+  return ALLOWED_ORIGINS.some((allowedUrl) => {{
+    let allowed;
+    try {{
+      allowed = new URL(allowedUrl);
+    }} catch {{
+      return false;
+    }}
+    if (candidate.origin !== allowed.origin) return false;
+    const allowedPath = allowed.pathname.replace(/\\/$/, '');
+    if (allowedPath.length === 0) return true;
+    return (
+      candidate.pathname === allowedPath ||
+      candidate.pathname.startsWith(`${{allowedPath}}/`)
+    );
+  }});
+}}"""
+    generated = source.replace(SOURCE_ORIGIN_BLOCK, production_block)
+    if production_application_url not in generated:
+        fail("generated service worker does not contain the production URL")
+    return generated.encode("utf-8")
 
 
 def sha256(path: Path) -> str:
@@ -122,7 +180,9 @@ def main() -> None:
 
     if version != metadata.get("version"):
         fail("release metadata version does not match release-config.json")
-    if len(commit_sha) != 40 or any(character not in "0123456789abcdefABCDEF" for character in commit_sha):
+    if len(commit_sha) != 40 or any(
+        character not in "0123456789abcdefABCDEF" for character in commit_sha
+    ):
         fail("release metadata does not contain a full commit SHA")
     if channel not in {"rc", "stable"}:
         fail("release metadata channel must be rc or stable")
@@ -138,7 +198,9 @@ def main() -> None:
         shutil.rmtree(OUTPUT)
     OUTPUT.mkdir(parents=True)
 
-    tag = os.environ.get("GITHUB_REF_NAME") or str(config.get("rcTag", "v0.1.0-rc.1"))
+    tag = os.environ.get("GITHUB_REF_NAME") or str(
+        config.get("rcTag", "v0.1.0-rc.1")
+    )
     safe_tag = tag.removeprefix("v")
     app_name = f"browserclaw-app-{safe_tag}.zip"
     extension_name = f"browserclaw-extension-{safe_tag}.zip"
@@ -146,10 +208,19 @@ def main() -> None:
     extension_archive = OUTPUT / extension_name
 
     write_zip(app_archive, DIST, relative_files(DIST))
-    write_zip(extension_archive, EXTENSION, extension_paths, "browserclaw-extension/")
+    write_zip(
+        extension_archive,
+        EXTENSION,
+        extension_paths,
+        "browserclaw-extension/",
+        {Path("service-worker.js"): build_production_service_worker(config)},
+    )
 
     artifacts = []
-    for path, kind in ((app_archive, "application"), (extension_archive, "chrome-extension")):
+    for path, kind in (
+        (app_archive, "application"),
+        (extension_archive, "chrome-extension"),
+    ):
         artifacts.append(
             {
                 "kind": kind,
@@ -169,6 +240,7 @@ def main() -> None:
         "releaseChannel": channel,
         "productionUrl": config.get("productionUrl"),
         "extensionId": config.get("extensionId"),
+        "extensionOriginPolicy": "generated-from-release-config",
         "supportedBrowsers": config.get("supportedBrowsers"),
         "artifacts": artifacts,
     }
@@ -178,9 +250,13 @@ def main() -> None:
         encoding="utf-8",
     )
 
-    checksum_lines = [f"{entry['sha256']}  {entry['name']}" for entry in artifacts]
+    checksum_lines = [
+        f"{entry['sha256']}  {entry['name']}" for entry in artifacts
+    ]
     checksum_lines.append(f"{sha256(manifest_path)}  {manifest_path.name}")
-    (OUTPUT / "SHA256SUMS").write_text("\n".join(checksum_lines) + "\n", encoding="utf-8")
+    (OUTPUT / "SHA256SUMS").write_text(
+        "\n".join(checksum_lines) + "\n", encoding="utf-8"
+    )
 
     print(f"Created deterministic release artifacts in {OUTPUT.relative_to(ROOT)}")
     for entry in artifacts:

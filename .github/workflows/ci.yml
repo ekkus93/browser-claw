@@ -97,6 +97,14 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Reject focused tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -nE '\.(only)\s*\(' -- '*.test.ts' '*.test.tsx' '*.spec.ts' '*.spec.tsx'; then
+            echo 'Focused test marker detected.' >&2
+            exit 1
+          fi
       - run: pnpm exec vitest run --no-file-parallelism
 
   e2e:
@@ -147,6 +155,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+      - name: Verify clean exact-SHA checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test -z "$(git status --porcelain)"
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
@@ -161,6 +175,17 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Record release toolchain versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          pnpm --version
+          rustc --version
+          cargo --version
+          wasm-pack --version
+          pnpm exec playwright --version
+          docker --version
       - name: Set exact-SHA RC dry-run metadata
         shell: bash
         run: |
@@ -177,10 +202,18 @@ jobs:
             echo 'VITE_ALLOW_MOCK_PROVIDER=false'
           } >> "${GITHUB_ENV}"
       - run: pnpm run build:wasm
+      - name: Verify generated bindings did not drift
+        run: git diff --exit-code
       - run: pnpm run build:release
       - name: Package deterministic RC archives
         run: GITHUB_REF_NAME=v0.1.0-rc.1 pnpm run package:release
       - run: pnpm run verify:release-artifacts
+      - name: Verify tracked tree remains clean
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          test -z "$(git status --porcelain --untracked-files=no)"
       - name: Upload exact-SHA RC dry-run artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -227,6 +260,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
+      - name: Verify clean exact-tag checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test -z "$(git status --porcelain)"
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
@@ -241,6 +280,17 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Record release toolchain versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          pnpm --version
+          rustc --version
+          cargo --version
+          wasm-pack --version
+          pnpm exec playwright --version
+          docker --version
       - name: Set immutable release metadata
         shell: bash
         run: |
@@ -263,9 +313,17 @@ jobs:
             echo 'VITE_ALLOW_MOCK_PROVIDER=false'
           } >> "${GITHUB_ENV}"
       - run: pnpm run build:wasm
+      - name: Verify generated bindings did not drift
+        run: git diff --exit-code
       - run: pnpm run build:release
       - run: pnpm run package:release
       - run: pnpm run verify:release-artifacts
+      - name: Verify tracked tree remains clean
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code
+          test -z "$(git status --porcelain --untracked-files=no)"
       - name: Attach gate evidence when present
         shell: bash
         run: |

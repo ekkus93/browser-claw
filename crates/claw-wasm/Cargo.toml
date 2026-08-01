@@ -2,7 +2,9 @@
 name = "claw-wasm"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
+description = "BrowserClaw's browser-hosted Rust/WASM agent runtime"
+repository = "https://github.com/ekkus93/browser-claw"
+license-file = "../../LICENSE"
 
 [lib]
 crate-type = ["cdylib", "rlib"]

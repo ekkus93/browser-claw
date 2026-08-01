@@ -117,13 +117,13 @@ jobs:
           )
           replace_once(
               'src/components/shell/IndexRedirect.test.tsx',
-              "    store.dispatch(hydrated());",
-              "    act(() => {\n      store.dispatch(hydrated());\n    });",
+              "    store.dispatch(onboardingCompleted());\n    store.dispatch(hydrated());",
+              "    act(() => {\n      store.dispatch(onboardingCompleted());\n      store.dispatch(hydrated());\n    });",
           )
           replace_once(
               'src/components/shell/IndexRedirect.test.tsx',
-              "    store.dispatch(onboardingCompleted());\n    store.dispatch(hydrated());",
-              "    act(() => {\n      store.dispatch(onboardingCompleted());\n      store.dispatch(hydrated());\n    });",
+              "    store.dispatch(hydrated());",
+              "    act(() => {\n      store.dispatch(hydrated());\n    });",
           )
           PY
       - name: Format and validate targeted tests

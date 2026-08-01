@@ -3,7 +3,8 @@
 
 The scanner never prints a complete matched credential. Findings contain only the
 credential kind, source location, a short redacted preview, and a SHA-256
-fingerprint suitable for adjudication or a narrowly scoped future allowlist.
+fingerprint. Reviewed synthetic fixtures may be approved only by their complete
+SHA-256 fingerprint and credential kind in the release allowlist.
 """
 
 from __future__ import annotations
@@ -11,6 +12,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import io
+import json
 import re
 import subprocess
 import sys
@@ -22,6 +24,8 @@ from typing import Iterable
 
 MAX_TEXT_BYTES = 20 * 1024 * 1024
 MAX_ZIP_DEPTH = 4
+DEFAULT_ALLOWLIST = Path("release/secret-scan-allowlist.json")
+FULL_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
@@ -90,7 +94,7 @@ PATTERNS: tuple[SecretPattern, ...] = (
 
 
 def redact(value: bytes) -> tuple[str, str]:
-    fingerprint = hashlib.sha256(value).hexdigest()[:16]
+    fingerprint = hashlib.sha256(value).hexdigest()
     text = value.decode("ascii", errors="replace")
     if len(text) <= 12:
         preview = "<redacted>"
@@ -243,6 +247,48 @@ def scan_git_history() -> list[Finding]:
     return findings
 
 
+def load_allowlist(path: Path) -> dict[tuple[str, str], str]:
+    if not path.is_file():
+        return {}
+
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or raw.get("schemaVersion") != 1:
+        raise ValueError(f"invalid secret-scan allowlist schema: {path}")
+    entries = raw.get("entries")
+    if not isinstance(entries, list):
+        raise ValueError(f"secret-scan allowlist entries must be a list: {path}")
+
+    allowlist: dict[tuple[str, str], str] = {}
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            raise ValueError(f"allowlist entry {index} must be an object")
+        kind = entry.get("kind")
+        fingerprint = entry.get("sha256")
+        rationale = entry.get("rationale")
+        approved_locations = entry.get("approvedLocations")
+        if not isinstance(kind, str) or not kind:
+            raise ValueError(f"allowlist entry {index} has no credential kind")
+        if (
+            not isinstance(fingerprint, str)
+            or not FULL_SHA256.fullmatch(fingerprint)
+        ):
+            raise ValueError(f"allowlist entry {index} has an invalid SHA-256")
+        if not isinstance(rationale, str) or len(rationale.strip()) < 20:
+            raise ValueError(f"allowlist entry {index} needs a detailed rationale")
+        if not isinstance(approved_locations, list) or not all(
+            isinstance(location, str) and location
+            for location in approved_locations
+        ):
+            raise ValueError(
+                f"allowlist entry {index} needs approvedLocations"
+            )
+        key = (kind, fingerprint)
+        if key in allowlist:
+            raise ValueError(f"duplicate secret-scan allowlist entry: {kind}")
+        allowlist[key] = rationale.strip()
+    return allowlist
+
+
 def run_self_test() -> None:
     clean = b"Authorization: Bearer <runtime-user-value>\n"
     if scan_bytes(clean, "self-test-clean"):
@@ -252,6 +298,8 @@ def run_self_test() -> None:
     findings = scan_bytes(b"key=" + synthetic_key, "self-test-secret")
     if len(findings) != 1 or findings[0].kind != "OpenAI-style API key":
         raise AssertionError("synthetic API key was not detected exactly once")
+    if len(findings[0].fingerprint) != 64:
+        raise AssertionError("scanner did not retain a complete SHA-256 fingerprint")
     if synthetic_key.decode("ascii") in repr(findings):
         raise AssertionError("finding representation exposed the complete credential")
 
@@ -275,6 +323,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--git-history", action="store_true")
     parser.add_argument("--path", action="append", default=[])
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--allowlist", default=str(DEFAULT_ALLOWLIST))
     return parser.parse_args()
 
 
@@ -306,20 +355,45 @@ def main() -> int:
             finding.fingerprint,
         ),
     )
-    if unique_findings:
+    allowlist = load_allowlist(Path(args.allowlist))
+    allowed = [
+        finding
+        for finding in unique_findings
+        if (finding.kind, finding.fingerprint) in allowlist
+    ]
+    blocked = [
+        finding
+        for finding in unique_findings
+        if (finding.kind, finding.fingerprint) not in allowlist
+    ]
+
+    if allowed:
+        approved_fingerprints = {
+            (finding.kind, finding.fingerprint) for finding in allowed
+        }
         print(
-            f"Secret scan failed with {len(unique_findings)} high-confidence finding(s):",
+            "Secret scan reviewed "
+            f"{len(allowed)} allowlisted occurrence(s) across "
+            f"{len(approved_fingerprints)} synthetic fingerprint(s)."
+        )
+        for kind, fingerprint in sorted(approved_fingerprints):
+            print(f"- allowlisted {kind} sha256={fingerprint[:16]}…")
+
+    if blocked:
+        print(
+            f"Secret scan failed with {len(blocked)} unapproved "
+            "high-confidence finding(s):",
             file=sys.stderr,
         )
-        for finding in unique_findings:
+        for finding in blocked:
             print(
                 f"- {finding.kind} at {finding.source}:{finding.line} "
-                f"value={finding.preview} sha256={finding.fingerprint}",
+                f"value={finding.preview} sha256={finding.fingerprint[:16]}…",
                 file=sys.stderr,
             )
         return 1
 
-    print("Secret scan passed with no high-confidence credentials detected.")
+    print("Secret scan passed with no unapproved credentials detected.")
     return 0
 
 
@@ -327,6 +401,7 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except (
+        json.JSONDecodeError,
         OSError,
         subprocess.CalledProcessError,
         zipfile.BadZipFile,

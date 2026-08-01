@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: browserclaw-fix-react-test-warnings-once
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   repair:
@@ -125,12 +125,38 @@ jobs:
               "    store.dispatch(hydrated());",
               "    act(() => {\n      store.dispatch(hydrated());\n    });",
           )
+
+          Path('src/test/setup.ts').write_text("""import '@testing-library/jest-dom/vitest';
+          import { afterAll, afterEach, beforeAll } from 'vitest';
+          import { cleanup } from '@testing-library/react';
+
+          const originalConsoleError = console.error.bind(console);
+
+          beforeAll(() => {
+            console.error = (...args: unknown[]) => {
+              const message = args.map((value) => String(value)).join(' ');
+              if (message.includes('not wrapped in act')) {
+                throw new Error(`React test state update escaped act(): ${message}`);
+              }
+              originalConsoleError(...args);
+            };
+          });
+
+          afterEach(() => {
+            cleanup();
+          });
+
+          afterAll(() => {
+            console.error = originalConsoleError;
+          });
+          """, encoding='utf-8')
           PY
       - name: Format and validate targeted tests
         shell: bash
         run: |
           set -euo pipefail
           files=(
+            src/test/setup.ts
             src/screens/ModelsScreen.test.tsx
             src/screens/SettingsScreen.test.tsx
             src/screens/SecurityScreen.test.tsx
@@ -139,12 +165,13 @@ jobs:
             src/components/shell/IndexRedirect.test.tsx
           )
           pnpm exec prettier --write "${files[@]}"
-          log="${RUNNER_TEMP}/targeted-tests.log"
-          pnpm exec vitest run --no-file-parallelism "${files[@]}" 2>&1 | tee "${log}"
-          if grep -F 'not wrapped in act' "${log}"; then
-            echo 'First-party React act warning remains.' >&2
-            exit 1
-          fi
+          pnpm exec vitest run --no-file-parallelism \
+            src/screens/ModelsScreen.test.tsx \
+            src/screens/SettingsScreen.test.tsx \
+            src/screens/SecurityScreen.test.tsx \
+            src/screens/ChatScreen.test.tsx \
+            src/components/shell/SnapshotRestoreBanner.test.tsx \
+            src/components/shell/IndexRedirect.test.tsx
           pnpm exec eslint "${files[@]}" --max-warnings 0
           pnpm exec prettier --check "${files[@]}"
           git diff --check
@@ -155,11 +182,12 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -- \
+            src/test/setup.ts \
             src/screens/ModelsScreen.test.tsx \
             src/screens/SettingsScreen.test.tsx \
             src/screens/SecurityScreen.test.tsx \
             src/screens/ChatScreen.test.tsx \
             src/components/shell/SnapshotRestoreBanner.test.tsx \
             src/components/shell/IndexRedirect.test.tsx
-          git commit -m 'test: eliminate React state-update warnings'
+          git commit -m 'test: fail and fix React state-update warnings'
           git push origin HEAD:master

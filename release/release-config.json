@@ -1,0 +1,25 @@
+{
+  "product": "BrowserClaw",
+  "version": "0.1.0",
+  "rcTag": "v0.1.0-rc.1",
+  "finalTag": "v0.1.0",
+  "rcVersionName": "0.1.0-rc.1",
+  "releaseModel": "public-github-prerelease",
+  "productionUrl": "https://ekkus93.github.io/browser-claw/",
+  "productionOrigin": "https://ekkus93.github.io",
+  "productionBasePath": "/browser-claw/",
+  "extensionDistribution": "unpacked-developer-mode",
+  "extensionId": "mgobfbgnjfnlpahiniaincgpkinnodka",
+  "extensionPublicKey": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2FXPSmcLMAGL93z53/c36w+UL7qfwOdsDRN/ugjouivcxKc7Q24c2KePohUloTaVNVHP8s963/Y4ayHsHAB/ck2szZwVnRnNduTSFpb54nptaD4SRFOid0lCmvlDeaNqvIvHPh4vUxzVQGUbb5NNL8YqUpUoVGUySvdnR+Iv53Q+i32Suc3myRtvutBP097w2Kb5CuVZ5IkoQYsLns9V73emZpA93ECec9esNLxw2OjELZTJbhZjqtHIYaD5wvN58Wn9YF1Fzi7XBkkkMNQZTf80HNrJdHeI3kY0NlsflIGEIscM7+L0bYJqOxigJQjwkDAgm/k6l2Hhv/Zz8/uFDwIDAQAB",
+  "supportedBrowsers": {
+    "chrome": "130 or later",
+    "firefox": "128 ESR or later for non-extension functionality"
+  },
+  "supportedOperatingSystems": [
+    "Linux desktop",
+    "macOS desktop",
+    "Windows desktop"
+  ],
+  "currentTabReading": "unavailable-in-0.1.0",
+  "telemetry": "none"
+}

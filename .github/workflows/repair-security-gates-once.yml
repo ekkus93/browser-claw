@@ -1,0 +1,141 @@
+name: Repair Security Gates Once
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/repair-security-gates-once.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: browserclaw-repair-security-gates-once
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair scanner and Router advisories
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Permit only contained tracked symlinks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('scripts/scan_release_secrets.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''def scan_path(path: Path) -> list[Finding]:
+              if path.is_symlink():
+                  raise ValueError(f"refusing to scan symbolic link: {path}")
+              if path.is_dir():
+                  findings: list[Finding] = []
+                  for child in sorted(path.rglob("*")):
+                      if child.is_file():
+                          findings.extend(scan_path(child))
+                  return findings
+
+              data = path.read_bytes()
+              if path.suffix.lower() == ".zip":
+                  return scan_zip_bytes(data, str(path))
+              return scan_bytes(data, str(path))
+          '''
+          new = '''def scan_path(path: Path) -> list[Finding]:
+              source = str(path)
+              scan_target = path
+              if path.is_symlink():
+                  repository_root = Path.cwd().resolve()
+                  try:
+                      resolved = path.resolve(strict=True)
+                  except OSError as error:
+                      raise ValueError(f"broken symbolic link: {path}") from error
+                  try:
+                      relative_target = resolved.relative_to(repository_root)
+                  except ValueError as error:
+                      raise ValueError(
+                          f"symbolic link escapes repository: {path}"
+                      ) from error
+                  if not resolved.is_file():
+                      raise ValueError(
+                          f"symbolic link target is not a file: {path}"
+                      )
+                  scan_target = resolved
+                  source = f"{path} -> {relative_target}"
+              if scan_target.is_dir():
+                  findings: list[Finding] = []
+                  for child in sorted(scan_target.rglob("*")):
+                      if child.is_file() or child.is_symlink():
+                          findings.extend(scan_path(child))
+                  return findings
+
+              data = scan_target.read_bytes()
+              if scan_target.suffix.lower() == ".zip":
+                  return scan_zip_bytes(data, source)
+              return scan_bytes(data, source)
+          '''
+          if text.count(old) != 1:
+              raise SystemExit('Expected exactly one scan_path implementation')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+      - name: Migrate React Router to patched major
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          changed = 0
+          for suffix in ('*.ts', '*.tsx'):
+              for path in sorted(Path('src').rglob(suffix)):
+                  text = path.read_text(encoding='utf-8')
+                  updated = text.replace("from 'react-router-dom'", "from 'react-router'")
+                  updated = updated.replace('from "react-router-dom"', 'from "react-router"')
+                  if updated != text:
+                      path.write_text(updated, encoding='utf-8')
+                      changed += 1
+          if changed == 0:
+              raise SystemExit('No react-router-dom imports were migrated')
+          PY
+          pnpm remove react-router-dom
+          pnpm add react-router@8.3.0 --save-exact
+      - name: Format and validate repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          pnpm exec prettier --write scripts/scan_release_secrets.py src package.json pnpm-lock.yaml
+          python3 scripts/scan_release_secrets.py --self-test
+          python3 scripts/scan_release_secrets.py --working-tree --git-history
+          pnpm audit --prod --audit-level high
+          pnpm run typecheck
+          pnpm run lint
+          pnpm run format:check
+          pnpm exec vitest run --no-file-parallelism
+          if git grep -n "react-router-dom" -- package.json pnpm-lock.yaml src; then
+            echo 'react-router-dom remains in product sources or lockfile.' >&2
+            exit 1
+          fi
+          git diff --check
+      - name: Commit validated repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- scripts/scan_release_secrets.py package.json pnpm-lock.yaml src
+          git commit -m 'security: repair secret scan and Router advisories'
+          git push origin HEAD:master

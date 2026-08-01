@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -37,6 +37,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  cleanup();
   // Clear plaintext + the 15-min auto-lock timer between tests.
   secretVault.lock();
 });

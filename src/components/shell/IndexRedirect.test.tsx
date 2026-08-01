@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -34,14 +34,20 @@ describe('IndexRedirect', () => {
 
   it('sends a first-run user to onboarding once hydrated', async () => {
     const store = renderIndex();
-    store.dispatch(hydrated());
+    act(() => {
+      store.dispatch(hydrated());
+    });
     expect(await screen.findByText('ONBOARDING')).toBeInTheDocument();
   });
 
   it('sends a returning (completed) user straight to chat', async () => {
     const store = renderIndex();
-    store.dispatch(onboardingCompleted());
-    store.dispatch(hydrated());
+    act(() => {
+      store.dispatch(onboardingCompleted());
+      act(() => {
+        store.dispatch(hydrated());
+      });
+    });
     expect(await screen.findByText('CHAT')).toBeInTheDocument();
   });
 });

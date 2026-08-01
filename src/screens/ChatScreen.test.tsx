@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Provider } from 'react-redux';
 import { MemoryRouter } from 'react-router-dom';
@@ -68,9 +68,14 @@ describe('ChatScreen', () => {
 
   it('shows a provider error card, not a fake assistant reply', async () => {
     const store = renderChat({ providerId: 'openai' });
-    store.dispatch(
-      chatErrored({ kind: 'cors', message: 'Blocked by the browser (CORS).' }),
-    );
+    act(() => {
+      store.dispatch(
+        chatErrored({
+          kind: 'cors',
+          message: 'Blocked by the browser (CORS).',
+        }),
+      );
+    });
 
     expect(await screen.findByTestId('chat-error')).toBeInTheDocument();
     expect(
@@ -86,16 +91,18 @@ describe('ChatScreen', () => {
   it('renders a pending approval and resolves it off the queue', async () => {
     const user = userEvent.setup();
     const store = renderChat({ providerId: 'openai' });
-    store.dispatch(
-      approvalRequested({
-        id: 'a1',
-        kind: 'tool_call',
-        title: 'Write file',
-        risk: 'high',
-        summary: 'writes a file',
-        payloadPreview: '{"path":"/x"}',
-      }),
-    );
+    act(() => {
+      store.dispatch(
+        approvalRequested({
+          id: 'a1',
+          kind: 'tool_call',
+          title: 'Write file',
+          risk: 'high',
+          summary: 'writes a file',
+          payloadPreview: '{"path":"/x"}',
+        }),
+      );
+    });
 
     expect(await screen.findByText('Write file')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Approve' }));

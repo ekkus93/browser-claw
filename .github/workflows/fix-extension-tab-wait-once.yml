@@ -1,0 +1,168 @@
+name: Repair Extension Tab Wait Once
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/fix-extension-tab-wait-once.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: browserclaw-fix-extension-tab-wait-once
+  cancel-in-progress: false
+
+jobs:
+  repair:
+    name: Repair and validate tab completion wait
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: '10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Apply exact source repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          worker_path = Path('extension/chrome-web-research/service-worker.js')
+          worker = worker_path.read_text(encoding='utf-8')
+          old = '''function waitForTabComplete(tabId, timeoutMs) {
+            return new Promise((resolve, reject) => {
+              let done = false;
+              let timeoutId;
+
+              const cleanup = () => {
+                chrome.tabs.onUpdated.removeListener(onUpdated);
+                if (timeoutId !== undefined) clearTimeout(timeoutId);
+              };
+
+              const finish = (fn, value) => {
+                if (done) return;
+                done = true;
+                cleanup();
+                fn(value);
+              };
+
+              const onUpdated = (updatedTabId, changeInfo) => {
+                if (updatedTabId === tabId && changeInfo.status === 'complete') {
+                  finish(resolve);
+                }
+              };
+
+              // Install listener first so we don't miss an update between the get() callback
+              // and when we start listening.
+              chrome.tabs.onUpdated.addListener(onUpdated);
+
+              chrome.tabs.get(tabId, (tab) => {
+                if (done) return;
+                if (chrome.runtime.lastError) {
+                  finish(reject, new Error(chrome.runtime.lastError.message));
+                  return;
+                }
+                if (tab?.status === 'complete') {
+                  finish(resolve);
+                }
+              });
+
+              timeoutId = setTimeout(() => {
+                finish(reject, new Error('page_load_timeout'));
+              }, timeoutMs);
+            });
+          }'''
+          new = '''function waitForTabComplete(tabId, timeoutMs) {
+            return new Promise((resolve, reject) => {
+              let done = false;
+              let timeoutId;
+              let pollId;
+
+              const cleanup = () => {
+                chrome.tabs.onUpdated.removeListener(onUpdated);
+                if (timeoutId !== undefined) clearTimeout(timeoutId);
+                if (pollId !== undefined) clearInterval(pollId);
+              };
+
+              const finish = (fn, value) => {
+                if (done) return;
+                done = true;
+                cleanup();
+                fn(value);
+              };
+
+              const inspectTab = () => {
+                chrome.tabs.get(tabId, (tab) => {
+                  if (done) return;
+                  if (chrome.runtime.lastError) {
+                    finish(reject, new Error(chrome.runtime.lastError.message));
+                    return;
+                  }
+                  if (tab?.status === 'complete') {
+                    finish(resolve);
+                  }
+                });
+              };
+
+              const onUpdated = (updatedTabId, changeInfo) => {
+                if (updatedTabId === tabId && changeInfo.status === 'complete') {
+                  finish(resolve);
+                }
+              };
+
+              // Keep the event listener for the fast path and poll as a bounded
+              // fallback because MV3 service-worker scheduling can occasionally
+              // miss the completion transition in constrained CI environments.
+              chrome.tabs.onUpdated.addListener(onUpdated);
+              pollId = setInterval(inspectTab, 250);
+              timeoutId = setTimeout(() => {
+                finish(reject, new Error('page_load_timeout'));
+              }, timeoutMs);
+              inspectTab();
+            });
+          }'''
+          if worker.count(old) != 1:
+              raise SystemExit('Expected exactly one tab-wait source block')
+          worker_path.write_text(worker.replace(old, new), encoding='utf-8')
+
+          test_path = Path('tests/extension-e2e/fixture-read.extension.spec.ts')
+          test = test_path.read_text(encoding='utf-8')
+          old_assertion = "    expect(r).toMatchObject({ ok: true });"
+          new_assertion = "    expect(r, JSON.stringify(r)).toMatchObject({ ok: true });"
+          if test.count(old_assertion) != 1:
+              raise SystemExit('Expected exactly one fixture success assertion')
+          test_path.write_text(
+              test.replace(old_assertion, new_assertion), encoding='utf-8'
+          )
+          PY
+      - name: Validate repaired sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check extension/chrome-web-research/service-worker.js
+          pnpm exec prettier --check tests/extension-e2e/fixture-read.extension.spec.ts
+          pnpm exec vitest run src/extension/serviceWorkerReadPages.test.ts --no-file-parallelism
+          pnpm run test:extension:e2e:docker
+          git diff --check
+      - name: Commit validated repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- \
+            extension/chrome-web-research/service-worker.js \
+            tests/extension-e2e/fixture-read.extension.spec.ts
+          git commit -m 'fix: make extension tab completion wait resilient'
+          git push origin HEAD:master

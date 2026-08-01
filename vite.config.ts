@@ -34,6 +34,47 @@ export default defineConfig({
     __BROWSERCLAW_RELEASE_CHANNEL__: JSON.stringify(releaseChannel),
     __BROWSERCLAW_EXTENSION_ID__: JSON.stringify(extensionId),
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        strictExecutionOrder: true,
+        codeSplitting: {
+          groups: [
+            {
+              name: 'react-runtime',
+              test: /node_modules[\\/](?:react|react-dom|react-router|react-redux|scheduler)[\\/]/,
+              priority: 40,
+              maxSize: 300_000,
+            },
+            {
+              name: 'state-storage',
+              test: /node_modules[\\/](?:@reduxjs|redux|dexie|immer|reselect)[\\/]/,
+              priority: 30,
+              maxSize: 300_000,
+            },
+            {
+              name: 'quickjs-runtime',
+              test: /node_modules[\\/](?:quickjs-emscripten|quickjs-emscripten-core|@jitl)[\\/]/,
+              priority: 30,
+              maxSize: 300_000,
+            },
+            {
+              name: 'local-model-runtime',
+              test: /node_modules[\\/]@wllama[\\/]/,
+              priority: 30,
+              maxSize: 300_000,
+            },
+            {
+              name: 'vendor',
+              test: /node_modules/,
+              priority: 10,
+              maxSize: 300_000,
+            },
+          ],
+        },
+      },
+    },
+  },
   test: {
     globals: true,
     environment: 'jsdom',

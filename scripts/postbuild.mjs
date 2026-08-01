@@ -1,4 +1,11 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,24 +25,16 @@ function isEnabled(value) {
   return value === 'true' || value === '1';
 }
 
-function walk(directory) {
-  const entries = [];
-  for (const entry of new Bun.Glob('**/*').scanSync({ cwd: directory, onlyFiles: true })) {
-    entries.push(entry);
-  }
-  return entries.sort();
-}
-
-// Node does not provide a recursive file iterator, and BrowserClaw does not
-// depend on Bun. Replace the helper above before use with a Node implementation.
 function listFiles(directory) {
-  const { readdirSync, statSync } = await import('node:fs');
   const result = [];
   const visit = (current) => {
     for (const name of readdirSync(current).sort()) {
       const absolute = join(current, name);
-      if (statSync(absolute).isDirectory()) visit(absolute);
-      else result.push(relative(directory, absolute).replaceAll('\\', '/'));
+      if (statSync(absolute).isDirectory()) {
+        visit(absolute);
+      } else {
+        result.push(relative(directory, absolute).replaceAll('\\', '/'));
+      }
     }
   };
   visit(directory);
@@ -77,7 +76,7 @@ if (strict && Object.values(safetyOverrides).some(Boolean)) {
   fail('a production safety override is enabled');
 }
 
-const files = await listFiles(dist);
+const files = listFiles(dist);
 if (!files.some((path) => path.endsWith('.wasm'))) {
   fail('the production output contains no WebAssembly asset');
 }
@@ -91,7 +90,6 @@ if (!files.some((path) => path.endsWith('.css'))) {
 // GitHub Pages serves 404.html for unknown paths. Duplicating the SPA entry
 // point preserves direct navigation and refresh for BrowserClaw routes.
 cpSync(join(dist, 'index.html'), join(dist, '404.html'));
-mkdirSync(dist, { recursive: true });
 writeFileSync(
   join(dist, 'release-metadata.json'),
   `${JSON.stringify(
